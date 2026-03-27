@@ -186,7 +186,7 @@
                     const cardId = data[0].trim();
                     const isRev = rand() > 0.5;
                     const num = cardId.replace(/[^0-9]/g, "").padStart(2, '0');
-                    const imgUrl = "m" + num + ".jpg";
+                    const imgUrl = "images/cards/m" + num + ".jpg";
 
                     let stepTitle = (idx === 0) ? "📜 [과거] 형성된 흐름" : (idx === 1) ? "✨ [현재] 직면한 에너지" : "🔮 [미래] 도달할 방향";
                     let stepColor = (idx === 0) ? "var(--gold)" : (idx === 1) ? "#00ffcc" : "#FFD700";
