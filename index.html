@@ -42,10 +42,6 @@
         .rev-badge { background: rgba(255, 68, 68, 0.2); color: #ff4444; font-size: 0.75rem; padding: 2px 8px; border-radius: 4px; border: 1px solid #ff4444; font-weight: 900; margin-top: 5px; display: inline-block; }
         
         .particle { position: fixed; pointer-events: none; z-index: 9999; border-radius: 50%; background: var(--bright-gold); box-shadow: 0 0 10px var(--gold); }
-        .transition-card { position: fixed; top: 50%; left: 50%; width: 100px; height: 160px; background: linear-gradient(135deg, var(--dark-gold), var(--gold)); border: 2px solid #fff; border-radius: 10px; transform: translate(-50%, -50%); z-index: 10000; opacity: 0; }
-        @keyframes whirlAndAway { 0% { transform: translate(-50%, -50%) rotateY(0deg) scale(0.5); opacity: 0; } 20% { opacity: 1; transform: translate(-50%, -50%) rotateY(720deg) scale(1.2); } 100% { transform: translate(-50%, -150%) rotateY(1440deg) scale(0); opacity: 0; } }
-        .animate-whirl { animation: whirlAndAway 1.5s ease-in-out forwards; }
-        .btn-home { background: rgba(212,175,55,0.2); border: 2px solid var(--gold); color: var(--gold); padding: 15px 60px; border-radius: 50px; cursor: pointer; margin-top: 40px; font-weight: 800; display: none; opacity: 0; transition: 0.5s; }
     </style>
 </head>
 <body>
@@ -54,23 +50,15 @@
             <h1 class="gold-title">ORACLE TAROT PRO</h1>
             <span class="sub-title">THE MASTERPIECE</span>
             <div class="input-system-wrapper">
-                <div class="beveled-border"></div>
-                <div class="beveled-inner"></div>
+                <div class="beveled-border"></div><div class="beveled-inner"></div>
                 <div id="fake-placeholder">
                     <div style="color: var(--gold); font-size: 1rem; font-weight: 900;">마음의 질문을 깊게 새기소서</div>
-                    <div style="color: rgba(255,255,255,0.4); font-size: 0.7rem;">(질문 입력 후 신탁 버튼을 누르세요)</div>
                 </div>
-                <textarea id="seed-input" class="gold-input" oninput="document.getElementById('fake-placeholder').style.opacity = this.value ? '0' : '1';" autocomplete="off"></textarea>
+                <textarea id="seed-input" class="gold-input" oninput="document.getElementById('fake-placeholder').style.opacity = this.value ? '0' : '1';"></textarea>
             </div>
             <div class="button-container">
-                <button class="gold-button" onclick="reveal()">
-                    <span class="btn-ko">운명의 3대 신탁 확인</span>
-                    <span class="btn-en">REVEAL THE TRINITY</span>
-                </button>
+                <button class="gold-button" onclick="reveal()">운명의 3대 신탁 확인</button>
                 <div class="spiritual-pointer" id="pointer-hand">👇</div>
-            </div>
-            <div class="legal-notice" style="margin-top: 80px; font-size: 0.7rem; color: var(--gold); opacity: 0.8;">
-                본 신탁은 사용자의 질문 에너지를 기반으로 추출된 인문학적 해석입니다.<br>모든 결정의 주권은 당신에게 있습니다.
             </div>
         </div>
 
@@ -78,79 +66,49 @@
             <h1 class="gold-title" style="font-size:1.8rem;">ORACLE TAROT PRO</h1>
             <div id="category-display" class="category-bar"></div>
             <div id="card-list" style="width:100%;"></div>
-            <button id="home-btn" class="btn-home" onclick="location.reload()">새로운 운명 확인</button>
+            <button class="gold-button" onclick="location.reload()" style="width:250px; margin-top:40px;">새로운 운명 확인</button>
         </div>
     </div>
 
-    <script src="data_ko.js"></script>
     <script>
-        (function() {
-            document.addEventListener('contextmenu', e => e.preventDefault());
-        })();
+        /* [데이터 직접 수혈 섹션] */
+        const rawData_KO = `M00;정;일반;#자유로운영혼 #새로운기점;과거의 고착된 질서에서 벗어나 완전히 새로운 가능성을 탐색해온 당신의 용기가 느껴집니다. 계산된 이익보다 직관의 목소리를 신뢰하며 미답의 영역으로 진입해온 그 가벼운 발걸음이 현재의 유연한 흐름을 형성했습니다. 규정되지 않은 에너지가 당신의 중심을 관통하며 새로운 세계를 열어주고 있습니다.;지금은 구체적인 계획의 감옥에 갇히기보다 순수한 의도 자체를 동력으로 삼아야 할 결정적 시기입니다. 과도한 분석은 오히려 당신의 날개를 꺾고 흐름을 경직시킬 뿐입니다. 현재의 불확실성을 리스크가 아닌 확장 가능성으로 과감히 재정의하십시오. 당신의 직관이 가리키는 그곳이 곧 최적의 경로입니다. 발걸음을 가볍게 하십시오. 자유가 곧 당신의 힘입니다.;계산되지 않은 순수한 시작은 예상치 못한 차원의 거대한 기회와 연결될 것입니다. 고정관념을 탈피한 당신의 선택이 반복될수록 당신의 영역은 경계 없이 무한히 확장됩니다. 자유로운 발상이 곧 누구도 흉내 낼 수 없는 강력한 경쟁력이 됩니다.
+/* ... 마스터님이 위에 복사해주신 78장의 모든 데이터 텍스트를 이 사이에 붙여넣으십시오 ... */`;
 
-        const rawData = window.rawData_KO || "";
-
+        // 애니메이션 및 로직 시작
         function createGoldDust() {
             const hand = document.getElementById('pointer-hand');
             if (!hand || document.getElementById('home-view').style.display === 'none') return;
             const rect = hand.getBoundingClientRect();
             for(let i=0; i<3; i++) {
-                const d = document.createElement('div');
-                d.className = 'particle';
+                const d = document.createElement('div'); d.className = 'particle';
                 const size = Math.random() * 3 + 1;
                 d.style.width = size + 'px'; d.style.height = size + 'px';
                 d.style.left = (rect.left + rect.width/2 + (Math.random()-0.5)*40) + 'px';
                 d.style.top = (rect.top + (Math.random()-0.5)*40) + 'px';
                 document.body.appendChild(d);
                 const angle = Math.random()*Math.PI*2;
-                d.animate([
-                    { opacity: 1, transform: 'scale(1)' },
-                    { opacity: 0, transform: `translate(${Math.cos(angle)*60}px, ${Math.sin(angle)*60}px) scale(0)` }
-                ], { duration: 1500 }).onfinish = () => d.remove();
+                d.animate([{ opacity: 1, transform: 'scale(1)' }, { opacity: 0, transform: `translate(${Math.cos(angle)*60}px, ${Math.sin(angle)*60}px) scale(0)` }], { duration: 1500 }).onfinish = () => d.remove();
             }
         }
         setInterval(createGoldDust, 60);
 
-        function createParticle() {
-            const p = document.createElement('div'); p.className = 'particle';
-            p.style.width = '5px'; p.style.height = '5px';
-            p.style.left = '50%'; p.style.top = '50%'; document.body.appendChild(p);
-            const a = Math.random()*Math.PI*2, v = 500 + Math.random()*500;
-            p.animate([{opacity:1}, {transform:`translate(${Math.cos(a)*v}px, ${Math.sin(a)*v}px)`, opacity:0}], 1500);
-            setTimeout(() => p.remove(), 1600);
-        }
-
         function seededRandom(seed) {
             let h = 1779033703 ^ seed.length;
-            for (let i = 0; i < seed.length; i++) {
-                h = Math.imul(h ^ seed.charCodeAt(i), 3432918353);
-                h = (h << 13) | (h >>> 19);
-            }
-            return function() {
-                h = Math.imul(h ^ (h >>> 16), 2246822507);
-                h = Math.imul(h ^ (h >>> 13), 3266489909);
-                return ((h ^= h >>> 16) >>> 0) / 4294967296;
-            };
+            for (let i = 0; i < seed.length; i++) { h = Math.imul(h ^ seed.charCodeAt(i), 3432918353); h = (h << 13) | (h >>> 19); }
+            return function() { h = Math.imul(h ^ (h >>> 16), 2246822507); h = Math.imul(h ^ (h >>> 13), 3266489909); return ((h ^= h >>> 16) >>> 0) / 4294967296; };
         }
 
         function typeWriter(element, text, speed, callback) {
             let i = 0; element.innerHTML = "";
-            function type() {
-                if (i < text.length) {
-                    element.innerHTML += text.charAt(i++);
-                    if (i % 3 === 0) window.scrollBy({ top: 10, behavior: 'smooth' });
-                    setTimeout(type, speed);
-                } else if (callback) callback();
-            }
+            function type() { if (i < text.length) { element.innerHTML += text.charAt(i++); setTimeout(type, speed); } else if (callback) callback(); }
             type();
         }
 
         function reveal() {
             const seed = document.getElementById('seed-input').value.trim();
             if (!seed) { alert("상담 내용을 입력해주세요."); return; }
-            if (!rawData) { alert("데이터 로딩 실패. 파일명을 확인하세요."); return; }
-
-            // [카테고리 분류 엔진]
+            
             let cat = "보편적 운명의 흐름";
             if (/(투자|주식|증권|재물|수익|부동산|재개발|매매|보험|돈)/.test(seed)) cat = "현실적 풍요와 자산의 흐름";
             else if (/(사랑|연애|재회|결혼|인연|여자친구|재혼|섹스|본능)/.test(seed)) cat = "관계의 결속과 애정의 향방";
@@ -158,65 +116,47 @@
             else if (/(건강|치료|회복|사고)/.test(seed)) cat = "생명 에너지와 신체적 안녕";
 
             const rand = seededRandom(seed);
-            const lines = rawData.split('\n').filter(l => l.includes(';'));
+            const lines = rawData_KO.split('\n').filter(l => l.includes(';'));
             let shuffled = lines.sort(() => rand() - 0.5).slice(0, 3);
 
-            document.getElementById('home-view').style.opacity = "0";
-            for (let i = 0; i < 100; i++) setTimeout(createParticle, i * 5);
-            
-            const tCard = document.createElement('div'); tCard.className = 'transition-card animate-whirl';
-            document.body.appendChild(tCard);
+            document.getElementById('home-view').style.display = 'none';
+            document.getElementById('result-view').style.display = 'flex';
+            document.getElementById('category-display').innerText = `✨ ${cat} ✨`;
 
-            setTimeout(() => {
-                tCard.remove();
-                document.getElementById('home-view').style.display = 'none';
-                document.getElementById('result-view').style.display = 'flex';
-                document.getElementById('category-display').innerText = `✨ ${cat} ✨`;
+            const cardList = document.getElementById('card-list'); cardList.innerHTML = '';
 
-                const cardList = document.getElementById('card-list'); cardList.innerHTML = '';
+            function renderCard(idx) {
+                if (idx >= 3) return;
+                const data = shuffled[idx].split(';');
+                const cardId = data[0].trim();
+                const isRev = rand() > 0.5;
+                const num = cardId.replace(/[^0-9]/g, "").padStart(2, '0');
+                const imgUrl = "images/cards/m" + num + ".jpg";
 
-                function renderCard(idx) {
-                    if (idx >= 3) {
-                        const btn = document.getElementById('home-btn'); btn.style.display = "block";
-                        setTimeout(() => { btn.style.opacity = "1"; btn.scrollIntoView({ behavior: 'smooth' }); }, 500);
-                        return;
-                    }
-
-                    const data = shuffled[idx].split(';');
-                    const cardId = data[0].trim();
-                    const isRev = rand() > 0.5;
-                    const num = cardId.replace(/[^0-9]/g, "").padStart(2, '0');
-                    const imgUrl = "images/cards/m" + num + ".jpg";
-
-                    let stepTitle = (idx === 0) ? "📜 [과거] 형성된 흐름" : (idx === 1) ? "✨ [현재] 직면한 에너지" : "🔮 [미래] 도달할 방향";
-                    let stepColor = (idx === 0) ? "var(--gold)" : (idx === 1) ? "#00ffcc" : "#FFD700";
-
-                    const cardDiv = document.createElement('div');
-                    cardDiv.className = 'card-item';
-                    cardDiv.innerHTML = `
-                        <div style="padding:22px; background:rgba(15,15,15,0.98); border-radius:15px; border:1px solid ${stepColor}; text-align:left;">
-                            <div style="display:flex; gap:18px; align-items:flex-start; margin-bottom:15px;">
-                                <img src="${imgUrl}" class="${isRev ? 'tarot-card upside-down' : ''}" style="width:70px; height:110px; border-radius:8px; border:1px solid ${stepColor}; object-fit:cover;" onerror="this.src='m00.jpg'">
-                                <div style="flex:1;">
-                                    <div style="color:${stepColor}; font-weight:900; font-size:1.1rem;">${stepTitle}</div>
-                                    <div style="color:var(--bright-gold); font-size:0.85rem; margin-top:5px;">${data[3]||""}</div>
-                                    ${isRev ? '<span class="rev-badge">REV 🔄 내면의 성찰</span>' : ''}
-                                </div>
+                const cardDiv = document.createElement('div');
+                cardDiv.className = 'card-item';
+                cardDiv.innerHTML = `
+                    <div style="padding:22px; background:rgba(15,15,15,0.98); border-radius:15px; border:1px solid var(--gold); text-align:left;">
+                        <div style="display:flex; gap:18px; align-items:flex-start; margin-bottom:15px;">
+                            <img src="${imgUrl}" class="${isRev ? 'tarot-card upside-down' : ''}" style="width:70px; height:110px; border-radius:8px; border:1px solid var(--gold); object-fit:cover;" onerror="this.src='icon.png'">
+                            <div style="flex:1;">
+                                <div style="color:var(--gold); font-weight:900; font-size:1.1rem;">${(idx === 0) ? "📜 [과거] 형성된 흐름" : (idx === 1) ? "✨ [현재] 직면한 에너지" : "🔮 [미래] 도달할 방향"}</div>
+                                <div style="color:var(--bright-gold); font-size:0.85rem; margin-top:5px;">${data[3]||""}</div>
+                                ${isRev ? '<span class="rev-badge">REV 🔄 내면의 성찰</span>' : ''}
                             </div>
-                            <div id="text-${idx}" style="color:#eee; font-size:1rem; line-height:1.8; min-height:60px;"></div>
-                        </div>`;
-                    cardList.appendChild(cardDiv);
+                        </div>
+                        <div id="text-${idx}" style="color:#eee; font-size:1rem; line-height:1.8; min-height:60px;"></div>
+                    </div>`;
+                cardList.appendChild(cardDiv);
 
-                    setTimeout(() => {
-                        cardDiv.classList.add('card-show');
-                        cardDiv.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                        typeWriter(document.getElementById(`text-${idx}`), `${data[4]||""} ${data[5]||""} ${data[6]||""}`, 30, () => {
-                            setTimeout(() => renderCard(idx + 1), 300);
-                        });
-                    }, 200);
-                }
-                renderCard(0);
-            }, 1500);
+                setTimeout(() => {
+                    cardDiv.classList.add('card-show');
+                    typeWriter(document.getElementById(`text-${idx}`), `${data[4]||""} ${data[5]||""} ${data[6]||""}`, 30, () => {
+                        setTimeout(() => renderCard(idx + 1), 300);
+                    });
+                }, 200);
+            }
+            renderCard(0);
         }
     </script>
 </body>
