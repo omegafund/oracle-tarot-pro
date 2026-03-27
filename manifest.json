@@ -1,0 +1,16 @@
+{
+  "name": "ORACLE TAROT PRO",
+  "short_name": "TAROT PRO",
+  "start_url": "index.html",
+  "display": "standalone",
+  "background_color": "#000000",
+  "theme-color": "#D4AF37",
+  "icons": [
+    {
+      "src": "images/icon/icon.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

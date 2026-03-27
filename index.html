@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>ORACLE TAROT PRO - MASTERPIECE</title>
+    <style>
+        :root { 
+            --gold: #D4AF37; --bright-gold: #FFF5C3; --dark-gold: #8C6212; --bg: #000000; --text: #ffffff;
+            --font: 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif;
+        }    
+        body { 
+            margin: 0; padding: 0; background: radial-gradient(circle at center, #1a1a1a 0%, #000000 100%);
+            color: var(--text); font-family: var(--font); display: flex; justify-content: center; 
+            min-height: 100vh; height: auto; overflow-y: auto; overflow-x: hidden;
+        }
+        #app-container { 
+            width: 100%; max-width: 500px; display: flex; flex-direction: column; align-items: center; 
+            text-align: center; padding: 95px 25px 120px 25px; box-sizing: border-box;
+            min-height: 100vh; position: relative; border-left: 1px solid rgba(212, 175, 55, 0.15); border-right: 1px solid rgba(212, 175, 55, 0.15);
+        }
+        .gold-title { color: var(--gold); letter-spacing: 0.3em; font-size: 2.3rem; margin: 0 0 5px 0; font-weight: 900; text-shadow: 0 0 15px rgba(212,175,55,0.6); }
+        .sub-title { color: var(--gold); font-size: 0.95rem; letter-spacing: 0.5em; margin-bottom: 75px; display: block; font-weight: 800; }
+        
+        .input-system-wrapper { position: relative; width: 100%; max-width: 400px; height: 115px; margin: 0 auto; display: flex; align-items: center; justify-content: center; }
+        .beveled-border { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: linear-gradient(145deg, #FFF5C3, var(--gold), var(--dark-gold)); clip-path: polygon(15px 0%, calc(100% - 15px) 0%, 100% 15px, 100% calc(100% - 15px), calc(100% - 15px) 100%, 15px 100%, 0% calc(100% - 15px), 0% 15px); z-index: 1; animation: borderPulse 3s infinite ease-in-out; }
+        .beveled-inner { position: absolute; width: calc(100% - 6px); height: calc(100% - 6px); top: 3px; left: 3px; background: linear-gradient(135deg, #2D0054, #120022); clip-path: polygon(14px 0%, calc(100% - 14px) 0%, 100% 14px, 100% calc(100% - 14px), calc(100% - 14px) 100%, 14px 100%, 0% calc(100% - 14px), 0% 14px); z-index: 2; }
+        .gold-input { position: relative; z-index: 10; background: transparent; border: none; outline: none; color: #ffffff; font-size: 1rem; width: 88%; font-weight: bold; text-align: center; resize: none; line-height: 1.7; }
+        #fake-placeholder { position: absolute; z-index: 5; width: 100%; pointer-events: none; transition: 0.3s; }
+        @keyframes borderPulse { 0%, 100% { opacity: 0.7; transform: scale(1); } 50% { opacity: 1; transform: scale(1.01); } }
+
+        .button-container { position: relative; width: 100%; max-width: 400px; margin: 60px auto 0 auto; }
+        .gold-button { background: linear-gradient(180deg, #FFF5C3 0%, #D4AF37 100%); color: #000; border: none; padding: 18px 0; width: 100%; border-radius: 50px; font-weight: 900; cursor: pointer; box-shadow: 0 10px 40px rgba(212,175,55,0.4); }
+        .spiritual-pointer { position: absolute; bottom: -30px; right: -20px; font-size: 1.8rem; z-index: 10; transform: rotate(150deg); animation: handMove 1.1s infinite ease-in-out; filter: drop-shadow(0 0 10px var(--gold)); }
+        @keyframes handMove { 0%, 100% { transform: translateY(0) rotate(150deg); } 50% { transform: translateY(-12px) rotate(150deg); } }
+
+        #result-view { display: none; width: 100%; flex-direction: column; align-items: center; }
+        .category-bar { color: var(--gold); font-size: 1.1rem; border-top: 1px solid #333; border-bottom: 1px solid #333; padding: 15px 0; margin: 20px 0; width: 100%; font-weight: bold; }
+        .card-item { width: 100%; max-width: 450px; opacity: 0; transform: translateY(50px); transition: all 1s ease-out; margin-bottom: 30px; }
+        .card-show { opacity: 1; transform: translateY(0); }
+        .tarot-card.upside-down { transform: rotate(180deg); filter: sepia(0.3) brightness(0.8); }
+        .rev-badge { background: rgba(255, 68, 68, 0.2); color: #ff4444; font-size: 0.75rem; padding: 2px 8px; border-radius: 4px; border: 1px solid #ff4444; font-weight: 900; margin-top: 5px; display: inline-block; }
+        
+        .particle { position: fixed; pointer-events: none; z-index: 9999; border-radius: 50%; background: var(--bright-gold); box-shadow: 0 0 10px var(--gold); }
+        .transition-card { position: fixed; top: 50%; left: 50%; width: 100px; height: 160px; background: linear-gradient(135deg, var(--dark-gold), var(--gold)); border: 2px solid #fff; border-radius: 10px; transform: translate(-50%, -50%); z-index: 10000; opacity: 0; }
+        @keyframes whirlAndAway { 0% { transform: translate(-50%, -50%) rotateY(0deg) scale(0.5); opacity: 0; } 20% { opacity: 1; transform: translate(-50%, -50%) rotateY(720deg) scale(1.2); } 100% { transform: translate(-50%, -150%) rotateY(1440deg) scale(0); opacity: 0; } }
+        .animate-whirl { animation: whirlAndAway 1.5s ease-in-out forwards; }
+        .btn-home { background: rgba(212,175,55,0.2); border: 2px solid var(--gold); color: var(--gold); padding: 15px 60px; border-radius: 50px; cursor: pointer; margin-top: 40px; font-weight: 800; display: none; opacity: 0; transition: 0.5s; }
+    </style>
+</head>
+<body>
+    <div id="app-container">
+        <div id="home-view">
+            <h1 class="gold-title">ORACLE TAROT PRO</h1>
+            <span class="sub-title">THE MASTERPIECE</span>
+            <div class="input-system-wrapper">
+                <div class="beveled-border"></div>
+                <div class="beveled-inner"></div>
+                <div id="fake-placeholder">
+                    <div style="color: var(--gold); font-size: 1rem; font-weight: 900;">마음의 질문을 깊게 새기소서</div>
+                    <div style="color: rgba(255,255,255,0.4); font-size: 0.7rem;">(질문 입력 후 신탁 버튼을 누르세요)</div>
+                </div>
+                <textarea id="seed-input" class="gold-input" oninput="document.getElementById('fake-placeholder').style.opacity = this.value ? '0' : '1';" autocomplete="off"></textarea>
+            </div>
+            <div class="button-container">
+                <button class="gold-button" onclick="reveal()">
+                    <span class="btn-ko">운명의 3대 신탁 확인</span>
+                    <span class="btn-en">REVEAL THE TRINITY</span>
+                </button>
+                <div class="spiritual-pointer" id="pointer-hand">👇</div>
+            </div>
+            <div class="legal-notice" style="margin-top: 80px; font-size: 0.7rem; color: var(--gold); opacity: 0.8;">
+                본 신탁은 사용자의 질문 에너지를 기반으로 추출된 인문학적 해석입니다.<br>모든 결정의 주권은 당신에게 있습니다.
+            </div>
+        </div>
+
+        <div id="result-view">
+            <h1 class="gold-title" style="font-size:1.8rem;">ORACLE TAROT PRO</h1>
+            <div id="category-display" class="category-bar"></div>
+            <div id="card-list" style="width:100%;"></div>
+            <button id="home-btn" class="btn-home" onclick="location.reload()">새로운 운명 확인</button>
+        </div>
+    </div>
+
+    <script src="data_ko.js"></script>
+    <script>
+        (function() {
+            document.addEventListener('contextmenu', e => e.preventDefault());
+        })();
+
+        const rawData = window.rawData_KO || "";
+
+        function createGoldDust() {
+            const hand = document.getElementById('pointer-hand');
+            if (!hand || document.getElementById('home-view').style.display === 'none') return;
+            const rect = hand.getBoundingClientRect();
+            for(let i=0; i<3; i++) {
+                const d = document.createElement('div');
+                d.className = 'particle';
+                const size = Math.random() * 3 + 1;
+                d.style.width = size + 'px'; d.style.height = size + 'px';
+                d.style.left = (rect.left + rect.width/2 + (Math.random()-0.5)*40) + 'px';
+                d.style.top = (rect.top + (Math.random()-0.5)*40) + 'px';
+                document.body.appendChild(d);
+                const angle = Math.random()*Math.PI*2;
+                d.animate([
+                    { opacity: 1, transform: 'scale(1)' },
+                    { opacity: 0, transform: `translate(${Math.cos(angle)*60}px, ${Math.sin(angle)*60}px) scale(0)` }
+                ], { duration: 1500 }).onfinish = () => d.remove();
+            }
+        }
+        setInterval(createGoldDust, 60);
+
+        function createParticle() {
+            const p = document.createElement('div'); p.className = 'particle';
+            p.style.width = '5px'; p.style.height = '5px';
+            p.style.left = '50%'; p.style.top = '50%'; document.body.appendChild(p);
+            const a = Math.random()*Math.PI*2, v = 500 + Math.random()*500;
+            p.animate([{opacity:1}, {transform:`translate(${Math.cos(a)*v}px, ${Math.sin(a)*v}px)`, opacity:0}], 1500);
+            setTimeout(() => p.remove(), 1600);
+        }
+
+        function seededRandom(seed) {
+            let h = 1779033703 ^ seed.length;
+            for (let i = 0; i < seed.length; i++) {
+                h = Math.imul(h ^ seed.charCodeAt(i), 3432918353);
+                h = (h << 13) | (h >>> 19);
+            }
+            return function() {
+                h = Math.imul(h ^ (h >>> 16), 2246822507);
+                h = Math.imul(h ^ (h >>> 13), 3266489909);
+                return ((h ^= h >>> 16) >>> 0) / 4294967296;
+            };
+        }
+
+        function typeWriter(element, text, speed, callback) {
+            let i = 0; element.innerHTML = "";
+            function type() {
+                if (i < text.length) {
+                    element.innerHTML += text.charAt(i++);
+                    if (i % 3 === 0) window.scrollBy({ top: 10, behavior: 'smooth' });
+                    setTimeout(type, speed);
+                } else if (callback) callback();
+            }
+            type();
+        }
+
+        function reveal() {
+            const seed = document.getElementById('seed-input').value.trim();
+            if (!seed) { alert("상담 내용을 입력해주세요."); return; }
+            if (!rawData) { alert("데이터 로딩 실패. 파일명을 확인하세요."); return; }
+
+            // [카테고리 분류 엔진]
+            let cat = "보편적 운명의 흐름";
+            if (/(투자|주식|증권|재물|수익|부동산|재개발|매매|보험|돈)/.test(seed)) cat = "현실적 풍요와 자산의 흐름";
+            else if (/(사랑|연애|재회|결혼|인연|여자친구|재혼|섹스|본능)/.test(seed)) cat = "관계의 결속과 애정의 향방";
+            else if (/(기자|원고|부탁|일|직장|대인관계|취업|합격|성공|작가|언론)/.test(seed)) cat = "사회적 소통과 성취의 기회";
+            else if (/(건강|치료|회복|사고)/.test(seed)) cat = "생명 에너지와 신체적 안녕";
+
+            const rand = seededRandom(seed);
+            const lines = rawData.split('\n').filter(l => l.includes(';'));
+            let shuffled = lines.sort(() => rand() - 0.5).slice(0, 3);
+
+            document.getElementById('home-view').style.opacity = "0";
+            for (let i = 0; i < 100; i++) setTimeout(createParticle, i * 5);
+            
+            const tCard = document.createElement('div'); tCard.className = 'transition-card animate-whirl';
+            document.body.appendChild(tCard);
+
+            setTimeout(() => {
+                tCard.remove();
+                document.getElementById('home-view').style.display = 'none';
+                document.getElementById('result-view').style.display = 'flex';
+                document.getElementById('category-display').innerText = `✨ ${cat} ✨`;
+
+                const cardList = document.getElementById('card-list'); cardList.innerHTML = '';
+
+                function renderCard(idx) {
+                    if (idx >= 3) {
+                        const btn = document.getElementById('home-btn'); btn.style.display = "block";
+                        setTimeout(() => { btn.style.opacity = "1"; btn.scrollIntoView({ behavior: 'smooth' }); }, 500);
+                        return;
+                    }
+
+                    const data = shuffled[idx].split(';');
+                    const cardId = data[0].trim();
+                    const isRev = rand() > 0.5;
+                    const num = cardId.replace(/[^0-9]/g, "").padStart(2, '0');
+                    const imgUrl = "m" + num + ".jpg";
+
+                    let stepTitle = (idx === 0) ? "📜 [과거] 형성된 흐름" : (idx === 1) ? "✨ [현재] 직면한 에너지" : "🔮 [미래] 도달할 방향";
+                    let stepColor = (idx === 0) ? "var(--gold)" : (idx === 1) ? "#00ffcc" : "#FFD700";
+
+                    const cardDiv = document.createElement('div');
+                    cardDiv.className = 'card-item';
+                    cardDiv.innerHTML = `
+                        <div style="padding:22px; background:rgba(15,15,15,0.98); border-radius:15px; border:1px solid ${stepColor}; text-align:left;">
+                            <div style="display:flex; gap:18px; align-items:flex-start; margin-bottom:15px;">
+                                <img src="${imgUrl}" class="${isRev ? 'tarot-card upside-down' : ''}" style="width:70px; height:110px; border-radius:8px; border:1px solid ${stepColor}; object-fit:cover;" onerror="this.src='m00.jpg'">
+                                <div style="flex:1;">
+                                    <div style="color:${stepColor}; font-weight:900; font-size:1.1rem;">${stepTitle}</div>
+                                    <div style="color:var(--bright-gold); font-size:0.85rem; margin-top:5px;">${data[3]||""}</div>
+                                    ${isRev ? '<span class="rev-badge">REV 🔄 내면의 성찰</span>' : ''}
+                                </div>
+                            </div>
+                            <div id="text-${idx}" style="color:#eee; font-size:1rem; line-height:1.8; min-height:60px;"></div>
+                        </div>`;
+                    cardList.appendChild(cardDiv);
+
+                    setTimeout(() => {
+                        cardDiv.classList.add('card-show');
+                        cardDiv.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        typeWriter(document.getElementById(`text-${idx}`), `${data[4]||""} ${data[5]||""} ${data[6]||""}`, 30, () => {
+                            setTimeout(() => renderCard(idx + 1), 300);
+                        });
+                    }, 200);
+                }
+                renderCard(0);
+            }, 1500);
+        }
+    </script>
+</body>
+</html>
