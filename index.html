@@ -2,59 +2,146 @@
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>ORACLE TAROT PRO - FULL</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>ORACLE TAROT PRO - MASTERPIECE</title>
 
 <style>
-:root { 
---gold:#D4AF37; --bright-gold:#FFF5C3; --dark-gold:#8C6212; --bg:#000; --text:#fff;
-}
-body {
-margin:0;background:#000;color:#fff;font-family:sans-serif;
-display:flex;justify-content:center;
-}
-#app-container { max-width:500px;width:100%;padding:60px 20px;text-align:center; }
+    /* 🎨 [디자인 변수] */
+    :root { 
+        --gold: #D4AF37; --bright-gold: #FFF5C3; --dark-gold: #8C6212; --bg: #000; --text: #fff;
+        --font: 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif;
+    }
+    body {
+        margin: 0; padding: 0; background: radial-gradient(circle at center, #1a1a1a 0%, #000 100%);
+        color: var(--text); font-family: var(--font); display: flex; justify-content: center; 
+        min-height: 100vh; overflow-x: hidden;
+    }
+    #app-container { 
+        max-width: 500px; width: 100%; padding: 60px 25px 40px 25px; text-align: center; 
+        box-sizing: border-box; position: relative;
+        border-left: 1px solid rgba(212, 175, 55, 0.15); border-right: 1px solid rgba(212, 175, 55, 0.15);
+    }
 
-.gold-title { color:var(--gold);font-size:2rem;font-weight:900; }
-.sub-title { color:var(--gold);margin-bottom:40px; }
+    /* 🏷️ [타이틀] */
+    .gold-title { color: var(--gold); font-size: 2.3rem; font-weight: 900; margin: 0; letter-spacing: 0.3em; text-shadow: 0 0 15px rgba(212, 175, 55, 0.6); }
+    .sub-title { color: var(--gold); font-size: 0.95rem; letter-spacing: 0.5em; margin-bottom: 20px; display: block; font-weight: 800; }
+    .trust-motto { color: var(--gold); font-size: 0.8rem; letter-spacing: 0.2em; margin-bottom: 40px; font-style: italic; opacity: 0.8; }
 
-textarea {
-width:100%;height:100px;background:#111;border:1px solid var(--gold);
-color:#fff;padding:10px;text-align:center;
+    /* 🖊️ [입력창] 베벨 보더 시스템 */
+    .input-system-wrapper { position: relative; width: 100%; height: 115px; margin: 0 auto; display: flex; align-items: center; justify-content: center; }
+    .beveled-border {
+        position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+        background: linear-gradient(145deg, var(--bright-gold), var(--gold), var(--dark-gold));
+        clip-path: polygon(15px 0%, calc(100% - 15px) 0%, 100% 15px, 100% calc(100% - 15px), calc(100% - 15px) 100%, 15px 100%, 0% calc(100% - 15px), 0% 15px);
+        z-index: 1; animation: borderPulse 3s infinite ease-in-out;
+    }
+    .beveled-inner {
+        position: absolute; width: calc(100% - 6px); height: calc(100% - 6px);
+        top: 3px; left: 3px; background: linear-gradient(135deg, #2D0054, #120022);
+        clip-path: polygon(14px 0%, calc(100% - 14px) 0%, 100% 14px, 100% calc(100% - 14px), calc(100% - 14px) 100%, 14px 100%, 0% calc(100% - 14px), 0% 14px);
+        z-index: 2;
+    }
+    .gold-input { position: relative; z-index: 10; background: transparent; border: none; outline: none; color: #fff; font-size: 1rem; width: 88%; font-weight: bold; text-align: center; resize: none; line-height: 1.7; }
+    #fake-placeholder { position: absolute; z-index: 5; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 100%; pointer-events: none; transition: 0.3s; }
+    @keyframes borderPulse { 0%, 100% { opacity: 0.7; transform: scale(1); } 50% { opacity: 1; transform: scale(1.01); } }
+
+    /* 🃏 [카드 스테이지] */
+    .cards-stage { display: flex; justify-content: space-between; gap: 10px; margin: 40px 0; perspective: 1000px; padding: 15px 0; }
+    .card-slot { flex: 1; position: relative; aspect-ratio: 2 / 3; }
+    .card-img { width: 100%; height: 100%; object-fit: cover; border: 1px solid var(--gold); border-radius: 8px; box-shadow: 0 5px 15px rgba(0,0,0,0.5); transition: all 1.2s ease-in-out; }
+    .tilt-left { transform: rotate(-8deg) translateY(10px); }
+    .tilt-center { transform: translateY(-5px); }
+    .tilt-right { transform: rotate(8deg) translateY(10px); }
+
+    /* ✨ [애니메이션] */
+    .fly-away { transform: translate(0, -400px) rotateX(180deg) rotateZ(360deg) scale(0) !important; opacity: 0 !important; }
+    .rainbow-dust { position: fixed; pointer-events: none; border-radius: 50%; animation: rainbowFly 1.2s ease-out forwards; z-index: 999; }
+    @keyframes rainbowFly { 0% { transform: translate(0, 0) scale(1); opacity: 1; filter: hue-rotate(0deg); } 100% { transform: translate(var(--x), -400px) scale(0); opacity: 0; filter: hue-rotate(360deg); } }
+
+    /* 👆 [버튼 & 손가락] */
+    .reveal-section { margin-top: auto; text-align: center; position: relative; padding: 20px 0; }
+    .gold-button { background: linear-gradient(180deg, #FFF5C3 0%, #D4AF37 100%); color: #000; border: none; padding: 18px 0; width: 100%; border-radius: 50px; font-weight: 900; cursor: pointer; box-shadow: 0 10px 40px rgba(212, 175, 55, 0.4); }
+
+    /* 🖐️ 손가락: 수정 완료 (위 조준 및 금가루 오라) */
+   .spiritual-pointer {
+    position: absolute;
+    bottom: -10px;
+    right: -10px;
+
+    font-size: 2.5rem;
+    z-index: 30;
+
+    animation: handGlow 1.2s infinite ease-in-out;
+}
+    .gold-dust-particle { position: fixed; background: var(--bright-gold); border-radius: 50%; pointer-events: none; z-index: 25; animation: dustRise 1.5s forwards; }
+    @keyframes handGlow {
+    0%, 100% {
+        transform: rotate(-30deg) translateY(0);
+    }
+    50% {
+        transform: rotate(-30deg) translateY(-15px);
+    }
 }
 
-button {
-margin-top:20px;padding:15px;width:100%;
-background:var(--gold);border:none;font-weight:bold;cursor:pointer;
-}
-
-.card { border:1px solid var(--gold);padding:15px;margin-top:20px;text-align:left; }
-img { width:70px;height:110px;border:1px solid var(--gold);border-radius:6px; }
-.rev { transform:rotate(180deg); filter:brightness(0.8); }
+    /* 🎬 [결과 뷰] */
+    #home-view, #result-view { width: 100%; display: flex; flex-direction: column; transition: opacity 0.5s ease; }
+    #result-view { display: none; opacity: 0; }
+    .result-cards-container { display: flex; justify-content: space-between; gap: 8px; background-color: rgba(26, 15, 36, 0.6); padding: 15px 10px; border-radius: 12px; border: 1px solid rgba(220, 179, 101, 0.2); margin-top: 20px; }
+    .result-card-col { flex: 1; text-align: center; }
+    .result-img { width: 100%; aspect-ratio: 2 / 3; border: 1px solid #dcb365; border-radius: 6px; object-fit: cover; }
+    .sage-box { border: 1px solid #dcb365; padding: 15px; border-radius: 10px; background: rgba(220, 179, 101, 0.1); color: #fff; font-size: 0.88rem; margin-top: 20px; line-height: 1.7; text-align: left; }
+    .legal-notice { margin-top: 50px; font-size: 0.65rem; color: var(--gold); line-height: 1.5; opacity: 0.6; text-align: center; }
 </style>
 </head>
 
 <body>
 <div id="app-container">
+    <div id="home-view">
+        <h1 class="gold-title">ORACLE TAROT</h1>
+        <span class="sub-title">PRO - MASTERPIECE</span>
+        <div class="trust-motto">TRUST YOUR SPIRITUAL ENERGY</div>
 
-<div id="home">
-<h1 class="gold-title">ORACLE TAROT PRO</h1>
-<div class="sub-title">THE MASTERPIECE</div>
+        <div class="input-system-wrapper">
+            <div class="beveled-border"></div><div class="beveled-inner"></div>
+            <div id="fake-placeholder">
+                <div style="color: var(--gold); font-size: 1rem; font-weight: 900;">마음의 질문을 깊게 새기소서</div>
+                <div style="color: rgba(255,255,255,0.4); font-size: 0.7rem;">(질문 입력 후 신탁 버튼을 누르세요)</div>
+            </div>
+            <textarea id="seed-input" class="gold-input" oninput="togglePlaceholder(this)"></textarea>
+        </div>
 
-<textarea id="seed"></textarea>
-<button onclick="run()">운명 확인</button>
-</div>
+        <div class="cards-stage">
+            <div class="card-slot"><img src="" id="c1" class="card-img tilt-left" onerror="this.src='icon.png'"></div>
+            <div class="card-slot"><img src="" id="c2" class="card-img tilt-center" onerror="this.src='icon.png'"></div>
+            <div class="card-slot"><img src="" id="c3" class="card-img tilt-right" onerror="this.src='icon.png'"></div>
+        </div>
 
-<div id="result" style="display:none;">
-<h2 id="category"></h2>
-<div id="cards"></div>
-<button onclick="location.reload()">다시</button>
-</div>
+        <div class="reveal-section">
+            <button class="gold-button" onclick="revealTheTrinity()">
+                <span style="font-size:1.2rem; display:block;">운명의 3대 신탁 확인</span>
+                <span style="font-size:0.8rem; opacity:0.8;">REVEAL THE TRINITY</span>
+            </button>
+            <div class="spiritual-pointer" id="master-hand">☝️</div>
+        </div>
 
+        <div class="legal-notice">
+            본 서비스는 사용자의 영적 에너지를 수비학적 알고리즘으로 해석한 인문학적 가이드입니다.<br>
+            모든 투자와 결정의 최종 책임은 사용자 본인에게 있으며, 결과는 참고용임을 고지합니다.<br>
+            © 2026 ORACLE TAROT PRO MASTERPIECE.
+        </div>
+    </div>
+
+    <div id="result-view">
+        <div id="category-display" style="text-align: center; color: #dcb365; font-size: 1.1rem; margin-bottom: 20px; letter-spacing: 2px;"></div>
+        <div class="result-cards-container" id="cards-result"></div>
+        <div id="sage-advice-area"></div>
+        <div style="text-align: center; margin-top: 40px;">
+            <button onclick="location.reload()" style="background:none; border:1px solid #dcb365; color:#dcb365; padding:12px 35px; border-radius:25px; font-weight:bold;">새로운 운명 확인</button>
+        </div>
+    </div>
 </div>
 
 <script>
-
 /* =========================
    ✅ 78장 확장 구조 (샘플 22장 + 자동 확장)
 ========================= */
@@ -203,102 +290,162 @@ W12;역;일반;#충동적행동 #무모한질주;확신 없는 열정으로 무�
 W13;역;일반;#자신감의과잉 #독단적태도;밝은 에너지가 자칫 자기중심적인 태도로 변해 주변의 반감을 사거나 영향력이 위축되었던 과정이 보입니다;지금은 스스로를 내세우기보다 타인의 감정을 세심하게 살피고 포용력을 회복해야 할 시기입니다. 마음을 낮추고 온기를 나누는 선택이 당신의 카리스마를 더욱 빛나게 만드는 결정적인 계기가 됩니다;너그러운 배려가 흐를수록 주변의 지지는 다시 살아나며 관계와 성과 모두 조화로운 균형을 되찾는 전환점을 맞이합니다.
 W14;역;일반;#독재적성향 #에너지의고갈;강한 의지가 독선으로 흐르거나 과도한 몰입으로 균형을 잃었던 흐름이 읽힙니다;타인의 의견을 수용하며 유연한 리더십으로 전환해야 할 시기입니다. 강함 속에 조율을 더하는 태도가 필요합니다;균형이 회복될수록 구조는 다시 안정되며 당신의 영향력은 더욱 견고하게 자리 잡게 됩니다\;`
 
+<script>
 /* =========================
-   ✅ 카테고리 분류
+   🔮 1. 수비학
 ========================= */
-function getCategory(seed){
-let cat = "보편적 운명의 흐름";
-if (/(투자|주식|돈|재물)/.test(seed)) cat = "현실적 풍요와 자산의 흐름";
-else if (/(사랑|연애|재회)/.test(seed)) cat = "관계의 결속과 애정의 향방";
-else if (/(직장|일|합격)/.test(seed)) cat = "사회적 성취의 흐름";
-else if (/(건강|회복)/.test(seed)) cat = "생명 에너지 흐름";
-return cat;
+function numerology(n) {
+    let res = Math.abs(n);
+    while (res > 9) {
+        res = res.toString().split('').reduce((a, b) => a + Number(b), 0);
+    }
+    return res || 1;
 }
 
-/* =========================
-   ✅ 카드 점수
-========================= */
-function getCardScore(line, category){
-const text = line.join(' ');
-let score = 1;
-
-const boost = {
-love:["사랑","연애","재회"],
-money:["돈","재물","투자"],
-job:["직장","합격","성과"],
-health:["건강","회복"]
-};
-
-if(category.includes("관계")){
-boost.love.forEach(w=>{ if(text.includes(w)) score+=2; });
-}
-if(category.includes("자산")){
-boost.money.forEach(w=>{ if(text.includes(w)) score+=2; });
-}
-if(category.includes("성취")){
-boost.job.forEach(w=>{ if(text.includes(w)) score+=2; });
-}
-if(category.includes("에너지")){
-boost.health.forEach(w=>{ if(text.includes(w)) score+=2; });
+function hashSeed(str) {
+    let h = 0;
+    for (let i = 0; i < str.length; i++) {
+        h = (h << 5) - h + str.charCodeAt(i);
+        h |= 0;
+    }
+    return Math.abs(h);
 }
 
-return score;
+function seededRandom(seed) {
+    let x = Math.sin(seed++) * 10000;
+    return x - Math.floor(x);
 }
 
 /* =========================
-   ✅ 실행 엔진
+   🃏 2. 78장 카드 셔플
 ========================= */
-function run(){
+function getShuffledDeck(seedStr) {
+    const seed = hashSeed(seedStr);
+    let deck = Array.from({ length: 78 }, (_, i) => i);
 
-const seed = document.getElementById('seed').value.trim();
-if(!seed){ alert("내용 입력"); return; }
-
-const category = getCategory(seed);
-document.getElementById('category').innerText = category;
-
-let data = raw.trim().split("\n").map(v=>v.split(";"));
-
-/* 점수 정렬 */
-data = data.map(d=>{
-return {data:d, score:getCardScore(d,category)};
-}).sort((a,b)=>b.score-a.score);
-
-/* 상위 3개 */
-const pick = data.slice(0,3);
-
-document.getElementById('home').style.display="none";
-document.getElementById('result').style.display="block";
-
-const wrap = document.getElementById('cards');
-wrap.innerHTML="";
-
-/* 카드 렌더 */
-pick.forEach((p,i)=>{
-
-const d = p.data;
-const num = d[0].replace(/[^0-9]/g,"").padStart(2,'0');
-const isRev = Math.random() > 0.5;
-
-/* 이미지 자동 매칭 */
-const img = "images/cards/m"+num+".jpg";
-
-wrap.innerHTML += `
-<div class="card">
-<div style="display:flex;gap:10px;">
-<img src="${img}" class="${isRev?'rev':''}" onerror="this.src='icon.png'">
-<div>
-<b>${i==0?"과거":i==1?"현재":"미래"}</b><br>
-${d[3]}
-</div>
-</div>
-<br>
-${d[4]} ${d[5]} ${d[6]}
-</div>
-`;
-});
-
+    for (let i = deck.length - 1; i > 0; i--) {
+        const j = Math.floor(seededRandom(seed + i) * (i + 1));
+        [deck[i], deck[j]] = [deck[j], deck[i]];
+    }
+    return deck;
 }
 
+/* =========================
+   🖼️ 3. 이미지
+========================= */
+function getCardImage(num) {
+    return `images/cards/m${num.toString().padStart(2, '0')}.jpg`;
+}
+
+/* =========================
+   🏠 4. 홈 카드 (78장 랜덤)
+========================= */
+function shuffleHomeCards() {
+    for (let i = 1; i <= 3; i++) {
+        const rand = Math.floor(Math.random() * 78);
+        const img = document.getElementById(`c${i}`);
+        if (img) img.src = getCardImage(rand);
+    }
+}
+
+let cardInterval = setInterval(shuffleHomeCards, 1500);
+window.onload = shuffleHomeCards;
+
+/* =========================
+   ✨ 5. 이펙트
+========================= */
+function createRainbowDust(element) {
+    const rect = element.getBoundingClientRect();
+    for (let i = 0; i < 20; i++) {
+        const dust = document.createElement('div');
+        dust.className = 'rainbow-dust';
+
+        const colors = ['#FF0000','#FF7F00','#FFFF00','#00FF00','#0000FF','#9400D3','#FFD700'];
+        dust.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+
+        dust.style.left = `${rect.left + rect.width / 2}px`;
+        dust.style.top = `${rect.top + rect.height / 2}px`;
+
+        dust.style.setProperty('--x', `${(Math.random() - 0.5) * 300}px`);
+
+        document.body.appendChild(dust);
+        setTimeout(() => dust.remove(), 1200);
+    }
+}
+
+/* =========================
+   🚀 6. 실행
+========================= */
+function revealTheTrinity() {
+    const seed = document.getElementById('seed-input').value.trim();
+    if (!seed) {
+        alert("질문을 입력하세요.");
+        return;
+    }
+
+    clearInterval(cardInterval);
+
+    for (let i = 1; i <= 3; i++) {
+        const card = document.getElementById(`c${i}`);
+        if (card) {
+            card.classList.add('fly-away');
+            createRainbowDust(card);
+        }
+    }
+
+    setTimeout(() => {
+        const deck = getShuffledDeck(seed);
+        const cards = deck.slice(0, 3);
+
+        renderResult(cards, seed);
+
+        document.getElementById('home-view').style.display = 'none';
+        document.getElementById('result-view').style.display = 'flex';
+        setTimeout(() => {
+            document.getElementById('result-view').style.opacity = '1';
+        }, 50);
+
+    }, 1200);
+}
+
+/* =========================
+   🧾 7. 결과
+========================= */
+function renderResult(cards, seed) {
+    const wrap = document.getElementById('cards-result');
+    wrap.innerHTML = "";
+
+    const steps = ["PAST", "PRESENT", "FUTURE"];
+
+    cards.forEach((num, i) => {
+        wrap.innerHTML += `
+        <div class="result-card-col">
+            <div>${steps[i]}</div>
+            <img src="${getCardImage(num)}" class="result-img">
+            <div>Card ${num}</div>
+            <div>운명의 흐름이 작용합니다</div>
+        </div>`;
+    });
+
+    const energy = numerology(hashSeed(seed));
+
+    document.getElementById('sage-advice-area').innerHTML = `
+        <div class="sage-box">
+            운명수: ${energy}<br>
+            ${interpretEnergy(energy)}
+        </div>`;
+}
+
+/* =========================
+   🔮 8. 해석
+========================= */
+function interpretEnergy(n) {
+    const msg = [
+        "", "새로운 시작", "균형", "확장", "안정",
+        "변화", "선택", "돌파", "성과", "완성"
+    ];
+    return msg[n];
+}
 </script>
 </body>
 </html>
