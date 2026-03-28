@@ -334,15 +334,12 @@ function getShuffledDeck(seedStr) {
    🖼️ 3. 이미지
 ========================= */
 function getCardImage(num) {
-    return `images/cards/m${num.toString().padStart(2, '0')}.jpg`;
+    return `./images/cards/m${String(num).padStart(2, '0')}.jpg`;
 }
 
 /* =========================
    🏠 4. 홈 카드 (78장 랜덤)
 ========================= */
-function getCardImage(num) {
-    return `images/cards/m${String(num).padStart(2, '0')}.jpg`;
-}
 function shuffleHomeCards() {
     for (let i = 1; i <= 3; i++) {
         const rand = Math.floor(Math.random() * 78);
@@ -353,7 +350,6 @@ function shuffleHomeCards() {
 
 let cardInterval = setInterval(shuffleHomeCards, 1500);
 window.onload = shuffleHomeCards;
-
 /* =========================
    ✨ 5. 이펙트
 ========================= */
