@@ -1,6 +1,5 @@
 // 1. [제니스 마스터 프롬프트] 및 [API_KEY] 선언부는 상단에 그대로 유지하세요.
-const API_KEY = "발급전_임시_키"; 
-
+const API_KEY = "AIzaSyA1l1pt2Cr6vl-c6dkdaAfp_SblSyfCVC0"; 
 // 2. [메인 실행 함수] - 이 부분을 아래와 같이 업데이트해야 합니다.
 export const startZenithOracle = async (cardIDs) => {
     // [기존 로직] 카드 이미지와 기본 텍스트 먼저 표시
