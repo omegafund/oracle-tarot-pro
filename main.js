@@ -1,64 +1,86 @@
-// 1. 각 폴더에서 언어팩 데이터를 소환 (마스터의 폴더 구조 반영)
-import { rawData_KO } from './data_ko/data_ko.js';
-import { rawData_EN } from './data_en/data_en.js';
-import { rawData_TW } from './data_tw/data_tw.js';
+import { tarotDB } from './tarotData.js';
 
-// 2. 마스터의 세미콜론(;) 체계를 해석하는 파싱 엔진
-const parseTarotData = (rawString) => {
-    const lines = rawString.trim().split('\n');
-    const db = {};
-    lines.forEach(line => {
-        const [id, dir, cat, tags, past, present, future] = line.split(';');
-        if (id) {
-            db[id] = { 
-                tags: tags, 
-                content: { past, present, future } 
-            };
-        }
-    });
-    return db;
-};
+// 1. [정규식 엔진]
+const redevDev = /(재개발|재건축|리모델링|정비구역|조합원|입주권|추가분담금|철거|멸실)/;
+const stockVerb = /(매수|매도|익절|손절|물타기|불타기|급등|급락|반등|조정|추세)/;
+const stockMkt = /(주식|증시|증권|코스피|코스닥|나스닥|선물|옵션|ETF|금리|환율)/i;
+const reunionKw = /(재회|연락|전남친|전여친|미련|이별|화해|다시만|연락올까|마음돌아)/;
+const lostKw = /(분실|잃어버린|어디|찾을수|행방|물건|도둑|분실물)/;
+const humanRelation = /(사람|인간관계|상사|동료|친구|갈등|오해|서운|마음|속마음|관계|손절|화해)/;
 
-// 3. 언어별 데이터베이스 미리 생성
-const databases = {
-    KO: parseTarotData(rawData_KO),
-    EN: parseTarotData(rawData_EN),
-    TW: parseTarotData(rawData_TW)
-};
-
-// 4. 현재 선택된 언어 상태 (기본값: 한국어)
-let currentLang = 'KO';
-
-// 5. [핵심] 이미지와 텍스트를 동시에 화면에 뿌려주는 최종 공정
-export const displayOracle = (cardID) => {
-    // 현재 선택된 언어팩에서 해당 카드의 데이터를 가져옴
-    const data = databases[currentLang][cardID];
+// 2. [지능형 문장 추출 함수]
+function getGoldenSentence(rawText, userQuestion) {
+    if (!rawText) return "";
     
-    if (!data) {
-        console.error(`[Error] 마스터, ${cardID} 데이터를 찾을 수 없습니다.`);
-        return;
+    const sentences = rawText.split('.');
+    let prioritySentences = [];
+    let prefix = "🎯 [운명의 지침]";
+
+    // A. 질문이 없는 경우 -> '오늘의 운세' 모드
+    if (!userQuestion || userQuestion.trim() === "") {
+        const todaySentences = sentences.filter(s => /(오늘|기운|흐름|행운|조심|하루|기회)/.test(s));
+        const mainInsight = todaySentences.length > 0 ? todaySentences[0] : sentences[0];
+        return `✨ [오늘의 운세 신탁] ${mainInsight.trim()}. ${rawText}`;
     }
 
-    // A. 이미지 출력 (마스터의 .jpg 통일 규격 반영)
+    // B. 질문이 있는 경우 -> 카테고리별 매칭
+    if (redevDev.test(userQuestion)) {
+        prioritySentences = sentences.filter(s => redevDev.test(s));
+    } else if (stockVerb.test(userQuestion) || stockMkt.test(userQuestion)) {
+        prioritySentences = sentences.filter(s => stockVerb.test(s) || stockMkt.test(s));
+    } else if (reunionKw.test(userQuestion)) {
+        prioritySentences = sentences.filter(s => reunionKw.test(s));
+    } else if (lostKw.test(userQuestion)) {
+        prioritySentences = sentences.filter(s => /(장소|이동|사라진|자리에|없|찾)/.test(s));
+    } else if (humanRelation.test(userQuestion)) {
+        prioritySentences = sentences.filter(s => /(사람|마음|대화|이해|관계|감정)/.test(s));
+        prefix = "🤝 [관계의 열쇠]";
+    }
+
+    // C. 우선 순위 문장이 있다면 상단 배치, 없으면 전체 출력
+    if (prioritySentences.length > 0) {
+        const others = sentences.filter(s => !prioritySentences.includes(s));
+        return `${prefix} ${prioritySentences.join('. ').trim()}. ${others.join('. ').trim()}`;
+    }
+    
+    return rawText;
+}
+
+// 3. 결과 출력 및 연출 엔진
+export const displayOracle = (cardID) => {
+    const userQuestion = document.getElementById('user-question')?.value || "";
+    const data = tarotDB[cardID];
+    const rv = document.getElementById('result-view');
+    
+    if (!data || !rv) return;
+
+    if (navigator.vibrate) navigator.vibrate(50);
+
     const imgContainer = document.getElementById('oracle-card-img');
     if (imgContainer) {
         imgContainer.src = `./images/cards/${cardID}.jpg`;
-        imgContainer.alt = data.tags;
+        imgContainer.alt = cardID;
     }
 
-    // B. 해시태그 및 점사 텍스트 출력 (HTML의 ID와 일치해야 함)
-    document.getElementById('display-hashtags').innerText = data.tags;
-    document.getElementById('text-past').innerText = data.content.past;
-    document.getElementById('text-present').innerText = data.content.present;
-    document.getElementById('text-future').innerText = data.content.future;
-    
-    console.log(`[System] ${cardID}.jpg 이미지와 ${currentLang} 점사 결합 완료.`);
+    document.getElementById('display-hashtags').innerText = data.tags || "";
+    document.getElementById('text-past').innerText = getGoldenSentence(data.past, userQuestion);
+    document.getElementById('text-present').innerText = getGoldenSentence(data.present, userQuestion);
+    document.getElementById('text-future').innerText = getGoldenSentence(data.future, userQuestion);
+
+    rv.style.display = 'flex';
+    requestAnimationFrame(() => {
+        rv.classList.add('slide-in');
+        const items = rv.querySelectorAll('.reveal-item');
+        items.forEach((el, idx) => {
+            el.classList.remove('visible');
+            setTimeout(() => {
+                el.classList.add('visible');
+                if (idx > 0) {
+                    window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+                }
+            }, 500 + (idx * 900));
+        });
+    });
 };
 
-// 6. 언어 전환 스위치 (필요 시 외부에서 호출)
-window.changeLanguage = (lang) => {
-    if (databases[lang]) {
-        currentLang = lang;
-        console.log(`[System] 언어팩이 ${lang}로 변경되었습니다.`);
-    }
-};
+window.displayOracle = displayOracle;
