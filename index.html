@@ -295,12 +295,104 @@
         </div>
         <div class="result-cards-container" id="cards-result"></div>
         <div id="sage-advice-area"></div>
+        <!-- 제니스 AI 실시간 신탁창 -->
+        <div id="zenith-oracle-box" style="display:none; margin-top:30px; border:2px solid #D4AF37; border-radius:12px; padding:20px; background:rgba(5,2,15,0.97); box-shadow:0 0 30px rgba(212,175,55,0.3);">
+            <div style="color:#D4AF37; font-weight:900; font-size:1.1rem; text-align:center; letter-spacing:3px; margin-bottom:16px;">◈ 제니스 AI 실시간 신탁 ◈</div>
+            <div id="zenith-oracle-text" style="color:#fff; font-size:0.92rem; line-height:1.9;"></div>
+        </div>
         <div style="text-align: center; margin-top: 40px; padding-bottom: 40px;">
             <button onclick="location.reload()" style="background:none; border:2px solid #b8922a; color:#b8922a; padding:12px 35px; border-radius:25px; font-weight:900; cursor:pointer; letter-spacing:0.05em;">새로운 운명 확인</button>
         </div>
     </div>
 </div>
 <script src="tarotData.js"></script>
+<script>
+// ──────────────────────────────────────────────
+// [제니스 AI 엔진] - main.js 통합 인라인 버전
+// ──────────────────────────────────────────────
+const API_KEY = "AIzaSyA1l1pt2Cr6vl-c6dkdaAfp_SblSyfCVC0";
+
+async function callZenithAI(promptMessage) {
+    const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${API_KEY}`;
+    const response = await fetch(API_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            contents: [{ parts: [{ text: promptMessage }] }],
+            tools: [{ google_search: {} }],
+            generationConfig: { temperature: 0.7, maxOutputTokens: 2048 }
+        })
+    });
+    if (!response.ok) {
+        const errorData = await response.json();
+        console.error("Gemini API 에러:", errorData);
+        throw new Error('API 호출 실패: ' + (errorData.error?.message || response.status));
+    }
+    const data = await response.json();
+    // 텍스트 파트만 추출 (tool_use 블록 제외)
+    const textParts = (data.candidates[0].content.parts || [])
+        .filter(p => p.text)
+        .map(p => p.text)
+        .join('');
+    return textParts || '신탁 데이터를 불러오지 못했습니다.';
+}
+
+async function startZenithOracle(cardIDs) {
+    const userQuestion = document.getElementById('seed-input')?.value || "오늘의 운세";
+    const oracleBox   = document.getElementById('zenith-oracle-text');
+    if (!oracleBox) return;
+
+    oracleBox.innerHTML = `<div style="color:gold;border:1px solid gold;padding:12px;border-radius:8px;text-align:center;">✨ 제니스가 운명의 결론을 도출 중입니다...</div>`;
+
+    // tarotDB는 tarotData.js에서 전역 선언됨
+    const cardNames = cardIDs
+        .map(id => {
+            const key = (function(idx) {
+                idx = Math.abs(parseInt(idx)) % 78;
+                if (idx < 22) return 'M' + String(idx).padStart(2,'0');
+                if (idx < 36) return 'W' + String(idx-21).padStart(2,'0');
+                if (idx < 50) return 'C' + String(idx-35).padStart(2,'0');
+                if (idx < 64) return 'S' + String(idx-49).padStart(2,'0');
+                return 'P' + String(idx-63).padStart(2,'0');
+            })(id);
+            return (typeof tarotDB !== 'undefined' && tarotDB[key]) ? tarotDB[key].name : key;
+        })
+        .join(', ');
+
+    const promptMessage = `
+[SYSTEM INSTRUCTION]
+너는 주식·부동산 투자, 명리학, 타로, 심리학에 정통한 'AI 리얼타임 오라클'이다.
+반드시 아래 규칙을 지켜서 답변하라:
+1. 사용자의 질문 카테고리를 판단하여 해당 분야 전문가의 말투를 사용하라.
+2. 주식/부동산: 현재 2026년의 시장 상황(예: 삼성전자 HBM 실적, 티엘비 DDR5 고부가 기판 층수 증가 등)을 카드의 상징과 결합하라.
+3. 단순 운세 풀이가 아니라, 구체적인 산업 키워드를 포함한 '투자 전략'을 제시하라.
+4. 답변 형식을 [과거], [현재], [미래], [제니스 신탁] 순서로 유지하되, [제니스 신탁] 창에는 현재 시점의 가장 최신 정보를 검색하고 선택된 타로 카드의 상징을 결합하여 소름 돋는 통찰을 제공하라.
+
+[USER INPUT]
+질문: ${userQuestion}
+선택된 카드: ${cardNames}
+
+위 정보를 바탕으로 소름 돋는 통찰을 제공하라.
+`;
+
+    try {
+        const aiResult = await callZenithAI(promptMessage);
+        // 줄바꿈 → <br> 변환
+        const formatted = aiResult
+            .replace(/\*\*(.*?)\*\*/g, '<strong style="color:#FFD700;">$1</strong>')
+            .replace(/\n/g, '<br>');
+        oracleBox.innerHTML = `
+            <div style="text-align:left;color:white;line-height:1.9;padding:4px 0;">
+                <h2 style="color:gold;text-align:center;letter-spacing:2px;margin-bottom:16px;">✨ 제니스의 실전 투자 리포트</h2>
+                <hr style="border:1px solid gold;margin-bottom:16px;">
+                <div>${formatted}</div>
+            </div>`;
+    } catch (error) {
+        console.error(error);
+        oracleBox.innerHTML = `<div style="color:#ff6b6b;padding:12px;border:1px solid #ff6b6b;border-radius:8px;">⚠️ 운명의 연결이 원활하지 않습니다.<br><small>${error.message}</small></div>`;
+    }
+}
+</script>
 
 <script>
 let homePreviewInterval;
@@ -726,6 +818,16 @@ function renderVerticalResult(cards, seed) {
             + '</div>'
             + '</div></div>';
     }
+
+    // ★ [제니스 AI 실시간 신탁] 자동 호출
+    var oracleBox = document.getElementById('zenith-oracle-box');
+    if (oracleBox) {
+        oracleBox.style.display = 'block';
+        oracleBox.classList.add('reveal-item');
+        // 카드 인덱스 배열 그대로 전달
+        startZenithOracle(cards);
+    }
+
 } // renderVerticalResult 닫기
 
 // ★ 멘토 문구 풀
