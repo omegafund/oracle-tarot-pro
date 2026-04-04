@@ -9,21 +9,15 @@
         body { margin: 0; padding: 0; background: radial-gradient(circle at center, #1a1a1a 0%, #000 100%); color: var(--text); font-family: var(--font); min-height: 100vh; overflow-x: hidden; }
         #app-container { max-width: 500px; width: 100%; padding: 60px 25px 40px 25px; text-align: center; box-sizing: border-box; position: relative; margin: 0 auto; border-left: 1px solid rgba(212, 175, 55, 0.15); border-right: 1px solid rgba(212, 175, 55, 0.15); }
         .gold-title { color: var(--gold); font-size: 2.3rem; font-weight: 900; margin: 0; letter-spacing: 0.3em; text-shadow: 0 0 15px rgba(212, 175, 55, 0.6); }
-        .title-wrapper { display: flex; align-items: center; justify-content: center; gap: 8px; }
-        .title-sparkle { font-size: 1.6rem; animation: sparklePop 1.8s infinite ease-in-out; filter: drop-shadow(0 0 8px #FFD700) drop-shadow(0 0 16px #FFF5C3); }
-        .title-sparkle.delayed { animation-delay: 0.9s; }
-        @keyframes sparklePop { 0% { opacity: 0.2; transform: scale(0.7) rotate(-15deg); } 30% { opacity: 1; transform: scale(1.3) rotate(10deg); } 100% { opacity: 0.2; transform: scale(0.7) rotate(-15deg); } }
         .sub-title { color: var(--gold); font-size: 0.95rem; letter-spacing: 0.5em; margin-bottom: 20px; display: block; font-weight: 800; }
         .input-system-wrapper { position: relative; width: 100%; height: 115px; margin: 0 auto; display: flex; align-items: center; justify-content: center; }
-        .beveled-border { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: linear-gradient(145deg, var(--bright-gold), var(--gold), var(--dark-gold)); clip-path: polygon(15px 0%, calc(100% - 15px) 0%, 100% 15px, 100% calc(100% - 14px), calc(100% - 15px) 100%, 15px 100%, 0% calc(100% - 15px), 0% 15px); z-index: 1; animation: borderPulse 3s infinite ease-in-out; }
+        .beveled-border { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: linear-gradient(145deg, var(--bright-gold), var(--gold), var(--dark-gold)); clip-path: polygon(15px 0%, calc(100% - 15px) 0%, 100% 15px, 100% calc(100% - 14px), calc(100% - 15px) 100%, 15px 100%, 0% calc(100% - 15px), 0% 15px); z-index: 1; }
         .beveled-inner { position: absolute; width: calc(100% - 6px); height: calc(100% - 6px); top: 3px; left: 3px; background: linear-gradient(135deg, #2D0054, #120022); clip-path: polygon(14px 0%, calc(100% - 14px) 0%, 100% 14px, 100% calc(100% - 14px), calc(100% - 14px) 100%, 14px 100%, 0% calc(100% - 14px), 0% 14px); z-index: 2; }
         .gold-input { position: relative; z-index: 10; background: transparent; border: none; outline: none; color: #fff; font-size: 1rem; width: 88%; font-weight: bold; text-align: center; resize: none; line-height: 1.7; height: 70px; }
         .cards-stage { display: flex; justify-content: space-between; gap: 10px; margin: 40px 0; perspective: 1000px; padding: 15px 0; min-height: 200px; }
         .card-slot { flex: 1; position: relative; aspect-ratio: 2 / 3; background: #111; border-radius: 8px; border: 1px solid rgba(212, 175, 55, 0.3); }
         .card-img { width: 100%; height: 100%; object-fit: cover; border: 1.5px solid var(--gold); border-radius: 8px; transition: all 0.5s ease; }
         .gold-button { background: linear-gradient(180deg, #FFF5C3 0%, #D4AF37 100%); color: #000; border: none; padding: 18px 0; width: 100%; border-radius: 50px; font-weight: 900; cursor: pointer; box-shadow: 0 10px 40px rgba(212, 175, 55, 0.4); font-size: 1.1rem; }
-        .spiritual-pointer { position: absolute; bottom: -30px; right: -20px; font-size: 1.8rem; z-index: 10; transform: rotate(150deg); animation: handMove 1.1s infinite ease-in-out; filter: drop-shadow(0 0 10px var(--gold)); pointer-events: none; }
-        @keyframes handMove { 0%, 100% { transform: translateY(0) rotate(150deg); } 50% { transform: translateY(-12px) rotate(150deg); } }
         #result-view { display: none; width: 100%; flex-direction: column; opacity: 0; padding-bottom: 50px; transform: translateY(60px); transition: all 0.7s ease; }
         #result-view.slide-in { display: flex; opacity: 1; transform: translateY(0); }
         .zenith-oracle-container { margin-top: 20px; border: 1px solid var(--gold); border-radius: 12px; padding: 25px; background: rgba(10, 5, 20, 0.9); text-align: left; line-height: 1.8; }
@@ -33,31 +27,20 @@
 <body>
 <div id="app-container">
     <div id="home-view">
-        <div class="title-wrapper">
-            <span class="title-sparkle">✨</span>
-            <h1 class="gold-title">ORACLE TAROT</h1>
-            <span class="title-sparkle delayed">✨</span>
-        </div>
+        <h1 class="gold-title">ORACLE TAROT</h1>
         <span class="sub-title">PRO - MASTERPIECE</span>
         <div class="input-system-wrapper">
-            <div class="beveled-border"></div>
-            <div class="beveled-inner"></div>
+            <div class="beveled-border"></div><div class="beveled-inner"></div>
             <textarea id="seed-input" class="gold-input" placeholder="마음의 질문을 깊게 새기소서"></textarea>
         </div>
-        <img src="images/cards/back.jpg" ...>
-
-<div class="card-slot"><img src="https://omegafund.github.io/oracle-tarot-pro/images/cards/back.jpg" id="home-c1" class="card-img tilt-left"></div>
-<div class="card-slot"><img src="https://omegafund.github.io/oracle-tarot-pro/images/cards/back.jpg" id="home-c2" class="card-img tilt-center"></div>
-<div class="card-slot"><img src="https://omegafund.github.io/oracle-tarot-pro/images/cards/back.jpg" id="home-c3" class="card-img tilt-right"></div>
-        <div class="reveal-section">
-            <div class="button-container">
-                <button class="gold-button" onclick="revealTheTrinity()">운명의 3대 신탁 확인</button>
-                <div class="spiritual-pointer">👇</div>
-            </div>
+        <div id="cards-container" class="cards-stage">
+            <div class="card-slot"><img src="https://omegafund.github.io/oracle-tarot-pro/images/cards/back.jpg" id="home-c1" class="card-img"></div>
+            <div class="card-slot"><img src="https://omegafund.github.io/oracle-tarot-pro/images/cards/back.jpg" id="home-c2" class="card-img"></div>
+            <div class="card-slot"><img src="https://omegafund.github.io/oracle-tarot-pro/images/cards/back.jpg" id="home-c3" class="card-img"></div>
         </div>
+        <button class="gold-button" onclick="revealTheTrinity()">운명의 3대 신탁 확인</button>
     </div>
     <div id="result-view">
-        <div id="category-display" style="color:var(--gold); font-weight:900; margin-bottom:20px;">◈ 운명의 여정 확인 ◈</div>
         <div id="zenith-oracle-box" class="zenith-oracle-container">
             <div id="ai-loading-text" style="color:var(--gold); text-align:center;">✨ 천상의 지혜를 연결 중...</div>
             <div id="oracle-content"></div>
@@ -65,70 +48,45 @@
         <button onclick="location.reload()" style="margin-top:30px; background:none; border:1px solid #D4AF37; color:#D4AF37; padding:10px 25px; border-radius:20px; cursor:pointer;">처음으로</button>
     </div>
 </div>
+
 <script>
-// [필독] 깃허브 금고(Secret)가 여기 문구를 자동으로 교체합니다. 절대 수정금지!
-const API_KEY = "REPLACE_ME_WITH_API_KEY";
+    // [중요] 여기에 파트너님의 진짜 API 키를 따옴표 안에 넣으세요!
+    const API_KEY = "AIzaSyA1l1pt2Cr6vl-c6dkdaAfp_SblSyfCVC0"; 
 
-async function revealTheTrinity() {
-    const seed = document.getElementById('seed-input').value;
-    if(!seed) { alert("질문을 입력해주세요."); return; }
-
-    // [중요] API_KEY 자리에 파트너님의 진짜 키를 " " 사이에 직접 넣으세요.
-    // 예: const API_KEY = "AIzaSy...";
-    const API_KEY = "REPLACE_ME_WITH_API_KEY"; 
-
-    createGoldDust(); 
-    document.getElementById('home-view').style.display = 'none';
-    const rv = document.getElementById('result-view');
-    rv.style.display = 'flex';
-    setTimeout(() => rv.classList.add('slide-in'), 100);
-
-    const oracleContent = document.getElementById('oracle-content');
-    const loadingText = document.getElementById('ai-loading-text');
-
-    try {
-        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${API_KEY}`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                contents: [{ parts: [{ text: `당신은 'AI 오라클 제니스'입니다. 질문: "${seed}". 과거/현재/미래 타로 분석과 2026년 4월 실시간 주가/경제 상황을 반영한 신탁을 내리세요.` }] }],
-                tools: [{ google_search: {} }] 
-            })
-        });
-
-        const data = await response.json();
+    async function revealTheTrinity() {
+        const seed = document.getElementById('seed-input').value;
+        if(!seed) { alert("질문을 입력해주세요."); return; }
         
-        // 데이터 구조를 아주 넓게 잡아서 텍스트를 추출합니다.
-        let aiText = "";
-        const parts = data?.candidates?.[0]?.content?.parts || [];
-        
-        if (parts.length > 0) {
-            aiText = parts.map(p => p.text || "").join("\n");
-        } else if (data?.candidates?.[0]?.grounding_metadata) {
-            aiText = "실시간 데이터를 분석 중입니다. 잠시 후 다시 시도해 주세요.";
-        }
+        document.getElementById('home-view').style.display = 'none';
+        const rv = document.getElementById('result-view');
+        rv.style.display = 'flex';
+        setTimeout(() => rv.classList.add('slide-in'), 100);
 
-        if (aiText.trim()) {
-            loadingText.style.display = 'none';
-            oracleContent.innerHTML = aiText.replace(/\n/g, '<br>').replace(/\*\*(.*?)\*\*/g, '<b style="color:var(--gold)">$1</b>');
-        } else {
-            throw new Error("AI 응답 형식이 평소와 다릅니다. (구조 변경)");
+        const oracleContent = document.getElementById('oracle-content');
+        const loadingText = document.getElementById('ai-loading-text');
+
+        try {
+            const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${API_KEY}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ contents: [{ parts: [{ text: `당신은 'AI 오라클 제니스'입니다. 질문: "${seed}". 과거/현재/미래 타로 분석과 2026년 4월 실시간 흐름을 반영한 신탁을 내리세요.` }] }] })
+            });
+
+            const data = await response.json();
+            
+            // [해결] 데이터가 없어도 터지지 않게 3중 안전 장치
+            if (data && data.candidates && data.candidates[0] && data.candidates[0].content) {
+                const aiText = data.candidates[0].content.parts[0].text;
+                loadingText.style.display = 'none';
+                oracleContent.innerHTML = aiText.replace(/\n/g, '<br>').replace(/\*\*(.*?)\*\*/g, '<b style="color:var(--gold)">$1</b>');
+            } else {
+                // 키가 잘못되었거나 서버 에러일 때 메시지
+                throw new Error(data.error ? data.error.message : "API 응답 구조 에러");
+            }
+        } catch (e) {
+            loadingText.innerText = "⚠️ 신탁 연결 실패: " + e.message;
         }
-    } catch (e) {
-        loadingText.innerText = "⚠️ 신탁 연결 지연: " + e.message;
     }
-}
-function createGoldDust() {
-    for (let i = 0; i < 30; i++) {
-        const p = document.createElement('div');
-        p.className = 'particle';
-        p.style.left = Math.random() * 100 + 'vw';
-        p.style.top = Math.random() * 100 + 'vh';
-        p.style.opacity = Math.random();
-        document.body.appendChild(p);
-        setTimeout(() => p.remove(), 2000);
-    }
-}
 </script>
 </body>
 </html>
