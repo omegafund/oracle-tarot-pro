@@ -5,240 +5,136 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <title>ORACLE TAROT PRO - MASTERPIECE</title>
 <style>
-    :root { 
-        --gold: #D4AF37; --bright-gold: #FFF5C3; --dark-gold: #8C6212; --bg: #000; --text: #fff;
+    :root {
+        --gold: #D4AF37; --bright-gold: #FFF5C3; --dark-gold: #8C6212;
         --font: 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif;
     }
+    * { box-sizing: border-box; }
     body {
-        margin: 0; padding: 0; background: radial-gradient(circle at center, #1a1a1a 0%, #000 100%);
-        color: var(--text); font-family: var(--font);
+        margin: 0; padding: 0;
+        background: radial-gradient(circle at center, #1a1a1a 0%, #000 100%);
+        color: #fff; font-family: var(--font);
         min-height: 100vh; overflow-x: hidden;
     }
-    #app-container { 
-        max-width: 500px; width: 100%; padding: 60px 25px 40px 25px; text-align: center; 
-        box-sizing: border-box; position: relative;
-        margin: 0 auto;
-        border-left: 1px solid rgba(212, 175, 55, 0.15); border-right: 1px solid rgba(212, 175, 55, 0.15);
+    #app-container {
+        max-width: 500px; width: 100%; margin: 0 auto;
+        padding: 60px 25px 80px;
+        border-left: 1px solid rgba(212,175,55,0.15);
+        border-right: 1px solid rgba(212,175,55,0.15);
+        min-height: 100vh;
     }
 
-    /* 타이틀 섹션 */
-    .gold-title { color: var(--gold); font-size: 2.3rem; font-weight: 900; margin: 0; letter-spacing: 0.3em; text-shadow: 0 0 15px rgba(212, 175, 55, 0.6); }
-    .title-wrapper { display: flex; align-items: center; justify-content: center; gap: 8px; }
-    .title-sparkle { 
-        font-size: 1.6rem; 
-        animation: sparklePop 1.8s infinite ease-in-out;
-        filter: drop-shadow(0 0 8px #FFD700) drop-shadow(0 0 16px #FFF5C3);
-    }
-    .title-sparkle.delayed { animation-delay: 0.9s; }
+    /* 타이틀 */
+    .title-wrapper { display:flex; align-items:center; justify-content:center; gap:8px; }
+    .gold-title { color:var(--gold); font-size:2.3rem; font-weight:900; margin:0; letter-spacing:0.3em; text-shadow:0 0 15px rgba(212,175,55,0.6); }
+    .title-sparkle { font-size:1.6rem; animation:sparklePop 1.8s infinite ease-in-out; filter:drop-shadow(0 0 8px #FFD700); }
+    .title-sparkle.delayed { animation-delay:0.9s; }
     @keyframes sparklePop {
-        0%   { opacity: 0.2; transform: scale(0.7) rotate(-15deg); filter: drop-shadow(0 0 2px #D4AF37); }
-        30%  { opacity: 1;   transform: scale(1.3) rotate(10deg);  filter: drop-shadow(0 0 14px #FFD700) drop-shadow(0 0 28px #FFF5A5); }
-        60%  { opacity: 0.8; transform: scale(1.0) rotate(-5deg);  filter: drop-shadow(0 0 8px #FFD700); }
-        100% { opacity: 0.2; transform: scale(0.7) rotate(-15deg); filter: drop-shadow(0 0 2px #D4AF37); }
+        0%   { opacity:0.2; transform:scale(0.7) rotate(-15deg); }
+        30%  { opacity:1;   transform:scale(1.3) rotate(10deg); filter:drop-shadow(0 0 14px #FFD700); }
+        60%  { opacity:0.8; transform:scale(1.0) rotate(-5deg); }
+        100% { opacity:0.2; transform:scale(0.7) rotate(-15deg); }
     }
-    .sub-title { color: var(--gold); font-size: 0.95rem; letter-spacing: 0.5em; margin-bottom: 20px; display: block; font-weight: 800; }
-    .trust-motto { color: var(--gold); font-size: 0.8rem; letter-spacing: 0.2em; margin-bottom: 40px; font-style: italic; opacity: 0.8; }
+    .sub-title   { color:var(--gold); font-size:0.95rem; letter-spacing:0.5em; margin-bottom:20px; display:block; font-weight:800; }
+    .trust-motto { color:var(--gold); font-size:0.8rem; letter-spacing:0.2em; margin-bottom:40px; font-style:italic; opacity:0.8; }
 
-    /* 입력창 시스템 */
-    .input-system-wrapper { position: relative; width: 100%; height: 115px; margin: 0 auto; display: flex; align-items: center; justify-content: center; }
-    .beveled-border { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: linear-gradient(145deg, var(--bright-gold), var(--gold), var(--dark-gold)); clip-path: polygon(15px 0%, calc(100% - 15px) 0%, 100% 15px, 100% calc(100% - 15px), calc(100% - 15px) 100%, 15px 100%, 0% calc(100% - 15px), 0% 15px); z-index: 1; animation: borderPulse 3s infinite ease-in-out; }
-    .beveled-inner { position: absolute; width: calc(100% - 6px); height: calc(100% - 6px); top: 3px; left: 3px; background: linear-gradient(135deg, #2D0054, #120022); clip-path: polygon(14px 0%, calc(100% - 14px) 0%, 100% 14px, 100% calc(100% - 14px), calc(100% - 14px) 100%, 14px 100%, 0% calc(100% - 14px), 0% 14px); z-index: 2; }
-    .gold-input { position: relative; z-index: 10; background: transparent; border: none; outline: none; color: #fff; font-size: 1rem; width: 88%; font-weight: bold; text-align: center; resize: none; line-height: 1.7; height: 70px; }
-    #fake-placeholder { position: absolute; z-index: 5; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 100%; pointer-events: none; transition: 0.3s; color: rgba(255,255,255,0.4); }
-    @keyframes borderPulse { 0%, 100% { opacity: 0.7; transform: scale(1); } 50% { opacity: 1; transform: scale(1.01); } }
+    /* 입력창 */
+    .input-system-wrapper { position:relative; width:100%; height:115px; display:flex; align-items:center; justify-content:center; }
+    .beveled-border { position:absolute; inset:0; background:linear-gradient(145deg, var(--bright-gold), var(--gold), var(--dark-gold)); clip-path:polygon(15px 0%,calc(100% - 15px) 0%,100% 15px,100% calc(100% - 15px),calc(100% - 15px) 100%,15px 100%,0% calc(100% - 15px),0% 15px); animation:borderPulse 3s infinite ease-in-out; }
+    .beveled-inner { position:absolute; width:calc(100% - 6px); height:calc(100% - 6px); top:3px; left:3px; background:linear-gradient(135deg,#2D0054,#120022); clip-path:polygon(14px 0%,calc(100% - 14px) 0%,100% 14px,100% calc(100% - 14px),calc(100% - 14px) 100%,14px 100%,0% calc(100% - 14px),0% 14px); z-index:2; }
+    .gold-input { position:relative; z-index:10; background:transparent; border:none; outline:none; color:#fff; font-size:1rem; width:88%; font-weight:bold; text-align:center; resize:none; line-height:1.7; height:70px; }
+    #fake-placeholder { position:absolute; z-index:5; top:50%; left:50%; transform:translate(-50%,-50%); width:100%; pointer-events:none; transition:0.3s; color:rgba(255,255,255,0.4); text-align:center; }
+    @keyframes borderPulse { 0%,100%{opacity:0.7;transform:scale(1);} 50%{opacity:1;transform:scale(1.01);} }
 
     /* 카드 스테이지 */
-    .cards-stage { display: flex; justify-content: space-between; gap: 10px; margin: 40px 0; perspective: 1000px; padding: 15px 0; min-height: 200px; }
-    .card-slot { 
-        flex: 1; position: relative; aspect-ratio: 2 / 3; 
-        background: #111; border-radius: 8px; 
-        border: 1px solid rgba(212, 175, 55, 0.3);
-        box-shadow: 0 0 15px rgba(0,0,0,0.5);
-    }
-    .card-img { width: 100%; height: 100%; object-fit: cover; border: 1.5px solid var(--gold); border-radius: 8px; transition: all 0.5s ease; backface-visibility: hidden; }
-    
-    .tilt-left { transform: rotate(-8deg) translateY(10px); }
-    .tilt-center { transform: translateY(-5px); }
-    .tilt-right { transform: rotate(8deg) translateY(10px); }
+    .cards-stage { display:flex; justify-content:space-between; gap:10px; margin:40px 0; padding:15px 0; min-height:200px; }
+    .card-slot { flex:1; aspect-ratio:2/3; background:#111; border-radius:8px; border:1px solid rgba(212,175,55,0.3); overflow:hidden; }
+    .card-img { width:100%; height:100%; object-fit:cover; border:1.5px solid var(--gold); border-radius:8px; transition:all 0.5s ease; }
+    .tilt-left   { transform:rotate(-8deg) translateY(10px); }
+    .tilt-center { transform:translateY(-5px); }
+    .tilt-right  { transform:rotate(8deg) translateY(10px); }
 
-    /* 버튼 & 포인터 */
-    .reveal-section { margin-top: 20px; text-align: center; position: relative; padding: 20px 0; }
-    .gold-button { 
-        background: linear-gradient(180deg, #FFF5C3 0%, #D4AF37 100%); color: #000; 
-        border: none; padding: 18px 0; width: 100%; border-radius: 50px; 
-        font-weight: 900; cursor: pointer; box-shadow: 0 10px 40px rgba(212, 175, 55, 0.4);
-        font-size: 1.1rem;
-    }
-    .button-container { position: relative; width: 100%; max-width: 400px; margin: 0 auto; }
-    .spiritual-pointer { 
-        position: absolute; 
-        bottom: -30px;
-        right: -20px; 
-        font-size: 1.8rem; 
-        z-index: 10; 
-        transform: rotate(150deg); 
-        animation: handMove 1.1s infinite ease-in-out; 
-        filter: drop-shadow(0 0 10px var(--gold)); 
-        pointer-events: none;
-    }
-    @keyframes handMove { 
-        0%, 100% { transform: translateY(0) rotate(150deg); } 
-        50% { transform: translateY(-12px) rotate(150deg); } 
-    }
+    /* 버튼 */
+    .reveal-section { margin-top:20px; text-align:center; position:relative; padding:20px 0; }
+    .gold-button { background:linear-gradient(180deg,#FFF5C3 0%,#D4AF37 100%); color:#000; border:none; padding:18px 0; width:100%; border-radius:50px; font-weight:900; cursor:pointer; box-shadow:0 10px 40px rgba(212,175,55,0.4); font-size:1.1rem; transition:transform 0.1s; }
+    .gold-button:active { transform:scale(0.98); }
+    .button-container { position:relative; width:100%; max-width:400px; margin:0 auto; }
+    .spiritual-pointer { position:absolute; bottom:-30px; right:-20px; font-size:1.8rem; z-index:10; transform:rotate(150deg); animation:handMove 1.1s infinite ease-in-out; filter:drop-shadow(0 0 10px var(--gold)); pointer-events:none; }
+    @keyframes handMove { 0%,100%{transform:translateY(0) rotate(150deg);} 50%{transform:translateY(-12px) rotate(150deg);} }
+
+    /* 파티클 */
+    .particle { position:fixed; width:4px; height:4px; background:var(--gold); border-radius:50%; pointer-events:none; z-index:9999; }
+    .fly-out { animation:flyOut 1.2s cubic-bezier(0.4,0,0.2,1) forwards; pointer-events:none; }
+    @keyframes flyOut { 0%{transform:translate(0,0) rotate(0deg) scale(1);opacity:1;} 100%{transform:translate(-600px,-900px) rotate(-720deg) scale(0);filter:brightness(3);opacity:0;} }
 
     /* 결과 뷰 */
-    #result-view { display: none; width: 100%; flex-direction: column; opacity: 0; padding-bottom: 50px;
-        transform: translateY(60px); transition: opacity 0.7s ease, transform 0.7s cubic-bezier(0.22, 1, 0.36, 1); }
-    #result-view.slide-in { opacity: 1; transform: translateY(0); }
+    #result-view { display:none; flex-direction:column; width:100%; }
 
-    /* 결과 각 블록 순차 페이드업 */
-    .reveal-item {
-        opacity: 0;
-        transform: translateY(30px);
-        transition: opacity 0.6s ease, transform 0.6s cubic-bezier(0.22, 1, 0.36, 1);
-    }
-    .reveal-item.visible { opacity: 1; transform: translateY(0); }
-    .result-cards-container { display: flex; flex-direction: column; gap: 30px; background-color: rgba(26, 15, 36, 0.8); padding: 20px; border-radius: 12px; border: 1px solid rgba(220, 179, 101, 0.3); margin-top: 20px; }
+    /* 카드 썸네일 row */
+    .result-cards-row { display:flex; gap:12px; margin-bottom:24px; }
+    .result-card-thumb { flex:1; aspect-ratio:2/3; border:2px solid var(--gold); border-radius:8px; object-fit:cover; box-shadow:0 0 18px rgba(212,175,55,0.35); }
 
-    /* ◈ 운명의 여정 확인 ◈ — 신비로운 창 테두리 */
+    /* 카테고리 헤더 */
     #category-display {
-        position: relative;
-        display: inline-block;
-        width: 100%;
-        padding: 14px 20px !important;
-        box-sizing: border-box;
-        background: linear-gradient(135deg, rgba(10,5,20,0.95) 0%, rgba(28,10,50,0.95) 50%, rgba(10,5,20,0.95) 100%);
-        border: none !important;
-        border-radius: 4px;
-        overflow: visible;
-        font-size: 1.15rem !important;
-        letter-spacing: 3px !important;
-        text-shadow: 0 0 12px rgba(212,175,55,0.8), 0 0 30px rgba(212,175,55,0.3);
+        position:relative; width:100%; padding:14px 20px; margin-bottom:20px;
+        background:linear-gradient(135deg,rgba(10,5,20,0.95),rgba(28,10,50,0.95),rgba(10,5,20,0.95));
+        border-radius:4px; color:var(--gold); font-size:1.1rem; font-weight:900;
+        letter-spacing:3px; text-align:center;
+        text-shadow:0 0 12px rgba(212,175,55,0.8);
     }
     #category-display::before {
-        content: '';
-        position: absolute;
-        inset: 0;
-        border-radius: 4px;
-        padding: 2px;
-        background: linear-gradient(135deg, #FFF5C3, #D4AF37 30%, #8C6212 50%, #D4AF37 70%, #FFF5C3);
-        -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-        -webkit-mask-composite: xor;
-        mask-composite: exclude;
-        animation: mysticalBorder 4s linear infinite;
+        content:''; position:absolute; inset:0; border-radius:4px; padding:2px;
+        background:linear-gradient(135deg,#FFF5C3,#D4AF37 30%,#8C6212 50%,#D4AF37 70%,#FFF5C3);
+        -webkit-mask:linear-gradient(#fff 0 0) content-box,linear-gradient(#fff 0 0);
+        mask-composite:exclude; -webkit-mask-composite:xor;
     }
-    #category-display::after {
-        content: '✦';
-        position: absolute;
-        top: -10px; left: 50%; transform: translateX(-50%);
-        color: #FFF5C3;
-        font-size: 1rem;
-        text-shadow: 0 0 10px #FFD700, 0 0 20px #D4AF37;
-        animation: cornerGlow 2s ease-in-out infinite;
-    }
-    .cat-corner {
-        position: absolute;
-        width: 14px; height: 14px;
-        border-color: #D4AF37;
-        border-style: solid;
-    }
-    .cat-corner.tl { top: -1px; left: -1px; border-width: 2px 0 0 2px; border-radius: 2px 0 0 0; }
-    .cat-corner.tr { top: -1px; right: -1px; border-width: 2px 2px 0 0; border-radius: 0 2px 0 0; }
-    .cat-corner.bl { bottom: -1px; left: -1px; border-width: 0 0 2px 2px; border-radius: 0 0 0 2px; }
-    .cat-corner.br { bottom: -1px; right: -1px; border-width: 0 2px 2px 0; border-radius: 0 0 2px 0; }
-    @keyframes mysticalBorder {
-        0%   { background-position: 0% 50%; filter: brightness(1); }
-        50%  { background-position: 100% 50%; filter: brightness(1.4); }
-        100% { background-position: 0% 50%; filter: brightness(1); }
-    }
-    @keyframes cornerGlow {
-        0%, 100% { opacity: 0.6; transform: translateX(-50%) scale(0.9); }
-        50% { opacity: 1; transform: translateX(-50%) scale(1.2); }
+    .cat-corner { position:absolute; width:14px; height:14px; border-color:#D4AF37; border-style:solid; }
+    .cat-corner.tl{top:-1px;left:-1px;border-width:2px 0 0 2px;border-radius:2px 0 0 0;}
+    .cat-corner.tr{top:-1px;right:-1px;border-width:2px 2px 0 0;border-radius:0 2px 0 0;}
+    .cat-corner.bl{bottom:-1px;left:-1px;border-width:0 0 2px 2px;border-radius:0 0 0 2px;}
+    .cat-corner.br{bottom:-1px;right:-1px;border-width:0 2px 2px 0;border-radius:0 0 2px 0;}
+
+    /* AI 결과 박스 */
+    #ai-result-box {
+        background:rgba(5,2,15,0.97);
+        border:1px solid rgba(212,175,55,0.35);
+        border-radius:12px; padding:22px 20px;
+        font-size:0.93rem; line-height:2; color:#f0f0f0;
+        min-height:100px;
+        box-shadow:0 0 30px rgba(212,175,55,0.12);
     }
 
-    /* 타로·수비학 설명 박스 */
-    .info-scroll-box {
-        display: flex;
-        gap: 10px;
-        margin: 16px 0 4px 0;
-        width: 100%;
+    /* 섹션 헤더 */
+    #ai-result-box .section-header {
+        color:var(--gold); font-size:1rem; font-weight:900;
+        margin:20px 0 10px; border-left:3px solid #00FFCC;
+        padding-left:10px; letter-spacing:1px;
     }
-    .info-panel {
-        flex: 1;
-        position: relative;
-        padding: 12px 13px;
-        background: linear-gradient(135deg, rgba(5,2,15,0.97) 0%, rgba(20,8,40,0.97) 100%);
-        border-radius: 3px;
-        overflow: hidden;
-    }
-    .info-panel::before {
-        content: '';
-        position: absolute;
-        inset: 0;
-        border-radius: 3px;
-        padding: 1.5px;
-        background: linear-gradient(135deg, rgba(255,245,195,0.6), rgba(212,175,55,0.8), rgba(140,98,18,0.5), rgba(212,175,55,0.7));
-        -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-        -webkit-mask-composite: xor;
-        mask-composite: exclude;
-    }
-    .info-panel-title {
-        display: flex;
-        align-items: center;
-        gap: 6px;
-        color: #D4AF37;
-        font-size: 0.7rem;
-        font-weight: 900;
-        letter-spacing: 0.12em;
-        margin-bottom: 6px;
-        opacity: 0.95;
-    }
-    .info-panel-icon {
-        font-size: 0.85rem;
-        filter: drop-shadow(0 0 4px #FFD700);
-    }
-    .info-panel-text {
-        color: rgba(255,255,255,0.78);
-        font-size: 0.68rem;
-        line-height: 1.65;
-        letter-spacing: 0.01em;
-    }
-    .info-panel-text b {
-        color: #FFD700;
-        font-weight: 900;
-    }
-    .result-card-col { display: flex; flex-direction: column; align-items: center; border-bottom: 1px solid rgba(212,175,55,0.2); padding-bottom: 25px; }
-    .result-card-col:last-child { border-bottom: none; }
-    .result-img { width: 160px; aspect-ratio: 2 / 3; border: 2px solid var(--gold); border-radius: 8px; object-fit: cover; box-shadow: 0 0 20px rgba(212,175,55,0.3); }
-    .sage-box { border: 1px solid #dcb365; padding: 18px; border-radius: 10px; background: rgba(220, 179, 101, 0.05); color: #fff; font-size: 0.9rem; margin-top: 20px; line-height: 1.8; text-align: left; }
-    .legal-notice { margin-top: 50px; font-size: 0.7rem; color: var(--gold); line-height: 1.5; opacity: 0.6; text-align: center; }
+    #ai-result-box .section-header:first-child { margin-top:0; }
+    #ai-result-box strong { color:#FFD700; }
 
-    /* 금가루 파티클 */
-    .particle { 
-        position: fixed; 
-        width: 4px; height: 4px; 
-        background: var(--gold); 
-        border-radius: 50%; 
-        pointer-events: none; 
-        z-index: 9999; 
-        box-shadow: 0 0 10px var(--gold); 
-    }
+    /* 로딩 */
+    .loading-pulse { display:flex; align-items:center; gap:10px; color:var(--gold); padding:10px 0; }
+    .pulse-dot { width:8px; height:8px; border-radius:50%; background:var(--gold); animation:pulseDot 1.2s infinite ease-in-out; }
+    .pulse-dot:nth-child(2){animation-delay:0.2s;}
+    .pulse-dot:nth-child(3){animation-delay:0.4s;}
+    @keyframes pulseDot { 0%,100%{opacity:0.2;transform:scale(0.8);} 50%{opacity:1;transform:scale(1.2);} }
 
-    .fly-out {
-        animation: githubFlyOut 1.2s cubic-bezier(0.4, 0, 0.2, 1) forwards;
-        pointer-events: none; z-index: 100;
-    }
+    /* 타이핑 커서 */
+    .ai-cursor { display:inline-block; width:2px; height:1em; background:var(--gold); vertical-align:middle; margin-left:2px; animation:blink 0.7s infinite; }
+    @keyframes blink { 0%,100%{opacity:1;} 50%{opacity:0;} }
 
-    @keyframes githubFlyOut {
-        0% { transform: translate(0, 0) rotate(0deg) scale(1); filter: brightness(1); opacity: 1; }
-        100% { transform: translate(-600px, -900px) rotate(-720deg) scale(0); filter: brightness(3); opacity: 0; }
-    }
+    /* 리셋 버튼 */
+    .reset-btn { background:none; border:2px solid #b8922a; color:#b8922a; padding:12px 35px; border-radius:25px; font-weight:900; cursor:pointer; letter-spacing:0.05em; margin-top:40px; width:100%; font-size:0.95rem; }
+
+    /* 법적 고지 */
+    .legal-notice { margin-top:40px; font-size:0.7rem; color:var(--gold); line-height:1.5; opacity:0.6; text-align:center; }
 </style>
 </head>
-
 <body>
 <div id="app-container">
-    <!-- 홈 뷰 -->
+
+    <!-- ══ 홈 뷰 ══ -->
     <div id="home-view">
         <div class="title-wrapper">
             <span class="title-sparkle">✨</span>
@@ -252,664 +148,394 @@
             <div class="beveled-border"></div>
             <div class="beveled-inner"></div>
             <div id="fake-placeholder">
-                <div style="color: var(--gold); font-size: 1rem; font-weight: 900;">마음의 질문을 깊게 새기소서</div>
-                <div style="color: rgba(255,255,255,0.4); font-size: 0.7rem;">(질문 입력 후 신탁 버튼을 누르세요)</div>
+                <div style="color:var(--gold);font-size:1rem;font-weight:900;">마음의 질문을 깊게 새기소서</div>
+                <div style="font-size:0.7rem;">(질문 입력 후 신탁 버튼을 누르세요)</div>
             </div>
             <textarea id="seed-input" class="gold-input" oninput="togglePlaceholder(this)"></textarea>
         </div>
 
-        <div id="cards-container" class="cards-stage">
-            <div class="card-slot">
-                <img src="" id="home-c1" class="card-img tilt-left" style="transition: opacity 0.3s;">
-            </div>
-            <div class="card-slot">
-                <img src="" id="home-c2" class="card-img tilt-center" style="transition: opacity 0.3s;">
-            </div>
-            <div class="card-slot">
-                <img src="" id="home-c3" class="card-img tilt-right" style="transition: opacity 0.3s;">
-            </div>
+        <div class="cards-stage">
+            <div class="card-slot"><img id="home-c1" class="card-img tilt-left" src=""></div>
+            <div class="card-slot"><img id="home-c2" class="card-img tilt-center" src=""></div>
+            <div class="card-slot"><img id="home-c3" class="card-img tilt-right" src=""></div>
         </div>
 
         <div class="reveal-section">
             <div class="button-container">
                 <button class="gold-button" onclick="revealTheTrinity()">
-                    <span style="font-size:1.2rem; display:block;">운명의 3대 신탁 확인</span>
-                    <span style="font-size:0.8rem; opacity:0.8;">REVEAL THE TRINITY</span>
+                    <span style="font-size:1.2rem;display:block;">운명의 3대 신탁 확인</span>
+                    <span style="font-size:0.8rem;opacity:0.8;">REVEAL THE TRINITY</span>
                 </button>
                 <div class="spiritual-pointer" id="master-hand">👇</div>
             </div>
         </div>
+
         <div class="legal-notice">
-            본 서비스는 사용자의 영적 에너지를 타로와 주역의 인문학적 해석을 바탕으로한 참고용 콘텐츠입니다. 모든 선택과 결정의 책임은 사용자 본인에게 있습니다.<br>
+            본 서비스는 사용자의 영적 에너지를 타로와 주역의 인문학적 해석을 바탕으로 한 참고용 콘텐츠입니다.<br>
+            모든 선택과 결정의 책임은 사용자 본인에게 있습니다. © 2026 ORACLE TAROT PRO MASTERPIECE.
+        </div>
+    </div>
+
+    <!-- ══ 결과 뷰 ══ -->
+    <div id="result-view">
+        <div id="result-cards-row" class="result-cards-row"></div>
+
+        <div id="category-display">
+            <span class="cat-corner tl"></span><span class="cat-corner tr"></span>
+            <span class="cat-corner bl"></span><span class="cat-corner br"></span>
+            <span id="category-text">◈ 운명의 여정 확인 ◈</span>
+        </div>
+
+        <div id="ai-result-box">
+            <div class="loading-pulse">
+                <div class="pulse-dot"></div><div class="pulse-dot"></div><div class="pulse-dot"></div>
+                <span>제니스가 운명의 실을 읽고 있습니다...</span>
+            </div>
+        </div>
+
+        <button class="reset-btn" onclick="location.reload()">✦ 새로운 운명 확인</button>
+
+        <div class="legal-notice">
+            본 서비스는 참고용 콘텐츠입니다. 모든 선택과 결정의 책임은 사용자 본인에게 있습니다.<br>
             © 2026 ORACLE TAROT PRO MASTERPIECE.
         </div>
     </div>
 
-    <!-- 결과 뷰 -->
-    <div id="result-view">
-        <div id="category-display" style="text-align: center; color: #dcb365; margin-bottom: 20px;">
-            <span class="cat-corner tl"></span>
-            <span class="cat-corner tr"></span>
-            <span class="cat-corner bl"></span>
-            <span class="cat-corner br"></span>
-        </div>
-        <div class="result-cards-container" id="cards-result"></div>
-        <div id="sage-advice-area"></div>
-        <!-- 제니스 AI 실시간 신탁창 -->
-        <div id="zenith-oracle-box" style="display:none; margin-top:30px; border:2px solid #D4AF37; border-radius:12px; padding:20px; background:rgba(5,2,15,0.97); box-shadow:0 0 30px rgba(212,175,55,0.3);">
-            <div style="color:#D4AF37; font-weight:900; font-size:1.1rem; text-align:center; letter-spacing:3px; margin-bottom:16px;">◈ 제니스 AI 실시간 신탁 ◈</div>
-            <div id="zenith-oracle-text" style="color:#fff; font-size:0.92rem; line-height:1.9;"></div>
-        </div>
-        <div style="text-align: center; margin-top: 40px; padding-bottom: 40px;">
-            <button onclick="location.reload()" style="background:none; border:2px solid #b8922a; color:#b8922a; padding:12px 35px; border-radius:25px; font-weight:900; cursor:pointer; letter-spacing:0.05em;">새로운 운명 확인</button>
-        </div>
-    </div>
 </div>
-<script src="tarotData.js"></script>
 <script>
-// ──────────────────────────────────────────────
-// [제니스 AI 엔진] - main.js 통합 인라인 버전
-// ──────────────────────────────────────────────
+// ═══════════════════════════════════════════════
+//  API 설정
+// ═══════════════════════════════════════════════
 const API_KEY = "AIzaSyA1l1pt2Cr6vl-c6dkdaAfp_SblSyfCVC0";
+const API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=" + API_KEY;
 
-async function callZenithAI(promptMessage) {
-    const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${API_KEY}`;
-    const response = await fetch(API_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-            contents: [{ parts: [{ text: promptMessage }] }],
-            tools: [{ google_search: {} }],
-            generationConfig: { temperature: 0.7, maxOutputTokens: 2048 }
-        })
-    });
-    if (!response.ok) {
-        const errorData = await response.json();
-        console.error("Gemini API 에러:", errorData);
-        throw new Error('API 호출 실패: ' + (errorData.error?.message || response.status));
-    }
-    const data = await response.json();
-    // 텍스트 파트만 추출 (tool_use 블록 제외)
-    const textParts = (data.candidates[0].content.parts || [])
-        .filter(p => p.text)
-        .map(p => p.text)
-        .join('');
-    return textParts || '신탁 데이터를 불러오지 못했습니다.';
+// ─── 카드 이름 (78장, tarotDB 완전 대체) ───
+const CARD_NAMES = [
+    "The Fool","The Magician","The High Priestess","The Empress","The Emperor",
+    "The Hierophant","The Lovers","The Chariot","Strength","The Hermit",
+    "Wheel of Fortune","Justice","The Hanged Man","Death","Temperance",
+    "The Devil","The Tower","The Star","The Moon","The Sun","Judgement","The World",
+    "Ace of Wands","Two of Wands","Three of Wands","Four of Wands","Five of Wands",
+    "Six of Wands","Seven of Wands","Eight of Wands","Nine of Wands","Ten of Wands",
+    "Page of Wands","Knight of Wands","Queen of Wands","King of Wands",
+    "Ace of Cups","Two of Cups","Three of Cups","Four of Cups","Five of Cups",
+    "Six of Cups","Seven of Cups","Eight of Cups","Nine of Cups","Ten of Cups",
+    "Page of Cups","Knight of Cups","Queen of Cups","King of Cups",
+    "Ace of Swords","Two of Swords","Three of Swords","Four of Swords","Five of Swords",
+    "Six of Swords","Seven of Swords","Eight of Swords","Nine of Swords","Ten of Swords",
+    "Page of Swords","Knight of Swords","Queen of Swords","King of Swords",
+    "Ace of Pentacles","Two of Pentacles","Three of Pentacles","Four of Pentacles","Five of Pentacles",
+    "Six of Pentacles","Seven of Pentacles","Eight of Pentacles","Nine of Pentacles","Ten of Pentacles",
+    "Page of Pentacles","Knight of Pentacles","Queen of Pentacles","King of Pentacles"
+];
+
+// ─── 카테고리 판별 ───
+const CATEGORIES = [
+    [/(주식|코스피|코스닥|삼성|하이닉스|나스닥|매수|매도|종목|주가|ETF|코인|비트|이더|크립토|상승|하락|반등)/i, '◈ 증권 시장 분석 ◈'],
+    [/(부동산|아파트|재개발|재건축|청약|임대|전세|매매|갭투자|분양)/,                                        '◈ 부동산 투자 진단 ◈'],
+    [/(결혼|재회|연애|남친|여친|썸|고백|이별|재결합|프러포즈|사귀|짝사랑)/,                                  '◈ 인연의 흐름 분석 ◈'],
+    [/(취업|이직|퇴사|면접|승진|연봉|사업|창업|직장|합격|시험|수능)/,                                        '◈ 커리어 & 운세 진단 ◈'],
+    [/(건강|수술|치료|병원|완치|몸|아프|피로)/,                                                               '◈ 건강 에너지 진단 ◈'],
+];
+function detectCategory(q) {
+    for (var i = 0; i < CATEGORIES.length; i++)
+        if (CATEGORIES[i][0].test(q)) return CATEGORIES[i][1];
+    return '◈ 운명의 여정 확인 ◈';
 }
 
-async function startZenithOracle(cardIDs) {
-    const userQuestion = document.getElementById('seed-input')?.value || "오늘의 운세";
-    const oracleBox   = document.getElementById('zenith-oracle-text');
-    if (!oracleBox) return;
-
-    oracleBox.innerHTML = `<div style="color:gold;border:1px solid gold;padding:12px;border-radius:8px;text-align:center;">✨ 제니스가 운명의 결론을 도출 중입니다...</div>`;
-
-    // tarotDB는 tarotData.js에서 전역 선언됨
-    const cardNames = cardIDs
-        .map(id => {
-            const key = (function(idx) {
-                idx = Math.abs(parseInt(idx)) % 78;
-                if (idx < 22) return 'M' + String(idx).padStart(2,'0');
-                if (idx < 36) return 'W' + String(idx-21).padStart(2,'0');
-                if (idx < 50) return 'C' + String(idx-35).padStart(2,'0');
-                if (idx < 64) return 'S' + String(idx-49).padStart(2,'0');
-                return 'P' + String(idx-63).padStart(2,'0');
-            })(id);
-            return (typeof tarotDB !== 'undefined' && tarotDB[key]) ? tarotDB[key].name : key;
-        })
-        .join(', ');
-
-    const promptMessage = `
-[SYSTEM INSTRUCTION]
-너는 주식·부동산 투자, 명리학, 타로, 심리학에 정통한 'AI 리얼타임 오라클'이다.
-반드시 아래 규칙을 지켜서 답변하라:
-1. 사용자의 질문 카테고리를 판단하여 해당 분야 전문가의 말투를 사용하라.
-2. 주식/부동산: 현재 2026년의 시장 상황(예: 삼성전자 HBM 실적, 티엘비 DDR5 고부가 기판 층수 증가 등)을 카드의 상징과 결합하라.
-3. 단순 운세 풀이가 아니라, 구체적인 산업 키워드를 포함한 '투자 전략'을 제시하라.
-4. 답변 형식을 [과거], [현재], [미래], [제니스 신탁] 순서로 유지하되, [제니스 신탁] 창에는 현재 시점의 가장 최신 정보를 검색하고 선택된 타로 카드의 상징을 결합하여 소름 돋는 통찰을 제공하라.
-
-[USER INPUT]
-질문: ${userQuestion}
-선택된 카드: ${cardNames}
-
-위 정보를 바탕으로 소름 돋는 통찰을 제공하라.
-`;
-
-    try {
-        const aiResult = await callZenithAI(promptMessage);
-        // 줄바꿈 → <br> 변환
-        const formatted = aiResult
-            .replace(/\*\*(.*?)\*\*/g, '<strong style="color:#FFD700;">$1</strong>')
-            .replace(/\n/g, '<br>');
-        oracleBox.innerHTML = `
-            <div style="text-align:left;color:white;line-height:1.9;padding:4px 0;">
-                <h2 style="color:gold;text-align:center;letter-spacing:2px;margin-bottom:16px;">✨ 제니스의 실전 투자 리포트</h2>
-                <hr style="border:1px solid gold;margin-bottom:16px;">
-                <div>${formatted}</div>
-            </div>`;
-    } catch (error) {
-        console.error(error);
-        oracleBox.innerHTML = `<div style="color:#ff6b6b;padding:12px;border:1px solid #ff6b6b;border-radius:8px;">⚠️ 운명의 연결이 원활하지 않습니다.<br><small>${error.message}</small></div>`;
-    }
-}
-</script>
-
-<script>
-let homePreviewInterval;
-
-// 1. 이미지 경로
 function getCardImage(idx) {
-    return './images/cards/m' + String(idx).padStart(2, '0') + '.jpg';
+    return './images/cards/m' + String(Math.abs(idx) % 78).padStart(2,'0') + '.jpg';
 }
-
-// 2. 입력창 플레이스홀더
 function togglePlaceholder(el) {
     var ph = document.getElementById('fake-placeholder');
-    if (ph) ph.style.opacity = (el.value && el.value.length > 0) ? '0' : '1';
+    if (ph) ph.style.opacity = el.value.length > 0 ? '0' : '1';
 }
 
-// 3. 수비학 & 해시
-function numerology(n) {
-    var res = Math.abs(n);
-    while (res > 9) { res = res.toString().split('').reduce(function(a,b){ return a + Number(b); }, 0); }
-    return res || 1;
-}
-function hashSeed(str) {
-    var h = 0;
-    for (var i = 0; i < str.length; i++) { h = (h << 5) - h + str.charCodeAt(i); h |= 0; }
-    return Math.abs(h);
-}
-
-// 4. 카테고리 판별 — 다단계 스코어링 시스템
-function detectCategory(seed) {
-    var s = seed.trim();
-    var scores = {
-        STOCK: 0, COIN: 0, REDEV: 0, SEX: 0,
-        MARRIAGE: 0, REUNION: 0, JOB: 0, BIZ: 0,
-        EXAM: 0, LAWSUIT: 0, HEALTH: 0, GENERAL: 0
-    };
-
-    var redevDev  = /(재개발|재건축|리모델링|도시정비|정비구역|정비사업|뉴타운|조합원|입주권|관리처분|사업시행인가|조합설립인가|추진위|조합장|시공사|시행사|용적률|건폐율|비례율|감정평가|권리가액|분담금|추가분담금|이주비|이주촉진|철거|멸실|착공|준공|근린생활시설|근생|용도지역|용도변경|건축허가|신축|증축|개축)/;
-    var redevType = /(아파트|빌라|다세대|다가구|단독주택|연립|오피스텔|도시형생활주택|원룸|투룸|쓰리룸|주상복합|복층|전용면적|공용면적|공급면적|대지지분|상가|꼬마빌딩|임대수익|임대료|공실|임차인|임대인|분양상가|집합건물|지식산업센터|지산|물류창고|물류센터|공장|토지|대지|임야|나대지|기획부동산|분양권|전매|NPL|경공매|경매|법원경매)/;
-    var redevTax  = /(취득세|재산세|종부세|종합부동산세|양도세|양도소득세|증여세|상속세|다주택|1주택|2주택|3주택|보유세|임대사업자|임대등록|LTV|DSR|DTI|담보대출|주담대|전세대출|규제지역|조정지역|투기과열지구|비규제|공시가|실거래가|시세|호가|매매가|전세가|월세가|전세가율|갭투자|역전세|깡통전세|전세사기|보증금|HUG|임장|부동산중개|중개수수료|복비|급매|급처|실거주|부동산)/;
-    var redevChung= /(청약|청약통장|청약점수|가점|추첨|특공|특별공급|신혼부부|생애최초|노부모부양|다자녀|청약홈|1순위|무주택|분양가|분양가상한제|후분양|모델하우스|견본주택|계약금|중도금|잔금|발코니확장)/;
-    if (redevDev.test(s))   scores.REDEV += 3;
-    if (redevType.test(s))  scores.REDEV += 2;
-    if (redevTax.test(s))   scores.REDEV += 2;
-    if (redevChung.test(s)) scores.REDEV += 2;
-
-    var stockVerb = /(매수|매도|매각|매입|매집|익절|손절|청산|물타기|불타기|분할매수|분할매도|전량매도|전량매수|추가매수|추가매도|비중확대|비중축소|포지션|헤징|숏|롱|공매도|대차|차입|레버리지|스윙|단타|장투|데이트레이딩|스캘핑|급등|급락|폭등|폭락|반등|조정|횡보|눌림|돌파|저항|지지|추세|모멘텀|골든크로스|데드크로스|이동평균|갭상승|갭하락|상승장|하락장|박스권|로테이션|섹터|시황)/;
-    var stockNum  = /(수익률|배당금|배당수익률|시가총액|시총|주가|주당|목표가|적정가|괴리율|할인율|PER|PBR|ROE|EPS|BPS|EV|EBITDA|NAV|수급|외인|외국인|기관|거래량|거래대금|시초가|종가|고가|저가|신고가|신저가|상한가|하한가|밸류에이션|저평가|고평가|유상증자|무상증자|자사주|배당락|권리락)/;
-    var stockMkt  = /(주식|증시|증권|코스피|코스닥|나스닥|다우존스|항셍|니케이|상해종합|선물|옵션|ETF|etf|인버스|리츠|REIT|펀드|채권|금리|환율|달러|원달러|달러원|엔화|위안|유로|원화|금시세|은시세|유가|브렌트|원자재|인플레|금리인상|금리인하|기준금리|피벗|연준|FOMC|파월|한은|경기침체|불황|호황|버블|랠리|베어마켓|불마켓|VIX|공포지수)/i;
-    var stockName = /(삼성전자|삼성바이오|삼성SDI|삼성물산|삼성생명|삼성화재|삼성전기|SK하이닉스|SK이노|SK텔레콤|SK바이오|SKC|SK스퀘어|LG에너지|LG화학|LG전자|LG생활|LG이노텍|현대차|현대모비스|현대건설|현대글로비스|현대중공업|기아차|포스코|POSCO|포스코퓨처엠|셀트리온|카카오|카카오뱅크|카카오페이|네이버|NAVER|두산|롯데케미칼|롯데쇼핑|한화솔루션|한화에어로|코웨이|크래프톤|엔씨소프트|넷마블|카카오게임|펄어비스|에코프로|에코프로비엠|코스모신소재|엘앤에프|한미반도체|유한양행|한미약품|종근당|2차전지|반도체|바이오|게임주|방산|조선주|철강주|성장주|가치주|배당주|우선주|보통주|스팩|IPO|공모주|상장폐지|코스피200|코스닥150|애플|AAPL|테슬라|TSLA|엔비디아|NVDA|마이크로소프트|MSFT|아마존|AMZN|구글|GOOGL|메타|META|알파벳|인텔|INTC|AMD|퀄컴|QCOM|TSMC|브로드컴|AVGO)/;
-    var stockPat  = /(\d+배|\d+%|\d+프로|몇배|반토막|반값|두배|세배|네배|다섯배|열배|\d+월말|\d+분기|연말|연초|상반기|하반기)/;
-    var stockIntent = /(살까|팔까|매수할까|매도할까|들어갈까|빠질까|지금 사|지금 팔|언제 사|언제 팔|버텨야|손절해야|올라갈까|내려갈까|오를까|떨어질까|반등할까|지금 들어|지금 빠|주식으로|주식 좀|주식 어때|종목 추천|어떤 종목|어느 종목|몇 주|몇주|수익 날|수익날|수익 볼|손해볼|손해 볼)/;
-    if (stockVerb.test(s))   scores.STOCK += 3;
-    if (stockNum.test(s))    scores.STOCK += 2;
-    if (stockMkt.test(s))    scores.STOCK += 3;
-    if (stockName.test(s))   scores.STOCK += 4;
-    if (stockPat.test(s))    scores.STOCK += 1;
-    if (stockIntent.test(s)) scores.STOCK += 2;
-
-    var coinKw = /(코인|가상화폐|가상자산|암호화폐|크립토|crypto|블록체인|비트코인|BTC|이더리움|ETH|리플|XRP|도지코인|DOGE|솔라나|SOL|에이다|ADA|아발란체|AVAX|폴리곤|MATIC|체인링크|LINK|유니스왑|UNI|시바이누|SHIB|페페|PEPE|아비트럼|ARB|옵티미즘|레이어2|디파이|DeFi|NFT|메타버스|web3|DAO|스테이킹|에어드랍|김치프리미엄|역프|업비트|빗썸|코빗|코인원|바이낸스|코인베이스|바이비트|불장|곰장|평단|물린|존버|펌핑|덤핑|고래|채굴|마이닝|반감기|테더|USDT|USDC|스테이블코인)/i;
-    var coinIntent = /(코인 살까|코인 팔까|코인 어때|코인 지금|지금 코인|비트 살까|비트 팔까|이더 살까|알트코인|알트 시즌|코인으로|코인 투자)/;
-    if (coinKw.test(s))     scores.COIN += 4;
-    if (coinIntent.test(s)) scores.COIN += 2;
-
-    var sexKw = /(섹수|섹스|잠자리|속궁합|성적|애무|성관계|성생활|성욕|밤생활|침대|베드|같이자|관계가|관계를|관계했|오르가|쾌감|리비도|성감|전희|후희|체위|피임|피임약|콘돔|야하|야한|야릇|하룻밤|원나잇|one night|성적 매력|성적으로|야동|포르노|성인|잠자리 어때|잠자리 좋|궁합이|몸이 맞|몸궁합)/;
-    if (sexKw.test(s)) scores.SEX += 4;
-
-    var marriageKw = /(결혼|상견례|재혼|돌싱|혼인|프러포즈|청혼|약혼|파혼|혼수|예단|예물|웨딩|스드메|신혼|허니문|결혼식|혼주|예식장|시댁|처가|시어머니|장모|시아버지|장인|며느리|사위|고부갈등|결혼비용|결혼자금|신혼집|혼인신고|결혼할까|결혼 어때|결혼해야|결혼 생각|결혼 준비|결혼 운|프로포즈)/;
-    if (marriageKw.test(s)) scores.MARRIAGE += 4;
-
-    var reunionKw = /(재회|연락|차단|전남친|전여친|미련|복귀|카톡|문자|답장|읽씹|안읽씹|씹힘|연락두절|그리워|보고싶|헤어지|헤어졌|이별|별거|냉전|싸웠|화해|다시만|다시볼|다시연락|첫사랑|구남친|구여친|전처|전남편|전부인|바람|외도|불륜|배신|용서|이혼|재결합|연락올까|마음돌아|보내줘야|잊어야|연애|남자친구|여자친구|남친|여친|소개팅|썸|고백|짝사랑|좋아하는|좋아해|사귀|데이트|만남|인연|솔로|싱글|연애운|이성운|애인|파트너|연인)/;
-    if (reunionKw.test(s)) scores.REUNION += 3;
-    if (/(재회|전남친|전여친|전처|전남편|구남친|구여친)/.test(s)) scores.REUNION += 2;
-
-    var jobKw = /(이직|퇴사|취업|재취업|구직|면접|채용|입사|수습|승진|연봉|연봉협상|연봉인상|인센티브|성과급|직장|직책|직급|직위|팀장|부장|차장|과장|대리|사원|임원|이사|상무|전무|사장|대표|CEO|사직|퇴직|해고|권고사직|구조조정|명예퇴직|희망퇴직|워라밸|복지|재직|경력|스펙|포트폴리오|자소서|이력서|헤드헌터|리크루터|스카우트|공채|수시채용|인턴|계약직|정규직|파견직|아르바이트|부업|투잡|KPI|성과평가|인사평가|상사|직장내괴롭힘|갑질|출근|퇴근|야근|업무|회사|직장인|회사 생활|직장 생활|일자리|취업할|이직할|퇴사할|합격할|채용될)/;
-    if (jobKw.test(s)) scores.JOB += 3;
-    if (/(이직|퇴사|취업|면접|채용|승진|연봉협상)/.test(s)) scores.JOB += 2;
-
-    var bizKw = /(사업|창업|폐업|휴업|개업|자영업|소상공인|매출|영업이익|순이익|원가율|객단가|거래처|납품|계약|제안|입찰|수주|클라이언트|외주|하청|협력업체|파트너십|B2B|B2C|플랫폼|프랜차이즈|가맹|가맹점|마케팅|광고|SNS마케팅|바이럴|인플루언서|투자유치|VC|벤처캐피털|스타트업|IR|피칭|엔젤투자|시드|시리즈A|시리즈B|기업가치|지분율|지분|동업|공동창업|사업계획서|비즈니스모델|흑자|적자|손익분기|현금흐름|운전자금|자금난|법인|개인사업자|법인세|부가세|세금계산서|세무|기장|장사|가게|식당|카페|쇼핑몰|온라인쇼핑|스마트스토어|쿠팡|네이버스토어)/;
-    if (bizKw.test(s)) scores.BIZ += 3;
-    if (/(창업|사업|스타트업|개업|장사|가게)/.test(s)) scores.BIZ += 2;
-
-    var examKw = /(합격|불합격|시험|공시|자격증|수능|수험|고시|공무원|임용|편입|대학원|입시|논술|필기|실기|토익|토플|오픽|아이엘츠|IELTS|텝스|한능검|한국사|경찰|소방|군무원|법원직|검찰직|세무사|공인회계사|변리사|노무사|감정평가사|법무사|행시|외무고시|5급|7급|9급|지방직|국가직|로스쿨|LEET|의대|치대|약대|간호대|모의고사|수시|정시|내신|등급|공부|스터디|기출|오답|암기|벼락치기|붙을까|떨어질까|합격할까|시험 어때|시험 결과|점수|성적|등수|순위)/;
-    if (examKw.test(s)) scores.EXAM += 3;
-    if (/(합격|수능|공무원|고시|자격증|시험)/.test(s)) scores.EXAM += 2;
-
-    var lawKw = /(소송|법원|합의|변호사|고소|고발|판결|선고|재판|공판|항소|상고|항고|기각|인용|조정|중재|내용증명|가압류|가처분|압류|강제집행|채권|채무|빚|채무불이행|연대보증|사기|횡령|배임|명예훼손|모욕죄|스토킹|폭행|상해|협박|공갈|개인정보|저작권|상표권|특허권|손해배상|위자료|민사|형사|행정소송|검사|경찰조사|출석|소환|진술|증거|고소장|합의금|형량|집행유예|벌금|소송할|고소할|고발할|당할 것|이길 수|질 것|법적으로|법대로)/;
-    if (lawKw.test(s)) scores.LAWSUIT += 3;
-    if (/(소송|고소|고발|재판|변호사|판결)/.test(s)) scores.LAWSUIT += 2;
-
-    var healthKw = /(건강|수술|질병|완치|암|통증|치료|병원|입원|퇴원|진단|검사결과|MRI|CT|초음파|내시경|혈액검사|혈압|혈당|당뇨|고혈압|저혈압|고지혈증|콜레스테롤|심장|부정맥|협심증|심근경색|뇌졸중|뇌출혈|뇌경색|폐|폐렴|천식|간|간염|간경화|간암|신장|신부전|위|위염|위암|대장|대장암|척추|디스크|협착|관절|무릎|어깨|허리|두통|편두통|어지럼|이명|불면|수면장애|면역|자가면역|류마티스|갑상선|호르몬|항암|방사선|항생제|처방|부작용|재발|전이|만성|급성|염증|감염|바이러스|세균|코로나|산재|직업병|다이어트|체중|비만|식이|영양|정신건강|우울|불안|공황|ADHD|조울|강박|트라우마|PTSD|임신|출산|산후|난임|불임|유산|몸이 아|아파|아프|몸 상태|피로|피곤|체력|면역력|건강할|나을까|나을 수|완치될|회복될)/;
-    if (healthKw.test(s)) scores.HEALTH += 3;
-    if (/(암|수술|병원|치료|완치|임신|출산)/.test(s)) scores.HEALTH += 2;
-
-    var shortQuery = s.length <= 20;
-    if (shortQuery && stockName.test(s)) scores.STOCK += 3;
-    if (shortQuery && coinKw.test(s))    scores.COIN  += 3;
-
-    var intentSuffix = /(어때|어떨까|어떻게|할까요|할까|괜찮을까|괜찮아|될까|될까요|어떤가|어떤지|알려줘|봐줘|봐주세요|점쳐|점쳐줘|운세|운세봐|운좀|운 좀)/;
-    if (intentSuffix.test(s)) {
-        var topCat = Object.keys(scores).reduce(function(a, b) { return scores[a] > scores[b] ? a : b; });
-        if (scores[topCat] > 0) scores[topCat] += 1;
-    }
-
-    var priority = ['STOCK','COIN','REDEV','JOB','BIZ','REUNION','MARRIAGE','EXAM','LAWSUIT','HEALTH','SEX','GENERAL'];
-    var best = 'GENERAL';
-    var bestScore = 0;
-    for (var i = 0; i < priority.length; i++) {
-        var cat = priority[i];
-        if (scores[cat] > bestScore) { bestScore = scores[cat]; best = cat; }
-    }
-    if (bestScore < 2) return 'GENERAL';
-    return best;
-}
-
-// 5. 금가루 이펙트
-function createGoldDust(cardRect) {
-    var rainbow = ['#FFD700','#FFF5C3','#FFFFFF','#FF9ECD','#FF6EFF','#B388FF','#80CFFF','#7BFFEA','#AAFF80','#FFB347','#FF7878'];
-    var starClip = 'polygon(50% 0%, 53% 45%, 100% 50%, 53% 55%, 50% 100%, 47% 55%, 0% 50%, 47% 45%)';
-    var count = 90;
-    for (var i = 0; i < count; i++) {
-        var p = document.createElement('div');
-        document.body.appendChild(p);
-        var startX = cardRect.left + Math.random() * cardRect.width;
-        var startY = cardRect.top  + Math.random() * cardRect.height;
-        var size = (Math.random() * 1.5 + 1) + 'px';
-        var color = rainbow[Math.floor(Math.random() * rainbow.length)];
-        var isStar = Math.random() > 0.4;
-        p.style.cssText = ['position:fixed','pointer-events:none','z-index:9999','border-radius:50%','width:'+size,'height:'+size,'background:'+color,'left:'+startX+'px','top:'+startY+'px',isStar?'clip-path:'+starClip:''].join(';');
-        var baseAngle = Math.atan2(-900, -600);
-        var spread = (Math.random() - 0.5) * Math.PI * 0.9;
-        var angle = baseAngle + spread;
-        var spd = Math.random() * 180 + 60;
-        var dx = Math.cos(angle) * spd;
-        var dy = Math.sin(angle) * spd;
-        var rot = (Math.random() * 720 - 360) + 'deg';
-        var delay = Math.random() * 400;
-        p.animate([
-            { opacity: 1,   transform: 'translate(0,0) scale(2.5) rotate(0deg)', filter: 'brightness(5)', boxShadow: '0 0 4px 2px '+color+', 0 0 8px 3px #FFFFFF' },
-            { opacity: 0.7, transform: 'translate('+(dx*0.5)+'px,'+(dy*0.5)+'px) scale(1.5) rotate('+rot+')', filter: 'brightness(7)', boxShadow: '0 0 6px 3px '+color+', 0 0 12px 4px #FFFFFF' },
-            { opacity: 0,   transform: 'translate('+dx+'px,'+dy+'px) scale(0) rotate('+rot+')', filter: 'brightness(1)', boxShadow: 'none' }
-        ], { duration: 900+Math.random()*600, delay: delay, easing: 'ease-out', fill: 'forwards' }).onfinish = function() { this.effect.target.remove(); };
-    }
-}
-
-function githubSparkle() {
-    var hand = document.getElementById('master-hand');
-    var homeView = document.getElementById('home-view');
-    if (!hand || (homeView && homeView.style.display === 'none')) return;
-    var rect = hand.getBoundingClientRect();
-    var cx = rect.left + rect.width / 2;
-    var cy = rect.top + rect.height * 0.2;
-    var colors = ['#FFD700', '#FFF5C3', '#D4AF37', '#FFFACD', '#FFE55C'];
-    for (var i = 0; i < 6; i++) {
-        var p = document.createElement('div');
-        p.className = 'particle';
-        var startX = cx + (Math.random() - 0.5) * 32;
-        var startY = cy + (Math.random() - 0.5) * 18;
-        p.style.left = startX + 'px';
-        p.style.top = startY + 'px';
-        p.style.width = (Math.random() * 4 + 2) + 'px';
-        p.style.height = p.style.width;
-        p.style.background = colors[Math.floor(Math.random() * colors.length)];
-        document.body.appendChild(p);
-        var angle = Math.PI + Math.random() * Math.PI;
-        var speed = Math.random() * 55 + 25;
-        p.animate([
-            { opacity: 1, transform: 'scale(1.5) translate(0,0)' },
-            { opacity: 0, transform: 'scale(0) translate('+(Math.cos(angle)*speed)+'px, '+(Math.sin(angle)*speed)+'px)' }
-        ], { duration: 900+Math.random()*600, easing: 'ease-out' }).onfinish = function(){ this.effect.target.remove(); };
-    }
-}
-setInterval(githubSparkle, 80);
-
-// 6. 인덱스 → tarotDB 키 변환
-function getCardKey(idx) {
-    idx = Math.abs(parseInt(idx)) % 78;
-    if (idx < 22) return 'M' + String(idx).padStart(2, '0');
-    if (idx < 36) return 'W' + String(idx - 21).padStart(2, '0');
-    if (idx < 50) return 'C' + String(idx - 35).padStart(2, '0');
-    if (idx < 64) return 'S' + String(idx - 49).padStart(2, '0');
-    return 'P' + String(idx - 63).padStart(2, '0');
-}
-
-// ★ 부드러운 커스텀 스크롤 함수 (easeInOutQuad)
-function scrollToResult() {
-    var rv = document.getElementById('result-view');
-    if (rv) {
-        rv.style.display = 'flex';
-        
-        // 📱 햅틱 진동 (결과창 열릴 때 한 번)
-        if (navigator.vibrate) navigator.vibrate(50);
-
-        requestAnimationFrame(function() {
-            requestAnimationFrame(function() {
-                rv.classList.add('slide-in');
-
-                // ✅ 스크롤 함수 정의 (내부에서 선언)
-                function scrollToResult() {
-                    window.scrollTo({
-                        top: document.body.scrollHeight,
-                        behavior: 'smooth'
-                    });
-                }
-
-                // 처음에 한 번 상단으로 부드럽게 이동
-                rv.scrollIntoView({ behavior: 'smooth', block: 'start' });
-
-                var items = rv.querySelectorAll('.reveal-item');
-                items.forEach(function(el, idx) {
-                    setTimeout(function() { 
-                        // 글자를 보이게 함
-                        el.classList.add('visible'); 
-                        
-                        // 💡 휙 올라가지 않게 3개 항목마다 천천히 스크롤
-                        if (idx % 3 === 0 || idx === items.length - 1) { 
-                            scrollToResult(); 
-                        }
-                    }, 800 + (idx * 800)); // 💡 0.9초 간격으로 독서 시간 확보
-                });
-            }); // inner requestAnimationFrame 끝
-        }); // outer requestAnimationFrame 끝
-    } // if (rv) 끝
-
-    var targetY = rv.getBoundingClientRect().top + scrollEl.scrollTop;
-    var startY = scrollEl.scrollTop;
-    var distance = targetY - startY;
-    var duration = 1200;
-    var startTime = null;
-
-    function easeInOutQuad(t, b, c, d) {
-        t /= d / 2;
-        if (t < 1) return c / 2 * t * t + b;
-        t--;
-        return -c / 2 * (t * (t - 2) - 1) + b;
-    }
-    function step(timestamp) {
-        if (!startTime) startTime = timestamp;
-        var progress = timestamp - startTime;
-        scrollEl.scrollTop = easeInOutQuad(progress, startY, distance, duration);
-        if (progress < duration) requestAnimationFrame(step);
-    }
-    requestAnimationFrame(step);
-}
-
-// 7. 결과 렌더링
-function renderVerticalResult(cards, seed) {
-    // ★ 모바일 햅틱 진동 (0.05초)
-    if (navigator.vibrate) {
-        navigator.vibrate(50);
-    }
-
-    var container = document.getElementById('cards-result');
-    var adviceArea = document.getElementById('sage-advice-area');
-    var categoryDisplay = document.getElementById('category-display');
-
-    // 데이터 로드 대기
-    if (typeof tarotDB === 'undefined') {
-        var tries = (renderVerticalResult._tries || 0) + 1;
-        renderVerticalResult._tries = tries;
-        if (tries < 50) { setTimeout(function(){ renderVerticalResult(cards, seed); }, 100); }
-        return;
-    }
-    renderVerticalResult._tries = 0;
-    if (!container) return;
-
-    // 결과 뷰 표시 + 슬라이드업
-    var rv = document.getElementById('result-view');
-    if (rv) {
-        rv.style.display = 'flex';
-        requestAnimationFrame(function() {
-            requestAnimationFrame(function() {
-                rv.classList.add('slide-in');
-
-                // ★ 화면 전환 후 즉시 최상단 이동 (home→result 전환)
-                window.scrollTo(0, 0);
-                document.documentElement.scrollTop = 0;
-                document.body.scrollTop = 0;
-
-                // 자식 블록 순차 페이드업 (독서 속도에 맞춰 600ms 간격)
-                var items = rv.querySelectorAll('.reveal-item');
-                items.forEach(function(el, idx) {
-                    setTimeout(function() {
-                        el.classList.add('visible');
-                        if (idx > 3) {
-                            el.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'start' });
-                        }
-                    }, 500 + (idx * 600));
-                });
-            });
-        });
-    }
-
-    // 카테고리 설정
-    var catID = detectCategory(seed);
-    function pickE(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
-    var catConfig = {
-        STOCK:   { t:'◈ 증권 시장 분석 ◈',    k:'주식_코인',  e:['결정적 승부의 기운','전략적 판단의 기류','시장 돌파의 에너지','수익 포착의 운세','매매 타이밍의 기운','차익 실현의 흐름','강세 전환의 기류','변동성 돌파의 기운','수급 집중의 에너지','시세 분기점의 기운','저점 매수의 신탁','고점 경계의 기류','추세 반전의 에너지','포트폴리오 정비의 기운','역발상 투자의 기류','분할 진입의 에너지','스윙 승부의 기운','모멘텀 가속의 기류','지지선 확인의 에너지','손익비 최적화의 기운'], s:'매수·매도', unit:'수익 확정' },
-        COIN:    { t:'◈ 가상자산 흐름 분석 ◈',  k:'주식_코인',  e:['유동성 폭발의 기운','온체인 에너지의 흐름','가상자산 급등의 기류','알트 시즌의 에너지','디파이 확장의 기운','크립토 사이클의 기류','변동성 돌파의 에너지','고래 움직임의 신탁','반감기 에너지의 흐름','포지션 정리의 기운','레버리지 해소의 기류','코인 순환의 에너지','김치프리미엄의 기운','급락 반등의 신탁','스테이킹 수익의 기류'], s:'포지션 진입', unit:'자산 운용' },
-        REDEV:   { t:'◈ 정비사업 수익 진단 ◈',  k:'재개발_경매', e:['재개발 인가의 기류','조합 설립 성공의 기운','정비구역 지정의 에너지','관리처분 인가의 신탁','재건축 속도 가속의 기류','조합원 권리 확보의 기운','시공사 선정의 에너지','이주비 협의 성공의 기류','준공 완료의 기운','뉴타운 개발 완성의 신탁','입주권 확보의 에너지','분담금 절감의 기류','용적률 상향의 기운','정비사업 승인의 에너지','조합 결의 통과의 신탁'], s:'임장·계약', unit:'부동산 결정' },
-        SEX:     { t:'◈ 본능적 에너지 합치도 ◈', k:'섹스_건강',   e:['본능 에너지의 폭발','감각 교류의 기류','육체 합일의 신탁','욕망 해방의 기운','관능 에너지의 흐름','성적 시너지의 기류','밤의 기운 최고조','관계 심화의 에너지','본능적 이끌림의 기운','커플 에너지 합치의 흐름'], s:'합치·교감', unit:'본능 발산' },
-        REUNION: { t:'◈ 인연의 재회 가능성 ◈',  k:'연애_재회',   e:['재회 신호의 기운','인연 복원의 에너지','연락 재개의 기류','감정 해빙의 신탁','재결합 흐름의 기운','마음 회귀의 에너지','관계 전환점의 기류','화해 가능성의 기운','재회 타이밍의 에너지','인연 재연결의 흐름'], s:'연락·대화', unit:'재회 성공' },
-        MARRIAGE:{ t:'◈ 혼인/결혼의 흐름 ◈',    k:'연애_재회',   e:['결합 에너지의 정점','혼인 결단의 기운','백년가약의 흐름','혼수 준비의 기류','인생 결합의 신탁','상견례 성공의 에너지','결혼 운세의 기운','부부 인연의 흐름','혼인 타이밍의 기류','평생 동반자 에너지'], s:'상견례·결단', unit:'인생 결합' },
-        JOB:     { t:'◈ 직장 및 승진 진단 ◈',    k:'직장_사업',   e:['승진 기운의 최고조','직장 전환점의 에너지','취업 성공의 기류','연봉 협상의 신탁','이직 타이밍의 기운','커리어 도약의 에너지','인사 평가 기류','직장 안정화의 기운','신규 포지션의 에너지','사회적 성취의 흐름'], s:'발표·면접', unit:'성취 성공' },
-        BIZ:     { t:'◈ 사업 및 창업 진단 ◈',    k:'창업_부업',   e:['사업 확장의 에너지','창업 도약의 기류','매출 폭발의 기운','계약 성사의 신탁','투자 유치의 에너지','시장 점유의 기류','흑자 전환의 기운','파트너십 형성의 에너지','사업 피벗의 기류','브랜드 성장의 기운'], s:'영업·계약', unit:'사업 확장' },
-        EXAM:    { t:'◈ 합격 및 시험 운세 ◈',    k:'합격_승진',   e:['합격 에너지의 결집','시험 돌파의 기류','공시 합격의 기운','수험 집중의 신탁','최종 관문의 에너지','점수 상승의 기류','실기 성공의 기운','면접 통과의 에너지','합격 발표의 기운','성취 완성의 흐름'], s:'집중·응시', unit:'합격 영광' },
-        LAWSUIT: { t:'◈ 소송 및 분쟁 진단 ◈',    k:'대인_고소',   e:['승소 에너지의 흐름','법적 기류의 전환','합의 성사의 기운','증거 확보의 신탁','판결 유리의 기류','분쟁 해소의 에너지','소송 주도의 기운','법정 역전의 흐름','화해 가능성의 기류','권리 회복의 에너지'], s:'합의·증명', unit:'승소 확정' },
-        HEALTH:  { t:'◈ 건강 및 신체 진단 ◈',    k:'섹스_건강',   e:['생명 에너지의 회복','치유 기류의 상승','건강 회복의 기운','면역 강화의 신탁','완치 흐름의 에너지','체력 재건의 기류','수술 성공의 기운','컨디션 회복의 에너지','건강 전환점의 기류','신체 균형의 기운'], s:'회복·치료', unit:'생기 회복' },
-        GENERAL: { t:'◈ 운명의 여정 확인 ◈',     k:'운세_총평',   e:['결정적 승부의 기운','운명 전환의 에너지','새로운 시작의 기류','근원적 동력의 신탁','인생 분기점의 기운','대운 개막의 에너지','운명 개척의 기류','천재일우의 기운','삶의 터닝포인트 에너지','우주적 흐름의 기운'], s:'행동·실천', unit:'운명 발복' }
-    };
-    var config = catConfig[catID] || catConfig.GENERAL;
-    config = Object.assign({}, config, { e: pickE(config.e) });
-    if (categoryDisplay) categoryDisplay.innerText = config.t;
-
-    // 영문 catID → 한글 tarotDB 키 매핑
-    var keyMap = {
-        'STOCK':'주식_코인', 'COIN':'주식_코인',
-        'REDEV':'재개발_경매', 'SEX':'섹스_건강',
-        'MARRIAGE':'연애_재회', 'REUNION':'연애_재회',
-        'JOB':'직장_사업', 'BIZ':'창업_부업',
-        'EXAM':'합격_승진', 'LAWSUIT':'대인_고소',
-        'HEALTH':'섹스_건강', 'GENERAL':'운세_총평'
-    };
-    var targetKey = keyMap[catID] || '운세_총평';
-
-    // 카드 데이터 추출
-    var cIdx0 = Math.abs(parseInt(cards[0])) % 78;
-    var cIdx1 = Math.abs(parseInt(cards[1])) % 78;
-    var cIdx2 = Math.abs(parseInt(cards[2])) % 78;
-    var cardData0 = tarotDB[getCardKey(cIdx0)];
-    var cardData1 = tarotDB[getCardKey(cIdx1)];
-    var cardData2 = tarotDB[getCardKey(cIdx2)];
-    if (!cardData0 || !cardData1 || !cardData2) return;
-
-    // 카드 3장 렌더링
-    var titles = ['과거의 기운', '현재의 국면', '미래의 향방'];
-    var html = '';
-    var cardList = [
-        { idx: cIdx0, data: cardData0 },
-        { idx: cIdx1, data: cardData1 },
-        { idx: cIdx2, data: cardData2 }
-    ];
-    for (var i = 0; i < cardList.length; i++) {
-        var idx = cardList[i].idx;
-        var data = cardList[i].data;
-        var adviceText = data.advice[targetKey] || data.advice['운세_총평'] || '신탁 데이터 분석 중...';
-        var powerLevel = Math.floor((idx / 77) * 100);
-        var gaugeBar = '●'.repeat(Math.floor(powerLevel / 10)) + '○'.repeat(10 - Math.floor(powerLevel / 10));
-        html += '<div class="result-row reveal-item" style="display:flex;align-items:flex-start;gap:20px;width:100%;margin-bottom:25px;border-left:4px solid var(--gold);padding:15px;background:rgba(15,15,15,0.85);border-radius:0 8px 8px 0;">'
-            + '<img src="' + getCardImage(idx) + '" style="width:100px;height:165px;border:2.5px solid var(--gold);box-shadow:0 0 10px var(--gold);border-radius:6px;">'
-            + '<div style="text-align:left;flex:1;">'
-            + '<div style="color:var(--gold);font-size:1.15rem;font-weight:900;">' + titles[i] + ' : ' + data.name + '</div>'
-            + '<div style="color:#fff;font-size:1rem;line-height:1.7;margin-top:10px;">' + adviceText + '</div>'
-            + '<div style="font-size:0.85rem;color:#FFD700;margin-top:12px;border-top:1px dashed rgba(212,175,55,0.3);padding-top:8px;">'
-            + '기운의 밀도 [' + gaugeBar + '] ' + powerLevel + '% <span style="margin-left:10px; opacity:0.6;">(수비학 ' + numerology(idx % 22) + '번)</span>'
-            + '</div></div></div>';
-    }
-    container.innerHTML = html;
-
-    // 타로·수비학 설명 박스
-    var infoBox = document.createElement('div');
-    infoBox.className = 'info-scroll-box reveal-item';
-    infoBox.style.marginBottom = '18px';
-    infoBox.innerHTML =
-        '<div class="info-panel">'
-        + '<div class="info-panel-title"><span class="info-panel-icon">🃏</span> 타로란?</div>'
-        + '<div class="info-panel-text">78장의 카드로 <b>과거·현재·미래</b>의 에너지 흐름을 읽는 고대 지혜의 도구. 메이저 아르카나 22장이 삶의 큰 흐름을 담습니다.</div>'
-        + '</div>'
-        + '<div class="info-panel">'
-        + '<div class="info-panel-title"><span class="info-panel-icon">🔢</span> 수비학이란?</div>'
-        + '<div class="info-panel-text"><b>숫자 1~9</b>에 각각의 우주적 의미가 담겨 있습니다. 카드 번호를 한 자리로 환원해 그 날의 에너지 성질을 파악합니다.</div>'
-        + '</div>';
-    var resultsContainer = document.getElementById('cards-result');
-    if (resultsContainer && resultsContainer.parentNode) {
-        resultsContainer.parentNode.insertBefore(infoBox, resultsContainer);
-    }
-
-    // 신탁 조언 영역
-    if (adviceArea) {
-        adviceArea.classList.add('reveal-item');
-
-        var adv0 = (cardData0.advice[targetKey] || cardData0.advice['운세_총평'] || '').split('. ');
-        var adv1 = (cardData1.advice[targetKey] || cardData1.advice['운세_총평'] || '').split('. ');
-        var adv2 = (cardData2.advice[targetKey] || cardData2.advice['운세_총평'] || '').split('. ');
-
-        function pickSentence(arr) {
-            var valid = arr.filter(function(s){ return s.trim().length > 10; });
-            return valid[Math.floor(Math.random() * valid.length)] || arr[0] || '';
-        }
-        var sent0 = pickSentence(adv0);
-        var sent1 = pickSentence(adv1);
-        var sent2 = pickSentence(adv2);
-
-        var bridgeA = ['과거의 기운이 말합니다. ', '지나온 흐름을 보면, ', '이미 형성된 에너지는 이렇습니다. ', '지금까지의 기류를 보면, '];
-        var bridgeB = ['현재의 국면에서는 ', '지금 이 순간의 핵심은 ', '현재의 기운이 가리키는 것은 ', '오늘의 흐름에서 중요한 것은 '];
-        var bridgeC = ['앞으로의 향방은 이러합니다. ', '미래의 기운은 이 방향입니다. ', '다가올 흐름을 대비하십시오. ', '운명이 향하는 곳은 분명합니다. '];
-        var bridgeEnd = [
-            '세 기운의 흐름을 종합하면, <strong>' + config.t.replace(/◈/g,'').trim() + '</strong>에서 결단의 순간이 다가오고 있습니다.',
-            '<strong>' + config.t.replace(/◈/g,'').trim() + '</strong>의 흐름은 지금 전환점에 서 있습니다. 흔들리지 마십시오.',
-            '이 세 카드가 하나의 목소리로 말합니다. 지금이 바로 행동해야 할 변곡점입니다.',
-            '우주는 당신의 질문에 명확히 응답하고 있습니다. 직관을 믿고 나아가십시오.'
-        ];
-        function pickRand(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
-
-        var finalOracleMsg =
-            pickRand(bridgeA) + sent0 + ' '
-            + pickRand(bridgeB) + sent1 + ' '
-            + pickRand(bridgeC) + sent2 + ' '
-            + pickRand(bridgeEnd);
-
-        adviceArea.innerHTML =
-            '<div style="margin-top:25px; border:2px solid #D4AF37; padding:18px; background:rgba(10,10,10,0.95); border-radius:15px; box-shadow:0 0 20px rgba(212,175,55,0.2);">'
-            + '<div style="color:#D4AF37; font-weight:900; font-size:1.15rem; margin-bottom:15px; text-align:center; letter-spacing:2px;">◈ 제니스 운명 신탁 ◈</div>'
-            + '<div style="font-size:0.95rem; color:#fff; line-height:1.7; text-align:center;">'
-            + '<div style="margin-bottom:15px; font-style:italic; color:#ccc; background:rgba(255,255,255,0.05); padding:8px; border-radius:5px;">"' + (selectedMento || '황금은 불 속에서 단련된다') + '"</div>'
-            + '<div style="background:rgba(212,175,55,0.05); padding:15px; border-radius:10px; border:1px solid rgba(212,175,55,0.2); margin-bottom:15px; text-align:left;">'
-            + '<span style="color:#00FFCC; font-weight:bold; font-size:1rem;">⚡ ' + (config.unit || '운명 발복') + '을 위한 실전 비책</span><br>'
-            + '<ul style="list-style:none; padding-left:0; margin-top:10px; color:#eee; font-size:0.9rem;">'
-            + '<li style="margin-bottom:8px;">• <b style="color:#D4AF37;">추천 날짜:</b> 이번 달 ' + ((cIdx1 % 20) + 1) + '일 또는 ' + (((cIdx1 % 20) + 11) > 31 ? (cIdx1 % 20) : ((cIdx1 % 20) + 11)) + '일</li>'
-            + '<li>• <b style="color:#D4AF37;">추천 시간:</b> 오전 ' + ((cIdx0 % 5) + 7) + '시 혹은 오후 ' + ((cIdx2 % 5) + 14) + '시</li>'
-            + '</ul></div>'
-            + '<div style="color:#fff; line-height:1.7; text-align:justify; font-size:0.95rem; padding:0 2px;">'
-            + '<p style="border-left:3px solid #00FFCC; padding-left:12px; word-break:keep-all; margin:0; line-height:1.9;">' + finalOracleMsg + '</p>'
-            + '</div>'
-            + '</div></div>';
-    }
-
-    // ★ [제니스 AI 실시간 신탁] 자동 호출
-    var oracleBox = document.getElementById('zenith-oracle-box');
-    if (oracleBox) {
-        oracleBox.style.display = 'block';
-        oracleBox.classList.add('reveal-item');
-        // 카드 인덱스 배열 그대로 전달
-        startZenithOracle(cards);
-    }
-
-} // renderVerticalResult 닫기
-
-// ★ 멘토 문구 풀
-var mentoPool = [
-    "운명은 준비된 자에게 기회를 허락한다.",
-    "두려움을 넘어선 곳에 진정한 운명이 기다린다.",
-    "별은 폭풍 속에서도 빛을 잃지 않는다.",
-    "흐르는 강물은 막을 수 없고, 운명 또한 멈추지 않는다.",
-    "씨앗을 심지 않는 자에게 수확은 없다.",
-    "어둠이 깊을수록 새벽은 가깝다.",
-    "지금 이 순간이 당신의 가장 큰 자산이다.",
-    "의심은 기회를 죽이고, 확신은 기적을 낳는다.",
-    "우주는 망설이는 자보다 행동하는 자를 택한다.",
-    "잃어버린 것에 집착하지 말라. 더 큰 것이 온다.",
-    "고통은 변화의 전령이다. 저항하지 말라.",
-    "천천히 가는 자가 멀리 간다.",
-    "당신의 직관은 이미 답을 알고 있다.",
-    "불꽃은 바람에 꺼지지 않는다. 오히려 더 크게 타오른다.",
-    "운명은 당신의 믿음만큼 선명해진다.",
-    "모든 끝은 새로운 시작의 씨앗을 품고 있다.",
-    "침묵 속에 우주의 신탁이 흐른다. 귀를 기울여라.",
-    "뿌리가 깊은 나무는 폭풍에도 흔들리지 않는다.",
-    "지금의 혼돈은 내일의 질서를 위한 것이다.",
-    "진실은 언제나 표면 아래에서 기다린다.",
-    "황금은 불 속에서 단련된다.",
-    "작은 용기가 거대한 운명을 바꾼다.",
-    "집착을 내려놓는 순간, 진짜 운명이 찾아온다.",
-    "당신은 이미 필요한 모든 것을 갖고 있다.",
-    "물은 낮은 곳을 흐르지만 결국 바다에 이른다.",
-    "기회는 준비된 마음 앞에 모습을 드러낸다.",
-    "달이 차면 기울고, 기울면 다시 찬다.",
-    "한 발의 용기가 천 리의 길을 열어준다.",
-    "에너지는 집중하는 곳으로 흐른다.",
-    "과거는 스승이고, 미래는 선물이며, 현재는 기회다."
-];
-var selectedMento = mentoPool[Math.floor(Math.random() * mentoPool.length)];
-
-// ★ 홈 카드 초기화
+// ═══════════════════════════════════════════════
+//  홈 프리뷰 & 파티클
+// ═══════════════════════════════════════════════
+var homeInterval;
 window.onload = function() {
     var update = function() {
-        [1, 2, 3].forEach(function(i) {
+        [1,2,3].forEach(function(i) {
             var img = document.getElementById('home-c' + i);
             if (img) img.src = getCardImage(Math.floor(Math.random() * 78));
         });
     };
     update();
-    homePreviewInterval = setInterval(update, 2000);
-    var sIn = document.getElementById('seed-input');
-    if (sIn) sIn.addEventListener('input', function() { togglePlaceholder(this); });
+    homeInterval = setInterval(update, 2000);
+    setInterval(githubSparkle, 80);
 };
 
+function githubSparkle() {
+    var hand = document.getElementById('master-hand');
+    var hv = document.getElementById('home-view');
+    if (!hand || (hv && hv.style.display === 'none')) return;
+    var rect = hand.getBoundingClientRect();
+    var colors = ['#FFD700','#FFF5C3','#D4AF37'];
+    for (var i = 0; i < 5; i++) {
+        var p = document.createElement('div');
+        p.className = 'particle';
+        p.style.left = (rect.left + Math.random()*rect.width) + 'px';
+        p.style.top  = (rect.top  + Math.random()*rect.height*0.3) + 'px';
+        p.style.background = colors[Math.floor(Math.random()*colors.length)];
+        p.style.boxShadow = '0 0 6px ' + p.style.background;
+        document.body.appendChild(p);
+        var angle = Math.PI + Math.random()*Math.PI;
+        var spd = 30 + Math.random()*50;
+        p.animate([
+            {opacity:1, transform:'scale(1.5) translate(0,0)'},
+            {opacity:0, transform:'scale(0) translate('+Math.cos(angle)*spd+'px,'+Math.sin(angle)*spd+'px)'}
+        ], {duration:800+Math.random()*500, easing:'ease-out'}).onfinish = function(){ this.effect.target.remove(); };
+    }
+}
+
+function createGoldDust(rect) {
+    var colors = ['#FFD700','#FFF5C3','#FF9ECD','#80CFFF','#AAFF80','#FFB347'];
+    for (var i = 0; i < 70; i++) {
+        var p = document.createElement('div');
+        document.body.appendChild(p);
+        var angle = Math.atan2(-900,-600) + (Math.random()-0.5)*Math.PI*0.9;
+        var spd = 60 + Math.random()*160;
+        var color = colors[Math.floor(Math.random()*colors.length)];
+        p.style.cssText = 'position:fixed;pointer-events:none;z-index:9999;border-radius:50%;width:3px;height:3px;background:'+color+';left:'+(rect.left+Math.random()*rect.width)+'px;top:'+(rect.top+Math.random()*rect.height)+'px;';
+        p.animate([
+            {opacity:1, transform:'translate(0,0) scale(2.5)', boxShadow:'0 0 6px '+color},
+            {opacity:0, transform:'translate('+Math.cos(angle)*spd+'px,'+Math.sin(angle)*spd+'px) scale(0)'}
+        ], {duration:800+Math.random()*600, delay:Math.random()*300, easing:'ease-out', fill:'forwards'})
+        .onfinish = function(){ this.effect.target.remove(); };
+    }
+}
+
+// ═══════════════════════════════════════════════
+//  메인 진입
+// ═══════════════════════════════════════════════
 function revealTheTrinity() {
-    var seedInput = document.getElementById('seed-input');
-    var seed = seedInput ? seedInput.value.trim() : '';
+    var seed = document.getElementById('seed-input').value.trim();
     if (!seed) return;
+    if (homeInterval) clearInterval(homeInterval);
 
-    if (homePreviewInterval) clearInterval(homePreviewInterval);
+    var deck = Array.from({length:78}, function(_,i){ return i; })
+        .sort(function(){ return Math.random()-0.5; }).slice(0,3);
 
-    var deck = Array.from({ length: 78 }, function(_, i) { return i; })
-        .sort(function() { return Math.random() - 0.5; })
-        .slice(0, 3);
-
-    var slots = [
-        document.getElementById('home-c1'),
-        document.getElementById('home-c2'),
-        document.getElementById('home-c3')
-    ];
-
-    slots.forEach(function(slot, i) {
-        if (slot) {
-            setTimeout(function() {
-                var rect = slot.getBoundingClientRect();
-                createGoldDust(rect);
-                slot.classList.add('fly-out');
-            }, i * 300);
-        }
+    [1,2,3].forEach(function(n, i) {
+        var img = document.getElementById('home-c' + n);
+        if (!img) return;
+        setTimeout(function() {
+            createGoldDust(img.getBoundingClientRect());
+            img.classList.add('fly-out');
+        }, i * 300);
     });
 
     setTimeout(function() {
         document.getElementById('home-view').style.display = 'none';
-        renderVerticalResult(deck, seed);
+        showResult(deck, seed);
     }, 1800);
+}
+
+// ═══════════════════════════════════════════════
+//  결과 뷰 표시
+// ═══════════════════════════════════════════════
+function showResult(deck, question) {
+    if (navigator.vibrate) navigator.vibrate(50);
+
+    // 카드 3장 썸네일
+    var tilts = ['tilt-left','tilt-center','tilt-right'];
+    var row = document.getElementById('result-cards-row');
+    row.innerHTML = deck.map(function(idx, i) {
+        return '<img class="result-card-thumb '+tilts[i]+'" src="'+getCardImage(idx)+'" alt="'+CARD_NAMES[idx]+'">';
+    }).join('');
+
+    // 카테고리 레이블
+    document.getElementById('category-text').textContent = detectCategory(question);
+
+    // 결과창 표시
+    var rv = document.getElementById('result-view');
+    rv.style.display = 'flex';
+
+    // 최상단으로 스크롤
+    window.scrollTo({top: 0, behavior: 'smooth'});
+
+    // AI 호출
+    callGemini(deck, question);
+}
+
+// ═══════════════════════════════════════════════
+//  Gemini API 호출
+// ═══════════════════════════════════════════════
+function callGemini(deck, question) {
+    var box = document.getElementById('ai-result-box');
+    var cardList = deck.map(function(i){ return CARD_NAMES[i]; }).join(', ');
+
+    var prompt = "당신은 주식·부동산·타로·명리학에 정통한 'AI 리얼타임 오라클 제니스'입니다.\n"
+        + "아래 규칙을 반드시 지켜 답변하세요:\n\n"
+        + "1. 질문 카테고리(주식/코인/부동산/연애/취업/건강/운세)를 파악해 전문가 말투로 답하세요.\n"
+        + "2. 주식/코인 질문이면 2026년 현재 실제 시장 상황, 수급 흐름을 카드 상징에 결합하세요.\n"
+        + "3. 반드시 다음 4개 섹션 형식을 사용하세요:\n\n"
+        + "### [과거의 기운] — {카드명}\n"
+        + "과거 에너지 해석 2~3문장\n\n"
+        + "### [현재의 국면] — {카드명}\n"
+        + "현재 상황 분석 2~3문장\n\n"
+        + "### [미래의 향방] — {카드명}\n"
+        + "미래 전망 및 전략 2~3문장\n\n"
+        + "### [제니스 신탁]\n"
+        + "세 카드를 종합한 핵심 결론. 주식이면 구체적 매매 전략, 종목 키워드, 시점 명시. 소름 돋는 통찰 3~4문장.\n\n"
+        + "질문: " + question + "\n"
+        + "선택된 타로 카드: " + cardList + "\n\n"
+        + "위 정보로 소름 돋는 전문가 신탁을 제공하세요.";
+
+    fetch(API_URL, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+            contents: [{parts: [{text: prompt}]}],
+            generationConfig: {temperature: 0.85, maxOutputTokens: 1200}
+        })
+    })
+    .then(function(res) { return res.json().then(function(d){ return {ok:res.ok, data:d}; }); })
+    .then(function(r) {
+        if (!r.ok) throw new Error((r.data.error && r.data.error.message) || 'HTTP 오류');
+        var parts = (r.data.candidates && r.data.candidates[0] &&
+                     r.data.candidates[0].content && r.data.candidates[0].content.parts) || [];
+        var raw = parts.filter(function(p){ return typeof p.text === 'string'; })
+                       .map(function(p){ return p.text; }).join('');
+        if (!raw) throw new Error('AI 응답이 비어 있습니다.');
+        typewriterRender(box, raw);
+    })
+    .catch(function(e) {
+        box.innerHTML = '<div style="color:#ff6b6b;padding:16px;border:1px solid #ff6b6b;border-radius:8px;line-height:1.9;">'
+            + '⚠️ 운명의 연결이 원활하지 않습니다.<br>'
+            + '<small style="opacity:0.7;">' + e.message + '</small><br><br>'
+            + '<small>💡 브라우저 콘솔(F12)에서 상세 에러를 확인하세요.</small></div>';
+        console.error('[ZenithAI]', e);
+    });
+}
+
+// ═══════════════════════════════════════════════
+//  타이핑 렌더러 + 실시간 스크롤
+// ═══════════════════════════════════════════════
+function typewriterRender(box, rawText) {
+    // 마크다운 파싱 → 청크 배열로 변환
+    // 섹션 헤더(###)와 일반 텍스트를 분리
+    var lines = rawText.split('\n');
+    var chunks = []; // {type:'header'|'text', content:string}
+
+    lines.forEach(function(line) {
+        if (/^###\s+/.test(line)) {
+            chunks.push({type:'header', content: line.replace(/^###\s+/, '')});
+        } else if (line.trim() === '') {
+            chunks.push({type:'br', content:''});
+        } else {
+            // 인라인 bold 처리
+            chunks.push({type:'text', content: line});
+        }
+    });
+
+    box.innerHTML = '';
+    var cursor = document.createElement('span');
+    cursor.className = 'ai-cursor';
+    box.appendChild(cursor);
+
+    var ci = 0; // chunk index
+
+    // 스크롤 추적: 커서가 화면 하단 70% 아래로 내려가면 따라감
+    var scrollTracker = setInterval(function() {
+        var rect = cursor.getBoundingClientRect();
+        if (rect.top > window.innerHeight * 0.70) {
+            window.scrollBy({top: 80, behavior: 'smooth'});
+        }
+    }, 200);
+
+    function nextChunk() {
+        if (ci >= chunks.length) {
+            cursor.remove();
+            clearInterval(scrollTracker);
+            return;
+        }
+        var chunk = chunks[ci++];
+
+        if (chunk.type === 'br') {
+            box.insertBefore(document.createElement('br'), cursor);
+            setTimeout(nextChunk, 30);
+            return;
+        }
+
+        if (chunk.type === 'header') {
+            var h = document.createElement('div');
+            h.className = 'section-header';
+            box.insertBefore(h, cursor);
+            typeChars(h, chunk.content, false, function(){ setTimeout(nextChunk, 60); });
+            return;
+        }
+
+        // 일반 텍스트 (inline bold 포함)
+        var span = document.createElement('span');
+        span.style.display = 'block';
+        span.style.marginBottom = '4px';
+        box.insertBefore(span, cursor);
+        typeChars(span, chunk.content, true, function(){ setTimeout(nextChunk, 20); });
+    }
+
+    // 글자 단위 타이핑 (bold 처리 포함)
+    function typeChars(el, text, processBold, done) {
+        if (!processBold) {
+            // 헤더 등 단순 타이핑
+            var i = 0;
+            function tick() {
+                if (i <= text.length) {
+                    el.textContent = text.slice(0, i++);
+                    setTimeout(tick, 14);
+                } else { done(); }
+            }
+            tick();
+        } else {
+            // **bold** 파싱 후 타이핑
+            var tokens = parseBold(text);
+            var ti = 0, ci2 = 0;
+            var currentNode = null;
+
+            function pickNode() {
+                if (ti >= tokens.length) { done(); return; }
+                var tok = tokens[ti++];
+                if (tok.bold) {
+                    currentNode = document.createElement('strong');
+                    currentNode.style.color = '#FFD700';
+                    el.appendChild(currentNode);
+                } else {
+                    currentNode = document.createTextNode('');
+                    el.appendChild(currentNode);
+                }
+                ci2 = 0;
+                typeToken();
+            }
+
+            function typeToken() {
+                var tok = tokens[ti - 1];
+                if (ci2 <= tok.text.length) {
+                    if (tok.bold) currentNode.textContent = tok.text.slice(0, ci2);
+                    else currentNode.textContent = tok.text.slice(0, ci2);
+                    ci2++;
+                    setTimeout(typeToken, 12);
+                } else { pickNode(); }
+            }
+            pickNode();
+        }
+    }
+
+    function parseBold(text) {
+        var result = [];
+        var re = /\*\*(.+?)\*\*/g;
+        var last = 0, m;
+        while ((m = re.exec(text)) !== null) {
+            if (m.index > last) result.push({bold:false, text: text.slice(last, m.index)});
+            result.push({bold:true, text: m[1]});
+            last = m.index + m[0].length;
+        }
+        if (last < text.length) result.push({bold:false, text: text.slice(last)});
+        return result.length ? result : [{bold:false, text:text}];
+    }
+
+    nextChunk();
 }
 </script>
 </body>
