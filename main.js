@@ -32,26 +32,33 @@ export const startZenithOracle = async (cardIDs) => {
 `;
 
     try {
-        // AI에게 질문과 지침을 보냅니다.
+        // 1. AI에게 질문과 지침을 보냅니다.
         const aiResult = await callZenithAI(promptMessage);
 
-        // 🔍 핵심 수정: 기존의 틀을 깨고 AI의 '전문 답변' 전문을 화면에 뿌립니다.
+        // 2. [중요] 기존의 딱딱한 '과거/현재/미래' 틀을 완전히 지우고 
+        // AI가 직접 작성한 전문 리포트(aiResult)만 화면에 뿌립니다.
         oracleBox.innerHTML = `
-            <div class="zenith-special-report" style="text-align: left; padding: 20px; background: rgba(0,0,0,0.5); border-radius: 10px;">
-                <h3 style="color: gold; border-bottom: 1px solid gold; padding-bottom: 10px;">◈ 제니스의 실전 투자 리포트 ◈</h3>
-                <div style="white-space: pre-wrap; line-height: 1.8; color: #eee; font-size: 1.1rem;">
-                    ${aiResult}
+            <div class="zenith-special-report" style="text-align: left; padding: 20px; background: rgba(0,0,0,0.8); border: 2px solid gold; border-radius: 15px; color: white;">
+                <h2 style="color: gold; text-align: center; border-bottom: 2px solid gold; padding-bottom: 15px; margin-bottom: 20px;">
+                    ✨ 제니스의 실전 투자 신탁 ✨
+                </h2>
+                
+                <div style="white-space: pre-wrap; line-height: 1.8; font-size: 1.1rem; letter-spacing: 0.5px;">
+${aiResult}
                 </div>
-                <div style="margin-top: 20px; text-align: center; color: gold; font-weight: bold;">
-                    ※ 이 분석은 AI의 기술적 통찰이며 투자 판단의 참고용입니다.
+
+                <div style="margin-top: 30px; padding-top: 15px; border-top: 1px dashed gold; text-align: center; font-size: 0.9rem; color: #aaa;">
+                    ※ 본 분석은 AI의 기술적 통찰이며 최종 투자 판단은 본인에게 있습니다.
                 </div>
             </div>
         `;
         
+        // 결과 위치로 부드럽게 스크롤
         oracleBox.scrollIntoView({ behavior: 'smooth' });
 
     } catch (error) {
-        // 에러 처리
+        console.error("AI 호출 중 오류 발생:", error);
+        oracleBox.innerHTML = "<div style='color:red;'>운명의 신탁을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.</div>";
     }
 
 // 3. [AI 통신 함수] - 지시 사항이 잘 전달되도록 구조화
