@@ -3,7 +3,10 @@ name: Deploy with Secrets
 on:
   push:
     branches:
-      - main
+      - main  # 파트너님의 브랜치가 main이므로 맞습니다.
+
+permissions:
+  contents: write
 
 jobs:
   build-and-deploy:
@@ -14,7 +17,8 @@ jobs:
 
       - name: Replace API Key
         run: |
-          sed -i 's/REPLACE_ME_WITH_API_KEY/${{ AIzaSyA1l1pt2Cr6vl-c6dkdaAfp_SblSyfCVC0 }}/g' index.html
+          # index.html 안의 문구를 금고(Secret)의 진짜 키로 바꿉니다.
+          sed -i 's/REPLACE_ME_WITH_API_KEY/${{ secrets.GEMINI_API_KEY }}/g' index.html
 
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v3
