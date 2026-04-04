@@ -17,7 +17,7 @@ jobs:
 
       - name: Replace API Key
         run: |
-          # index.html 안의 문구를 금고(Secret)의 진짜 키로 바꿉니다.
+          # index.html 파일에서 API_KEY 변수 뒤의 따옴표 안의 내용을 Secret 키로 강제 교체합니다.
           sed -i 's/REPLACE_ME_WITH_API_KEY/${{ secrets.GEMINI_API_KEY }}/g' index.html
 
       - name: Deploy to GitHub Pages
