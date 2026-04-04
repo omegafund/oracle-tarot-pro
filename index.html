@@ -308,98 +308,132 @@
 <script src="tarotData.js"></script>
 <script>
 // ──────────────────────────────────────────────
-// [제니스 AI 엔진] - main.js 통합 인라인 버전
+// [제니스 AI 엔진] - 2026 실시간 통합 교정본
 // ──────────────────────────────────────────────
 const API_KEY = "AIzaSyA1l1pt2Cr6vl-c6dkdaAfp_SblSyfCVC0";
 
 async function callZenithAI(promptMessage) {
-    const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${API_KEY}`;
+    // [교정 1] 모델명을 최신 인식 규격인 -latest로 변경
+    const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${API_KEY}`;
 
     async function doFetch(useSearch) {
         const body = {
             contents: [{ parts: [{ text: promptMessage }] }],
-            generationConfig: { temperature: 0.7, maxOutputTokens: 2048 }
+            generationConfig: { 
+                temperature: 0.7, 
+                maxOutputTokens: 2048,
+                topP: 0.8,
+                topK: 40
+            }
         };
+
+        // [교정 2] 구형 googleSearchRetrieval 대신 최신 google_search 규격 적용
         if (useSearch) {
-            // Gemini 1.5 Flash 공식 grounding 도구명
-            body.tools = [{ googleSearchRetrieval: { dynamicRetrievalConfig: { mode: "MODE_DYNAMIC", dynamicThreshold: 0.3 } } }];
+            body.tools = [{ google_search: {} }];
         }
+
         const res = await fetch(API_URL, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(body)
         });
+
         const data = await res.json();
-        console.log('[ZenithAI] 응답:', JSON.stringify(data).slice(0, 600));
-        if (!res.ok) throw new Error((data.error && data.error.message) || ('HTTP ' + res.status));
-        if (!data.candidates || data.candidates.length === 0) throw new Error('candidates 없음');
-        const parts = (data.candidates[0].content && data.candidates[0].content.parts) || [];
-        return parts.filter(function(p){ return typeof p.text === 'string'; }).map(function(p){ return p.text; }).join('');
+        
+        if (!res.ok) {
+            throw new Error(data.error?.message || `HTTP ${res.status}`);
+        }
+
+        if (!data.candidates?.[0]?.content?.parts) {
+            throw new Error('응답 데이터 구조가 올바르지 않습니다.');
+        }
+
+        // 텍스트 파트만 합쳐서 반환
+        return data.candidates[0].content.parts
+            .filter(p => typeof p.text === 'string')
+            .map(p => p.text)
+            .join('');
     }
 
-    // 1차: 검색(grounding) 포함 시도
-    let result = '';
-    try { result = await doFetch(true); } catch(e) {
-        console.warn('[ZenithAI] grounding 실패, fallback:', e.message);
+    try {
+        // 1차: 실시간 검색(Grounding) 시도
+        return await doFetch(true);
+    } catch(e) {
+        console.warn('[ZenithAI] 실시간 검색 실패, 일반 모드 전환:', e.message);
+        // 2차: 검색 없이 재시도 (API 키 안정성 확보)
+        try {
+            return await doFetch(false);
+        } catch(e2) {
+            return '신탁 연결에 실패했습니다: ' + e2.message;
+        }
     }
-    // 2차: 검색 없이 재시도
-    if (!result) { result = await doFetch(false); }
-    return result || '신탁 데이터를 불러오지 못했습니다.';
 }
 
 async function startZenithOracle(cardIDs) {
     const userQuestion = document.getElementById('seed-input')?.value || "오늘의 운세";
-    const oracleBox   = document.getElementById('zenith-oracle-text');
+    const oracleBox = document.getElementById('zenith-oracle-text');
     if (!oracleBox) return;
 
-    oracleBox.innerHTML = `<div style="color:gold;border:1px solid gold;padding:12px;border-radius:8px;text-align:center;">✨ 제니스가 운명의 결론을 도출 중입니다...</div>`;
+    // 로딩 화면 표시
+    oracleBox.innerHTML = `
+        <div style="color:var(--gold); border:1px solid var(--gold); padding:20px; border-radius:12px; text-align:center; background:rgba(0,0,0,0.3);">
+            <div class="spinner" style="margin-bottom:10px;">✨</div>
+            제니스가 2026년 실시간 시장 데이터를 분석 중입니다...
+        </div>`;
 
-    // tarotDB는 tarotData.js에서 전역 선언됨
-    const cardNames = cardIDs
-        .map(id => {
-            const key = (function(idx) {
-                idx = Math.abs(parseInt(idx)) % 78;
-                if (idx < 22) return 'M' + String(idx).padStart(2,'0');
-                if (idx < 36) return 'W' + String(idx-21).padStart(2,'0');
-                if (idx < 50) return 'C' + String(idx-35).padStart(2,'0');
-                if (idx < 64) return 'S' + String(idx-49).padStart(2,'0');
-                return 'P' + String(idx-63).padStart(2,'0');
-            })(id);
-            return (typeof tarotDB !== 'undefined' && tarotDB[key]) ? tarotDB[key].name : key;
-        })
-        .join(', ');
+    // 카드 이름 변환 로직 (tarotDB 연동)
+    const cardNames = cardIDs.map(id => {
+        const key = (function(idx) {
+            idx = Math.abs(parseInt(idx)) % 78;
+            if (idx < 22) return 'M' + String(idx).padStart(2,'0');
+            if (idx < 36) return 'W' + String(idx-21).padStart(2,'0');
+            if (idx < 50) return 'C' + String(idx-35).padStart(2,'0');
+            if (idx < 64) return 'S' + String(idx-49).padStart(2,'0');
+            return 'P' + String(idx-63).padStart(2,'0');
+        })(id);
+        return (typeof tarotDB !== 'undefined' && tarotDB[key]) ? tarotDB[key].name : key;
+    }).join(', ');
 
+    // [교정 3] 프롬프트를 하나로 통합하여 가독성 증대
     const promptMessage = `
-[SYSTEM INSTRUCTION]
-너는 주식·부동산 투자, 명리학, 타로, 심리학에 정통한 'AI 리얼타임 오라클'이다.
-반드시 아래 규칙을 지켜서 답변하라:
-1. 사용자의 질문 카테고리를 판단하여 해당 분야 전문가의 말투를 사용하라.
-2. 주식/부동산: 현재 2026년의 시장 상황(예: 삼성전자 HBM 실적, 티엘비 DDR5 고부가 기판 층수 증가 등)을 카드의 상징과 결합하라.
-3. 단순 운세 풀이가 아니라, 구체적인 산업 키워드를 포함한 '투자 전략'을 제시하라.
-4. 답변 형식을 [과거], [현재], [미래], [제니스 신탁] 순서로 유지하되, [제니스 신탁] 창에는 현재 시점의 가장 최신 정보를 검색하고 선택된 타로 카드의 상징을 결합하여 소름 돋는 통찰을 제공하라.
-
-[USER INPUT]
-질문: ${userQuestion}
-선택된 카드: ${cardNames}
-
-위 정보를 바탕으로 소름 돋는 통찰을 제공하라.
+[SYSTEM] 당신은 'AI 리얼타임 오라클 제니스'입니다. 
+1. Google Search를 사용하여 2026년 4월의 삼성전자, HBM, DDR5 등 최신 산업 현황을 반드시 반영하십시오.
+2. 질문: ${userQuestion} / 카드: ${cardNames}
+3. 답변은 [과거], [현재], [미래], [제니스 투자 비책] 순서로 구성하십시오.
+4. 전문 투자자이면서 통찰력 있는 예언가적 말투를 유지하십시오.
 `;
 
     try {
         const aiResult = await callZenithAI(promptMessage);
-        // 줄바꿈 → <br> 변환
+
+        // [교정 4] 쪼개진 창 없이 하나의 디자인 박스에 통합 출력
         const formatted = aiResult
             .replace(/\*\*(.*?)\*\*/g, '<strong style="color:#FFD700;">$1</strong>')
             .replace(/\n/g, '<br>');
-        oracleBox.innerHTML = `
-            <div style="text-align:left;color:white;line-height:1.9;padding:4px 0;">
-                <h2 style="color:gold;text-align:center;letter-spacing:2px;margin-bottom:16px;">✨ 제니스의 실전 투자 리포트</h2>
-                <hr style="border:1px solid gold;margin-bottom:16px;">
-                <div>${formatted}</div>
+
+        const finalTemplate = `
+            <div style="text-align:left; color:#fff; line-height:1.9; padding:10px;">
+                <h2 style="color:var(--gold); text-align:center; letter-spacing:3px; margin-bottom:20px;">◈ 제니스 통합 운명 신탁 ◈</h2>
+                <p style="text-align:center; font-style:italic; color:var(--gold); opacity:0.8; margin-bottom:25px;">"변화의 파도 위에서 기회를 낚으소서."</p>
+                <hr style="border:0.5px solid var(--gold); opacity:0.5; margin-bottom:20px;">
+                <div style="word-break:keep-all;">${formatted}</div>
             </div>`;
+
+        oracleBox.innerHTML = ''; // 로딩 제거
+        
+        // 타이핑 효과가 있다면 적용, 없다면 즉시 출력
+        if (typeof typewriter === 'function') {
+            typewriter(oracleBox, finalTemplate);
+        } else {
+            oracleBox.innerHTML = finalTemplate;
+        }
+
     } catch (error) {
-        console.error(error);
-        oracleBox.innerHTML = `<div style="color:#ff6b6b;padding:12px;border:1px solid #ff6b6b;border-radius:8px;">⚠️ 운명의 연결이 원활하지 않습니다.<br><small>${error.message}</small></div>`;
+        oracleBox.innerHTML = `
+            <div style="color:#ff6b6b; padding:15px; border:1px solid #ff6b6b; border-radius:8px; text-align:center;">
+                ⚠️ 운명의 연결이 원활하지 않습니다.<br>
+                <small>${error.message}</small>
+            </div>`;
     }
 }
 </script>
