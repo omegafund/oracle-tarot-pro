@@ -539,12 +539,7 @@ ${cardDesc}
         }
 
         const data = await response.json();
-
-        const parts = data?.candidates?.[0]?.content?.parts || [];
-        const aiText = parts
-            .filter(p => p.text)
-            .map(p => p.text)
-            .join('');
+        const aiText = data?.text || '';
 
         if (!aiText) throw new Error('빈 응답');
 
