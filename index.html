@@ -536,7 +536,7 @@ ${cardDesc}
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 contents: [{ parts: [{ text: prompt }] }],
-                tools: [{ google_search: {} }],
+                // google_search 제거 (404 원인)
                 generationConfig: {
                     temperature: 0.75,
                     maxOutputTokens: 2048
