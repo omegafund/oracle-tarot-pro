@@ -18,524 +18,168 @@
     }
     #app-container {
         max-width: 500px; width: 100%; margin: 0 auto;
-        padding: 60px 25px 80px;
+        padding: 60px 20px 80px; /* 패딩 조정 */
         border-left: 1px solid rgba(212,175,55,0.15);
         border-right: 1px solid rgba(212,175,55,0.15);
         min-height: 100vh;
+        display: flex; flex-direction: column; align-items: center;
     }
 
-    /* 타이틀 */
-    .title-wrapper { display:flex; align-items:center; justify-content:center; gap:8px; }
-    .gold-title { color:var(--gold); font-size:2.3rem; font-weight:900; margin:0; letter-spacing:0.3em; text-shadow:0 0 15px rgba(212,175,55,0.6); }
-    .title-sparkle { font-size:1.6rem; animation:sparklePop 1.8s infinite ease-in-out; filter:drop-shadow(0 0 8px #FFD700); }
-    .title-sparkle.delayed { animation-delay:0.9s; }
-    @keyframes sparklePop {
-        0%   { opacity:0.2; transform:scale(0.7) rotate(-15deg); }
-        30%  { opacity:1;   transform:scale(1.3) rotate(10deg); filter:drop-shadow(0 0 14px #FFD700); }
-        60%  { opacity:0.8; transform:scale(1.0) rotate(-5deg); }
-        100% { opacity:0.2; transform:scale(0.7) rotate(-15deg); }
+    /* 타이틀 정렬 수정 */
+    .title-wrapper { 
+        display: flex; align-items: center; justify-content: center; 
+        gap: 15px; width: 100%; margin-bottom: 5px;
     }
-    .sub-title   { color:var(--gold); font-size:0.95rem; letter-spacing:0.5em; margin-bottom:20px; display:block; font-weight:800; }
-    .trust-motto { color:var(--gold); font-size:0.8rem; letter-spacing:0.2em; margin-bottom:40px; font-style:italic; opacity:0.8; }
+    .gold-title { 
+        color: var(--gold); font-size: 2.1rem; font-weight: 900; 
+        margin: 0; letter-spacing: 0.1em; /* 자간 조정으로 중앙 정렬 최적화 */
+        text-shadow: 0 0 15px rgba(212,175,55,0.6);
+        text-align: center;
+    }
+    .title-sparkle { font-size: 1.4rem; animation: sparklePop 1.8s infinite ease-in-out; }
+    
+    .sub-title { color: var(--gold); font-size: 0.9rem; letter-spacing: 0.4em; margin-bottom: 15px; font-weight: 800; text-align: center; }
+    .trust-motto { color: var(--gold); font-size: 0.75rem; letter-spacing: 0.15em; margin-bottom: 40px; font-style: italic; opacity: 0.7; text-align: center; }
 
-    /* 입력창 */
-    .input-system-wrapper { position:relative; width:100%; height:115px; display:flex; align-items:center; justify-content:center; }
-    .beveled-border { position:absolute; inset:0; background:linear-gradient(145deg, var(--bright-gold), var(--gold), var(--dark-gold)); clip-path:polygon(15px 0%,calc(100% - 15px) 0%,100% 15px,100% calc(100% - 15px),calc(100% - 15px) 100%,15px 100%,0% calc(100% - 15px),0% 15px); animation:borderPulse 3s infinite ease-in-out; }
-    .beveled-inner { position:absolute; width:calc(100% - 6px); height:calc(100% - 6px); top:3px; left:3px; background:linear-gradient(135deg,#2D0054,#120022); clip-path:polygon(14px 0%,calc(100% - 14px) 0%,100% 14px,100% calc(100% - 14px),calc(100% - 14px) 100%,14px 100%,0% calc(100% - 14px),0% 14px); z-index:2; }
-    .gold-input { position:relative; z-index:10; background:transparent; border:none; outline:none; color:#fff; font-size:1rem; width:88%; font-weight:bold; text-align:center; resize:none; line-height:1.7; height:70px; }
-    #fake-placeholder { position:absolute; z-index:5; top:50%; left:50%; transform:translate(-50%,-50%); width:100%; pointer-events:none; transition:0.3s; color:rgba(255,255,255,0.4); text-align:center; }
-    @keyframes borderPulse { 0%,100%{opacity:0.7;transform:scale(1);} 50%{opacity:1;transform:scale(1.01);} }
-
-    /* 카드 스테이지 */
-    .cards-stage { display:flex; justify-content:space-between; gap:10px; margin:40px 0; padding:15px 0; min-height:200px; }
-    .card-slot { flex:1; aspect-ratio:2/3; background:#111; border-radius:8px; border:1px solid rgba(212,175,55,0.3); overflow:hidden; }
-    .card-img { width:100%; height:100%; object-fit:cover; border:1.5px solid var(--gold); border-radius:8px; transition:all 0.5s ease; }
-    .tilt-left   { transform:rotate(-8deg) translateY(10px); }
-    .tilt-center { transform:translateY(-5px); }
-    .tilt-right  { transform:rotate(8deg) translateY(10px); }
-
-    /* 버튼 */
-    .reveal-section { margin-top:20px; text-align:center; position:relative; padding:20px 0; }
-    .gold-button { background:linear-gradient(180deg,#FFF5C3 0%,#D4AF37 100%); color:#000; border:none; padding:18px 0; width:100%; border-radius:50px; font-weight:900; cursor:pointer; box-shadow:0 10px 40px rgba(212,175,55,0.4); font-size:1.1rem; transition:transform 0.1s; }
-    .gold-button:active { transform:scale(0.98); }
-    .button-container { position:relative; width:100%; max-width:400px; margin:0 auto; }
-    .spiritual-pointer { position:absolute; bottom:-30px; right:-20px; font-size:1.8rem; z-index:10; transform:rotate(150deg); animation:handMove 1.1s infinite ease-in-out; filter:drop-shadow(0 0 10px var(--gold)); pointer-events:none; }
-    @keyframes handMove { 0%,100%{transform:translateY(0) rotate(150deg);} 50%{transform:translateY(-12px) rotate(150deg);} }
-
-    /* 파티클 */
-    .particle { position:fixed; width:4px; height:4px; background:var(--gold); border-radius:50%; pointer-events:none; z-index:9999; }
-    .fly-out { animation:flyOut 1.2s cubic-bezier(0.4,0,0.2,1) forwards; pointer-events:none; }
-    @keyframes flyOut { 0%{transform:translate(0,0) rotate(0deg) scale(1);opacity:1;} 100%{transform:translate(-600px,-900px) rotate(-720deg) scale(0);filter:brightness(3);opacity:0;} }
+    /* 입력창 및 카드 스테이지 (기존 스타일 유지하되 너비 최적화) */
+    .input-system-wrapper { position: relative; width: 100%; height: 110px; margin-bottom: 20px; }
+    .beveled-border { position: absolute; inset: 0; background: linear-gradient(145deg, var(--bright-gold), var(--gold), var(--dark-gold)); clip-path: polygon(15px 0%,calc(100% - 15px) 0%,100% 15px,100% calc(100% - 15px),calc(100% - 15px) 100%,15px 100%,0% calc(100% - 15px),0% 15px); }
+    .beveled-inner { position: absolute; width: calc(100% - 6px); height: calc(100% - 6px); top: 3px; left: 3px; background: linear-gradient(135deg,#1a0033,#0a001a); clip-path: polygon(14px 0%,calc(100% - 14px) 0%,100% 14px,100% calc(100% - 14px),calc(100% - 14px) 100%,14px 100%,0% calc(100% - 14px),0% 14px); z-index: 2; }
+    .gold-input { position: relative; z-index: 10; background: transparent; border: none; outline: none; color: #fff; font-size: 1rem; width: 100%; padding: 20px; font-weight: bold; text-align: center; resize: none; }
+    
+    .cards-stage { display: flex; justify-content: space-between; gap: 10px; width: 100%; margin: 30px 0; }
+    .card-slot { flex: 1; aspect-ratio: 2/3; background: #111; border-radius: 8px; border: 1px solid rgba(212,175,55,0.3); }
+    .card-img { width: 100%; height: 100%; object-fit: cover; border-radius: 8px; }
 
     /* 결과 뷰 */
-    #result-view { display:none; flex-direction:column; width:100%; }
-
-    /* 카드 썸네일 row */
-    .result-cards-row { display:flex; gap:12px; margin-bottom:24px; }
-    .result-card-thumb { flex:1; aspect-ratio:2/3; border:2px solid var(--gold); border-radius:8px; object-fit:cover; box-shadow:0 0 18px rgba(212,175,55,0.35); }
-
-    /* 카테고리 헤더 */
-    #category-display {
-        position:relative; width:100%; padding:14px 20px; margin-bottom:20px;
-        background:linear-gradient(135deg,rgba(10,5,20,0.95),rgba(28,10,50,0.95),rgba(10,5,20,0.95));
-        border-radius:4px; color:var(--gold); font-size:1.1rem; font-weight:900;
-        letter-spacing:3px; text-align:center;
-        text-shadow:0 0 12px rgba(212,175,55,0.8);
-    }
-    #category-display::before {
-        content:''; position:absolute; inset:0; border-radius:4px; padding:2px;
-        background:linear-gradient(135deg,#FFF5C3,#D4AF37 30%,#8C6212 50%,#D4AF37 70%,#FFF5C3);
-        -webkit-mask:linear-gradient(#fff 0 0) content-box,linear-gradient(#fff 0 0);
-        mask-composite:exclude; -webkit-mask-composite:xor;
-    }
-    .cat-corner { position:absolute; width:14px; height:14px; border-color:#D4AF37; border-style:solid; }
-    .cat-corner.tl{top:-1px;left:-1px;border-width:2px 0 0 2px;border-radius:2px 0 0 0;}
-    .cat-corner.tr{top:-1px;right:-1px;border-width:2px 2px 0 0;border-radius:0 2px 0 0;}
-    .cat-corner.bl{bottom:-1px;left:-1px;border-width:0 0 2px 2px;border-radius:0 0 0 2px;}
-    .cat-corner.br{bottom:-1px;right:-1px;border-width:0 2px 2px 0;border-radius:0 0 2px 0;}
-
-    /* AI 결과 박스 */
+    #result-view { display: none; flex-direction: column; width: 100%; }
+    .result-cards-row { display: flex; gap: 10px; margin-bottom: 20px; }
+    .result-card-thumb { flex: 1; aspect-ratio: 2/3; border: 2px solid var(--gold); border-radius: 6px; object-fit: cover; }
+    
     #ai-result-box {
-        background:rgba(5,2,15,0.97);
-        border:1px solid rgba(212,175,55,0.35);
-        border-radius:12px; padding:22px 20px;
-        font-size:0.93rem; line-height:2; color:#f0f0f0;
-        min-height:100px;
-        box-shadow:0 0 30px rgba(212,175,55,0.12);
+        background: rgba(10, 5, 20, 0.95); border: 1px solid var(--gold);
+        border-radius: 12px; padding: 20px; font-size: 0.95rem; line-height: 1.8;
     }
-
-    /* 섹션 헤더 */
-    #ai-result-box .section-header {
-        color:var(--gold); font-size:1rem; font-weight:900;
-        margin:20px 0 10px; border-left:3px solid #00FFCC;
-        padding-left:10px; letter-spacing:1px;
-    }
-    #ai-result-box .section-header:first-child { margin-top:0; }
-    #ai-result-box strong { color:#FFD700; }
-
-    /* 로딩 */
-    .loading-pulse { display:flex; align-items:center; gap:10px; color:var(--gold); padding:10px 0; }
-    .pulse-dot { width:8px; height:8px; border-radius:50%; background:var(--gold); animation:pulseDot 1.2s infinite ease-in-out; }
-    .pulse-dot:nth-child(2){animation-delay:0.2s;}
-    .pulse-dot:nth-child(3){animation-delay:0.4s;}
-    @keyframes pulseDot { 0%,100%{opacity:0.2;transform:scale(0.8);} 50%{opacity:1;transform:scale(1.2);} }
-
-    /* 타이핑 커서 */
-    .ai-cursor { display:inline-block; width:2px; height:1em; background:var(--gold); vertical-align:middle; margin-left:2px; animation:blink 0.7s infinite; }
+    .section-header { color: var(--gold); font-weight: 900; margin-top: 15px; border-left: 3px solid var(--gold); padding-left: 10px; }
+    .ai-cursor { display: inline-block; width: 2px; height: 1em; background: var(--gold); animation: blink 0.7s infinite; }
     @keyframes blink { 0%,100%{opacity:1;} 50%{opacity:0;} }
-
-    /* 리셋 버튼 */
-    .reset-btn { background:none; border:2px solid #b8922a; color:#b8922a; padding:12px 35px; border-radius:25px; font-weight:900; cursor:pointer; letter-spacing:0.05em; margin-top:40px; width:100%; font-size:0.95rem; }
-
-    /* 법적 고지 */
-    .legal-notice { margin-top:40px; font-size:0.7rem; color:var(--gold); line-height:1.5; opacity:0.6; text-align:center; }
+    
+    .gold-button { background: linear-gradient(180deg,#FFF5C3 0%,#D4AF37 100%); color: #000; border: none; padding: 15px; width: 100%; border-radius: 50px; font-weight: 900; font-size: 1.1rem; cursor: pointer; }
+    .reset-btn { background: none; border: 1px solid var(--gold); color: var(--gold); padding: 12px; border-radius: 25px; margin-top: 20px; cursor: pointer; width: 100%; }
 </style>
 </head>
 <body>
 <div id="app-container">
-
-    <!-- ══ 홈 뷰 ══ -->
-    <div id="home-view">
+    <div id="home-view" style="width:100%;">
         <div class="title-wrapper">
             <span class="title-sparkle">✨</span>
             <h1 class="gold-title">ORACLE TAROT</h1>
-            <span class="title-sparkle delayed">✨</span>
+            <span class="title-sparkle">✨</span>
         </div>
-        <span class="sub-title">PRO - MASTERPIECE</span>
+        <div class="sub-title">PRO - MASTERPIECE</div>
         <div class="trust-motto">TRUST YOUR SPIRITUAL ENERGY</div>
 
         <div class="input-system-wrapper">
             <div class="beveled-border"></div>
             <div class="beveled-inner"></div>
-            <div id="fake-placeholder">
-                <div style="color:var(--gold);font-size:1rem;font-weight:900;">마음의 질문을 깊게 새기소서</div>
-                <div style="font-size:0.7rem;">(질문 입력 후 신탁 버튼을 누르세요)</div>
-            </div>
-            <textarea id="seed-input" class="gold-input" oninput="togglePlaceholder(this)"></textarea>
+            <textarea id="seed-input" class="gold-input" placeholder="질문을 입력하고 신탁을 받으세요..."></textarea>
         </div>
 
         <div class="cards-stage">
-            <div class="card-slot"><img id="home-c1" class="card-img tilt-left" src=""></div>
-            <div class="card-slot"><img id="home-c2" class="card-img tilt-center" src=""></div>
-            <div class="card-slot"><img id="home-c3" class="card-img tilt-right" src=""></div>
+            <div class="card-slot"><img id="home-c1" class="card-img" src=""></div>
+            <div class="card-slot"><img id="home-c2" class="card-img" src=""></div>
+            <div class="card-slot"><img id="home-c3" class="card-img" src=""></div>
         </div>
 
-        <div class="reveal-section">
-            <div class="button-container">
-                <button class="gold-button" onclick="revealTheTrinity()">
-                    <span style="font-size:1.2rem;display:block;">운명의 3대 신탁 확인</span>
-                    <span style="font-size:0.8rem;opacity:0.8;">REVEAL THE TRINITY</span>
-                </button>
-                <div class="spiritual-pointer" id="master-hand">👇</div>
-            </div>
-        </div>
-
-        <div class="legal-notice">
-            본 서비스는 사용자의 영적 에너지를 타로와 주역의 인문학적 해석을 바탕으로 한 참고용 콘텐츠입니다.<br>
-            모든 선택과 결정의 책임은 사용자 본인에게 있습니다. © 2026 ORACLE TAROT PRO MASTERPIECE.
-        </div>
+        <button class="gold-button" onclick="revealTheTrinity()">운명의 3대 신탁 확인</button>
     </div>
 
-    <!-- ══ 결과 뷰 ══ -->
     <div id="result-view">
         <div id="result-cards-row" class="result-cards-row"></div>
-
-        <div id="category-display">
-            <span class="cat-corner tl"></span><span class="cat-corner tr"></span>
-            <span class="cat-corner bl"></span><span class="cat-corner br"></span>
-            <span id="category-text">◈ 운명의 여정 확인 ◈</span>
-        </div>
-
         <div id="ai-result-box">
-            <div class="loading-pulse">
-                <div class="pulse-dot"></div><div class="pulse-dot"></div><div class="pulse-dot"></div>
-                <span>제니스가 운명의 실을 읽고 있습니다...</span>
-            </div>
+            <div id="loading-text">제니스가 실시간 우주 에너지를 검색 중입니다...</div>
         </div>
-
         <button class="reset-btn" onclick="location.reload()">✦ 새로운 운명 확인</button>
-
-        <div class="legal-notice">
-            본 서비스는 참고용 콘텐츠입니다. 모든 선택과 결정의 책임은 사용자 본인에게 있습니다.<br>
-            © 2026 ORACLE TAROT PRO MASTERPIECE.
-        </div>
     </div>
-
 </div>
+
 <script>
-// ═══════════════════════════════════════════════
-//  API 설정
-// ═══════════════════════════════════════════════
 const API_KEY = "AIzaSyA1l1pt2Cr6vl-c6dkdaAfp_SblSyfCVC0";
-const API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=" + API_KEY;
+const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${API_KEY}`;
 
-// ─── 카드 이름 (78장, tarotDB 완전 대체) ───
-const CARD_NAMES = [
-    "The Fool","The Magician","The High Priestess","The Empress","The Emperor",
-    "The Hierophant","The Lovers","The Chariot","Strength","The Hermit",
-    "Wheel of Fortune","Justice","The Hanged Man","Death","Temperance",
-    "The Devil","The Tower","The Star","The Moon","The Sun","Judgement","The World",
-    "Ace of Wands","Two of Wands","Three of Wands","Four of Wands","Five of Wands",
-    "Six of Wands","Seven of Wands","Eight of Wands","Nine of Wands","Ten of Wands",
-    "Page of Wands","Knight of Wands","Queen of Wands","King of Wands",
-    "Ace of Cups","Two of Cups","Three of Cups","Four of Cups","Five of Cups",
-    "Six of Cups","Seven of Cups","Eight of Cups","Nine of Cups","Ten of Cups",
-    "Page of Cups","Knight of Cups","Queen of Cups","King of Cups",
-    "Ace of Swords","Two of Swords","Three of Swords","Four of Swords","Five of Swords",
-    "Six of Swords","Seven of Swords","Eight of Swords","Nine of Swords","Ten of Swords",
-    "Page of Swords","Knight of Swords","Queen of Swords","King of Swords",
-    "Ace of Pentacles","Two of Pentacles","Three of Pentacles","Four of Pentacles","Five of Pentacles",
-    "Six of Pentacles","Seven of Pentacles","Eight of Pentacles","Nine of Pentacles","Ten of Pentacles",
-    "Page of Pentacles","Knight of Pentacles","Queen of Pentacles","King of Pentacles"
-];
-
-// ─── 카테고리 판별 ───
-const CATEGORIES = [
-    [/(주식|코스피|코스닥|삼성|하이닉스|나스닥|매수|매도|종목|주가|ETF|코인|비트|이더|크립토|상승|하락|반등)/i, '◈ 증권 시장 분석 ◈'],
-    [/(부동산|아파트|재개발|재건축|청약|임대|전세|매매|갭투자|분양)/,                                        '◈ 부동산 투자 진단 ◈'],
-    [/(결혼|재회|연애|남친|여친|썸|고백|이별|재결합|프러포즈|사귀|짝사랑)/,                                  '◈ 인연의 흐름 분석 ◈'],
-    [/(취업|이직|퇴사|면접|승진|연봉|사업|창업|직장|합격|시험|수능)/,                                        '◈ 커리어 & 운세 진단 ◈'],
-    [/(건강|수술|치료|병원|완치|몸|아프|피로)/,                                                               '◈ 건강 에너지 진단 ◈'],
-];
-function detectCategory(q) {
-    for (var i = 0; i < CATEGORIES.length; i++)
-        if (CATEGORIES[i][0].test(q)) return CATEGORIES[i][1];
-    return '◈ 운명의 여정 확인 ◈';
-}
+const CARD_NAMES = ["The Fool","The Magician","The High Priestess","The Empress","The Emperor","The Hierophant","The Lovers","The Chariot","Strength","The Hermit","Wheel of Fortune","Justice","The Hanged Man","Death","Temperance","The Devil","The Tower","The Star","The Moon","The Sun","Judgement","The World","Ace of Wands","Two of Wands","Three of Wands","Four of Wands","Five of Wands","Six of Wands","Seven of Wands","Eight of Wands","Nine of Wands","Ten of Wands","Page of Wands","Knight of Wands","Queen of Wands","King of Wands","Ace of Cups","Two of Cups","Three of Cups","Four of Cups","Five of Cups","Six of Cups","Seven of Cups","Eight of Cups","Nine of Cups","Ten of Cups","Page of Cups","Knight of Cups","Queen of Cups","King of Cups","Ace of Swords","Two of Swords","Three of Swords","Four of Swords","Five of Swords","Six of Swords","Seven of Swords","Eight of Swords","Nine of Swords","Ten of Swords","Page of Swords","Knight of Swords","Queen of Swords","King of Swords","Ace of Pentacles","Two of Pentacles","Three of Pentacles","Four of Pentacles","Five of Pentacles","Six of Pentacles","Seven of Pentacles","Eight of Pentacles","Nine of Pentacles","Ten of Pentacles","Page of Pentacles","Knight of Pentacles","Queen of Pentacles","King of Pentacles"];
 
 function getCardImage(idx) {
-    return './images/cards/m' + String(Math.abs(idx) % 78).padStart(2,'0') + '.jpg';
-}
-function togglePlaceholder(el) {
-    var ph = document.getElementById('fake-placeholder');
-    if (ph) ph.style.opacity = el.value.length > 0 ? '0' : '1';
+    return `https://raw.githubusercontent.com/fabiopalm/tarot-cards-api/master/static/img/m${String(idx % 22).padStart(2, '0')}.jpg`;
 }
 
-// ═══════════════════════════════════════════════
-//  홈 프리뷰 & 파티클
-// ═══════════════════════════════════════════════
-var homeInterval;
-window.onload = function() {
-    var update = function() {
-        [1,2,3].forEach(function(i) {
-            var img = document.getElementById('home-c' + i);
-            if (img) img.src = getCardImage(Math.floor(Math.random() * 78));
-        });
-    };
-    update();
-    homeInterval = setInterval(update, 2000);
-    setInterval(githubSparkle, 80);
+window.onload = () => {
+    for(let i=1; i<=3; i++) document.getElementById(`home-c${i}`).src = getCardImage(Math.floor(Math.random()*22));
 };
 
-function githubSparkle() {
-    var hand = document.getElementById('master-hand');
-    var hv = document.getElementById('home-view');
-    if (!hand || (hv && hv.style.display === 'none')) return;
-    var rect = hand.getBoundingClientRect();
-    var colors = ['#FFD700','#FFF5C3','#D4AF37'];
-    for (var i = 0; i < 5; i++) {
-        var p = document.createElement('div');
-        p.className = 'particle';
-        p.style.left = (rect.left + Math.random()*rect.width) + 'px';
-        p.style.top  = (rect.top  + Math.random()*rect.height*0.3) + 'px';
-        p.style.background = colors[Math.floor(Math.random()*colors.length)];
-        p.style.boxShadow = '0 0 6px ' + p.style.background;
-        document.body.appendChild(p);
-        var angle = Math.PI + Math.random()*Math.PI;
-        var spd = 30 + Math.random()*50;
-        p.animate([
-            {opacity:1, transform:'scale(1.5) translate(0,0)'},
-            {opacity:0, transform:'scale(0) translate('+Math.cos(angle)*spd+'px,'+Math.sin(angle)*spd+'px)'}
-        ], {duration:800+Math.random()*500, easing:'ease-out'}).onfinish = function(){ this.effect.target.remove(); };
+async function revealTheTrinity() {
+    const seed = document.getElementById('seed-input').value.trim();
+    if (!seed) { alert("질문을 입력해주세요."); return; }
+    
+    document.getElementById('home-view').style.display = 'none';
+    document.getElementById('result-view').style.display = 'flex';
+    
+    const deck = Array.from({length:3}, () => Math.floor(Math.random()*78));
+    const row = document.getElementById('result-cards-row');
+    row.innerHTML = deck.map(idx => `<img class="result-card-thumb" src="${getCardImage(idx)}">`).join('');
+    
+    await callGemini(deck, seed);
+}
+
+async function callGemini(deck, question) {
+    const box = document.getElementById('ai-result-box');
+    const cardList = deck.map(i => CARD_NAMES[i]).join(', ');
+
+    const prompt = `당신은 실시간 시장 정보와 영적 통찰을 결합한 'AI 리얼타임 오라클 제니스'입니다.
+질문: ${question}
+선택된 카드: ${cardList}
+
+반드시 구글 검색 기능을 사용하여 2026년 4월 현재의 실제 주가, 경제 상황, 혹은 뉴스 데이터를 반영하여 답변하세요.
+형식: [과거의 기운], [현재의 국면], [미래의 향방], [제니스 신탁(매매 전략 및 실전 조언 포함)]`;
+
+    try {
+        const response = await fetch(API_URL, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                contents: [{parts: [{text: prompt}]}],
+                // 🔥 실시간 검색 기능 활성화
+                tools: [{ google_search: {} }],
+                generationConfig: {temperature: 0.7, maxOutputTokens: 1000}
+            })
+        });
+
+        const resData = await response.json();
+        const aiText = resData.candidates[0].content.parts[0].text;
+        
+        box.innerHTML = '';
+        typewriter(box, aiText);
+    } catch (e) {
+        box.innerHTML = "운명의 연결에 실패했습니다. API 키와 네트워크를 확인하세요.";
     }
 }
 
-function createGoldDust(rect) {
-    var colors = ['#FFD700','#FFF5C3','#FF9ECD','#80CFFF','#AAFF80','#FFB347'];
-    for (var i = 0; i < 70; i++) {
-        var p = document.createElement('div');
-        document.body.appendChild(p);
-        var angle = Math.atan2(-900,-600) + (Math.random()-0.5)*Math.PI*0.9;
-        var spd = 60 + Math.random()*160;
-        var color = colors[Math.floor(Math.random()*colors.length)];
-        p.style.cssText = 'position:fixed;pointer-events:none;z-index:9999;border-radius:50%;width:3px;height:3px;background:'+color+';left:'+(rect.left+Math.random()*rect.width)+'px;top:'+(rect.top+Math.random()*rect.height)+'px;';
-        p.animate([
-            {opacity:1, transform:'translate(0,0) scale(2.5)', boxShadow:'0 0 6px '+color},
-            {opacity:0, transform:'translate('+Math.cos(angle)*spd+'px,'+Math.sin(angle)*spd+'px) scale(0)'}
-        ], {duration:800+Math.random()*600, delay:Math.random()*300, easing:'ease-out', fill:'forwards'})
-        .onfinish = function(){ this.effect.target.remove(); };
-    }
-}
-
-// ═══════════════════════════════════════════════
-//  메인 진입
-// ═══════════════════════════════════════════════
-function revealTheTrinity() {
-    var seed = document.getElementById('seed-input').value.trim();
-    if (!seed) return;
-    if (homeInterval) clearInterval(homeInterval);
-
-    var deck = Array.from({length:78}, function(_,i){ return i; })
-        .sort(function(){ return Math.random()-0.5; }).slice(0,3);
-
-    [1,2,3].forEach(function(n, i) {
-        var img = document.getElementById('home-c' + n);
-        if (!img) return;
-        setTimeout(function() {
-            createGoldDust(img.getBoundingClientRect());
-            img.classList.add('fly-out');
-        }, i * 300);
-    });
-
-    setTimeout(function() {
-        document.getElementById('home-view').style.display = 'none';
-        showResult(deck, seed);
-    }, 1800);
-}
-
-// ═══════════════════════════════════════════════
-//  결과 뷰 표시
-// ═══════════════════════════════════════════════
-function showResult(deck, question) {
-    if (navigator.vibrate) navigator.vibrate(50);
-
-    // 카드 3장 썸네일
-    var tilts = ['tilt-left','tilt-center','tilt-right'];
-    var row = document.getElementById('result-cards-row');
-    row.innerHTML = deck.map(function(idx, i) {
-        return '<img class="result-card-thumb '+tilts[i]+'" src="'+getCardImage(idx)+'" alt="'+CARD_NAMES[idx]+'">';
-    }).join('');
-
-    // 카테고리 레이블
-    document.getElementById('category-text').textContent = detectCategory(question);
-
-    // 결과창 표시
-    var rv = document.getElementById('result-view');
-    rv.style.display = 'flex';
-
-    // 최상단으로 스크롤
-    window.scrollTo({top: 0, behavior: 'smooth'});
-
-    // AI 호출
-    callGemini(deck, question);
-}
-
-// ═══════════════════════════════════════════════
-//  Gemini API 호출
-// ═══════════════════════════════════════════════
-function callGemini(deck, question) {
-    var box = document.getElementById('ai-result-box');
-    var cardList = deck.map(function(i){ return CARD_NAMES[i]; }).join(', ');
-
-    var prompt = "당신은 주식·부동산·타로·명리학에 정통한 'AI 리얼타임 오라클 제니스'입니다.\n"
-        + "아래 규칙을 반드시 지켜 답변하세요:\n\n"
-        + "1. 질문 카테고리(주식/코인/부동산/연애/취업/건강/운세)를 파악해 전문가 말투로 답하세요.\n"
-        + "2. 주식/코인 질문이면 2026년 현재 실제 시장 상황, 수급 흐름을 카드 상징에 결합하세요.\n"
-        + "3. 반드시 다음 4개 섹션 형식을 사용하세요:\n\n"
-        + "### [과거의 기운] — {카드명}\n"
-        + "과거 에너지 해석 2~3문장\n\n"
-        + "### [현재의 국면] — {카드명}\n"
-        + "현재 상황 분석 2~3문장\n\n"
-        + "### [미래의 향방] — {카드명}\n"
-        + "미래 전망 및 전략 2~3문장\n\n"
-        + "### [제니스 신탁]\n"
-        + "세 카드를 종합한 핵심 결론. 주식이면 구체적 매매 전략, 종목 키워드, 시점 명시. 소름 돋는 통찰 3~4문장.\n\n"
-        + "질문: " + question + "\n"
-        + "선택된 타로 카드: " + cardList + "\n\n"
-        + "위 정보로 소름 돋는 전문가 신탁을 제공하세요.";
-
-    fetch(API_URL, {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({
-            contents: [{parts: [{text: prompt}]}],
-            generationConfig: {temperature: 0.85, maxOutputTokens: 1200}
-        })
-    })
-    .then(function(res) { return res.json().then(function(d){ return {ok:res.ok, data:d}; }); })
-    .then(function(r) {
-        if (!r.ok) throw new Error((r.data.error && r.data.error.message) || 'HTTP 오류');
-        var parts = (r.data.candidates && r.data.candidates[0] &&
-                     r.data.candidates[0].content && r.data.candidates[0].content.parts) || [];
-        var raw = parts.filter(function(p){ return typeof p.text === 'string'; })
-                       .map(function(p){ return p.text; }).join('');
-        if (!raw) throw new Error('AI 응답이 비어 있습니다.');
-        typewriterRender(box, raw);
-    })
-    .catch(function(e) {
-        box.innerHTML = '<div style="color:#ff6b6b;padding:16px;border:1px solid #ff6b6b;border-radius:8px;line-height:1.9;">'
-            + '⚠️ 운명의 연결이 원활하지 않습니다.<br>'
-            + '<small style="opacity:0.7;">' + e.message + '</small><br><br>'
-            + '<small>💡 브라우저 콘솔(F12)에서 상세 에러를 확인하세요.</small></div>';
-        console.error('[ZenithAI]', e);
-    });
-}
-
-// ═══════════════════════════════════════════════
-//  타이핑 렌더러 + 실시간 스크롤
-// ═══════════════════════════════════════════════
-function typewriterRender(box, rawText) {
-    // 마크다운 파싱 → 청크 배열로 변환
-    // 섹션 헤더(###)와 일반 텍스트를 분리
-    var lines = rawText.split('\n');
-    var chunks = []; // {type:'header'|'text', content:string}
-
-    lines.forEach(function(line) {
-        if (/^###\s+/.test(line)) {
-            chunks.push({type:'header', content: line.replace(/^###\s+/, '')});
-        } else if (line.trim() === '') {
-            chunks.push({type:'br', content:''});
-        } else {
-            // 인라인 bold 처리
-            chunks.push({type:'text', content: line});
-        }
-    });
-
-    box.innerHTML = '';
-    var cursor = document.createElement('span');
+function typewriter(el, text) {
+    let i = 0;
+    const cursor = document.createElement('span');
     cursor.className = 'ai-cursor';
-    box.appendChild(cursor);
-
-    var ci = 0; // chunk index
-
-    // 스크롤 추적: 커서가 화면 하단 70% 아래로 내려가면 따라감
-    var scrollTracker = setInterval(function() {
-        var rect = cursor.getBoundingClientRect();
-        if (rect.top > window.innerHeight * 0.70) {
-            window.scrollBy({top: 80, behavior: 'smooth'});
-        }
-    }, 200);
-
-    function nextChunk() {
-        if (ci >= chunks.length) {
-            cursor.remove();
-            clearInterval(scrollTracker);
-            return;
-        }
-        var chunk = chunks[ci++];
-
-        if (chunk.type === 'br') {
-            box.insertBefore(document.createElement('br'), cursor);
-            setTimeout(nextChunk, 30);
-            return;
-        }
-
-        if (chunk.type === 'header') {
-            var h = document.createElement('div');
-            h.className = 'section-header';
-            box.insertBefore(h, cursor);
-            typeChars(h, chunk.content, false, function(){ setTimeout(nextChunk, 60); });
-            return;
-        }
-
-        // 일반 텍스트 (inline bold 포함)
-        var span = document.createElement('span');
-        span.style.display = 'block';
-        span.style.marginBottom = '4px';
-        box.insertBefore(span, cursor);
-        typeChars(span, chunk.content, true, function(){ setTimeout(nextChunk, 20); });
-    }
-
-    // 글자 단위 타이핑 (bold 처리 포함)
-    function typeChars(el, text, processBold, done) {
-        if (!processBold) {
-            // 헤더 등 단순 타이핑
-            var i = 0;
-            function tick() {
-                if (i <= text.length) {
-                    el.textContent = text.slice(0, i++);
-                    setTimeout(tick, 14);
-                } else { done(); }
-            }
-            tick();
+    el.appendChild(cursor);
+    
+    function tick() {
+        if (i < text.length) {
+            cursor.before(text.charAt(i++));
+            setTimeout(tick, 20);
+            if(i % 5 === 0) window.scrollTo(0, document.body.scrollHeight);
         } else {
-            // **bold** 파싱 후 타이핑
-            var tokens = parseBold(text);
-            var ti = 0, ci2 = 0;
-            var currentNode = null;
-
-            function pickNode() {
-                if (ti >= tokens.length) { done(); return; }
-                var tok = tokens[ti++];
-                if (tok.bold) {
-                    currentNode = document.createElement('strong');
-                    currentNode.style.color = '#FFD700';
-                    el.appendChild(currentNode);
-                } else {
-                    currentNode = document.createTextNode('');
-                    el.appendChild(currentNode);
-                }
-                ci2 = 0;
-                typeToken();
-            }
-
-            function typeToken() {
-                var tok = tokens[ti - 1];
-                if (ci2 <= tok.text.length) {
-                    if (tok.bold) currentNode.textContent = tok.text.slice(0, ci2);
-                    else currentNode.textContent = tok.text.slice(0, ci2);
-                    ci2++;
-                    setTimeout(typeToken, 12);
-                } else { pickNode(); }
-            }
-            pickNode();
+            cursor.remove();
         }
     }
-
-    function parseBold(text) {
-        var result = [];
-        var re = /\*\*(.+?)\*\*/g;
-        var last = 0, m;
-        while ((m = re.exec(text)) !== null) {
-            if (m.index > last) result.push({bold:false, text: text.slice(last, m.index)});
-            result.push({bold:true, text: m[1]});
-            last = m.index + m[0].length;
-        }
-        if (last < text.length) result.push({bold:false, text: text.slice(last)});
-        return result.length ? result : [{bold:false, text:text}];
-    }
-
-    nextChunk();
+    tick();
 }
 </script>
 </body>
