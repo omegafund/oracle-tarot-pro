@@ -1,0 +1,23 @@
+name: Deploy with Secrets
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Replace API Key
+        run: |
+          sed -i 's/REPLACE_ME_WITH_API_KEY/${{ AIzaSyA1l1pt2Cr6vl-c6dkdaAfp_SblSyfCVC0 }}/g' index.html
+
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./
