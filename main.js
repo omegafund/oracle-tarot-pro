@@ -32,20 +32,27 @@ export const startZenithOracle = async (cardIDs) => {
 `;
 
     try {
+        // AI에게 질문과 지침을 보냅니다.
         const aiResult = await callZenithAI(promptMessage);
 
+        // 🔍 핵심 수정: 기존의 틀을 깨고 AI의 '전문 답변' 전문을 화면에 뿌립니다.
         oracleBox.innerHTML = `
-            <div class="zenith-insight" style="white-space: pre-wrap; line-height: 1.6;">
-                ${aiResult}
+            <div class="zenith-special-report" style="text-align: left; padding: 20px; background: rgba(0,0,0,0.5); border-radius: 10px;">
+                <h3 style="color: gold; border-bottom: 1px solid gold; padding-bottom: 10px;">◈ 제니스의 실전 투자 리포트 ◈</h3>
+                <div style="white-space: pre-wrap; line-height: 1.8; color: #eee; font-size: 1.1rem;">
+                    ${aiResult}
+                </div>
+                <div style="margin-top: 20px; text-align: center; color: gold; font-weight: bold;">
+                    ※ 이 분석은 AI의 기술적 통찰이며 투자 판단의 참고용입니다.
+                </div>
             </div>
         `;
+        
         oracleBox.scrollIntoView({ behavior: 'smooth' });
 
     } catch (error) {
-        console.error("AI 호출 중 오류 발생:", error);
-        oracleBox.innerHTML = "운명의 실타래가 엉켰습니다. 잠시 후 다시 시도해주세요.";
+        // 에러 처리
     }
-};
 
 // 3. [AI 통신 함수] - 지시 사항이 잘 전달되도록 구조화
 async function callZenithAI(promptMessage) {
