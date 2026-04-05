@@ -13,9 +13,7 @@
             --text: #fff;
             --font: 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif;
         }
-
         * { box-sizing: border-box; }
-
         body {
             margin: 0; padding: 0;
             background: radial-gradient(circle at center, #1a1a1a 0%, #000 100%);
@@ -24,7 +22,6 @@
             min-height: 100vh;
             overflow-x: hidden;
         }
-
         #app-container {
             max-width: 500px;
             width: 100%;
@@ -36,8 +33,6 @@
             border-right: 1px solid rgba(212,175,55,0.15);
             min-height: 100vh;
         }
-
-        /* ─── 타이틀 ─── */
         .gold-title {
             color: var(--gold);
             font-size: 2.3rem;
@@ -54,8 +49,6 @@
             display: block;
             font-weight: 800;
         }
-
-        /* ─── 입력창 ─── */
         .input-system-wrapper {
             position: relative;
             width: 100%;
@@ -69,7 +62,7 @@
             position: absolute;
             width: 100%; height: 100%;
             background: linear-gradient(145deg, var(--bright-gold), var(--gold), var(--dark-gold));
-            clip-path: polygon(15px 0%, calc(100% - 15px) 0%, 100% 15px, 100% calc(100% - 14px), calc(100% - 15px) 100%, 15px 100%, 0% calc(100% - 15px), 0% 15px);
+            clip-path: polygon(15px 0%, calc(100% - 15px) 0%, 100% 15px, 100% calc(100% - 14px), calc(100% - 15px) 100%, 15px 100%, 0% calc(100% - 14px), 0% 15px);
         }
         .beveled-inner {
             position: absolute;
@@ -94,8 +87,6 @@
             font-family: var(--font);
         }
         .gold-input::placeholder { color: rgba(212,175,55,0.6); }
-
-        /* ─── 카드 스테이지 ─── */
         .cards-stage {
             display: flex;
             justify-content: space-between;
@@ -117,7 +108,7 @@
             height: 100%;
             object-fit: cover;
             display: block;
-            transition: opacity 0.5s ease;
+            transition: opacity 0.4s ease;
         }
         .card-label {
             position: absolute;
@@ -130,22 +121,17 @@
             text-align: center;
             letter-spacing: 0.05em;
         }
-
-        /* ─── 카드 플립 애니메이션 ─── */
         @keyframes cardFlip {
             0%   { transform: rotateY(0deg) scale(1); }
             50%  { transform: rotateY(90deg) scale(1.05); }
             100% { transform: rotateY(0deg) scale(1); }
         }
         .flipping { animation: cardFlip 0.6s ease forwards; }
-
         @keyframes flyOutSoft {
             0%   { transform: scale(1) rotate(0); opacity: 1; }
             100% { transform: scale(0.5) rotate(15deg) translateY(-500px); opacity: 0; }
         }
         .card-fly { animation: flyOutSoft 0.8s forwards; }
-
-        /* ─── 버튼 ─── */
         .button-container {
             position: relative;
             width: 100%;
@@ -166,7 +152,6 @@
         }
         .gold-button:active { transform: scale(0.97); }
         .gold-button:disabled { opacity: 0.5; cursor: not-allowed; }
-
         .spiritual-pointer {
             position: absolute;
             bottom: -20px; right: -10px;
@@ -180,8 +165,15 @@
             0%, 100% { transform: translateY(0) rotate(150deg); }
             50%       { transform: translateY(-15px) rotate(150deg); }
         }
-
-        /* ─── 결과창 ─── */
+        .disclaimer-text {
+            margin-top: 28px;
+            font-size: 0.72rem;
+            color: rgba(212,175,55,0.55);
+            line-height: 1.6;
+            letter-spacing: 0.03em;
+            border-top: 1px solid rgba(212,175,55,0.15);
+            padding-top: 12px;
+        }
         #result-view {
             display: none;
             flex-direction: column;
@@ -189,11 +181,6 @@
             opacity: 0;
             transition: opacity 1s ease;
         }
-        #result-view.visible {
-            display: flex;
-            opacity: 1;
-        }
-
         .result-cards {
             display: flex;
             justify-content: center;
@@ -210,11 +197,7 @@
             overflow: hidden;
             position: relative;
         }
-        .result-card-item img {
-            width: 100%; height: 100%;
-            object-fit: cover;
-            display: block;
-        }
+        .result-card-item img { width:100%; height:100%; object-fit:cover; display:block; }
         .result-card-label {
             position: absolute;
             bottom: 0; left: 0; right: 0;
@@ -232,8 +215,6 @@
             margin-top: 4px;
             letter-spacing: 0.1em;
         }
-
-        /* ─── 오라클 박스 ─── */
         .zenith-oracle-container {
             border: 4px double var(--gold);
             border-radius: 15px;
@@ -244,36 +225,21 @@
             box-shadow: inset 0 0 25px rgba(212,175,55,0.2);
             width: 100%;
         }
-
-        #ai-loading-text {
-            color: var(--gold);
-            text-align: center;
-            padding: 20px 0;
-        }
-        .loading-dots::after {
-            content: '';
-            animation: dots 1.5s infinite;
-        }
+        #ai-loading-text { color: var(--gold); text-align: center; padding: 20px 0; }
+        .loading-dots::after { content: ''; animation: dots 1.5s infinite; }
         @keyframes dots {
             0%   { content: ''; }
             33%  { content: '.'; }
             66%  { content: '..'; }
             100% { content: '...'; }
         }
-
-        #oracle-content {
-            color: #eee;
-            font-size: 0.95rem;
-        }
-        #oracle-content b, #oracle-content strong {
-            color: var(--gold);
-        }
+        #oracle-content { color: #eee; font-size: 0.95rem; }
+        #oracle-content b, #oracle-content strong { color: var(--gold); }
         #oracle-content h2, #oracle-content h3 {
             color: var(--gold);
             border-bottom: 1px solid rgba(212,175,55,0.3);
             padding-bottom: 5px;
         }
-
         .reset-btn {
             margin-top: 35px;
             background: none;
@@ -287,9 +253,7 @@
             transition: all 0.2s;
         }
         .reset-btn:hover { background: var(--gold); color: #000; }
-
-        /* ─── 파티클 ─── */
-        .particle {
+        .particle, .gold-dust {
             position: fixed;
             pointer-events: none;
             z-index: 9999;
@@ -300,7 +264,6 @@
 <body>
 <div id="app-container">
 
-    <!-- 홈 뷰 -->
     <div id="home-view">
         <h1 class="gold-title">ORACLE TAROT</h1>
         <span class="sub-title">PRO - MASTERPIECE</span>
@@ -313,15 +276,15 @@
 
         <div class="cards-stage">
             <div class="card-slot" id="slot-0">
-                <img id="card-img-0" src="https://omegafund.github.io/oracle-tarot-pro/images/cards/back.jpg" alt="카드">
+                <img id="card-img-0" src="" alt="카드">
                 <div class="card-label">과 거</div>
             </div>
             <div class="card-slot" id="slot-1">
-                <img id="card-img-1" src="https://omegafund.github.io/oracle-tarot-pro/images/cards/back.jpg" alt="카드">
+                <img id="card-img-1" src="" alt="카드">
                 <div class="card-label">현 재</div>
             </div>
             <div class="card-slot" id="slot-2">
-                <img id="card-img-2" src="https://omegafund.github.io/oracle-tarot-pro/images/cards/back.jpg" alt="카드">
+                <img id="card-img-2" src="" alt="카드">
                 <div class="card-label">미 래</div>
             </div>
         </div>
@@ -330,122 +293,196 @@
             <button class="gold-button" id="ritual-btn" onclick="startRitual()">운명의 3대 신탁 확인</button>
             <div class="spiritual-pointer">👇</div>
         </div>
+
+        <div class="disclaimer-text">
+            ✦ 본 서비스는 영성적 매칭 알고리즘과 AI 기반의 타로 해석을 제공합니다 ✦<br>
+            오락 및 참고용 콘텐츠이며, 실제 투자·법률·의료 판단의 근거로 사용하지 마십시오.
+        </div>
     </div>
 
-    <!-- 결과 뷰 -->
     <div id="result-view">
         <h1 class="gold-title" style="margin-bottom:5px;">ORACLE TAROT</h1>
         <span class="sub-title">신탁의 결과</span>
-
-        <div class="result-cards" id="result-cards-container">
-            <!-- JS로 동적 생성 -->
-        </div>
-
+        <div class="result-cards" id="result-cards-container"></div>
         <div class="zenith-oracle-container">
             <div id="ai-loading-text">✨ 천상의 지혜를 연결 중<span class="loading-dots"></span></div>
             <div id="oracle-content"></div>
         </div>
-
         <button class="reset-btn" onclick="location.reload()">✦ 처음으로 돌아가기 ✦</button>
     </div>
 
 </div>
-
 <script>
-// ════════════════════════════════════════════════════
-//  카드 데이터 (tarotData.js 대체 - 인라인)
-// ════════════════════════════════════════════════════
-const CARDS = [
-    { id: 'm00', name: 'The Fool (바보)', file: 'm00.jpg' },
-    { id: 'm01', name: 'The Magician (마법사)', file: 'm01.jpg' },
-    { id: 'm02', name: 'The High Priestess (여교황)', file: 'm02.jpg' },
-    { id: 'm03', name: 'The Empress (여황제)', file: 'm03.jpg' },
-    { id: 'm04', name: 'The Emperor (황제)', file: 'm04.jpg' },
+// ════════════════════════════════════
+//  카드 데이터 m00 ~ m77 (78장)
+// ════════════════════════════════════
+const CARD_NAMES = [
+    'The Fool (바보)','The Magician (마법사)','The High Priestess (여교황)',
+    'The Empress (여황제)','The Emperor (황제)','The Hierophant (교황)',
+    'The Lovers (연인)','The Chariot (전차)','Strength (힘)',
+    'The Hermit (은둔자)','Wheel of Fortune (운명의 수레바퀴)','Justice (정의)',
+    'The Hanged Man (매달린 사람)','Death (죽음)','Temperance (절제)',
+    'The Devil (악마)','The Tower (탑)','The Star (별)',
+    'The Moon (달)','The Sun (태양)','Judgement (심판)','The World (세계)',
+    'Ace of Wands','Two of Wands','Three of Wands','Four of Wands',
+    'Five of Wands','Six of Wands','Seven of Wands','Eight of Wands',
+    'Nine of Wands','Ten of Wands','Page of Wands','Knight of Wands',
+    'Queen of Wands','King of Wands',
+    'Ace of Cups','Two of Cups','Three of Cups','Four of Cups',
+    'Five of Cups','Six of Cups','Seven of Cups','Eight of Cups',
+    'Nine of Cups','Ten of Cups','Page of Cups','Knight of Cups',
+    'Queen of Cups','King of Cups',
+    'Ace of Swords','Two of Swords','Three of Swords','Four of Swords',
+    'Five of Swords','Six of Swords','Seven of Swords','Eight of Swords',
+    'Nine of Swords','Ten of Swords','Page of Swords','Knight of Swords',
+    'Queen of Swords','King of Swords',
+    'Ace of Pentacles','Two of Pentacles','Three of Pentacles','Four of Pentacles',
+    'Five of Pentacles','Six of Pentacles','Seven of Pentacles','Eight of Pentacles',
+    'Nine of Pentacles','Ten of Pentacles','Page of Pentacles','Knight of Pentacles',
+    'Queen of Pentacles','King of Pentacles'
 ];
 
-const BASE_URL = 'https://omegafund.github.io/oracle-tarot-pro/images/cards/';
+const CARDS = Array.from({length: 78}, (_, i) => ({
+    id: i,
+    name: CARD_NAMES[i] || `Card ${i}`,
+    file: `m${String(i).padStart(2,'0')}.jpg`
+}));
 
+const BASE_URL = 'https://omegafund.github.io/oracle-tarot-pro/images/cards/';
 let selectedCards = [];
 
-// ════════════════════════════════════════════════════
-//  골드 파티클
-// ════════════════════════════════════════════════════
+// ════════════════════════════════════
+//  홈 카드 1초마다 랜덤 교체
+// ════════════════════════════════════
+function updateSlot(idx) {
+    const img = document.getElementById(`card-img-${idx}`);
+    if (!img) return;
+    img.style.opacity = '0';
+    setTimeout(() => {
+        const card = CARDS[Math.floor(Math.random() * CARDS.length)];
+        img.src = `${BASE_URL}${card.file}`;
+        img.onerror = () => { img.src = `${BASE_URL}back.jpg`; };
+        img.style.opacity = '1';
+    }, 300);
+}
+
+updateSlot(0); updateSlot(1); updateSlot(2);
+
+let homeSlotIdx = 0;
+const homeInterval = setInterval(() => {
+    if (document.getElementById('home-view').style.display === 'none') return;
+    updateSlot(homeSlotIdx % 3);
+    homeSlotIdx++;
+}, 1000);
+
+// ════════════════════════════════════
+//  손가락 금가루 (조밀)
+// ════════════════════════════════════
 function createGoldDust(x, y) {
-    const p = document.createElement('div');
-    p.className = 'particle';
-    p.style.cssText = `
-        left: ${x + (Math.random() * 16 - 8)}px;
-        top: ${y}px;
-        width: 3px; height: 3px;
-        background: var(--bright-gold);
-        transition: all 1.2s ease-out;
-    `;
-    document.body.appendChild(p);
-    requestAnimationFrame(() => {
-        p.style.transform = 'translateY(40px)';
-        p.style.opacity = '0';
-    });
-    setTimeout(() => p.remove(), 1300);
-}
-
-setInterval(() => {
-    const pointer = document.querySelector('.spiritual-pointer');
-    if (pointer && document.getElementById('home-view').style.display !== 'none') {
-        const rect = pointer.getBoundingClientRect();
-        createGoldDust(rect.left + rect.width / 2, rect.top + 10);
+    for (let k = 0; k < 5; k++) {
+        const p = document.createElement('div');
+        p.className = 'particle';
+        const size = Math.random() * 3 + 2;
+        const angle = Math.random() * 360;
+        const r = Math.random() * 25;
+        p.style.cssText = `left:${x+Math.cos(angle)*r}px;top:${y+Math.sin(angle)*r}px;
+            width:${size}px;height:${size}px;
+            background:radial-gradient(circle,#fffbe6,#D4AF37);
+            box-shadow:0 0 ${size+2}px 1px rgba(255,245,195,0.95);
+            transition:all ${0.9+Math.random()*0.6}s ease-out;opacity:1;`;
+        document.body.appendChild(p);
+        requestAnimationFrame(() => {
+            p.style.transform = `translate(${(Math.random()-.5)*30}px,${30+Math.random()*30}px)`;
+            p.style.opacity = '0';
+        });
+        setTimeout(() => p.remove(), 1600);
     }
-}, 250);
+}
+setInterval(() => {
+    const ptr = document.querySelector('.spiritual-pointer');
+    if (ptr && document.getElementById('home-view').style.display !== 'none') {
+        const r = ptr.getBoundingClientRect();
+        createGoldDust(r.left + r.width/2, r.top + r.height/2);
+    }
+}, 150);
 
-// ════════════════════════════════════════════════════
-//  카드 3장 랜덤 선택
-// ════════════════════════════════════════════════════
-function pickThreeCards() {
-    const shuffled = [...CARDS].sort(() => Math.random() - 0.5);
-    return shuffled.slice(0, 3);
+// ════════════════════════════════════
+//  카드 사라질 때 금가루 폭발
+// ════════════════════════════════════
+function spawnGoldExplosion(slotEl) {
+    const r = slotEl.getBoundingClientRect();
+    const cx = r.left + r.width/2, cy = r.top + r.height/2;
+    for (let i = 0; i < 60; i++) {
+        const p = document.createElement('div');
+        p.className = 'gold-dust';
+        const size = Math.random()*4+2;
+        const angle = Math.random()*360;
+        const dist = 40+Math.random()*120;
+        const dx = Math.cos(angle*Math.PI/180)*dist;
+        const dy = Math.sin(angle*Math.PI/180)*dist;
+        const dur = 600+Math.random()*600;
+        const del = Math.random()*200;
+        p.style.cssText = `left:${cx}px;top:${cy}px;width:${size}px;height:${size}px;
+            background:radial-gradient(circle,#fff9e6,#FFD700);
+            box-shadow:0 0 ${size+3}px 2px rgba(255,240,120,1);
+            transition:transform ${dur}ms ease-out ${del}ms,opacity ${dur}ms ease-out ${del}ms;opacity:1;`;
+        document.body.appendChild(p);
+        requestAnimationFrame(() => requestAnimationFrame(() => {
+            p.style.transform = `translate(${dx}px,${dy}px) scale(0.2)`;
+            p.style.opacity = '0';
+        }));
+        setTimeout(() => p.remove(), dur+del+100);
+    }
 }
 
-// ════════════════════════════════════════════════════
-//  메인 리추얼 시작
-// ════════════════════════════════════════════════════
+// ════════════════════════════════════
+//  영성적 싱크로니시티 카드 선택
+//  (터치 타이밍 + 질문 텍스트 시드)
+// ════════════════════════════════════
+function pickThreeCards(question) {
+    const now = Date.now();
+    let hash = now;
+    for (let i = 0; i < question.length; i++) {
+        hash = ((hash << 5) - hash) + question.charCodeAt(i);
+        hash |= 0;
+    }
+    let s = Math.abs(hash);
+    const rand = () => {
+        s = (s * 1664525 + 1013904223) & 0xffffffff;
+        return (s >>> 0) / 0xffffffff;
+    };
+    return [...CARDS].sort(() => rand() - 0.5).slice(0, 3);
+}
+
+// ════════════════════════════════════
+//  메인 리추얼
+// ════════════════════════════════════
 async function startRitual() {
     const question = document.getElementById('seed-input').value.trim();
-    if (!question) {
-        alert('질문을 입력해주세요.');
-        return;
-    }
+    if (!question) { alert('질문을 입력해주세요.'); return; }
+    document.getElementById('ritual-btn').disabled = true;
+    clearInterval(homeInterval);
 
-    const btn = document.getElementById('ritual-btn');
-    btn.disabled = true;
+    selectedCards = pickThreeCards(question);
 
-    // 1) 카드 3장 선택
-    selectedCards = pickThreeCards();
-
-    // 2) 카드 플립 애니메이션 → 앞면 이미지로 교체
-    const positions = ['과거', '현재', '미래'];
     for (let i = 0; i < 3; i++) {
         await flipCard(i, selectedCards[i]);
         await delay(300);
     }
-
-    // 3) 잠깐 보여주다가 결과창으로 전환
     await delay(800);
 
-    // 카드가 날아가는 애니메이션
     for (let i = 0; i < 3; i++) {
+        const slot = document.getElementById(`slot-${i}`);
         const img = document.getElementById(`card-img-${i}`);
+        if (slot) spawnGoldExplosion(slot);
         if (img) img.classList.add('card-fly');
         await delay(200);
     }
-
     await delay(700);
-
-    // 4) 결과창 표시
     showResultView(question);
 }
 
-function delay(ms) {
-    return new Promise(resolve => setTimeout(resolve, ms));
-}
+function delay(ms) { return new Promise(r => setTimeout(r, ms)); }
 
 function flipCard(index, card) {
     return new Promise(resolve => {
@@ -460,106 +497,73 @@ function flipCard(index, card) {
     });
 }
 
-// ════════════════════════════════════════════════════
-//  결과창 표시 + AI 호출
-// ════════════════════════════════════════════════════
+// ════════════════════════════════════
+//  결과창
+// ════════════════════════════════════
 function showResultView(question) {
-    // 홈 숨기기
     document.getElementById('home-view').style.display = 'none';
-
-    // 결과 카드 이미지 렌더링
-    const container = document.getElementById('result-cards-container');
-    const positions = ['과 거', '현 재', '미 래'];
-    container.innerHTML = selectedCards.map((card, i) => `
-        <div style="flex:1; max-width:100px; display:flex; flex-direction:column; align-items:center;">
+    const positions = ['과 거','현 재','미 래'];
+    document.getElementById('result-cards-container').innerHTML =
+        selectedCards.map((card, i) => `
+        <div style="flex:1;max-width:100px;display:flex;flex-direction:column;align-items:center;">
             <div class="result-card-item">
                 <img src="${BASE_URL}${card.file}" alt="${card.name}"
                      onerror="this.src='${BASE_URL}back.jpg'">
                 <div class="result-card-label">${card.name}</div>
             </div>
             <div class="result-position-label">${positions[i]}</div>
-        </div>
-    `).join('');
+        </div>`).join('');
 
-    // 결과창 표시 (fade-in)
-    const resultView = document.getElementById('result-view');
-    resultView.style.display = 'flex';
-    requestAnimationFrame(() => {
-        requestAnimationFrame(() => {
-            resultView.style.opacity = '1';
-        });
-    });
-
-    // AI 해석 호출
+    const rv = document.getElementById('result-view');
+    rv.style.display = 'flex';
+    requestAnimationFrame(() => requestAnimationFrame(() => { rv.style.opacity = '1'; }));
     fetchOracleInterpretation(question, selectedCards);
 }
 
-// ════════════════════════════════════════════════════
-//  Gemini AI 신탁 해석
-// ════════════════════════════════════════════════════
+// ════════════════════════════════════
+//  AI 신탁 (Cloudflare Worker 경유)
+// ════════════════════════════════════
 async function fetchOracleInterpretation(question, cards) {
-    const loadingEl  = document.getElementById('ai-loading-text');
-    const contentEl  = document.getElementById('oracle-content');
+    const loadingEl = document.getElementById('ai-loading-text');
+    const contentEl = document.getElementById('oracle-content');
 
-    const cardDesc = cards.map((c, i) => {
-        const pos = ['과거', '현재', '미래'][i];
-        return `${pos}: ${c.name}`;
-    }).join('\n');
-
+    const cardDesc = cards.map((c,i) => `${['과거','현재','미래'][i]}: ${c.name}`).join('\n');
     const prompt = `너는 주식·부동산 투자, 명리학, 타로, 심리학에 정통한 'AI 리얼타임 오라클 제니스'다.
 반드시 아래 규칙을 지켜서 답변하라:
-
 1. 사용자의 질문 카테고리(주식/부동산/연애/건강/일반 운세 등)를 판단하여 해당 분야 전문가 말투를 사용하라.
 2. 주식/부동산 질문이라면: 2026년 현재 시장 상황(HBM, AI반도체, 부동산 정책 등)을 카드 상징과 결합하라.
 3. 단순 운세 풀이가 아니라 구체적인 키워드를 포함한 실질적 통찰을 제시하라.
 4. 답변 형식: **[과거 카드 해석]**, **[현재 카드 해석]**, **[미래 카드 해석]**, **[제니스 종합 신탁]** 순서로 작성하라.
-5. [제니스 종합 신탁]에서는 세 카드를 종합하여 질문에 대한 소름 돋는 통찰과 구체적 행동 지침을 제공하라.
+5. [제니스 종합 신탁]에서는 세 카드를 종합하여 소름 돋는 통찰과 구체적 행동 지침을 제공하라.
 6. 총 600~900자 내외로 작성하라.
-
 질문: ${question}
-
 선택된 카드:
 ${cardDesc}
-
 위 정보를 바탕으로 소름 돋는 통찰을 제공하라.`;
 
     try {
-        const API_URL = `https://tarot-api.omegafund01.workers.dev`;
-
-        const response = await fetch(API_URL, {
+        const response = await fetch('https://tarot-api.omegafund01.workers.dev', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ prompt })
         });
-
         if (!response.ok) {
             const err = await response.json();
-            const reason = err?.error?.message || JSON.stringify(err);
-            throw new Error(`API ${response.status}: ${reason}`);
+            throw new Error(err?.error?.message || JSON.stringify(err));
         }
-
         const data = await response.json();
         const aiText = data?.text || '';
-
         if (!aiText) throw new Error('빈 응답');
-
-        const formatted = aiText
+        loadingEl.style.display = 'none';
+        contentEl.innerHTML = aiText
             .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
             .replace(/^#{1,3}\s(.+)/gm, '<h3>$1</h3>')
             .replace(/\n/g, '<br>');
-
-        loadingEl.style.display = 'none';
-        contentEl.innerHTML = formatted;
-
     } catch (error) {
-        console.error('신탁 오류:', error);
         loadingEl.style.display = 'none';
-        contentEl.innerHTML = `
-            <div style="color:#ff6b6b; text-align:center; padding:20px;">
-                ⚠️ 천상의 연결이 원활하지 않습니다.<br>
-                <small style="color:#888;">${error.message}</small>
-            </div>
-        `;
+        contentEl.innerHTML = `<div style="color:#ff6b6b;text-align:center;padding:20px;">
+            ⚠️ 천상의 연결이 원활하지 않습니다.<br>
+            <small style="color:#888;">${error.message}</small></div>`;
     }
 }
 </script>
