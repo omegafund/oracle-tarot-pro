@@ -70,24 +70,38 @@ export const startZenithOracle = async (cardIDs) => {
 };
 
 /**
+/**
  * 🔐 보안 호출 함수 (API 키 노출 방지)
+ * GitHub Secrets에 저장된 키는 Cloudflare Worker 서버 내부에서 처리됩니다.
  */
 async function callZenithAI(promptMessage) {
+    // 1. 광태님의 Cloudflare Worker 주소 (이미 시크릿키가 세팅된 서버)
     const API_URL = `https://tarot-api.omegafund01.workers.dev`;
     
-    const response = await fetch(API_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-            prompt: promptMessage
-        })
-    });
+    try {
+        const response = await fetch(API_URL, {
+            method: 'POST',
+            headers: { 
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                prompt: promptMessage
+            })
+        });
 
-    if (!response.ok) {
-        const errorMsg = await response.json();
-        throw new Error(errorMsg.error || 'Server Connection Failed');
+        // 2. 서버 연결 실패 시 에러 처리
+        if (!response.ok) {
+            const errorMsg = await response.json();
+            throw new Error(errorMsg.error || '제니스 서버와의 연결에 실패했습니다.');
+        }
+        
+        const data = await response.json();
+        
+        // 3. Worker로부터 전달받은 AI의 최종 답변 반환
+        return data.text; 
+
+    } catch (error) {
+        console.error("AI 호출 중 보안 오류 발생:", error);
+        throw error;
     }
-    
-    const data = await response.json();
-    return data.text; // Worker로부터 전달받은 AI의 답변
 }
