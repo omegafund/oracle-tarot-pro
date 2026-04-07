@@ -591,70 +591,81 @@ async function typeWriter(text, element) {
 
 // ════════════════════════════════════
 // ════════════════════════════════════
-//  AI 신탁 (Cloudflare Worker 경유) - 최종 수정본
-// ════════════════════════════════════
+// 🃏 AI 신탁 (Cloudflare Worker 경유) - 2026 실전 투자 최적화본
+// ════════════════════════════════════════════════════════════
 async function fetchOracleInterpretation(question, cards) {
     const loadingEl = document.getElementById('ai-loading-text');
     const contentEl = document.getElementById('oracle-content');
-    const ritualBtn = document.getElementById('ritual-btn'); // 버튼 가져오기
+    const ritualBtn = document.getElementById('ritual-btn'); 
 
-    const cardDesc = cards.map((c,i) => `${['과거','현재','미래'][i]}: ${c.name}`).join('\n');
+    // 카드 정보를 텍스트화
+    const cardDesc = cards.map((c, i) => `${['과거','현재','미래'][i]}: ${c.name}`).join(', ');
 
-    // [SYSTEM INSTRUCTION] 광태님의 2026 지침 강화
-    const prompt = `너는 주식·부동산 투자, 명리학, 타로, 심리학에 정통한 'AI 리얼타임 오라클 제니스'다.
-반드시 아래 규칙을 지켜서 답변하라:
-1. 사용자의 질문 카테고리를 판단하여 해당 분야 전문가 말투를 사용하라.
-2. 주식/부동산: 2026년 현재 시장(HBM, AI반도체, 부동산 정책 등)을 카드와 결합하라.
-3. 답변 형식: [과거], [현재], [미래], [제니스 종합 신탁] 순서 유지.
-4. 구체적인 투자 전략과 소름 돋는 통찰을 한글로 제공하라.
-
-질문: ${question}
-카드: ${cardDesc}`;
+    // [SYSTEM INSTRUCTION] 2026년 데이터 결합 지침 (프롬프트 강화)
+    const promptMessage = `
+[ROLE] 너는 2026년 자본시장과 운명을 꿰뚫는 '제니스 투자 오라클'이다.
+[RULES] 
+1. 질문("${question}")과 카드("${cardDesc}")를 분석하라.
+2. 2026년 산업 키워드(HBM, AI 반도체, 금리 등)를 반드시 포함하라.
+3. [과거], [현재], [미래], [제니스 종합 신탁] 순서로 답변하라.
+4. "흐름을 보여줍니다" 같은 뻔한 소리는 금지하며, 소름 돋는 통찰을 한글로 제공하라.
+`;
 
     try {
-        // 사용자 입력값 우선
-        const userQuestion = document.getElementById('user-question')?.value || question || "오늘의 운세";
+        // UI 초기화
+        loadingEl.style.display = 'block';
+        contentEl.innerHTML = '';
+        if(ritualBtn) ritualBtn.disabled = true;
 
-        // 타임아웃 설정 (7초)
+        // 타임아웃 설정 (10초로 확장 - 유료 API 응답 대기)
         const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), 7000);
+        const timeout = setTimeout(() => controller.abort(), 10000);
 
+        // 🚀 Cloudflare Worker 호출
         const response = await fetch('https://tarot-api.omegafund01.workers.dev', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ prompt: userQuestion }),
+            body: JSON.stringify({ prompt: promptMessage }), // 조립된 프롬프트 전달
             signal: controller.signal
         });
 
         clearTimeout(timeout);
 
-        if (!response.ok) throw new Error('서버 응답 오류 (Cloudflare Worker / API Key 확인)');
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(errorData.error || `서버 응답 오류 (Status: ${response.status})`);
+        }
 
         const data = await response.json();
-        const aiText = data?.text?.trim() || '🌟 천상의 응답이 없습니다. 다시 시도하세요.';
+        const aiText = data?.text?.trim();
 
+        if (!aiText || aiText === "응답 없음") {
+            throw new Error("구글 API가 빈 응답을 반환했습니다. API 키 권한을 확인하세요.");
+        }
+
+        // 성공 시 출력
         loadingEl.style.display = 'none';
         await typeWriter(aiText, contentEl);
 
     } catch (error) {
+        // 🚨 5일 사투의 핵심: 가짜 텍스트(dummyText)를 삭제하고 진짜 에러만 노출
+        console.error('Final Oracle Error:', error);
         loadingEl.style.display = 'none';
+        
         if(ritualBtn) {
             ritualBtn.disabled = false;
             ritualBtn.innerText = "다시 시도하기";
         }
-        contentEl.innerHTML = `<div style="color:#ff6b6b;text-align:center;padding:20px;">
-            ⚠️ 천상의 연결 오류<br>
-            <small style="color:#888;">원인: ${error.message}</small></div>`;
 
-        // dummy fallback 테스트용
-        console.warn('AI 응답 실패, dummy fallback 적용');
-        const dummyText = `
-[과거] 카드 ${cards[0].name}가 과거의 흐름을 보여줍니다.<br>
-[현재] 카드 ${cards[1].name}가 현재 상황을 안내합니다.<br>
-[미래] 카드 ${cards[2].name}는 미래의 가능성을 나타냅니다.<br>
-[제니스 종합 신탁] 모든 카드의 흐름을 종합한 통찰을 제공합니다.
+        contentEl.innerHTML = `
+            <div style="color:#ff6b6b; text-align:center; padding:30px; border:1px solid #ff6b6b; border-radius:10px; background:rgba(255,107,107,0.1);">
+                <strong style="font-size:1.1rem;">⚠️ 제니스 연결 실패</strong><br><br>
+                <span style="font-size:0.9rem; color:#eee;">
+                    원인: ${error.message === 'The user aborted a request.' ? '응답 시간 초과 (구글 서버 지연)' : error.message}
+                </span><br><br>
+                <small style="color:#888;">Cloudflare Worker 설정 또는 ₩453,008 결제 계정의 API Quota를 점검하십시오.</small>
+            </div>
         `;
-        await typeWriter(dummyText, contentEl);
     }
 }
 </script>
