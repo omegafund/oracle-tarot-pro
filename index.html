@@ -612,31 +612,32 @@ async function fetchOracleInterpretation(question, cards) {
 카드: ${cardDesc}`;
 
     try {
-        const response = await fetch('https://tarot-api.omegafund01.workers.dev', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ prompt })
-        });
+    const userQuestion = document.getElementById('user-question')?.value || "오늘의 운세";
 
-        if (!response.ok) throw new Error('서버 응답 오류 (Cloudflare 설정을 확인하세요)');
+    const response = await fetch('https://tarot-api.omegafund01.workers.dev', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt: userQuestion })
+    });
 
-        const data = await response.json();
-        const aiText = data?.text || '';
-        
-        loadingEl.style.display = 'none';
-        await typeWriter(aiText, contentEl);
+    if (!response.ok) throw new Error('서버 응답 오류 (Cloudflare Worker / API Key 확인)');
 
-    } catch (error) {
-        loadingEl.style.display = 'none';
-        // 에러 발생 시 버튼을 다시 활성화하여 사용자가 다시 시도할 수 있게 함
-        if(ritualBtn) {
-            ritualBtn.disabled = false;
-            ritualBtn.innerText = "다시 시도하기";
-        }
-        contentEl.innerHTML = `<div style="color:#ff6b6b;text-align:center;padding:20px;">
-            ⚠️ 천상의 연결(404 에러 등)이 원활하지 않습니다.<br>
-            <small style="color:#888;">원인: ${error.message}</small></div>`;
+    const data = await response.json();
+    const aiText = data?.text || '';
+
+    loadingEl.style.display = 'none';
+    await typeWriter(aiText, contentEl);
+
+} catch (error) {
+    loadingEl.style.display = 'none';
+    if(ritualBtn) {
+        ritualBtn.disabled = false;
+        ritualBtn.innerText = "다시 시도하기";
     }
+    contentEl.innerHTML = `<div style="color:#ff6b6b;text-align:center;padding:20px;">
+        ⚠️ 천상의 연결 오류<br>
+        <small style="color:#888;">원인: ${error.message}</small></div>`;
+}
 }
 </script>
 </body>
