@@ -599,8 +599,8 @@ async function fetchOracleInterpretation(question, cards) {
     const ritualBtn = document.getElementById('ritual-btn'); // 버튼 가져오기
 
     const cardDesc = cards.map((c,i) => `${['과거','현재','미래'][i]}: ${c.name}`).join('\n');
-    
-    // [SYSTEM INSTRUCTION] 광태님의 2026 지침을 강화함
+
+    // [SYSTEM INSTRUCTION] 광태님의 2026 지침 강화
     const prompt = `너는 주식·부동산 투자, 명리학, 타로, 심리학에 정통한 'AI 리얼타임 오라클 제니스'다.
 반드시 아래 규칙을 지켜서 답변하라:
 1. 사용자의 질문 카테고리를 판단하여 해당 분야 전문가 말투를 사용하라.
@@ -612,32 +612,50 @@ async function fetchOracleInterpretation(question, cards) {
 카드: ${cardDesc}`;
 
     try {
-    const userQuestion = document.getElementById('user-question')?.value || "오늘의 운세";
+        // 사용자 입력값 우선
+        const userQuestion = document.getElementById('user-question')?.value || question || "오늘의 운세";
 
-    const response = await fetch('https://tarot-api.omegafund01.workers.dev', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt: userQuestion })
-    });
+        // 타임아웃 설정 (7초)
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 7000);
 
-    if (!response.ok) throw new Error('서버 응답 오류 (Cloudflare Worker / API Key 확인)');
+        const response = await fetch('https://tarot-api.omegafund01.workers.dev', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ prompt: userQuestion }),
+            signal: controller.signal
+        });
 
-    const data = await response.json();
-    const aiText = data?.text || '';
+        clearTimeout(timeout);
 
-    loadingEl.style.display = 'none';
-    await typeWriter(aiText, contentEl);
+        if (!response.ok) throw new Error('서버 응답 오류 (Cloudflare Worker / API Key 확인)');
 
-} catch (error) {
-    loadingEl.style.display = 'none';
-    if(ritualBtn) {
-        ritualBtn.disabled = false;
-        ritualBtn.innerText = "다시 시도하기";
+        const data = await response.json();
+        const aiText = data?.text?.trim() || '🌟 천상의 응답이 없습니다. 다시 시도하세요.';
+
+        loadingEl.style.display = 'none';
+        await typeWriter(aiText, contentEl);
+
+    } catch (error) {
+        loadingEl.style.display = 'none';
+        if(ritualBtn) {
+            ritualBtn.disabled = false;
+            ritualBtn.innerText = "다시 시도하기";
+        }
+        contentEl.innerHTML = `<div style="color:#ff6b6b;text-align:center;padding:20px;">
+            ⚠️ 천상의 연결 오류<br>
+            <small style="color:#888;">원인: ${error.message}</small></div>`;
+
+        // dummy fallback 테스트용
+        console.warn('AI 응답 실패, dummy fallback 적용');
+        const dummyText = `
+[과거] 카드 ${cards[0].name}가 과거의 흐름을 보여줍니다.<br>
+[현재] 카드 ${cards[1].name}가 현재 상황을 안내합니다.<br>
+[미래] 카드 ${cards[2].name}는 미래의 가능성을 나타냅니다.<br>
+[제니스 종합 신탁] 모든 카드의 흐름을 종합한 통찰을 제공합니다.
+        `;
+        await typeWriter(dummyText, contentEl);
     }
-    contentEl.innerHTML = `<div style="color:#ff6b6b;text-align:center;padding:20px;">
-        ⚠️ 천상의 연결 오류<br>
-        <small style="color:#888;">원인: ${error.message}</small></div>`;
-}
 }
 </script>
 </body>
