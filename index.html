@@ -523,10 +523,20 @@ function delay(ms) { return new Promise(r => setTimeout(r, ms)); }
 function flipCard(index, card) {
     return new Promise(resolve => {
         const img = document.getElementById(`card-img-${index}`);
+        const slot = document.getElementById(`slot-${index}`);
         img.classList.add('flipping');
         setTimeout(() => {
             img.src = `${BASE_URL}${card.file}`;
-            img.onerror = () => { img.src = `${BASE_URL}back.jpg`; };
+            img.onerror = () => {
+                img.style.display = 'none';
+                // 기존 모래시계 제거 후 새로 삽입
+                const old = slot.querySelector('.slot-hourglass');
+                if (old) old.remove();
+                const hg = document.createElement('div');
+                hg.className = 'slot-hourglass';
+                hg.textContent = '⧗';
+                slot.appendChild(hg);
+            };
             img.classList.remove('flipping');
             resolve();
         }, 300);
