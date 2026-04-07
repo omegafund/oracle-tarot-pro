@@ -238,16 +238,26 @@
             width: 100%;
             position: relative;
         }
-        /* 결과창 내 인장 효과를 위한 스타일 추가 */
+       /* 결과창 내 인장 효과를 위한 스타일 추가 */
         .oracle-seal {
             width: 70px; height: 70px;
             margin: 15px auto 0;
-            background: url('https://omegafund.github.io/oracle-tarot-pro/images/seal_pattern.png') no-repeat center/contain;
-            opacity: 0;
+            text-align: center;
+            font-size: 3rem;
+            line-height: 70px;
+            opacity: 1;
             transition: all 1.5s ease;
-            filter: sepia(1) saturate(5) hue-rotate(-10deg);
+            animation: hourglassSpin 1.2s infinite ease-in-out;
         }
-        .oracle-seal.stamped { opacity: 0.6; transform: scale(1.1); filter: drop-shadow(0 0 8px var(--gold)); }
+        .oracle-seal.stamped {
+            animation: none;
+            filter: drop-shadow(0 0 8px var(--gold));
+        }
+        @keyframes hourglassSpin {
+            0%   { transform: rotate(0deg); }
+            50%  { transform: rotate(180deg); }
+            100% { transform: rotate(0deg); }
+        }
 
         #ai-loading-text { color: var(--gold); text-align: center; padding: 20px 0; }
         .loading-dots::after { content: ''; animation: dots 1.5s infinite; }
@@ -342,7 +352,7 @@
         <div class="zenith-oracle-container">
             <div id="ai-loading-text">✨ 천상의 지혜를 연결 중<span class="loading-dots"></span></div>
             <div id="oracle-content"></div>
-            <div id="oracle-seal" class="oracle-seal"></div>
+           <div id="oracle-seal" class="oracle-seal">⏳</div>
         </div>
         
         <button class="reset-btn" onclick="location.reload()">✦ 처음으로 돌아가기 ✦</button>
