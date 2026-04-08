@@ -411,13 +411,28 @@ let selectedCards = [];
 // ════════════════════════════════════
 function updateSlot(idx) {
     const img = document.getElementById(`card-img-${idx}`);
+    const slot = document.getElementById(`slot-${idx}`);
     if (!img) return;
     img.style.opacity = '0';
     setTimeout(() => {
         const card = CARDS[Math.floor(Math.random() * CARDS.length)];
         img.src = `${BASE_URL}${card.file}`;
-        img.onerror = () => { img.src = `${BASE_URL}back.jpg`; };
-        img.style.opacity = '1';
+        img.onerror = () => {
+            img.style.display = 'none';
+            const old = slot.querySelector('.slot-hourglass');
+            if (old) old.remove();
+            const hg = document.createElement('div');
+            hg.className = 'slot-hourglass';
+            hg.textContent = '⧗';
+            slot.appendChild(hg);
+        };
+        img.onload = () => {
+            // 이미지 성공시 모래시계 제거
+            const old = slot.querySelector('.slot-hourglass');
+            if (old) old.remove();
+            img.style.display = 'block';
+            img.style.opacity = '1';
+        };
     }, 300);
 }
 
