@@ -705,7 +705,8 @@ function showResultView(question) {
 // 텍스트 읽을 때 위로 시선 왕복 불필요 (인지 왕복 비용 제거)
 // ════════════════════════════════════
 function formatReading(text, cards) {
-    const parts = text.split(/\[과거\]|\[현재\]|\[미래\]|\[제니스 운명 신탁\]/);
+    // **[과거]** / [과거] 양쪽 모두 처리
+    const parts = text.split(/\*{0,2}\s*\[과거\]\s*\*{0,2}|\*{0,2}\s*\[현재\]\s*\*{0,2}|\*{0,2}\s*\[미래\]\s*\*{0,2}|\*{0,2}\s*\[제니스 운명 신탁\]\s*\*{0,2}/);
 
     const formatText = t => (t || '').trim()
         .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
