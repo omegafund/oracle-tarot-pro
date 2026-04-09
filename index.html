@@ -638,7 +638,40 @@ function showResultView(question) {
     requestAnimationFrame(() => requestAnimationFrame(() => { rv.style.opacity = '1'; }));
     fetchOracleInterpretation(question, selectedCards);
 }
+// 🔥 카드 + 해설 결합 포맷 함수 (추가)
+function formatReading(text, cards) {
 
+    const sections = text.split(/\[과거\]|\[현재\]|\[미래\]/);
+
+    return `
+    <div class="card-block">
+        <h2>과거</h2>
+        <div class="card-inline">
+            <img src="${BASE_URL}${cards[0].file}" class="mini-card">
+            <div class="card-name">${cards[0].name}</div>
+        </div>
+        <div class="card-text">${sections[1] || ''}</div>
+    </div>
+
+    <div class="card-block">
+        <h2>현재</h2>
+        <div class="card-inline">
+            <img src="${BASE_URL}${cards[1].file}" class="mini-card">
+            <div class="card-name">${cards[1].name}</div>
+        </div>
+        <div class="card-text">${sections[2] || ''}</div>
+    </div>
+
+    <div class="card-block">
+        <h2>미래</h2>
+        <div class="card-inline">
+            <img src="${BASE_URL}${cards[2].file}" class="mini-card">
+            <div class="card-name">${cards[2].name}</div>
+        </div>
+        <div class="card-text">${sections[3] || ''}</div>
+    </div>
+    `;
+}
 // ════════════════════════════════════
 //  실시간 타이핑 및 자동 스크롤
 // ════════════════════════════════════
