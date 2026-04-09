@@ -328,6 +328,15 @@
             z-index: 9999;
             border-radius: 50%;
         }
+        /* 금색 이중선 스타일 정의 */
+.gold-divider {
+    border: none;
+    height: 4px; /* 선의 전체 두께 */
+    border-top: 2px solid #D4AF37; /* 위쪽 금색 줄 */
+    border-bottom: 2px solid #C5A028; /* 아래쪽 조금 더 짙은 금색 줄 */
+    margin: 25px 0; /* 위아래 여유 공간 */
+    box-shadow: 0 1px 2px rgba(0,0,0,0.2); /* 약간의 입체감 */
+}
     </style>
 </head>
 <body>
@@ -769,7 +778,9 @@ async function fetchOracleInterpretation(userQuestion, cards) {
 
         loadingEl.style.display = 'none';
         progressWrap.style.display = 'none';
-        await typeWriter(aiText, contentEl);
+        // 타이핑 효과 대신 즉시 디자인이 적용된 결과물을 뿌려줍니다.
+contentEl.innerHTML = aiText.replace(/\n/g, '<br>'); 
+loadingEl.style.display = 'none'; // 혹시라도 안 꺼졌을 로딩창을 끕니다.
 
     } catch (error) {
         clearInterval(loadingTimer);
