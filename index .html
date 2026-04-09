@@ -582,7 +582,7 @@
                 <div id="oracle-progress-bar"></div>
             </div>
             <div id="oracle-content"></div>
-            <div id="oracle-seal" class="oracle-seal"></div>
+            <!-- seal_pattern.png 404 방지: seal 제거 -->
         </div>
 
         <button class="reset-btn" onclick="location.reload()">✦ 처음으로 돌아가기 ✦</button>
@@ -847,7 +847,7 @@ async function startStreamFetch(userQuestion, cards) {
             cardNames:     cardNames,
             cardPositions: cardPositions,
             isReversed:    '없음',
-            userName:      '구도자'
+            userName:      (window._oracleUserName || '유저님')
         }),
         signal: controller.signal
     });
@@ -935,8 +935,8 @@ async function renderStream(fetchPromise, cards) {
                     contentEl.innerHTML = renderText(fullText, cards);
                     contentEl.appendChild(cursor);
 
-                    // 자동 스크롤
-                    contentEl.scrollIntoView({ behavior: 'smooth', block: 'end' });
+                    // 자동 스크롤 — 스트리밍 중 페이지 맨 아래로 부드럽게 따라감
+                    window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
 
                 } catch (_) { /* JSON 파싱 실패 무시 */ }
             }
@@ -946,11 +946,7 @@ async function renderStream(fetchPromise, cards) {
         cursor.remove();
         contentEl.innerHTML = renderText(fullText, cards);
 
-        // 씰 스탬프
-        setTimeout(() => {
-            const seal = document.getElementById('oracle-seal');
-            if (seal) seal.classList.add('stamped');
-        }, 800);
+        // seal 제거됨
 
     } catch (error) {
         clearInterval(loadingTimer);
@@ -976,40 +972,44 @@ function renderText(text, cards) {
         .replace(/^#{1,3}\s(.+)/gm, '<h3>$1</h3>')
         .replace(/\n/g, '<br>');
 
-    // [과거]/[현재]/[미래] 섹션이 있는 경우 → 카드 인라인 포맷
+    const labels = ['과거','현재','미래'];
+
+    // 카드 3장 섹션은 항상 강제 렌더 (섹션 태그 유무와 무관)
+    // [과거]/[현재]/[미래] 태그로 분리 시도, 없으면 전체 텍스트를 균등 분배
+    let parts = [''];
     if (text.includes('[과거]') || text.includes('[현재]') || text.includes('[미래]')) {
-        const parts = text.split(/\*{0,2}\s*\[과거\]\s*\*{0,2}|\*{0,2}\s*\[현재\]\s*\*{0,2}|\*{0,2}\s*\[미래\]\s*\*{0,2}|\*{0,2}\s*\[제니스 운명 신탁\]\s*\*{0,2}/);
-        const labels = ['과거','현재','미래'];
-
-        const cardSections = (cards || []).map((card, i) => `
-            <div class="card-block">
-                <h2>${labels[i]}</h2>
-                <!-- 카드 이미지 float left → 텍스트가 이미지 오른쪽에서 시작 -->
-                <img src="${BASE_URL}${card.file}" class="mini-card-float"
-                     onerror="this.src='${BASE_URL}back.jpg'">
-                <div class="card-text-wrap">
-                    <span class="card-name-inline">${card.name}</span>
-                    <div class="card-text">${formatChunk(parts[i + 1])}</div>
-                </div>
-            </div>`).join('');
-
-        const oraclePart = parts[4] ? `
-            <div class="final-reading">
-                <div class="oracle-header">
-                    <span class="oracle-eye">👁</span>
-                    <h2 style="display:inline;color:#D4AF37;margin:0;">제니스 운명 신탁</h2>
-                </div>
-                <div class="oracle-text" style="margin-top:15px;">${formatChunk(parts[4])}</div>
-            </div>` : '';
-
-        return cardSections + oraclePart;
+        parts = text.split(/\*{0,2}\s*\[과거\]\s*\*{0,2}|\*{0,2}\s*\[현재\]\s*\*{0,2}|\*{0,2}\s*\[미래\]\s*\*{0,2}|\*{0,2}\s*\[제니스 운명 신탁\]\s*\*{0,2}/);
+    } else {
+        // 섹션 태그 없는 경우: 인사말 + 전체본문을 parts[0]에, 나머지 빈값
+        parts = [text, '', '', ''];
     }
 
-    // 워커 masterPrompt 기반 HTML 직접 렌더 (HTML 태그 포함 응답)
-    return text
-        .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-        .replace(/^#{1,3}\s(.+)/gm, '<h3>$1</h3>')
-        .replace(/\n/g, '<br>');
+    // 카드 3장 항상 렌더
+    const cardSections = (cards || []).map((card, i) => `
+        <div class="card-block">
+            <h2>${labels[i]}</h2>
+            <img src="${BASE_URL}${card.file}" class="mini-card-float"
+                 onerror="this.src='${BASE_URL}back.jpg'">
+            <div class="card-text-wrap">
+                <span class="card-name-inline">${card.name}</span>
+                <div class="card-text">${formatChunk(parts[i + 1] || '')}</div>
+            </div>
+        </div>`).join('');
+
+    // 인사말 (parts[0])
+    const introPart = parts[0] ? `<div style="margin-bottom:16px;color:rgba(255,255,255,0.85);line-height:1.85;">${formatChunk(parts[0])}</div>` : '';
+
+    // 제니스 운명 신탁 (parts[4])
+    const oraclePart = parts[4] ? `
+        <div class="final-reading">
+            <div class="oracle-header">
+                <span class="oracle-eye">👁</span>
+                <h2 style="display:inline;color:#D4AF37;margin:0;">제니스 운명 신탁</h2>
+            </div>
+            <div class="oracle-text" style="margin-top:15px;">${formatChunk(parts[4])}</div>
+        </div>` : '';
+
+    return introPart + cardSections + oraclePart;
 }
 </script>
 </body>
