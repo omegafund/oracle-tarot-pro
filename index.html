@@ -33,13 +33,47 @@
             border-right: 1px solid rgba(212,175,55,0.15);
             min-height: 100vh;
         }
+
+        /* ════════════════════════════════════
+           ✦ 아치형 별 타이틀 영역
+        ════════════════════════════════════ */
+        .arch-title-wrapper {
+            position: relative;
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 4px;
+            padding-top: 10px;
+        }
+        .arch-svg-wrapper {
+            position: relative;
+            width: 320px;
+            height: 90px;
+            margin: 0 auto;
+        }
+        .arch-svg-wrapper svg {
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            overflow: visible;
+        }
+        /* 아치 위 별들 */
+        .arch-star {
+            fill: var(--gold);
+            filter: drop-shadow(0 0 4px #D4AF37) drop-shadow(0 0 10px #FFF5C3);
+        }
         .gold-title {
+            position: relative;
+            z-index: 2;
             color: var(--gold);
             font-size: 2.3rem;
             font-weight: 900;
             margin: 0;
             letter-spacing: 0.3em;
-            text-shadow: 0 0 15px rgba(212,175,55,0.6);
+            text-shadow: 0 0 15px rgba(212,175,55,0.6), 0 0 30px rgba(212,175,55,0.3);
+            line-height: 1;
         }
         .sub-title {
             color: var(--gold);
@@ -49,6 +83,32 @@
             display: block;
             font-weight: 800;
         }
+
+        /* ════════════════════════════════════
+           ✦ 아치 별 깜빡임 애니메이션
+        ════════════════════════════════════ */
+        @keyframes archStarTwinkle1 {
+            0%,100%{opacity:0.2;r:3px;filter:drop-shadow(0 0 2px #D4AF37);}
+            50%{opacity:1;r:5px;filter:drop-shadow(0 0 8px #FFF5C3) drop-shadow(0 0 16px #D4AF37);}
+        }
+        @keyframes archStarTwinkle2 {
+            0%,100%{opacity:0.5;r:2px;}
+            40%{opacity:1;r:4.5px;filter:drop-shadow(0 0 10px #FFF5C3);}
+        }
+        @keyframes archStarTwinkle3 {
+            0%,100%{opacity:0.15;r:2.5px;}
+            60%{opacity:0.9;r:4px;filter:drop-shadow(0 0 6px #D4AF37);}
+        }
+        @keyframes archStarTwinkle4 {
+            0%,100%{opacity:0.7;r:2px;}
+            30%{opacity:0.2;r:3px;}
+            70%{opacity:1;r:5px;filter:drop-shadow(0 0 12px #FFF5C3);}
+        }
+        @keyframes archStarTwinkle5 {
+            0%,100%{opacity:0.3;r:3.5px;}
+            55%{opacity:1;r:5.5px;filter:drop-shadow(0 0 10px #D4AF37);}
+        }
+
         .star-icon {
             color: var(--gold);
             font-size: 1.5rem;
@@ -180,8 +240,6 @@
         }
         .gold-button:active { transform: scale(0.97); }
         .gold-button:disabled { opacity: 0.7; cursor: not-allowed; }
-
-        /* ✅ 🔮 회전 애니메이션 */
         .gold-button .orb-spin {
             display: inline-block;
             animation: orbPulse 0.8s ease-in-out infinite;
@@ -190,7 +248,6 @@
             0%, 100% { transform: scale(1) rotate(-10deg); }
             50%       { transform: scale(1.3) rotate(10deg); }
         }
-
         .spiritual-pointer {
             position: absolute;
             bottom: -20px; right: -10px;
@@ -274,8 +331,6 @@
             filter: sepia(1) saturate(5) hue-rotate(-10deg);
         }
         .oracle-seal.stamped { opacity: 0.6; transform: scale(1.1); filter: drop-shadow(0 0 8px var(--gold)); }
-
-        /* ✅ 로딩 텍스트 & 진행바 */
         #ai-loading-text {
             color: var(--gold);
             text-align: center;
@@ -328,91 +383,200 @@
             z-index: 9999;
             border-radius: 50%;
         }
-        /* 금색 이중선 스타일 정의 */
-.gold-divider {
-    border: none;
-    height: 4px;
-    border-top: 2px solid #D4AF37;
-    border-bottom: 2px solid #C5A028;
-    margin: 25px 0;
-    box-shadow: 0 1px 2px rgba(0,0,0,0.2);
-}
-/* 카드+해설 섹션 스타일 */
-.card-block {
-    margin-bottom: 28px;
-    padding-bottom: 22px;
-    border-bottom: 1px solid rgba(212,175,55,0.15);
-}
-.card-block:last-of-type { border-bottom: none; }
-.card-block h2 {
-    font-size: 1rem;
-    letter-spacing: 0.15em;
-    color: var(--gold);
-    margin: 0 0 10px 0;
-    font-weight: 900;
-}
-.card-inline {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    margin-bottom: 12px;
-}
-.mini-card {
-    width: 48px;
-    height: 72px;
-    object-fit: cover;
-    border-radius: 5px;
-    border: 1.5px solid rgba(212,175,55,0.5);
-    flex-shrink: 0;
-}
-.card-name {
-    font-size: 0.82rem;
-    color: rgba(212,175,55,0.8);
-    font-style: italic;
-    letter-spacing: 0.05em;
-}
-.card-text {
-    font-size: 0.93rem;
-    line-height: 1.85;
-    color: rgba(255,255,255,0.88);
-}
-.oracle-block {
-    margin-top: 24px;
-    padding: 18px;
-    background: rgba(212,175,55,0.07);
-    border: 1px solid rgba(212,175,55,0.3);
-    border-radius: 12px;
-}
-.oracle-block h2 {
-    font-size: 0.95rem;
-    color: var(--gold);
-    margin: 0 0 10px 0;
-    font-weight: 900;
-    letter-spacing: 0.1em;
-}
-.oracle-text {
-    font-size: 0.93rem;
-    line-height: 1.85;
-    color: rgba(255,255,255,0.88);
-}
+        .gold-divider {
+            border: none;
+            height: 4px;
+            border-top: 2px solid #D4AF37;
+            border-bottom: 2px solid #C5A028;
+            margin: 25px 0;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.2);
+        }
+        .card-block {
+            margin-bottom: 28px;
+            padding-bottom: 22px;
+            border-bottom: 1px solid rgba(212,175,55,0.15);
+        }
+        .card-block:last-of-type { border-bottom: none; }
+        .card-block h2 {
+            font-size: 1rem;
+            letter-spacing: 0.15em;
+            color: var(--gold);
+            margin: 0 0 10px 0;
+            font-weight: 900;
+        }
+        .card-inline {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 12px;
+        }
+        .mini-card {
+            width: 48px;
+            height: 72px;
+            object-fit: cover;
+            border-radius: 5px;
+            border: 1.5px solid rgba(212,175,55,0.5);
+            flex-shrink: 0;
+        }
+        .card-name {
+            font-size: 0.82rem;
+            color: rgba(212,175,55,0.8);
+            font-style: italic;
+            letter-spacing: 0.05em;
+        }
+        .card-text {
+            font-size: 0.93rem;
+            line-height: 1.85;
+            color: rgba(255,255,255,0.88);
+        }
+        .oracle-block {
+            margin-top: 24px;
+            padding: 18px;
+            background: rgba(212,175,55,0.07);
+            border: 1px solid rgba(212,175,55,0.3);
+            border-radius: 12px;
+        }
+        .oracle-block h2 {
+            font-size: 0.95rem;
+            color: var(--gold);
+            margin: 0 0 10px 0;
+            font-weight: 900;
+            letter-spacing: 0.1em;
+        }
+        .oracle-text {
+            font-size: 0.93rem;
+            line-height: 1.85;
+            color: rgba(255,255,255,0.88);
+        }
+        /* 워커에서 내려오는 synergy / guardian / final-reading 스타일 */
+        .synergy-reading {
+            margin: 20px 0;
+            padding: 16px;
+            background: rgba(212,175,55,0.06);
+            border: 1px solid rgba(212,175,55,0.25);
+            border-radius: 10px;
+            font-size: 0.93rem;
+            line-height: 1.85;
+            color: rgba(255,255,255,0.88);
+        }
+        .synergy-reading strong { color: var(--gold); }
+        .final-reading {
+            margin-top: 24px;
+            padding: 20px;
+            background: rgba(212,175,55,0.08);
+            border: 2px solid rgba(212,175,55,0.4);
+            border-radius: 12px;
+            font-size: 0.93rem;
+            line-height: 1.85;
+            color: rgba(255,255,255,0.9);
+        }
+        .final-reading strong { color: var(--gold); }
+        .oracle-eye { font-size: 1.3rem; margin-right: 6px; }
+        .guardian-energy {
+            margin-top: 20px;
+            padding: 16px;
+            background: rgba(100,80,180,0.08);
+            border: 1px solid rgba(212,175,55,0.2);
+            border-radius: 10px;
+            font-size: 0.93rem;
+            line-height: 1.85;
+            color: rgba(255,255,255,0.88);
+        }
+        .guardian-energy strong { color: var(--gold); }
+        .oracle-header {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 8px;
+        }
     </style>
 </head>
 <body>
 <div id="app-container">
 
     <div id="home-view">
-        <div class="title-wrapper" style="display: flex; align-items: center; justify-content: center; gap: 15px;">
-            <span class="star-icon">✦</span>
-            <h1 class="gold-title" style="margin: 0;">ORACLE TAROT</h1>
-            <span class="star-icon">✦</span>
+
+        <!-- ✦ 아치형 별 타이틀 -->
+        <div class="arch-title-wrapper">
+            <div class="arch-svg-wrapper">
+                <!-- SVG 아치 별들 -->
+                <svg viewBox="0 0 320 90" xmlns="http://www.w3.org/2000/svg">
+                    <defs>
+                        <filter id="glow">
+                            <feGaussianBlur stdDeviation="2.5" result="coloredBlur"/>
+                            <feMerge>
+                                <feMergeNode in="coloredBlur"/>
+                                <feMergeNode in="SourceGraphic"/>
+                            </feMerge>
+                        </filter>
+                    </defs>
+
+                    <!-- 아치 경로 (타이틀 위 반원) -->
+                    <!-- 별 13개를 반원 아치 위에 배치 -->
+
+                    <!-- 왼쪽 끝 -->
+                    <circle cx="18" cy="72" r="3" fill="#D4AF37" filter="url(#glow)"
+                        style="animation: archStarTwinkle3 2.1s infinite ease-in-out;"/>
+
+                    <circle cx="38" cy="52" r="2.5" fill="#FFF5C3" filter="url(#glow)"
+                        style="animation: archStarTwinkle1 1.7s 0.3s infinite ease-in-out;"/>
+
+                    <circle cx="58" cy="34" r="4" fill="#D4AF37" filter="url(#glow)"
+                        style="animation: archStarTwinkle5 2.4s 0.6s infinite ease-in-out;"/>
+
+                    <circle cx="82" cy="18" r="3" fill="#FFF5C3" filter="url(#glow)"
+                        style="animation: archStarTwinkle2 1.9s 0.1s infinite ease-in-out;"/>
+
+                    <circle cx="110" cy="7" r="3.5" fill="#D4AF37" filter="url(#glow)"
+                        style="animation: archStarTwinkle4 2.2s 0.8s infinite ease-in-out;"/>
+
+                    <circle cx="140" cy="2" r="4.5" fill="#FFF5C3" filter="url(#glow)"
+                        style="animation: archStarTwinkle1 1.5s 0.4s infinite ease-in-out;"/>
+
+                    <!-- 중앙 꼭대기 (가장 크게) -->
+                    <circle cx="160" cy="1" r="5.5" fill="#FFD700" filter="url(#glow)"
+                        style="animation: archStarTwinkle5 1.3s 0s infinite ease-in-out;"/>
+
+                    <circle cx="180" cy="2" r="4.5" fill="#FFF5C3" filter="url(#glow)"
+                        style="animation: archStarTwinkle1 1.5s 0.5s infinite ease-in-out;"/>
+
+                    <circle cx="210" cy="7" r="3.5" fill="#D4AF37" filter="url(#glow)"
+                        style="animation: archStarTwinkle4 2.2s 0.2s infinite ease-in-out;"/>
+
+                    <circle cx="238" cy="18" r="3" fill="#FFF5C3" filter="url(#glow)"
+                        style="animation: archStarTwinkle2 1.9s 0.7s infinite ease-in-out;"/>
+
+                    <circle cx="262" cy="34" r="4" fill="#D4AF37" filter="url(#glow)"
+                        style="animation: archStarTwinkle5 2.4s 0.3s infinite ease-in-out;"/>
+
+                    <circle cx="282" cy="52" r="2.5" fill="#FFF5C3" filter="url(#glow)"
+                        style="animation: archStarTwinkle1 1.7s 0.9s infinite ease-in-out;"/>
+
+                    <circle cx="302" cy="72" r="3" fill="#D4AF37" filter="url(#glow)"
+                        style="animation: archStarTwinkle3 2.1s 0.5s infinite ease-in-out;"/>
+
+                    <!-- 작은 보조 별들 (반짝임 레이어 추가) -->
+                    <circle cx="48" cy="44" r="1.5" fill="#FFF5C3" filter="url(#glow)"
+                        style="animation: archStarTwinkle2 1.1s 0.2s infinite ease-in-out;"/>
+                    <circle cx="96" cy="11" r="2" fill="#FFD700" filter="url(#glow)"
+                        style="animation: archStarTwinkle4 1.8s 0.6s infinite ease-in-out;"/>
+                    <circle cx="224" cy="11" r="2" fill="#FFD700" filter="url(#glow)"
+                        style="animation: archStarTwinkle4 1.8s 0.3s infinite ease-in-out;"/>
+                    <circle cx="272" cy="44" r="1.5" fill="#FFF5C3" filter="url(#glow)"
+                        style="animation: archStarTwinkle2 1.1s 0.7s infinite ease-in-out;"/>
+                </svg>
+
+                <!-- 타이틀 텍스트 (SVG 아래 중앙) -->
+                <h1 class="gold-title" style="position:absolute;bottom:0;left:0;right:0;text-align:center;">ORACLE TAROT</h1>
+            </div>
+            <span class="sub-title" style="margin-top:6px;">PRO · MASTERPIECE</span>
         </div>
-        <span class="sub-title">PRO - MASTERPIECE</span>
 
         <div class="input-system-wrapper">
             <div class="beveled-border"></div>
             <div class="beveled-inner"></div>
             <textarea id="seed-input" class="gold-input" placeholder="마음의 질문을 깊게 새기소서
-    (입력후 아래 신탁확인창을 누르세요)"></textarea>
+(입력후 아래 신탁확인창을 누르세요)"></textarea>
         </div>
 
         <div class="cards-stage">
@@ -442,9 +606,9 @@
     </div>
 
     <div id="result-view">
-        <div class="title-wrapper" style="display: flex; align-items: center; justify-content: center; gap: 15px; margin-bottom: 5px;">
+        <div class="title-wrapper" style="display:flex;align-items:center;justify-content:center;gap:15px;margin-bottom:5px;">
             <span class="star-icon">✧</span>
-            <h1 class="gold-title" style="font-size:1.8rem; margin:0;">제니스 운명의 신탁</h1>
+            <h1 class="gold-title" style="font-size:1.8rem;margin:0;">제니스 운명의 신탁</h1>
             <span class="star-icon">✧</span>
         </div>
         <span class="sub-title" style="font-size:0.8rem;">ZENITH DESTINY ORACLE</span>
@@ -626,7 +790,6 @@ async function startRitual() {
     const question = document.getElementById('seed-input').value.trim();
     if (!question) { alert('질문을 입력해주세요.'); return; }
 
-    // ✅ 버튼에 🔮 진동 애니메이션
     const btn = document.getElementById('ritual-btn');
     btn.disabled = true;
     btn.innerHTML = '신탁을 소환하는 중 <span class="orb-spin">🔮</span>';
@@ -699,14 +862,9 @@ function showResultView(question) {
 }
 
 // ════════════════════════════════════
-// 🃏 카드 + 해설 결합 포맷
-// [과거] 카드이미지+이름 → 텍스트
-// [현재] 카드이미지+이름 → 텍스트
-// [미래] 카드이미지+이름 → 텍스트
-// 텍스트 읽을 때 위로 시선 왕복 불필요 (인지 왕복 비용 제거)
+// 포맷 리딩 — 워커 HTML 태그 그대로 렌더
 // ════════════════════════════════════
 function formatReading(text, cards) {
-    // 1. 텍스트 분리 (기존 로직 유지)
     const parts = text.split(/\*{0,2}\s*\[과거\]\s*\*{0,2}|\*{0,2}\s*\[현재\]\s*\*{0,2}|\*{0,2}\s*\[미래\]\s*\*{0,2}|\*{0,2}\s*\[제니스 운명 신탁\]\s*\*{0,2}/);
 
     const formatText = t => (t || '').trim()
@@ -716,7 +874,6 @@ function formatReading(text, cards) {
 
     const sectionLabels = ['과거', '현재', '미래'];
 
-    // 2. 과거/현재/미래 섹션 생성
     const cardSections = cards.map((card, i) => `
         <div class="card-block">
             <h2>${sectionLabels[i]}</h2>
@@ -729,12 +886,11 @@ function formatReading(text, cards) {
         </div>
     `).join('');
 
-    // 3. [핵심 수정] 제니스 운명 신탁창 (황금 눈동자 & 테두리 적용)
     const oraclePart = parts[4] ? `
         <div class="final-reading">
             <div class="oracle-header">
                 <span class="oracle-eye">👁</span>
-                <h2 style="display:inline; color:#D4AF37; margin:0;">제니스 운명 신탁</h2>
+                <h2 style="display:inline;color:#D4AF37;margin:0;">제니스 운명 신탁</h2>
             </div>
             <div class="oracle-text" style="margin-top:15px;">
                 ${formatText(parts[4])}
@@ -746,45 +902,21 @@ function formatReading(text, cards) {
 }
 
 // ════════════════════════════════════
-// 🃏 AI 신탁 (Cloudflare Worker 경유)
+// AI 신탁 (Cloudflare Worker 경유)
 // ════════════════════════════════════
 async function fetchOracleInterpretation(userQuestion, cards) {
-    const loadingEl = document.getElementById('ai-loading-text');
-    const contentEl = document.getElementById('oracle-content');
-    const ritualBtn = document.getElementById('ritual-btn');
+    const loadingEl  = document.getElementById('ai-loading-text');
+    const contentEl  = document.getElementById('oracle-content');
+    const ritualBtn  = document.getElementById('ritual-btn');
     const progressWrap = document.getElementById('oracle-progress-wrap');
-    const progressBar = document.getElementById('oracle-progress-bar');
+    const progressBar  = document.getElementById('oracle-progress-bar');
 
-    const cardNames = cards.map(c => c.name).join(', ');
-    const cardDesc = cards.map((c, i) => `${['과거','현재','미래'][i]}: ${c.name}`).join(', ');
-
-    const promptMessage = `
-[ROLE: 2026 ZENITH MULTI-ORACLE]
-너는 2026년의 모든 흐름(주식, 부동산, 연애, 운세)을 통제하는 타로카드 해석전문가 오라클이다. 
-사용자의 질문("${userQuestion}")을 분석하여 아래 4가지 중 하나의 모드로 자동 전환하라.
-
-1. [INVEST 모드 (주식/재테크)]:
-   - 2026년 반도체, AI, 금리 데이터를 기반으로 차트와 수급 위주 분석.
-2. [REAL ESTATE 모드 (부동산/이사)]:
-   - 2026년 수도권 공급 물량, GTX 노선 개통 상황, 정책 변화를 반영한 실전 조언.
-3. [ROMANCE 모드 (연애/재회)]:
-   - 상대의 심리, 관계의 에너지 흐름, 2026년 특유의 인연법(명리학적 관점) 결합.
-4. [GENERAL 모드 (일상/운세)]:
-   - 오늘의 기운, 주의해야 할 액운, 행운의 방향과 색상, 행운의 숫자 제시.
-
-[COMMON RULES - 절대 준수 지침]
-1. 답변 형식: 반드시 [과거], [현재], [미래], [제니스 운명 신탁]의 4단계 섹션을 엄수하되 3문장 이내로 작성하라.
-2. 데이터 결합: 선택된 카드("${cardNames}")의 추상적 풀이는 배제하고, 2026년의 실물 경제(반도체/부동산 공급/금리) 및 실전 심리 데이터를 1%의 오차 없이 결합하여 분석하라.
-3. 페르소나: 해당 분야(투자/부동산/명리)의 세계관 최강자이자 최고 권위자로서 반드시 정중한 경어를 사용하십시오. 세련된 일류 전문 용어를 사용하라.
-4. 금지 사항: "카드가 흐름을 보여줍니다" 같은 뻔한 초보적 표현은 절대 금지한다.
-
-[USER INPUT & EXECUTION]
-- 사용자의 질문: "${userQuestion}"
-- 운명의 카드: ${cardDesc}
-
-위 정보를 바탕으로 2026년의 실전 데이터를 녹여낸 통찰을 제공하라.
-반드시 한글로 작성하고, 질문의 본질을 꿰뚫는 결정적 해답을 제시하되 경어를 반드시 사용하라.
-`;
+    // ── 워커와 완전 매칭되는 파라미터 ──────────────────
+    const cardNames     = cards.map(c => c.name).join(', ');
+    const cardPositions = cards.map((c, i) => `${['과거','현재','미래'][i]}: ${c.name}`).join(', ');
+    const isReversed    = '없음';   // 추후 역방향 UI 추가 시 이 값을 동적으로 변경
+    const userName      = '구도자'; // 추후 이름 입력 UI 추가 시 이 값을 동적으로 변경
+    // ────────────────────────────────────────────────
 
     loadingEl.style.display = 'block';
     progressWrap.style.display = 'block';
@@ -813,19 +945,20 @@ async function fetchOracleInterpretation(userQuestion, cards) {
 
     try {
         const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), 25000);
+        const timeout = setTimeout(() => controller.abort(), 30000);
 
-        // [수정된 최종 fetch 코드]
-const response = await fetch('https://tarot-api.omegafund01.workers.dev', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ 
-        prompt: promptMessage,
-        // 🚩 바로 이 줄이 빠져서 에러가 났던 겁니다!
-        cardNames: cards.map(c => c.name).join(', ') 
-    }),
-    signal: controller.signal
-});
+        const response = await fetch('https://tarot-api.omegafund01.workers.dev', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                prompt:        userQuestion,
+                cardNames:     cardNames,
+                cardPositions: cardPositions,
+                isReversed:    isReversed,
+                userName:      userName
+            }),
+            signal: controller.signal
+        });
 
         clearTimeout(timeout);
         clearInterval(loadingTimer);
@@ -841,7 +974,7 @@ const response = await fetch('https://tarot-api.omegafund01.workers.dev', {
         }
 
         if (data.error) {
-            throw new Error('에러: ' + data.error + '\nGoogle 원문: ' + (data.googleRawError || data.message || ''));
+            throw new Error('에러: ' + data.error);
         }
 
         const aiText = data?.text?.trim();
@@ -851,7 +984,24 @@ const response = await fetch('https://tarot-api.omegafund01.workers.dev', {
 
         loadingEl.style.display = 'none';
         progressWrap.style.display = 'none';
-        contentEl.innerHTML = formatReading(aiText, cards);
+
+        // 워커가 HTML 태그를 직접 내려줄 경우 그대로 렌더링
+        // [과거]/[현재]/[미래]/[제니스 운명 신탁] 섹션이 있으면 formatReading, 없으면 직접 렌더
+        if (aiText.includes('[과거]') || aiText.includes('[현재]') || aiText.includes('[미래]')) {
+            contentEl.innerHTML = formatReading(aiText, cards);
+        } else {
+            // 워커 masterPrompt 기반 HTML 직접 렌더
+            contentEl.innerHTML = aiText
+                .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+                .replace(/^#{1,3}\s(.+)/gm, '<h3>$1</h3>')
+                .replace(/\n/g, '<br>');
+        }
+
+        // 씰 스탬프 효과
+        setTimeout(() => {
+            const seal = document.getElementById('oracle-seal');
+            if (seal) seal.classList.add('stamped');
+        }, 1000);
 
     } catch (error) {
         clearInterval(loadingTimer);
@@ -863,9 +1013,9 @@ const response = await fetch('https://tarot-api.omegafund01.workers.dev', {
             ritualBtn.innerHTML = '다시 시도하기';
         }
         contentEl.innerHTML = `
-            <div style="color:#ff6b6b; padding:20px; border:1px solid #ff6b6b; border-radius:10px;">
+            <div style="color:#ff6b6b;padding:20px;border:1px solid #ff6b6b;border-radius:10px;">
                 <strong>⚠️ 연결 실패 — 상세 원인</strong><br><br>
-                <pre style="white-space:pre-wrap; font-size:0.8rem; color:#eee;">${error.message}</pre>
+                <pre style="white-space:pre-wrap;font-size:0.8rem;color:#eee;">${error.message}</pre>
             </div>
         `;
     }
