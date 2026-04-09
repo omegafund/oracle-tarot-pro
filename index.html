@@ -915,7 +915,7 @@ async function fetchOracleInterpretation(userQuestion, cards) {
     const cardNames     = cards.map(c => c.name).join(', ');
     const cardPositions = cards.map((c, i) => `${['과거','현재','미래'][i]}: ${c.name}`).join(', ');
     const isReversed    = '없음';   // 추후 역방향 UI 추가 시 이 값을 동적으로 변경
-    const userName      = '구도자'; // 추후 이름 입력 UI 추가 시 이 값을 동적으로 변경
+    const userName      = '유저님'; // 추후 이름 입력 UI 추가 시 이 값을 동적으로 변경
     // ────────────────────────────────────────────────
 
     loadingEl.style.display = 'block';
