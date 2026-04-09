@@ -504,7 +504,7 @@ const BASE_URL = 'https://omegafund.github.io/oracle-tarot-pro/images/cards/';
 let selectedCards = [];
 
 // ════════════════════════════════════
-//  홈 카드 1초마다 랜덤 교체
+//  홈 카드 0.5초마다 랜덤 교체
 // ════════════════════════════════════
 function updateSlot(idx) {
     const img = document.getElementById(`card-img-${idx}`);
@@ -539,7 +539,7 @@ const homeInterval = setInterval(() => {
     if (document.getElementById('home-view').style.display === 'none') return;
     updateSlot(homeSlotIdx % 3);
     homeSlotIdx++;
-}, 1000);
+}, 500);
 
 // ════════════════════════════════════
 //  손가락 금가루 (조밀)
@@ -706,7 +706,7 @@ function showResultView(question) {
 // 텍스트 읽을 때 위로 시선 왕복 불필요 (인지 왕복 비용 제거)
 // ════════════════════════════════════
 function formatReading(text, cards) {
-    // **[과거]** / [과거] 양쪽 모두 처리
+    // 1. 텍스트 분리 (기존 로직 유지)
     const parts = text.split(/\*{0,2}\s*\[과거\]\s*\*{0,2}|\*{0,2}\s*\[현재\]\s*\*{0,2}|\*{0,2}\s*\[미래\]\s*\*{0,2}|\*{0,2}\s*\[제니스 운명 신탁\]\s*\*{0,2}/);
 
     const formatText = t => (t || '').trim()
@@ -716,6 +716,7 @@ function formatReading(text, cards) {
 
     const sectionLabels = ['과거', '현재', '미래'];
 
+    // 2. 과거/현재/미래 섹션 생성
     const cardSections = cards.map((card, i) => `
         <div class="card-block">
             <h2>${sectionLabels[i]}</h2>
@@ -728,10 +729,16 @@ function formatReading(text, cards) {
         </div>
     `).join('');
 
+    // 3. [핵심 수정] 제니스 운명 신탁창 (황금 눈동자 & 테두리 적용)
     const oraclePart = parts[4] ? `
-        <div class="oracle-block">
-            <h2>👁 제니스 운명 신탁</h2>
-            <div class="oracle-text">${formatText(parts[4])}</div>
+        <div class="final-reading">
+            <div class="oracle-header">
+                <span class="oracle-eye">👁</span>
+                <h2 style="display:inline; color:#D4AF37; margin:0;">제니스 운명 신탁</h2>
+            </div>
+            <div class="oracle-text" style="margin-top:15px;">
+                ${formatText(parts[4])}
+            </div>
         </div>
     ` : '';
 
@@ -808,12 +815,17 @@ async function fetchOracleInterpretation(userQuestion, cards) {
         const controller = new AbortController();
         const timeout = setTimeout(() => controller.abort(), 25000);
 
-        const response = await fetch('https://tarot-api.omegafund01.workers.dev', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ prompt: promptMessage }),
-            signal: controller.signal
-        });
+        // [수정된 최종 fetch 코드]
+const response = await fetch('https://tarot-api.omegafund01.workers.dev', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ 
+        prompt: promptMessage,
+        // 🚩 바로 이 줄이 빠져서 에러가 났던 겁니다!
+        cardNames: cards.map(c => c.name).join(', ') 
+    }),
+    signal: controller.signal
+});
 
         clearTimeout(timeout);
         clearInterval(loadingTimer);
