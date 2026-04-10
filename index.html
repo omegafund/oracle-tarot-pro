@@ -973,55 +973,57 @@ function renderText(text, cards) {
 
     const labels = ['과거','현재','미래'];
 
-    // ── 실제 Gemini 응답 패턴 분석 후 정밀 분리 ──
-    // 확인된 패턴: 줄바꿈 후 "과거", "현재", "미래" 단독 헤더로 시작
-    // 또는 "✦ 과거의 흐름:", "## 과거" 등 다양한 형태
-    const splitRe = /\n\s*(?:✦\s*)?(?:\*{1,2})?\s*(과거|현재|미래)\s*(?:\*{1,2})?\s*\n/g;
+    // ── 신탁/수호에너지 분리 ──
     const oracleRe = /\n\s*(?:✦\s*카드 흐름 종합|👁|🌙\s*오늘의 수호|제니스 운명 신탁)/;
-
-    // 신탁/수호에너지 분리
     const oracleMatch = text.search(oracleRe);
-    let mainText  = oracleMatch > -1 ? text.substring(0, oracleMatch) : text;
+    let mainText   = oracleMatch > -1 ? text.substring(0, oracleMatch) : text;
     let oracleText = oracleMatch > -1 ? text.substring(oracleMatch) : '';
 
-    // 카드 섹션 분리
-    let cardTexts = ['', '', ''];
-    let introPart = mainText;
+    // ── 섹션 헤더 제거 후 분리 ──
+    // Gemini가 내보내는 헤더 패턴들을 모두 구분자로 통일
+    // 예: "✦ 과거의 에너지:", "\n과거\n", "**✦ 현재의 핵심 에너지:**" 등
+    const normalized = mainText
+        .replace(/\*{0,2}\s*✦?\s*과거[^\n]*\n?/g, '\n[[PAST]]\n')
+        .replace(/\*{0,2}\s*✦?\s*현재[^\n]*\n?/g, '\n[[PRESENT]]\n')
+        .replace(/\*{0,2}\s*✦?\s*미래[^\n]*\n?/g, '\n[[FUTURE]]\n');
 
-    const matches = [...mainText.matchAll(splitRe)];
+    const pastIdx    = normalized.indexOf('[[PAST]]');
+    const presentIdx = normalized.indexOf('[[PRESENT]]');
+    const futureIdx  = normalized.indexOf('[[FUTURE]]');
 
-    if (matches.length >= 3) {
-        introPart    = mainText.substring(0, matches[0].index);
-        cardTexts[0] = mainText.substring(matches[0].index + matches[0][0].length, matches[1].index);
-        cardTexts[1] = mainText.substring(matches[1].index + matches[1][0].length, matches[2].index);
-        cardTexts[2] = mainText.substring(matches[2].index + matches[2][0].length);
-    } else if (matches.length === 2) {
-        introPart    = mainText.substring(0, matches[0].index);
-        cardTexts[0] = mainText.substring(matches[0].index + matches[0][0].length, matches[1].index);
-        cardTexts[1] = mainText.substring(matches[1].index + matches[1][0].length);
-    } else if (matches.length === 1) {
-        introPart    = mainText.substring(0, matches[0].index);
-        cardTexts[0] = mainText.substring(matches[0].index + matches[0][0].length);
+    let introPart  = '';
+    let cardTexts  = ['', '', ''];
+
+    if (pastIdx > -1 && presentIdx > -1 && futureIdx > -1) {
+        // 인사말: [[PAST]] 이전
+        introPart = normalized.substring(0, pastIdx)
+            .replace(/\[\[PAST\]\]|\[\[PRESENT\]\]|\[\[FUTURE\]\]/g, '').trim();
+
+        // 과거 텍스트: [[PAST]] ~ [[PRESENT]]
+        cardTexts[0] = normalized.substring(pastIdx + 8, presentIdx)
+            .replace(/\[\[PAST\]\]|\[\[PRESENT\]\]|\[\[FUTURE\]\]/g, '').trim();
+
+        // 현재 텍스트: [[PRESENT]] ~ [[FUTURE]]
+        cardTexts[1] = normalized.substring(presentIdx + 11, futureIdx)
+            .replace(/\[\[PAST\]\]|\[\[PRESENT\]\]|\[\[FUTURE\]\]/g, '').trim();
+
+        // 미래 텍스트: [[FUTURE]] ~ 끝
+        cardTexts[2] = normalized.substring(futureIdx + 10)
+            .replace(/\[\[PAST\]\]|\[\[PRESENT\]\]|\[\[FUTURE\]\]/g, '').trim();
+
+        // 각 섹션에서 카드명 헤더 줄 제거 (예: "Seven of Cups (컵 7)**" 첫줄)
+        cardTexts = cardTexts.map((t, i) => {
+            if (!cards || !cards[i]) return t;
+            // 카드명으로 시작하는 첫 줄 제거
+            return t.replace(new RegExp('^' + cards[i].name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '[^\n]*\n?', 'i'), '').trim();
+        });
+
     } else {
-        // 패턴 못 찾으면 카드명으로 분리 시도
-        if (cards && cards.length === 3) {
-            let lastIdx = 0;
-            cards.forEach((card, i) => {
-                const cardIdx = mainText.indexOf(card.name, lastIdx);
-                if (cardIdx > -1) {
-                    if (i === 0) introPart = mainText.substring(0, cardIdx);
-                    const nextCard = cards[i + 1];
-                    const nextIdx = nextCard ? mainText.indexOf(nextCard.name, cardIdx + 1) : mainText.length;
-                    cardTexts[i] = mainText.substring(cardIdx, nextIdx > -1 ? nextIdx : mainText.length);
-                    lastIdx = cardIdx + 1;
-                }
-            });
-        } else {
-            introPart = mainText;
-        }
+        // 패턴 못 찾으면 전체를 인사말로
+        introPart = mainText;
     }
 
-    // 카드 3장 항상 강제 렌더
+    // ── 카드 3장 항상 강제 렌더 ──
     const cardSections = (cards || []).map((card, i) => `
         <div class="card-block">
             <h2>${labels[i]}</h2>
