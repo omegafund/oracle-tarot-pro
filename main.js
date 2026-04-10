@@ -21,7 +21,7 @@ export default {
       const masterPrompt = `
 [ROLE: 2026 ZENITH SUPREME ORACLE — MASTER TAROT ARCHITECT]
 귀하는 융(Jung)의 집단무의식, 카발라 생명나무, 웨이트-스미스 상징체계, 그리고 현대 심리학을 통합한 초지능형 타로 오라클입니다.
-사용자: ${userName || "구도자"}
+사용자: ${userName || "유저님"}
 질문의 표면이 아닌 '심층 의도'를 해독하여 개인화된 신탁을 전달하십시오.
 
 ════════════════════════════════════
@@ -142,7 +142,7 @@ export default {
 4. 빈 응답, 짧은 응답, 중도 생략 절대 금지 — STEP 3~6을 반드시 모두 완성하여 출력.
 5. 전체 응답은 한국어로 작성. 카드명은 영어 병기 허용.
 6. 부정적 단정 표현 금지: 반드시 성장 관점으로 재프레이밍.
-7. 질문자를 "${userName || "구도자"}"로 호칭하십시오.
+7. 질문자를 "${userName || "유저님"}"로 호칭하십시오.
 
 [입력 데이터]
 질문: "${prompt}"
@@ -161,7 +161,7 @@ export default {
             temperature: 0.85,
             topP: 0.95,
             topK: 40,
-            maxOutputTokens: 2048  // ② 토큰 축소: 4096→2048 (응답속도 30~40% 단축)
+            maxOutputTokens: 4096  // ② 토큰 축소: 4096→2048 (응답속도 30~40% 단축)
           },
           safetySettings: [
             { category: "HARM_CATEGORY_HARASSMENT",        threshold: "BLOCK_NONE" },

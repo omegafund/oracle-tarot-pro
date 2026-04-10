@@ -408,10 +408,10 @@
             box-shadow: 0 1px 2px rgba(0,0,0,0.2);
         }
         .card-block {
-            margin-bottom: 28px;
-            padding-bottom: 22px;
+            margin-bottom: 14px;
+            padding-bottom: 14px;
             border-bottom: 1px solid rgba(212,175,55,0.15);
-            overflow: hidden; /* float 클리어 */
+            overflow: hidden;
         }
         .card-block:last-of-type { border-bottom: none; }
         .card-block h2 {
@@ -424,13 +424,13 @@
         /* 카드 이미지 — 텍스트 왼쪽에 float */
         .mini-card-float {
             float: left;
-            width: 54px;
-            height: 81px;
+            width: 40px;
+            height: 60px;
             object-fit: cover;
-            border-radius: 6px;
+            border-radius: 5px;
             border: 1.5px solid rgba(212,175,55,0.6);
-            margin: 0 12px 8px 0;
-            box-shadow: 0 0 10px rgba(212,175,55,0.25);
+            margin: 2px 10px 6px 0;
+            box-shadow: 0 0 8px rgba(212,175,55,0.2);
             flex-shrink: 0;
         }
         .card-text-wrap {
@@ -935,8 +935,7 @@ async function renderStream(fetchPromise, cards) {
                     contentEl.innerHTML = renderText(fullText, cards);
                     contentEl.appendChild(cursor);
 
-                    // 자동 스크롤 — 스트리밍 중 페이지 맨 아래로 부드럽게 따라감
-                    window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+                    // 스크롤 제거 (매 청크 smooth scroll → 떨림 발생)
 
                 } catch (_) { /* JSON 파싱 실패 무시 */ }
             }
@@ -974,36 +973,52 @@ function renderText(text, cards) {
 
     const labels = ['과거','현재','미래'];
 
-    // ── 섹션 분리 (Gemini 실제 응답 패턴 전부 커버) ──────────────
-    // 패턴1: [과거] [현재] [미래]
-    // 패턴2: ✦ 과거의 흐름: / ✦ 현재의 핵심 에너지: / ✦ 미래의 가능성:
-    // 패턴3: ## 과거 / ## 현재 / ## 미래
-    const splitPattern = /\*{0,2}\s*\[과거\][^\n]*\*{0,2}|\*{0,2}\s*\[현재\][^\n]*\*{0,2}|\*{0,2}\s*\[미래\][^\n]*\*{0,2}|✦\s*과거[^\n\r]*:|✦\s*현재[^\n\r]*:|✦\s*미래[^\n\r]*:|#{1,3}\s*과거[^\n]*|#{1,3}\s*현재[^\n]*|#{1,3}\s*미래[^\n]*/;
+    // ── 실제 Gemini 응답 패턴 분석 후 정밀 분리 ──
+    // 확인된 패턴: 줄바꿈 후 "과거", "현재", "미래" 단독 헤더로 시작
+    // 또는 "✦ 과거의 흐름:", "## 과거" 등 다양한 형태
+    const splitRe = /\n\s*(?:✦\s*)?(?:\*{1,2})?\s*(과거|현재|미래)\s*(?:\*{1,2})?\s*\n/g;
+    const oracleRe = /\n\s*(?:✦\s*카드 흐름 종합|👁|🌙\s*오늘의 수호|제니스 운명 신탁)/;
 
-    // 신탁 분리 패턴
-    const oraclePattern = /\*{0,2}\s*\[제니스 운명 신탁\]\s*\*{0,2}|👁[^\n]*제니스 운명 신탁|✦\s*카드 흐름 종합 독해/;
-
-    let introPart = '';
-    let cardTexts = ['', '', ''];
-    let oracleText = '';
-    let synergyText = '';
-
-    // 신탁/종합독해 분리
-    const oracleMatch = text.search(oraclePattern);
-    let mainText = oracleMatch > -1 ? text.substring(0, oracleMatch) : text;
-    oracleText   = oracleMatch > -1 ? text.substring(oracleMatch) : '';
+    // 신탁/수호에너지 분리
+    const oracleMatch = text.search(oracleRe);
+    let mainText  = oracleMatch > -1 ? text.substring(0, oracleMatch) : text;
+    let oracleText = oracleMatch > -1 ? text.substring(oracleMatch) : '';
 
     // 카드 섹션 분리
-    const sectionMatches = [...mainText.matchAll(new RegExp(splitPattern.source, 'g'))];
+    let cardTexts = ['', '', ''];
+    let introPart = mainText;
 
-    if (sectionMatches.length >= 3) {
-        introPart      = mainText.substring(0, sectionMatches[0].index);
-        cardTexts[0]   = mainText.substring(sectionMatches[0].index + sectionMatches[0][0].length, sectionMatches[1].index);
-        cardTexts[1]   = mainText.substring(sectionMatches[1].index + sectionMatches[1][0].length, sectionMatches[2].index);
-        cardTexts[2]   = mainText.substring(sectionMatches[2].index + sectionMatches[2][0].length);
+    const matches = [...mainText.matchAll(splitRe)];
+
+    if (matches.length >= 3) {
+        introPart    = mainText.substring(0, matches[0].index);
+        cardTexts[0] = mainText.substring(matches[0].index + matches[0][0].length, matches[1].index);
+        cardTexts[1] = mainText.substring(matches[1].index + matches[1][0].length, matches[2].index);
+        cardTexts[2] = mainText.substring(matches[2].index + matches[2][0].length);
+    } else if (matches.length === 2) {
+        introPart    = mainText.substring(0, matches[0].index);
+        cardTexts[0] = mainText.substring(matches[0].index + matches[0][0].length, matches[1].index);
+        cardTexts[1] = mainText.substring(matches[1].index + matches[1][0].length);
+    } else if (matches.length === 1) {
+        introPart    = mainText.substring(0, matches[0].index);
+        cardTexts[0] = mainText.substring(matches[0].index + matches[0][0].length);
     } else {
-        // 섹션 구분 못 찾으면 인사말로 처리
-        introPart = mainText;
+        // 패턴 못 찾으면 카드명으로 분리 시도
+        if (cards && cards.length === 3) {
+            let lastIdx = 0;
+            cards.forEach((card, i) => {
+                const cardIdx = mainText.indexOf(card.name, lastIdx);
+                if (cardIdx > -1) {
+                    if (i === 0) introPart = mainText.substring(0, cardIdx);
+                    const nextCard = cards[i + 1];
+                    const nextIdx = nextCard ? mainText.indexOf(nextCard.name, cardIdx + 1) : mainText.length;
+                    cardTexts[i] = mainText.substring(cardIdx, nextIdx > -1 ? nextIdx : mainText.length);
+                    lastIdx = cardIdx + 1;
+                }
+            });
+        } else {
+            introPart = mainText;
+        }
     }
 
     // 카드 3장 항상 강제 렌더
@@ -1011,7 +1026,7 @@ function renderText(text, cards) {
         <div class="card-block">
             <h2>${labels[i]}</h2>
             <img src="${BASE_URL}${card.file}" class="mini-card-float"
-                 onerror="this.src='${BASE_URL}back.jpg'">
+                 onerror="this.style.display='none'">
             <div class="card-text-wrap">
                 <span class="card-name-inline">${card.name}</span>
                 <div class="card-text">${formatChunk(cardTexts[i])}</div>
@@ -1019,11 +1034,11 @@ function renderText(text, cards) {
         </div>`).join('');
 
     const introHtml = introPart.trim()
-        ? `<div style="margin-bottom:16px;color:rgba(255,255,255,0.85);line-height:1.85;">${formatChunk(introPart)}</div>`
+        ? `<div style="margin-bottom:12px;color:rgba(255,255,255,0.85);line-height:1.8;font-size:0.9rem;">${formatChunk(introPart)}</div>`
         : '';
 
     const oracleHtml = oracleText.trim()
-        ? `<div class="final-reading"><div class="oracle-header"><span class="oracle-eye">👁</span><h2 style="display:inline;color:#D4AF37;margin:0;">제니스 운명 신탁</h2></div><div class="oracle-text" style="margin-top:15px;">${formatChunk(oracleText)}</div></div>`
+        ? `<div class="final-reading"><div class="oracle-header"><span class="oracle-eye">👁</span><h2 style="display:inline;color:#D4AF37;margin:0;">제니스 운명 신탁</h2></div><div class="oracle-text" style="margin-top:12px;">${formatChunk(oracleText)}</div></div>`
         : '';
 
     return introHtml + cardSections + oracleHtml;
