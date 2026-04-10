@@ -432,6 +432,7 @@
             margin: 2px 10px 6px 0;
             box-shadow: 0 0 8px rgba(212,175,55,0.2);
             flex-shrink: 0;
+            cursor: pointer;
         }
         .card-text-wrap {
             /* float된 이미지 옆에서 텍스트 시작 */
@@ -478,11 +479,11 @@
         }
         .oracle-eye { font-size: 1.3rem; margin-right: 6px; }
         .guardian-energy {
-            margin-top: 16px;
-            padding: 16px 0 20px 0;
+            margin-top: 12px;
+            padding: 12px 0 16px 0;
             border-top: 1px solid rgba(46,204,113,0.4);
             font-size: 0.93rem;
-            line-height: 1.85;
+            line-height: 1.6;
             color: rgba(255,255,255,0.88);
         }
         .guardian-energy strong { color: var(--gold); }
@@ -968,79 +969,56 @@ async function renderStream(fetchPromise, cards) {
 //  또는 워커 HTML 태그 직접 렌더 (두 방식 모두 지원)
 // ════════════════════════════════════
 function renderText(text, cards) {
+    // ── 전처리: 빈줄 압축 + 합산수식 제거 + 신탁헤더 정규화
+    // "👁\n제니스 운명 신탁" → "👁 제니스 운명 신탁" 으로 한줄 통합
+    let t0 = text
+        .replace(/\[합산 과정:[^\]]*\]/g, '')
+        .replace(/👁\s*\n\s*제니스 운명 신탁/g, '👁 제니스 운명 신탁')
+        .replace(/🌙\s*\n\s*오늘의 수호 에너지/g, '🌙 오늘의 수호 에너지')
+        .replace(/\n{3,}/g, '\n\n');
+
     const formatChunk = t => (t || '').trim()
         .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
         .replace(/^#{1,3}\s(.+)/gm, '<h3>$1</h3>')
-        .replace(/\[합산 과정:[^\]]*\]/g, '')
-        .replace(/\n{3,}/g, '\n\n')
-        .replace(/\n/g, '<br>')
-        .replace(/(<br>){3,}/g, '<br><br>');
+        .replace(/\n{2,}/g, '\n')
+        .replace(/\n/g, '<br>');
 
     const labels = ['과거','현재','미래'];
 
-    // ── 1. 신탁 분리
-    const oracleRe = /✦\s*카드 흐름 종합|👁|🌙/;
-    const oracleIdx = text.search(oracleRe);
-    let mainText   = oracleIdx > -1 ? text.substring(0, oracleIdx) : text;
-    let oracleText = oracleIdx > -1 ? text.substring(oracleIdx) : '';
+    // ── 1. 신탁 분리: 👁 제니스 운명 신탁 (한줄) 또는 🌙
+    // "👁 제니스 운명 신탁"이 두 번 나오면 첫 번째(단독헤더) 제거
+    t0 = t0.replace(/👁 제니스 운명 신탁\s*\n(?=[\s\S]*👁 제니스 운명 신탁)/, '');
 
-    // ✦카드흐름종합 제거, 👁 이후만 사용
-    const zenithStart = oracleText.search(/👁/);
-    if (zenithStart > -1) oracleText = oracleText.substring(zenithStart);
+    const oracleIdx = t0.search(/👁 제니스 운명 신탁|🌙 오늘의 수호 에너지/);
+    let mainText   = oracleIdx > -1 ? t0.substring(0, oracleIdx) : t0;
+    let oracleText = oracleIdx > -1 ? t0.substring(oracleIdx) : '';
 
-    // ── 2. 카드 섹션 분리 — 핵심: 줄 단독 과거/현재/미래 찾기
+    // ── 2. 카드 섹션 분리
     let introPart = '';
-    let cardTexts = ['', '', ''];
+    let cardTexts = ['','',''];
 
-    // 전략1: 줄 단독 과거/현재/미래 (\n과거\n 형태)
     const secRe = /(?:^|\n)[ \t]*(과거|현재|미래)[ \t]*(?:\n|$)/g;
-    const allMatches = [...mainText.matchAll(secRe)];
+    const allM  = [...mainText.matchAll(secRe)];
+    const mP = allM.find(m => m[1]==='과거');
+    const mC = allM.find(m => m[1]==='현재');
+    const mF = allM.find(m => m[1]==='미래');
 
-    // 과거/현재/미래 각각 첫 번째 위치만 추출
-    const findSec = (keyword) => allMatches.find(m => m[1] === keyword);
-    const mPast    = findSec('과거');
-    const mPresent = findSec('현재');
-    const mFuture  = findSec('미래');
-
-    if (mPast && mPresent && mFuture) {
-        const iPast    = mPast.index + (mPast[0].startsWith('\n') ? 1 : 0);
-        const iPresent = mPresent.index + (mPresent[0].startsWith('\n') ? 1 : 0);
-        const iFuture  = mFuture.index + (mFuture[0].startsWith('\n') ? 1 : 0);
-
-        // 인사말: 첫 번째 섹션 이전
-        introPart = mainText.substring(0, iPast).trim();
-
-        // 각 섹션: 헤더 다음 줄부터 다음 섹션 직전까지
-        const afterPast    = mainText.indexOf('\n', iPast + 2) + 1;
-        const afterPresent = mainText.indexOf('\n', iPresent + 2) + 1;
-        const afterFuture  = mainText.indexOf('\n', iFuture + 2) + 1;
-
-        cardTexts[0] = mainText.substring(afterPast, iPresent).trim();
-        cardTexts[1] = mainText.substring(afterPresent, iFuture).trim();
-        cardTexts[2] = mainText.substring(afterFuture).trim();
-
-        // 각 섹션 첫줄이 카드명이면 제거
-        cardTexts = cardTexts.map((t, i) => {
-            if (!cards || !cards[i]) return t;
-            const firstName = cards[i].name.split(' (')[0];
-            return t.replace(new RegExp('^' + firstName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '[^\n]*\n?', 'i'), '').trim();
-        });
-
+    if (mP && mC && mF) {
+        const getAfter = (m) => {
+            const nl = mainText.indexOf('\n', m.index + m[0].length - 1);
+            return nl > -1 ? nl + 1 : m.index + m[0].length;
+        };
+        introPart    = mainText.substring(0, mP.index).trim();
+        cardTexts[0] = mainText.substring(getAfter(mP), mC.index).trim();
+        cardTexts[1] = mainText.substring(getAfter(mC), mF.index).trim();
+        cardTexts[2] = mainText.substring(getAfter(mF)).trim();
     } else if (cards && cards.length === 3) {
-        // 전략2: 카드명 위치로 분리
-        const pos2 = cards.map(c => {
-            const name = c.name.split(' (')[0];
-            return mainText.indexOf(name);
-        });
-        if (pos2[0] > -1 && pos2[1] > -1 && pos2[2] > -1) {
+        const pos2 = cards.map(c => mainText.indexOf(c.name.split(' (')[0]));
+        if (pos2[0]>-1 && pos2[1]>-1 && pos2[2]>-1) {
             introPart    = mainText.substring(0, pos2[0]).trim();
-            const raw0   = mainText.substring(pos2[0], pos2[1]);
-            const raw1   = mainText.substring(pos2[1], pos2[2]);
-            const raw2   = mainText.substring(pos2[2]);
-            // 첫줄(카드명) 제거
-            cardTexts[0] = raw0.replace(/^[^\n]*\n/, '').trim();
-            cardTexts[1] = raw1.replace(/^[^\n]*\n/, '').trim();
-            cardTexts[2] = raw2.replace(/^[^\n]*\n/, '').trim();
+            cardTexts[0] = mainText.substring(pos2[0], pos2[1]).replace(/^[^\n]*\n/,'').trim();
+            cardTexts[1] = mainText.substring(pos2[1], pos2[2]).replace(/^[^\n]*\n/,'').trim();
+            cardTexts[2] = mainText.substring(pos2[2]).replace(/^[^\n]*\n/,'').trim();
         } else {
             introPart = mainText.trim();
         }
@@ -1048,11 +1026,19 @@ function renderText(text, cards) {
         introPart = mainText.trim();
     }
 
-    // ── 3. 렌더
+    // 카드명 첫줄 제거
+    cardTexts = cardTexts.map((t, i) => {
+        if (!cards || !cards[i]) return t;
+        const n = cards[i].name.split(' (')[0];
+        return t.replace(new RegExp('^' + n.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '[^\n]*\n?','i'), '').trim();
+    });
+
+    // ── 3. 카드 렌더 — 터치 확대 기능 포함
     const cardSections = (cards || []).map((card, i) => `
         <div class="card-block">
             <h2>${labels[i]}</h2>
             <img src="${BASE_URL}${card.file}" class="mini-card-float"
+                 onclick="expandCard(this)"
                  onerror="this.style.display='none'">
             <div class="card-text-wrap">
                 <span class="card-name-inline">${card.name}</span>
@@ -1064,25 +1050,22 @@ function renderText(text, cards) {
         ? `<div style="margin-bottom:8px;color:rgba(255,255,255,0.85);line-height:1.75;font-size:0.9rem;">${formatChunk(introPart)}</div>`
         : '';
 
-    // ── 4. 신탁 + 수호에너지 → 녹색박스 1개
+    // ── 4. 신탁 + 수호에너지
     let zenithText   = oracleText;
     let guardianText = '';
-    const guardIdx = oracleText.search(/🌙/);
-    if (guardIdx > -1) {
-        zenithText   = oracleText.substring(0, guardIdx).trim();
-        guardianText = oracleText.substring(guardIdx)
-            .replace(/🌙\s*오늘의 수호 에너지\s*/g, '').trim();
+    const gIdx = oracleText.search(/🌙 오늘의 수호 에너지/);
+    if (gIdx > -1) {
+        zenithText   = oracleText.substring(0, gIdx).trim();
+        guardianText = oracleText.substring(gIdx)
+            .replace(/🌙\s*오늘의 수호 에너지\s*/,'').trim();
     }
-    // 신탁 타이틀 중복 제거
-    zenithText = zenithText.replace(/👁\s*제니스 운명 신탁\s*/g, '').trim();
+    zenithText = zenithText.replace(/👁\s*제니스 운명 신탁\s*/g,'').trim();
 
-    // 빈 guardian 렌더 방지 — 내용 있을 때만 출력
-    const guardianHtml = guardianText.trim()
-        ? `<div class="guardian-energy">
-                    <strong>🌙 오늘의 수호 에너지</strong><br><br>
-                    ${formatChunk(guardianText)}
-                </div>`
-        : '';
+    const guardianHtml = guardianText.trim() ? `
+        <div class="guardian-energy">
+            <strong>🌙 오늘의 수호 에너지</strong><br>
+            ${formatChunk(guardianText)}
+        </div>` : '';
 
     const oracleHtml = (zenithText || guardianText) ? `
         <div class="final-reading">
@@ -1091,12 +1074,32 @@ function renderText(text, cards) {
                     <span class="oracle-eye">👁</span>
                     <h2 style="display:inline;color:#D4AF37;margin:0;">제니스 운명 신탁</h2>
                 </div>
-                <div class="oracle-text" style="margin-top:10px;">${formatChunk(zenithText)}</div>
+                <div class="oracle-text" style="margin-top:8px;">${formatChunk(zenithText)}</div>
                 ${guardianHtml}
             </div>
         </div>` : '';
 
     return introHtml + cardSections + oracleHtml;
+}
+
+// 카드 터치 확대 함수
+function expandCard(img) {
+    const overlay = document.createElement('div');
+    overlay.style.cssText = `
+        position:fixed;top:0;left:0;width:100%;height:100%;
+        background:rgba(0,0,0,0.92);z-index:99999;
+        display:flex;align-items:center;justify-content:center;
+        cursor:pointer;`;
+    const big = document.createElement('img');
+    big.src = img.src;
+    big.style.cssText = `
+        max-width:85vw;max-height:80vh;
+        border-radius:12px;
+        border:2px solid #D4AF37;
+        box-shadow:0 0 30px rgba(212,175,55,0.5);`;
+    overlay.appendChild(big);
+    overlay.onclick = () => overlay.remove();
+    document.body.appendChild(overlay);
 }
 </script>
 </body>
