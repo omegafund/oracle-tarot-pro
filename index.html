@@ -993,23 +993,34 @@ async function renderStream(fetchPromise, cards) {
 //  또는 워커 HTML 태그 직접 렌더 (두 방식 모두 지원)
 // ════════════════════════════════════
 function renderText(text, cards) {
-    // ── 전처리: 모든 신탁 헤더 변형 → [[ZENITH]] 통일
+
+    // ══════════════════════════════════════════
+    // 전처리: 신탁 시작점을 [[ZENITH]]로 정규화
+    // Gemini가 어떤 형태로 보내도 전부 잡음
+    // ══════════════════════════════════════════
     let t0 = text
+        .replace(/👁/g, '')
         .replace(/\[합산 과정:[^\]]*\]/g, '')
-        .replace(/✦\s*카드 흐름 종합 독해\s*✦[\s\S]*?(?=👁|제니스|$)/g, '')
-        // 붙어있는 경우: 제니스 운명의 신탁ZENITH
-        .replace(/제니스 운명의?\s*신탁\s*ZENITH DESTINY ORACLE/g, '[[ZENITH]]')
-        // 줄바꿈 포함: 제니스 운명의 신탁\nZENITH
-        .replace(/제니스 운명의?\s*신탁\s*\n\s*ZENITH DESTINY ORACLE/g, '[[ZENITH]]')
-        // 👁 단독 또는 붙은 형태
-        .replace(/👁\s*\n?\s*제니스 운명의?\s*\n?\s*신탁\s*\n?\s*(?:ZENITH DESTINY ORACLE)?/g, '[[ZENITH]]')
-        // 남은 단독 형태
-        .replace(/제니스 운명의?\s*신탁\s*\n?/g, '[[ZENITH]]')
-        // [[ZENITH]] 중복 제거 (두 번째 이후 삭제)
-        .replace(/(\[\[ZENITH\]\][\s\S]*?)\[\[ZENITH\]\]/g, '$1')
-        // 수호에너지 이후 전부 제거
-        .replace(/🌙[\s\S]*/g, '')
-        .replace(/\n{3,}/g, '\n\n');
+        .replace(/✦\s*카드\s*흐름\s*종합\s*독해\s*✦[^]*?(?=👁|제니스|ZENITH|\[\[|$)/g, '');
+
+    // 신탁 헤더 정규화 — 가장 넓은 패턴부터 좁은 순서로
+    // 패턴1: 제니스 운명의 신탁ZENITH DESTINY ORACLE (붙어있음)
+    t0 = t0.replace(/제니스\s*운명의?\s*신탁\s*ZENITH\s*DESTINY\s*ORACLE/g, '[[ZENITH]]');
+    // 패턴2: 👁\n제니스 운명의 신탁\nZENITH (여러줄)
+    t0 = t0.replace(/👁\s*[\n\r]*\s*제니스\s*운명의?\s*[\n\r]*\s*신탁\s*[\n\r]*\s*(?:ZENITH\s*DESTINY\s*ORACLE)?/g, '[[ZENITH]]');
+    // 패턴3: 제니스 운명의 신탁 (단독, 줄바꿈 포함)
+    t0 = t0.replace(/제니스\s*운명의?\s*신탁/g, '[[ZENITH]]');
+    // 패턴4: 남은 👁 단독 (신탁 마커로 처리)
+    t0 = t0.replace(/👁\s*[\n\r]*/g, '[[ZENITH]]');
+    // 패턴5: ZENITH DESTINY ORACLE 단독 잔재 제거
+    t0 = t0.replace(/ZENITH\s*DESTINY\s*ORACLE/g, '');
+    // [[ZENITH]] 중복 제거
+    t0 = t0.replace(/\[\[ZENITH\]\]\s*\[\[ZENITH\]\]/g, '[[ZENITH]]');
+    t0 = t0.replace(/(\[\[ZENITH\]\][^]*?)\[\[ZENITH\]\]/g, '$1');
+    // 수호에너지 이후 제거
+    t0 = t0.replace(/🌙[^]*/g, '');
+    // 빈줄 압축
+    t0 = t0.replace(/\n{3,}/g, '\n\n');
 
     const formatChunk = t => (t || '').trim()
         .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
@@ -1019,12 +1030,12 @@ function renderText(text, cards) {
 
     const labels = ['과거','현재','미래'];
 
-    // ── 1. [[ZENITH]] 위치로 신탁 분리
+    // ── 신탁 분리
     const zIdx = t0.indexOf('[[ZENITH]]');
     let mainText   = zIdx > -1 ? t0.substring(0, zIdx).trim() : t0.trim();
     let oracleText = zIdx > -1 ? t0.substring(zIdx + 10).trim() : '';
 
-    // ── 2. 카드 섹션 분리
+    // ── 카드 섹션 분리
     let introPart = '';
     let cardTexts = ['','',''];
 
@@ -1067,7 +1078,7 @@ function renderText(text, cards) {
         return r;
     });
 
-    // ── 3. 카드 렌더
+    // ── 카드 렌더
     const cardSections = (cards || []).map((card, i) => `
         <div class="card-block">
             <h2>${labels[i]}</h2>
@@ -1084,7 +1095,7 @@ function renderText(text, cards) {
         ? `<div style="margin-bottom:8px;color:rgba(255,255,255,0.85);line-height:1.75;font-size:0.9rem;">${formatChunk(introPart)}</div>`
         : '';
 
-    // ── 4. 신탁 — 항상 동일한 2줄 타이틀로 렌더
+    // ── 신탁 렌더 — 항상 동일한 2줄 타이틀
     const oracleHtml = oracleText ? `
         <div class="final-reading">
             <div class="final-reading-inner">
@@ -1097,6 +1108,21 @@ function renderText(text, cards) {
         </div>` : '';
 
     return introHtml + cardSections + oracleHtml;
+}
+
+// 카드 터치 확대
+function expandCard(img) {
+    const overlay = document.createElement('div');
+    overlay.style.cssText = `position:fixed;top:0;left:0;width:100%;height:100%;
+        background:rgba(0,0,0,0.92);z-index:99999;
+        display:flex;align-items:center;justify-content:center;cursor:pointer;`;
+    const big = document.createElement('img');
+    big.src = img.src;
+    big.style.cssText = `max-width:85vw;max-height:80vh;border-radius:12px;
+        border:2px solid #D4AF37;box-shadow:0 0 30px rgba(212,175,55,0.5);`;
+    overlay.appendChild(big);
+    overlay.onclick = () => overlay.remove();
+    document.body.appendChild(overlay);
 }
 
 // 카드 터치 확대
