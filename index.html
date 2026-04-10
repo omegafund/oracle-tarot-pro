@@ -463,19 +463,43 @@
         }
         .synergy-reading strong { color: var(--gold); }
         .final-reading {
-            margin-top: 24px;
-            padding: 20px 20px 0 20px;
-            background: rgba(0,40,20,0.35);
-            border: 8px solid #2ecc71;
-            border-radius: 14px;
+            margin-top: 20px;
+            padding: 0;
+            background: transparent;
+            border: none;
             font-size: 0.93rem;
             line-height: 1.85;
             color: rgba(255,255,255,0.9);
         }
         .final-reading strong { color: var(--gold); }
-        /* 수호에너지를 final-reading 안에 합칠 때 하단 패딩 */
         .final-reading-inner {
-            padding-bottom: 20px;
+            padding-bottom: 0;
+        }
+        /* 신탁 타이틀 — 녹색, 과거/현재/미래와 동일 스타일 */
+        .zenith-title-block {
+            margin-bottom: 6px;
+            padding-bottom: 6px;
+            border-bottom: 1px solid rgba(46,204,113,0.4);
+        }
+        .zenith-title-main {
+            font-size: 1rem;
+            font-weight: 900;
+            letter-spacing: 0.15em;
+            color: #2ecc71;
+            margin: 0 0 2px 0;
+            display: block;
+        }
+        .zenith-title-sub {
+            font-size: 0.75rem;
+            font-weight: 700;
+            letter-spacing: 0.3em;
+            color: rgba(46,204,113,0.75);
+            display: block;
+        }
+        .zenith-oracle-text {
+            font-size: 0.93rem;
+            line-height: 1.85;
+            color: rgba(255,255,255,0.88);
         }
         .oracle-eye { font-size: 1.3rem; margin-right: 6px; }
         .guardian-energy {
@@ -1060,15 +1084,15 @@ function renderText(text, cards) {
         ? `<div style="margin-bottom:8px;color:rgba(255,255,255,0.85);line-height:1.75;font-size:0.9rem;">${formatChunk(introPart)}</div>`
         : '';
 
-    // ── 4. 녹색박스: 👁 신탁만 (종합독해 없음)
+    // ── 4. 신탁 타이틀 + 텍스트 (테두리 없음, 과거/현재/미래와 동일 스타일)
     const oracleHtml = oracleText ? `
         <div class="final-reading">
             <div class="final-reading-inner">
-                <div class="oracle-header">
-                    <span class="oracle-eye">👁</span>
-                    <h2 style="display:inline;color:#D4AF37;margin:0;">제니스 운명 신탁</h2>
+                <div class="zenith-title-block">
+                    <span class="zenith-title-main">제니스 운명의 신탁</span>
+                    <span class="zenith-title-sub">ZENITH DESTINY ORACLE</span>
                 </div>
-                <div class="oracle-text" style="margin-top:8px;">${formatChunk(oracleText)}</div>
+                <div class="zenith-oracle-text">${formatChunk(oracleText)}</div>
             </div>
         </div>` : '';
 
