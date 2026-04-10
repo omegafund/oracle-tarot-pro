@@ -969,8 +969,7 @@ async function renderStream(fetchPromise, cards) {
 //  또는 워커 HTML 태그 직접 렌더 (두 방식 모두 지원)
 // ════════════════════════════════════
 function renderText(text, cards) {
-    // ── 전처리: 빈줄 압축 + 합산수식 제거 + 신탁헤더 정규화
-    // "👁\n제니스 운명 신탁" → "👁 제니스 운명 신탁" 으로 한줄 통합
+    // ── 전처리
     let t0 = text
         .replace(/\[합산 과정:[^\]]*\]/g, '')
         .replace(/👁\s*\n\s*제니스 운명 신탁/g, '👁 제니스 운명 신탁')
@@ -985,15 +984,42 @@ function renderText(text, cards) {
 
     const labels = ['과거','현재','미래'];
 
-    // ── 1. 신탁 분리: 👁 제니스 운명 신탁 (한줄) 또는 🌙
-    // "👁 제니스 운명 신탁"이 두 번 나오면 첫 번째(단독헤더) 제거
-    t0 = t0.replace(/👁 제니스 운명 신탁\s*\n(?=[\s\S]*👁 제니스 운명 신탁)/, '');
+    // ── 1. 카드 흐름 종합 독해 추출 (신탁 앞에 있음)
+    let synergyText = '';
+    const synergyRe = /✦\s*카드 흐름 종합 독해\s*✦([\s\S]*?)(?=👁|$)/;
+    const synergyMatch = t0.match(synergyRe);
+    if (synergyMatch) {
+        synergyText = synergyMatch[1].trim();
+        // 원문에서 종합독해 섹션 제거
+        t0 = t0.replace(synergyRe, '');
+    }
 
-    const oracleIdx = t0.search(/👁 제니스 운명 신탁|🌙 오늘의 수호 에너지/);
-    let mainText   = oracleIdx > -1 ? t0.substring(0, oracleIdx) : t0;
-    let oracleText = oracleIdx > -1 ? t0.substring(oracleIdx) : '';
+    // ── 2. 첫 번째 👁 제니스 운명 신탁만 남기고 두 번째 이후 전부 삭제
+    // 두 번째 👁 제니스 운명 신탁 ~ 끝까지 제거
+    const firstOracle = t0.indexOf('👁 제니스 운명 신탁');
+    let oracleText = '';
+    let mainText = t0;
 
-    // ── 2. 카드 섹션 분리
+    if (firstOracle > -1) {
+        mainText   = t0.substring(0, firstOracle);
+        let after  = t0.substring(firstOracle);
+
+        // 첫 번째 신탁 내용만 추출 (두 번째 👁 이전까지)
+        const secondOracle = after.indexOf('👁', 2); // 첫글자 이후 두 번째 👁
+        if (secondOracle > -1) {
+            oracleText = after.substring(0, secondOracle).trim();
+            // 두 번째 👁 이후(🌙 포함) 전부 버림
+        } else {
+            // 두 번째 없으면 전체 사용하되 🌙 이후 제거
+            const moonIdx = after.search(/🌙/);
+            oracleText = moonIdx > -1 ? after.substring(0, moonIdx).trim() : after.trim();
+        }
+    }
+
+    // 신탁 타이틀 중복 제거
+    oracleText = oracleText.replace(/👁\s*제니스 운명 신탁\s*/g, '').trim();
+
+    // ── 3. 카드 섹션 분리
     let introPart = '';
     let cardTexts = ['','',''];
 
@@ -1033,7 +1059,7 @@ function renderText(text, cards) {
         return t.replace(new RegExp('^' + n.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '[^\n]*\n?','i'), '').trim();
     });
 
-    // ── 3. 카드 렌더 — 터치 확대 기능 포함
+    // ── 4. 렌더
     const cardSections = (cards || []).map((card, i) => `
         <div class="card-block">
             <h2>${labels[i]}</h2>
@@ -1050,36 +1076,44 @@ function renderText(text, cards) {
         ? `<div style="margin-bottom:8px;color:rgba(255,255,255,0.85);line-height:1.75;font-size:0.9rem;">${formatChunk(introPart)}</div>`
         : '';
 
-    // ── 4. 신탁 + 수호에너지
-    let zenithText   = oracleText;
-    let guardianText = '';
-    const gIdx = oracleText.search(/🌙 오늘의 수호 에너지/);
-    if (gIdx > -1) {
-        zenithText   = oracleText.substring(0, gIdx).trim();
-        guardianText = oracleText.substring(gIdx)
-            .replace(/🌙\s*오늘의 수호 에너지\s*/,'').trim();
-    }
-    zenithText = zenithText.replace(/👁\s*제니스 운명 신탁\s*/g,'').trim();
+    // ── 5. 녹색박스: 종합독해 + 신탁 합쳐서 하나로
+    const synergyHtml = synergyText
+        ? `<div style="margin-bottom:10px;padding-bottom:10px;border-bottom:1px solid rgba(46,204,113,0.3);font-size:0.9rem;line-height:1.75;color:rgba(255,255,255,0.88);">
+               <strong style="color:#2ecc71;">✦ 카드 흐름 종합 독해 ✦</strong><br><br>
+               ${formatChunk(synergyText)}
+           </div>`
+        : '';
 
-    const guardianHtml = guardianText.trim() ? `
-        <div class="guardian-energy">
-            <strong>🌙 오늘의 수호 에너지</strong><br>
-            ${formatChunk(guardianText)}
-        </div>` : '';
-
-    const oracleHtml = (zenithText || guardianText) ? `
+    const oracleHtml = (synergyText || oracleText) ? `
         <div class="final-reading">
             <div class="final-reading-inner">
+                ${synergyHtml}
                 <div class="oracle-header">
                     <span class="oracle-eye">👁</span>
                     <h2 style="display:inline;color:#D4AF37;margin:0;">제니스 운명 신탁</h2>
                 </div>
-                <div class="oracle-text" style="margin-top:8px;">${formatChunk(zenithText)}</div>
-                ${guardianHtml}
+                <div class="oracle-text" style="margin-top:8px;">${formatChunk(oracleText)}</div>
             </div>
         </div>` : '';
 
     return introHtml + cardSections + oracleHtml;
+}
+
+// 카드 터치 확대
+function expandCard(img) {
+    const overlay = document.createElement('div');
+    overlay.style.cssText = `
+        position:fixed;top:0;left:0;width:100%;height:100%;
+        background:rgba(0,0,0,0.92);z-index:99999;
+        display:flex;align-items:center;justify-content:center;cursor:pointer;`;
+    const big = document.createElement('img');
+    big.src = img.src;
+    big.style.cssText = `
+        max-width:85vw;max-height:80vh;border-radius:12px;
+        border:2px solid #D4AF37;box-shadow:0 0 30px rgba(212,175,55,0.5);`;
+    overlay.appendChild(big);
+    overlay.onclick = () => overlay.remove();
+    document.body.appendChild(overlay);
 }
 
 // 카드 터치 확대 함수
