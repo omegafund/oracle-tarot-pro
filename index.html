@@ -997,14 +997,17 @@ function renderText(text, cards) {
     let t0 = text
         .replace(/\[합산 과정:[^\]]*\]/g, '')
         .replace(/✦\s*카드 흐름 종합 독해\s*✦[\s\S]*?(?=👁|제니스|$)/g, '')
-        // 줄바꿈 포함 모든 패턴 → [[ZENITH]]
-        .replace(/👁\s*\n?\s*제니스 운명\s*\n?\s*신탁\s*/g, '[[ZENITH]]')
-        .replace(/제니스 운명의 신탁\s*\n?\s*ZENITH DESTINY ORACLE\s*/g, '[[ZENITH]]')
-        .replace(/제니스 운명의 신탁\s*\n?/g, '[[ZENITH]]')
-        .replace(/제니스 운명 신탁\s*\n?/g, '[[ZENITH]]')
-        // [[ZENITH]] 중복 제거
-        .replace(/\[\[ZENITH\]\]([\s\S]*?)\[\[ZENITH\]\]/g, '[[ZENITH]]$1')
-        // 수호에너지 이후 제거
+        // 붙어있는 경우: 제니스 운명의 신탁ZENITH
+        .replace(/제니스 운명의?\s*신탁\s*ZENITH DESTINY ORACLE/g, '[[ZENITH]]')
+        // 줄바꿈 포함: 제니스 운명의 신탁\nZENITH
+        .replace(/제니스 운명의?\s*신탁\s*\n\s*ZENITH DESTINY ORACLE/g, '[[ZENITH]]')
+        // 👁 단독 또는 붙은 형태
+        .replace(/👁\s*\n?\s*제니스 운명의?\s*\n?\s*신탁\s*\n?\s*(?:ZENITH DESTINY ORACLE)?/g, '[[ZENITH]]')
+        // 남은 단독 형태
+        .replace(/제니스 운명의?\s*신탁\s*\n?/g, '[[ZENITH]]')
+        // [[ZENITH]] 중복 제거 (두 번째 이후 삭제)
+        .replace(/(\[\[ZENITH\]\][\s\S]*?)\[\[ZENITH\]\]/g, '$1')
+        // 수호에너지 이후 전부 제거
         .replace(/🌙[\s\S]*/g, '')
         .replace(/\n{3,}/g, '\n\n');
 
@@ -1081,7 +1084,7 @@ function renderText(text, cards) {
         ? `<div style="margin-bottom:8px;color:rgba(255,255,255,0.85);line-height:1.75;font-size:0.9rem;">${formatChunk(introPart)}</div>`
         : '';
 
-    // ── 4. 신탁 — 항상 동일한 2줄 타이틀
+    // ── 4. 신탁 — 항상 동일한 2줄 타이틀로 렌더
     const oracleHtml = oracleText ? `
         <div class="final-reading">
             <div class="final-reading-inner">
@@ -1094,6 +1097,21 @@ function renderText(text, cards) {
         </div>` : '';
 
     return introHtml + cardSections + oracleHtml;
+}
+
+// 카드 터치 확대
+function expandCard(img) {
+    const overlay = document.createElement('div');
+    overlay.style.cssText = `position:fixed;top:0;left:0;width:100%;height:100%;
+        background:rgba(0,0,0,0.92);z-index:99999;
+        display:flex;align-items:center;justify-content:center;cursor:pointer;`;
+    const big = document.createElement('img');
+    big.src = img.src;
+    big.style.cssText = `max-width:85vw;max-height:80vh;border-radius:12px;
+        border:2px solid #D4AF37;box-shadow:0 0 30px rgba(212,175,55,0.5);`;
+    overlay.appendChild(big);
+    overlay.onclick = () => overlay.remove();
+    document.body.appendChild(overlay);
 }
 
 // 카드 터치 확대
