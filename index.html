@@ -379,6 +379,46 @@
             0%,100%{ opacity: 1; }
             50%{ opacity: 0; }
         }
+        /* ── 유료 잠금 블러 */
+        .locked-section {
+            position: relative;
+            margin-top: 10px;
+        }
+        .locked-blur {
+            filter: blur(5px);
+            pointer-events: none;
+            user-select: none;
+            opacity: 0.7;
+        }
+        .unlock-overlay {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 10;
+            text-align: center;
+            width: 90%;
+        }
+        .unlock-btn {
+            background: linear-gradient(180deg, #FFF5C3 0%, #D4AF37 100%);
+            color: #000;
+            border: none;
+            padding: 14px 24px;
+            border-radius: 50px;
+            font-weight: 900;
+            font-size: 1rem;
+            font-family: var(--font);
+            cursor: pointer;
+            box-shadow: 0 0 20px rgba(212,175,55,0.5);
+            transition: transform 0.1s;
+        }
+        .unlock-btn:active { transform: scale(0.97); }
+        .unlock-desc {
+            color: rgba(212,175,55,0.8);
+            font-size: 0.78rem;
+            margin-top: 8px;
+            letter-spacing: 0.05em;
+        }
 
         .reset-btn {
             margin-top: 35px;
@@ -516,6 +556,117 @@
             align-items: center;
             gap: 8px;
             margin-bottom: 8px;
+        }
+
+        /* ── 유료 잠금 블러 */
+        .locked-section {
+            position: relative;
+            margin-top: 10px;
+        }
+        .locked-blur {
+            filter: blur(5px);
+            pointer-events: none;
+            user-select: none;
+            opacity: 0.7;
+        }
+        .unlock-overlay {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 10;
+            text-align: center;
+            width: 90%;
+        }
+        .unlock-btn {
+            background: linear-gradient(180deg, #FFF5C3 0%, #D4AF37 100%);
+            color: #000;
+            border: none;
+            padding: 14px 24px;
+            border-radius: 50px;
+            font-weight: 900;
+            font-size: 1rem;
+            font-family: var(--font);
+            cursor: pointer;
+            box-shadow: 0 0 20px rgba(212,175,55,0.5);
+            transition: transform 0.1s;
+        }
+        .unlock-btn:active { transform: scale(0.97); }
+        .unlock-desc {
+            color: rgba(212,175,55,0.8);
+            font-size: 0.78rem;
+            margin-top: 8px;
+            letter-spacing: 0.05em;
+        }
+        /* 결제 모달 */
+        .pay-modal-overlay {
+            position: fixed;
+            top:0;left:0;width:100%;height:100%;
+            background: rgba(0,0,0,0.85);
+            z-index: 99998;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .pay-modal {
+            background: linear-gradient(135deg, #1a1a2e, #16213e);
+            border: 2px solid var(--gold);
+            border-radius: 16px;
+            padding: 30px 24px;
+            max-width: 340px;
+            width: 90%;
+            text-align: center;
+            position: relative;
+        }
+        .pay-modal h3 {
+            color: var(--gold);
+            font-size: 1.2rem;
+            margin: 0 0 12px;
+            letter-spacing: 0.1em;
+        }
+        .pay-modal p {
+            color: rgba(255,255,255,0.8);
+            font-size: 0.88rem;
+            line-height: 1.7;
+            margin: 0 0 20px;
+        }
+        .pay-account {
+            background: rgba(212,175,55,0.1);
+            border: 1px solid rgba(212,175,55,0.3);
+            border-radius: 10px;
+            padding: 14px;
+            margin-bottom: 20px;
+            text-align: left;
+        }
+        .pay-account div {
+            color: rgba(255,255,255,0.85);
+            font-size: 0.88rem;
+            line-height: 1.9;
+        }
+        .pay-account strong { color: var(--gold); }
+        .pay-confirm-btn {
+            background: linear-gradient(180deg, #FFF5C3 0%, #D4AF37 100%);
+            color: #000;
+            border: none;
+            padding: 13px 0;
+            width: 100%;
+            border-radius: 50px;
+            font-weight: 900;
+            font-size: 1rem;
+            font-family: var(--font);
+            cursor: pointer;
+            margin-bottom: 10px;
+        }
+        .pay-close-btn {
+            background: none;
+            border: 1px solid rgba(255,255,255,0.2);
+            color: rgba(255,255,255,0.5);
+            padding: 10px 0;
+            width: 100%;
+            border-radius: 50px;
+            font-family: var(--font);
+            cursor: pointer;
+            font-size: 0.88rem;
         }
     </style>
 </head>
@@ -881,8 +1032,7 @@ async function startStreamFetch(userQuestion, cards) {
 }
 
 // ════════════════════════════════════
-//  ③ 스트리밍 렌더링
-//  SSE 청크를 받을 때마다 실시간으로 화면에 출력
+//  ③ 응답 수신 + 유료/무료 분기 렌더링
 // ════════════════════════════════════
 async function renderStream(fetchPromise, cards) {
     const loadingEl    = document.getElementById('ai-loading-text');
@@ -903,8 +1053,7 @@ async function renderStream(fetchPromise, cards) {
         '✦ 거의 완성되었습니다...'
     ];
 
-    let msgIdx = 0;
-    let progressVal = 5;
+    let msgIdx = 0, progressVal = 5;
     loadingEl.textContent = loadingMessages[0];
     progressBar.style.width = '5%';
 
@@ -918,65 +1067,93 @@ async function renderStream(fetchPromise, cards) {
     try {
         const response = await fetchPromise;
         clearInterval(loadingTimer);
-
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
 
         const reader  = response.body.getReader();
         const decoder = new TextDecoder();
 
-        // 로딩 UI 제거 후 스트리밍 출력 시작
         loadingEl.style.display    = 'none';
         progressWrap.style.display = 'none';
         progressBar.style.width    = '100%';
 
-        // 커서 추가
+        // 스트리밍 커서
         const cursor = document.createElement('span');
         cursor.className = 'streaming-cursor';
         contentEl.appendChild(cursor);
 
-        let buffer    = '';  // SSE 라인 버퍼
-        let fullText  = '';  // 누적 전체 텍스트
+        let buffer   = '';
+        let fullText = '';
 
+        // ── SSE 스트리밍 수신 (기존 방식 유지)
         while (true) {
             const { done, value } = await reader.read();
             if (done) break;
 
             buffer += decoder.decode(value, { stream: true });
             const lines = buffer.split('\n');
-            buffer = lines.pop(); // 마지막 미완성 라인은 버퍼에 보관
+            buffer = lines.pop();
 
             for (const line of lines) {
                 if (!line.startsWith('data: ')) continue;
                 const jsonStr = line.slice(6).trim();
                 if (jsonStr === '[DONE]') continue;
-
                 try {
                     const parsed = JSON.parse(jsonStr);
                     const chunk  = parsed?.candidates?.[0]?.content?.parts?.[0]?.text || '';
                     if (!chunk) continue;
-
                     fullText += chunk;
 
-                    // 실시간 렌더링: 누적 텍스트를 HTML로 변환 후 출력
+                    // 실시간 렌더 (과거+현재만 흘려줌 — 미래는 완료 후 처리)
                     cursor.remove();
                     contentEl.innerHTML = renderText(fullText, cards);
                     contentEl.appendChild(cursor);
-
-                    // 스크롤 제거 (매 청크 smooth scroll → 떨림 발생)
-
-                } catch (_) { /* JSON 파싱 실패 무시 */ }
+                } catch(_) {}
             }
         }
 
-        // 스트리밍 완료: 커서 제거, 최종 렌더
+        // ── 스트리밍 완료: 커서 제거 후 유료/무료 분기
         cursor.remove();
-        contentEl.innerHTML = renderText(fullText, cards);
 
-        // seal 제거됨
+        const isPaid = localStorage.getItem('oraclePaid') === 'true';
+
+        if (isPaid) {
+            // 유료: 전체 그대로 렌더
+            contentEl.innerHTML = renderText(fullText, cards);
+        } else {
+            // 무료: 미래 섹션 시작점 감지 → 블러 처리
+            const futureRe = /\n[ \t]*미래[ \t]*\n/;
+            const cutIdx   = fullText.search(futureRe);
+            const splitAt  = cutIdx > -1 ? cutIdx : Math.floor(fullText.length * 0.62);
+
+            const freeText   = fullText.substring(0, splitAt);
+            const lockedText = fullText.substring(splitAt);
+
+            const freeHtml   = renderText(freeText, cards);
+            const lockedHtml = renderText(lockedText, cards);
+
+            contentEl.innerHTML = freeHtml + `
+                <div class="locked-section">
+                    <div class="locked-blur">${lockedHtml}</div>
+                    <div class="unlock-overlay">
+                        <button class="unlock-btn" onclick="showPayModal()">
+                            🔓 미래 신탁 전체 보기
+                        </button>
+                        <div class="unlock-desc">프리미엄 전체 점사를 확인하세요</div>
+                    </div>
+                </div>`;
+        }
+
+        // 씰 스탬프
+        setTimeout(() => {
+            const seal = document.getElementById('oracle-seal');
+            if (seal) seal.classList.add('stamped');
+        }, 800);
+
+        // 완료 후 결과창 상단으로 부드럽게 스크롤
+        window.scrollTo({ top: 0, behavior: 'smooth' });
 
     } catch (error) {
         clearInterval(loadingTimer);
-        console.error('Stream 에러:', error);
         loadingEl.style.display    = 'none';
         progressWrap.style.display = 'none';
         contentEl.innerHTML = `
@@ -1220,6 +1397,63 @@ function expandCard(img) {
     overlay.appendChild(big);
     overlay.onclick = () => overlay.remove();
     document.body.appendChild(overlay);
+}
+
+// ════════════════════════════════════
+// 결제 모달 & 유료 전환
+// ════════════════════════════════════
+function showPayModal() {
+    const overlay = document.createElement('div');
+    overlay.className = 'pay-modal-overlay';
+    overlay.id = 'payModalOverlay';
+    overlay.innerHTML = `
+        <div class="pay-modal">
+            <h3>✦ 프리미엄 신탁 ✦</h3>
+            <p>미래 카드 해석과 제니스 운명 신탁 전체를<br>확인하실 수 있습니다.</p>
+            <div class="pay-account">
+                <div><strong>입금 금액</strong>: ₩2,900</div>
+                <div><strong>입금 은행</strong>: [은행명]</div>
+                <div><strong>계좌번호</strong>: [계좌번호]</div>
+                <div><strong>예금주</strong>: [예금주명]</div>
+            </div>
+            <p style="font-size:0.78rem;color:rgba(212,175,55,0.6);margin-bottom:16px;">
+                입금 확인 후 아래 버튼을 눌러주세요.<br>
+                (테스트 모드: 바로 확인 가능)
+            </p>
+            <button class="pay-confirm-btn" onclick="confirmPayment()">
+                ✅ 입금 완료 — 전체 보기
+            </button>
+            <button class="pay-close-btn" onclick="closePayModal()">
+                닫기
+            </button>
+        </div>`;
+    document.body.appendChild(overlay);
+}
+
+function closePayModal() {
+    const el = document.getElementById('payModalOverlay');
+    if (el) el.remove();
+}
+
+function confirmPayment() {
+    // 테스트 모드: 즉시 유료 전환
+    // 실제 운영 시: 서버에서 입금 확인 후 토큰 발급으로 교체
+    localStorage.setItem('oraclePaid', 'true');
+    closePayModal();
+
+    // 결과 재조회
+    const question = document.getElementById('seed-input')
+        ? document.getElementById('seed-input').value
+        : '';
+
+    if (selectedCards && selectedCards.length > 0) {
+        const contentEl = document.getElementById('oracle-content');
+        if (contentEl) contentEl.innerHTML = '';
+        const streamPromise = startStreamFetch(question || '재조회', selectedCards);
+        renderStream(streamPromise, selectedCards);
+    } else {
+        location.reload();
+    }
 }
 </script>
 </body>
