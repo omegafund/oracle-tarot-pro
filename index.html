@@ -1117,11 +1117,15 @@ async function renderStream(fetchPromise, cards) {
         // ── 스트리밍 완료: 커서 제거 후 유료/무료 분기
         cursor.remove();
 
+        // ── 테스트 모드: localhost 또는 ?admin=true 이면 프리패스
+        // ── 나중에 이 블록 삭제하면 일반 유료 모드로 전환
+        const isTestMode = window.location.hostname === 'localhost'
+            || window.location.search.includes('admin=true');
+
         // 워커가 응답 헤더로 유료 여부 전달
         const xPaid  = response.headers.get('X-Paid') === 'true';
-        // 로컬 토큰도 함께 확인 (이중 검증)
         const token  = localStorage.getItem('oracleSessionToken') || '';
-        const isPaid = xPaid && token.length > 10;
+        const isPaid = isTestMode || (xPaid && token.length > 10);
 
         if (isPaid) {
             // 유료: 전체 그대로 렌더
