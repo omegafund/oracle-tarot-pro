@@ -245,11 +245,11 @@ ${isFinance ? `추세: ${trend}
           body: JSON.stringify({
             contents: [{ parts: [{ text: masterPrompt }] }],
             generationConfig: {
-              temperature: 0.75,
-              topP: 0.95,
-              topK: 40,
-              maxOutputTokens: 8192
-            },
+  temperature: 0.3,
+  topP: 0.8,
+  topK: 20,
+  maxOutputTokens: 2048
+},
             safetySettings: [
               { category: "HARM_CATEGORY_HARASSMENT",        threshold: "BLOCK_NONE" },
               { category: "HARM_CATEGORY_HATE_SPEECH",       threshold: "BLOCK_NONE" },
