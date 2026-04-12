@@ -522,32 +522,24 @@
             border-bottom: 1px solid rgba(46,204,113,0.4);
         }
         .zenith-title-main {
-            font-size: 1.2rem;
+            font-size: 1rem;
             font-weight: 900;
-            letter-spacing: 0.12em;
+            letter-spacing: 0.15em;
             color: #2ecc71;
             margin: 0 0 2px 0;
             display: block;
-            text-shadow: 0 0 10px rgba(46,204,113,0.4);
         }
         .zenith-title-sub {
-            font-size: 0.78rem;
+            font-size: 0.75rem;
             font-weight: 700;
             letter-spacing: 0.3em;
             color: rgba(46,204,113,0.75);
             display: block;
         }
-        .zenith-title-block {
-            margin-bottom: 10px;
-            padding-bottom: 8px;
-            border-bottom: 1px solid rgba(46,204,113,0.4);
-        }
         .zenith-oracle-text {
             font-size: 0.93rem;
             line-height: 1.85;
             color: rgba(255,255,255,0.88);
-            margin-top: 10px;
-            display: block;
         }
         .oracle-eye { font-size: 1.3rem; margin-right: 6px; }
         .guardian-energy {
@@ -1296,10 +1288,6 @@ function renderText(text, cards) {
     t0 = t0.replace(/👁\s*[\n\r]*\s*제우스\s*운명의?\s*[\n\r]*\s*신탁\s*[\n\r]*\s*(?:ZEUS\s*DESTINY\s*ORACLE)?/g, '[[ZENITH]]');
     // 패턴3: 제우스 운명의 신탁 (단독, 줄바꿈 포함)
     t0 = t0.replace(/제우스\s*운명의?\s*신탁/g, '[[ZENITH]]');
-    // 패턴: 제우스의 최종신탁 / ZEUS SUPREME ORACLE
-    t0 = t0.replace(/제우스의?\s*최종\s*신탁\s*(?:\(ZEUS\s*SUPREME\s*ORACLE\))?/g, '[[ZENITH]]');
-    t0 = t0.replace(/제우스의?\s*신탁/g, '[[ZENITH]]');
-    t0 = t0.replace(/ZEUS\s*SUPREME\s*ORACLE/g, '');
     // 패턴4: 남은 👁 단독 (신탁 마커로 처리)
     t0 = t0.replace(/👁\s*[\n\r]*/g, '[[ZENITH]]');
     // 패턴5: ZEUS DESTINY ORACLE 단독 잔재 제거
@@ -1415,17 +1403,102 @@ function expandCard(img) {
     document.body.appendChild(overlay);
 }
 
-
+// 카드 터치 확대
+function expandCard(img) {
+    const overlay = document.createElement('div');
+    overlay.style.cssText = `position:fixed;top:0;left:0;width:100%;height:100%;
+        background:rgba(0,0,0,0.92);z-index:99999;
+        display:flex;align-items:center;justify-content:center;cursor:pointer;`;
+    const big = document.createElement('img');
+    big.src = img.src;
+    big.style.cssText = `max-width:85vw;max-height:80vh;border-radius:12px;
+        border:2px solid #D4AF37;box-shadow:0 0 30px rgba(212,175,55,0.5);`;
+    overlay.appendChild(big);
+    overlay.onclick = () => overlay.remove();
+    document.body.appendChild(overlay);
+}
 
 // 카드 터치 확대
+function expandCard(img) {
+    const overlay = document.createElement('div');
+    overlay.style.cssText = `position:fixed;top:0;left:0;width:100%;height:100%;
+        background:rgba(0,0,0,0.92);z-index:99999;
+        display:flex;align-items:center;justify-content:center;cursor:pointer;`;
+    const big = document.createElement('img');
+    big.src = img.src;
+    big.style.cssText = `max-width:85vw;max-height:80vh;border-radius:12px;
+        border:2px solid #D4AF37;box-shadow:0 0 30px rgba(212,175,55,0.5);`;
+    overlay.appendChild(big);
+    overlay.onclick = () => overlay.remove();
+    document.body.appendChild(overlay);
+}
 
 // 카드 터치 확대
+function expandCard(img) {
+    const overlay = document.createElement('div');
+    overlay.style.cssText = `position:fixed;top:0;left:0;width:100%;height:100%;
+        background:rgba(0,0,0,0.92);z-index:99999;
+        display:flex;align-items:center;justify-content:center;cursor:pointer;`;
+    const big = document.createElement('img');
+    big.src = img.src;
+    big.style.cssText = `max-width:85vw;max-height:80vh;border-radius:12px;
+        border:2px solid #D4AF37;box-shadow:0 0 30px rgba(212,175,55,0.5);`;
+    overlay.appendChild(big);
+    overlay.onclick = () => overlay.remove();
+    document.body.appendChild(overlay);
+}
 
 // 카드 터치 확대
+function expandCard(img) {
+    const overlay = document.createElement('div');
+    overlay.style.cssText = `position:fixed;top:0;left:0;width:100%;height:100%;
+        background:rgba(0,0,0,0.92);z-index:99999;
+        display:flex;align-items:center;justify-content:center;cursor:pointer;`;
+    const big = document.createElement('img');
+    big.src = img.src;
+    big.style.cssText = `max-width:85vw;max-height:80vh;border-radius:12px;
+        border:2px solid #D4AF37;box-shadow:0 0 30px rgba(212,175,55,0.5);`;
+    overlay.appendChild(big);
+    overlay.onclick = () => overlay.remove();
+    document.body.appendChild(overlay);
+}
 
 // 카드 터치 확대
+function expandCard(img) {
+    const overlay = document.createElement('div');
+    overlay.style.cssText = `
+        position:fixed;top:0;left:0;width:100%;height:100%;
+        background:rgba(0,0,0,0.92);z-index:99999;
+        display:flex;align-items:center;justify-content:center;cursor:pointer;`;
+    const big = document.createElement('img');
+    big.src = img.src;
+    big.style.cssText = `
+        max-width:85vw;max-height:80vh;border-radius:12px;
+        border:2px solid #D4AF37;box-shadow:0 0 30px rgba(212,175,55,0.5);`;
+    overlay.appendChild(big);
+    overlay.onclick = () => overlay.remove();
+    document.body.appendChild(overlay);
+}
 
 // 카드 터치 확대 함수
+function expandCard(img) {
+    const overlay = document.createElement('div');
+    overlay.style.cssText = `
+        position:fixed;top:0;left:0;width:100%;height:100%;
+        background:rgba(0,0,0,0.92);z-index:99999;
+        display:flex;align-items:center;justify-content:center;
+        cursor:pointer;`;
+    const big = document.createElement('img');
+    big.src = img.src;
+    big.style.cssText = `
+        max-width:85vw;max-height:80vh;
+        border-radius:12px;
+        border:2px solid #D4AF37;
+        box-shadow:0 0 30px rgba(212,175,55,0.5);`;
+    overlay.appendChild(big);
+    overlay.onclick = () => overlay.remove();
+    document.body.appendChild(overlay);
+}
 
 // ════════════════════════════════════
 // 결제 모달 & 유료 전환
