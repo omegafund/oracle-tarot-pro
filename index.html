@@ -696,6 +696,36 @@
             background: #FFD700;
             box-shadow: 0 0 8px 3px rgba(255,215,0,0.8);
         }
+        /* 제우스 최종신탁: 녹색 1.5배 강조 디자인 */
+        .zeus-header { 
+            font-size: 1.5rem !important; 
+            color: #2ecc71 !important; /* 선명한 녹색 */
+            font-weight: 900; 
+            display: block; 
+            margin: 20px 0 15px 0;
+            text-shadow: 0 0 10px rgba(46, 204, 113, 0.4);
+        }
+
+        /* 금색 데이터 강조: 추세, 행동, 타이밍, 리스크 */
+        .gold-point { 
+            color: #FFD700 !important; /* 진한 금색 */
+            font-weight: bold; 
+            font-size: 1.1rem; 
+            display: block; 
+            margin: 8px 0; 
+            text-shadow: 0 0 8px rgba(255, 215, 0, 0.5); 
+        }
+
+        /* 미니 카드 스타일 보강 */
+        .mini-card {
+            width: 48px; 
+            height: 72px;
+            object-fit: cover;
+            border-radius: 5px;
+            border: 1.5px solid rgba(212, 175, 55, 0.6);
+            flex-shrink: 0;
+            box-shadow: 0 0 10px rgba(0,0,0,0.5);
+        }
     </style>
 </head>
 <body>
@@ -977,7 +1007,7 @@ setInterval(() => {
     if (document.getElementById('home-view').style.display !== 'none') {
         launchTitleSparkles();
     }
-}, 3000);
+}, 2500);
 // 첫 로딩 시 즉시 발사
 setTimeout(launchTitleSparkles, 500);
 
@@ -1061,6 +1091,45 @@ function flipCard(index, card) {
     });
 }
 
+// ════════════════════════════════════
+// [NEW] 리딩 포맷팅 및 제우스 신탁 디자인
+// ════════════════════════════════════
+function formatReading(text, cards) {
+    // 1. 비문 방지를 위해 '제목' 뒤에 줄바꿈이 있는 경우를 기준으로 정밀 분할
+    const parts = text.split(/\n과거\n|\n현재\n|\n미래\n|\n제우스의 최종신탁 \(ZEUS SUPREME ORACLE\)\n/);
+
+    const formatText = t => (t || '').trim()
+        .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+        // 추세, 권장 행동, 타이밍, 리스크를 금색 강조(gold-point)로 코팅
+        .replace(/(추세|권장 행동|타이밍|리스크):\s*([^<|\n]+)/g, '<span class="gold-point">$1: $2</span>')
+        .replace(/\n/g, '<br>');
+
+    const sectionLabels = ['과거', '현재', '미래'];
+
+    // 2. 과거/현재/미래 섹션 생성 (설명란마다 미니 카드 매칭)
+    const cardSections = cards.map((card, i) => `
+        <div class="card-block">
+            <h2>${sectionLabels[i]}</h2>
+            <div class="card-inline">
+                <img src="${BASE_URL}${card.file}" class="mini-card" onerror="this.src='${BASE_URL}back.jpg'">
+                <div class="card-name">${card.name}</div>
+            </div>
+            <div class="card-text">${formatText(parts[i + 1])}</div>
+        </div>
+    `).join('');
+
+    // 3. 제우스의 최종신탁 (녹색 1.5배 강조 디자인)
+    const oraclePart = parts[4] ? `
+        <div class="final-reading">
+            <span class="zeus-header">제우스의 최종신탁 (ZEUS SUPREME ORACLE)</span>
+            <div class="oracle-text">
+                ${formatText(parts[4])}
+            </div>
+        </div>
+    ` : '';
+
+    return cardSections + oraclePart;
+}
 // ════════════════════════════════════
 //  결과창 렌더링
 // ════════════════════════════════════
