@@ -1150,7 +1150,7 @@ async function renderStream(fetchPromise, cards) {
     try {
         const response = await fetchPromise;
         clearInterval(loadingTimer);
-        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        if (!response.ok) throw new Error('HTTP ' + response.status);
 
         const reader  = response.body.getReader();
         const decoder = new TextDecoder();
@@ -1163,18 +1163,14 @@ async function renderStream(fetchPromise, cards) {
         cursor.className = 'streaming-cursor';
         contentEl.appendChild(cursor);
 
-        let buffer   = '';
-        let fullText = '';
+        let buffer = '', fullText = '';
 
-        // SSE 스트리밍 수신
         while (true) {
             const { done, value } = await reader.read();
             if (done) break;
-
             buffer += decoder.decode(value, { stream: true });
             const lines = buffer.split('\n');
             buffer = lines.pop();
-
             for (const line of lines) {
                 if (!line.startsWith('data: ')) continue;
                 const jsonStr = line.slice(6).trim();
@@ -1191,50 +1187,35 @@ async function renderStream(fetchPromise, cards) {
             }
         }
 
-        // 스트리밍 완료
         cursor.remove();
 
-        // 유료 판별 (다중 조건)
         const isTestMode = window.location.hostname === 'localhost'
             || window.location.search.includes('admin=true');
-        const testPass   = localStorage.getItem('oracleTestPass') === 'true';
-        const xPaid      = response.headers.get('X-Paid') === 'true';
-        const token      = localStorage.getItem('oracleSessionToken') || '';
-        const isPaid     = isTestMode || testPass || (xPaid && token.length > 10);
+        const testPass = localStorage.getItem('oracleTestPass') === 'true';
+        const xPaid    = response.headers.get('X-Paid') === 'true';
+        const token    = localStorage.getItem('oracleSessionToken') || '';
+        const isPaid   = isTestMode || testPass || (xPaid && token.length > 10);
 
         if (isPaid) {
-            // 유료/테스트: 전체 그대로
             contentEl.innerHTML = renderText(fullText, cards);
         } else {
-            // 무료: 전체 렌더 후 미래+신탁 블러
             contentEl.innerHTML = renderText(fullText, cards);
-
             const cardBlocks   = contentEl.querySelectorAll('.card-block');
             const finalReading = contentEl.querySelector('.final-reading');
-
             if (cardBlocks.length >= 3) {
                 const lockWrapper = document.createElement('div');
                 lockWrapper.className = 'locked-section';
-
                 const blurDiv = document.createElement('div');
                 blurDiv.className = 'locked-blur';
-
                 const futureBlock = cardBlocks[2];
                 blurDiv.appendChild(futureBlock.cloneNode(true));
-
                 if (finalReading) {
                     blurDiv.appendChild(finalReading.cloneNode(true));
                     finalReading.remove();
                 }
                 futureBlock.replaceWith(lockWrapper);
                 lockWrapper.appendChild(blurDiv);
-                lockWrapper.innerHTML += `
-                    <div class="unlock-overlay">
-                        <button class="unlock-btn" onclick="showPayModal()">
-                            🔓 미래 신탁 전체 보기
-                        </button>
-                        <div class="unlock-desc">프리미엄 전체 점사를 확인하세요</div>
-                    </div>`;
+                lockWrapper.innerHTML += '<div class="unlock-overlay"><button class="unlock-btn" onclick="showPayModal()">🔓 미래 신탁 전체 보기</button><div class="unlock-desc">프리미엄 전체 점사를 확인하세요</div></div>';
             }
         }
 
@@ -1247,21 +1228,7 @@ async function renderStream(fetchPromise, cards) {
         clearInterval(loadingTimer);
         loadingEl.style.display    = 'none';
         progressWrap.style.display = 'none';
-        contentEl.innerHTML = `
-            <div style="color:#ff6b6b;padding:20px;border:1px solid #ff6b6b;border-radius:10px;">
-                <strong>⚠️ 연결 실패</strong><br><br>
-                <pre style="white-space:pre-wrap;font-size:0.8rem;color:#eee;">${error.message}</pre>
-            </div>`;
-    }
-} catch (error) {
-        clearInterval(loadingTimer);
-        loadingEl.style.display    = 'none';
-        progressWrap.style.display = 'none';
-        contentEl.innerHTML = `
-            <div style="color:#ff6b6b;padding:20px;border:1px solid #ff6b6b;border-radius:10px;">
-                <strong>⚠️ 연결 실패</strong><br><br>
-                <pre style="white-space:pre-wrap;font-size:0.8rem;color:#eee;">${error.message}</pre>
-            </div>`;
+        contentEl.innerHTML = '<div style="color:#ff6b6b;padding:20px;border:1px solid #ff6b6b;border-radius:10px;"><strong>⚠️ 연결 실패</strong><br><br><pre style="white-space:pre-wrap;font-size:0.8rem;color:#eee;">' + error.message + '</pre></div>';
     }
 }
 
