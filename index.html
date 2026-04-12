@@ -1166,7 +1166,7 @@ async function renderStream(fetchPromise, cards) {
         let buffer   = '';
         let fullText = '';
 
-        // ── SSE 스트리밍 수신 — 전체 텍스트 누적
+        // SSE 스트리밍 수신
         while (true) {
             const { done, value } = await reader.read();
             if (done) break;
@@ -1184,9 +1184,6 @@ async function renderStream(fetchPromise, cards) {
                     const chunk  = parsed?.candidates?.[0]?.content?.parts?.[0]?.text || '';
                     if (!chunk) continue;
                     fullText += chunk;
-
-                    // 스트리밍 중: 전체 텍스트 실시간 렌더 (미래/신탁 포함)
-                    // → 완료 후 유료 분기에서 블러 처리
                     cursor.remove();
                     contentEl.innerHTML = renderText(fullText, cards);
                     contentEl.appendChild(cursor);
@@ -1194,10 +1191,10 @@ async function renderStream(fetchPromise, cards) {
             }
         }
 
-        // ── 스트리밍 완료
+        // 스트리밍 완료
         cursor.remove();
 
-        // ── 유료 판별 (다중 조건)
+        // 유료 판별 (다중 조건)
         const isTestMode = window.location.hostname === 'localhost'
             || window.location.search.includes('admin=true');
         const testPass   = localStorage.getItem('oracleTestPass') === 'true';
@@ -1206,37 +1203,30 @@ async function renderStream(fetchPromise, cards) {
         const isPaid     = isTestMode || testPass || (xPaid && token.length > 10);
 
         if (isPaid) {
-            // ── 유료/테스트: 전체 그대로
+            // 유료/테스트: 전체 그대로
             contentEl.innerHTML = renderText(fullText, cards);
         } else {
-            // ── 무료: renderText로 전체 렌더 후
-            //    미래 카드 div + 신탁 div만 블러 처리
+            // 무료: 전체 렌더 후 미래+신탁 블러
             contentEl.innerHTML = renderText(fullText, cards);
 
-            // 미래 card-block (3번째) 과 final-reading 에 블러 적용
-            const cardBlocks = contentEl.querySelectorAll('.card-block');
+            const cardBlocks   = contentEl.querySelectorAll('.card-block');
             const finalReading = contentEl.querySelector('.final-reading');
 
-            // 미래 카드 (index 2) 이후를 잠금
             if (cardBlocks.length >= 3) {
-                // 미래 카드부터 끝까지 묶어서 블러 처리
                 const lockWrapper = document.createElement('div');
                 lockWrapper.className = 'locked-section';
 
                 const blurDiv = document.createElement('div');
                 blurDiv.className = 'locked-blur';
 
-                // 미래 카드 블록 이동
                 const futureBlock = cardBlocks[2];
                 blurDiv.appendChild(futureBlock.cloneNode(true));
 
-                // 신탁 블록 이동
                 if (finalReading) {
                     blurDiv.appendChild(finalReading.cloneNode(true));
                     finalReading.remove();
                 }
                 futureBlock.replaceWith(lockWrapper);
-
                 lockWrapper.appendChild(blurDiv);
                 lockWrapper.innerHTML += `
                     <div class="unlock-overlay">
@@ -1254,6 +1244,16 @@ async function renderStream(fetchPromise, cards) {
         }, 800);
 
     } catch (error) {
+        clearInterval(loadingTimer);
+        loadingEl.style.display    = 'none';
+        progressWrap.style.display = 'none';
+        contentEl.innerHTML = `
+            <div style="color:#ff6b6b;padding:20px;border:1px solid #ff6b6b;border-radius:10px;">
+                <strong>⚠️ 연결 실패</strong><br><br>
+                <pre style="white-space:pre-wrap;font-size:0.8rem;color:#eee;">${error.message}</pre>
+            </div>`;
+    }
+} catch (error) {
         clearInterval(loadingTimer);
         loadingEl.style.display    = 'none';
         progressWrap.style.display = 'none';
@@ -1404,101 +1404,16 @@ function expandCard(img) {
 }
 
 // 카드 터치 확대
-function expandCard(img) {
-    const overlay = document.createElement('div');
-    overlay.style.cssText = `position:fixed;top:0;left:0;width:100%;height:100%;
-        background:rgba(0,0,0,0.92);z-index:99999;
-        display:flex;align-items:center;justify-content:center;cursor:pointer;`;
-    const big = document.createElement('img');
-    big.src = img.src;
-    big.style.cssText = `max-width:85vw;max-height:80vh;border-radius:12px;
-        border:2px solid #D4AF37;box-shadow:0 0 30px rgba(212,175,55,0.5);`;
-    overlay.appendChild(big);
-    overlay.onclick = () => overlay.remove();
-    document.body.appendChild(overlay);
-}
 
 // 카드 터치 확대
-function expandCard(img) {
-    const overlay = document.createElement('div');
-    overlay.style.cssText = `position:fixed;top:0;left:0;width:100%;height:100%;
-        background:rgba(0,0,0,0.92);z-index:99999;
-        display:flex;align-items:center;justify-content:center;cursor:pointer;`;
-    const big = document.createElement('img');
-    big.src = img.src;
-    big.style.cssText = `max-width:85vw;max-height:80vh;border-radius:12px;
-        border:2px solid #D4AF37;box-shadow:0 0 30px rgba(212,175,55,0.5);`;
-    overlay.appendChild(big);
-    overlay.onclick = () => overlay.remove();
-    document.body.appendChild(overlay);
-}
 
 // 카드 터치 확대
-function expandCard(img) {
-    const overlay = document.createElement('div');
-    overlay.style.cssText = `position:fixed;top:0;left:0;width:100%;height:100%;
-        background:rgba(0,0,0,0.92);z-index:99999;
-        display:flex;align-items:center;justify-content:center;cursor:pointer;`;
-    const big = document.createElement('img');
-    big.src = img.src;
-    big.style.cssText = `max-width:85vw;max-height:80vh;border-radius:12px;
-        border:2px solid #D4AF37;box-shadow:0 0 30px rgba(212,175,55,0.5);`;
-    overlay.appendChild(big);
-    overlay.onclick = () => overlay.remove();
-    document.body.appendChild(overlay);
-}
 
 // 카드 터치 확대
-function expandCard(img) {
-    const overlay = document.createElement('div');
-    overlay.style.cssText = `position:fixed;top:0;left:0;width:100%;height:100%;
-        background:rgba(0,0,0,0.92);z-index:99999;
-        display:flex;align-items:center;justify-content:center;cursor:pointer;`;
-    const big = document.createElement('img');
-    big.src = img.src;
-    big.style.cssText = `max-width:85vw;max-height:80vh;border-radius:12px;
-        border:2px solid #D4AF37;box-shadow:0 0 30px rgba(212,175,55,0.5);`;
-    overlay.appendChild(big);
-    overlay.onclick = () => overlay.remove();
-    document.body.appendChild(overlay);
-}
 
 // 카드 터치 확대
-function expandCard(img) {
-    const overlay = document.createElement('div');
-    overlay.style.cssText = `
-        position:fixed;top:0;left:0;width:100%;height:100%;
-        background:rgba(0,0,0,0.92);z-index:99999;
-        display:flex;align-items:center;justify-content:center;cursor:pointer;`;
-    const big = document.createElement('img');
-    big.src = img.src;
-    big.style.cssText = `
-        max-width:85vw;max-height:80vh;border-radius:12px;
-        border:2px solid #D4AF37;box-shadow:0 0 30px rgba(212,175,55,0.5);`;
-    overlay.appendChild(big);
-    overlay.onclick = () => overlay.remove();
-    document.body.appendChild(overlay);
-}
 
 // 카드 터치 확대 함수
-function expandCard(img) {
-    const overlay = document.createElement('div');
-    overlay.style.cssText = `
-        position:fixed;top:0;left:0;width:100%;height:100%;
-        background:rgba(0,0,0,0.92);z-index:99999;
-        display:flex;align-items:center;justify-content:center;
-        cursor:pointer;`;
-    const big = document.createElement('img');
-    big.src = img.src;
-    big.style.cssText = `
-        max-width:85vw;max-height:80vh;
-        border-radius:12px;
-        border:2px solid #D4AF37;
-        box-shadow:0 0 30px rgba(212,175,55,0.5);`;
-    overlay.appendChild(big);
-    overlay.onclick = () => overlay.remove();
-    document.body.appendChild(overlay);
-}
 
 // ════════════════════════════════════
 // 결제 모달 & 유료 전환
