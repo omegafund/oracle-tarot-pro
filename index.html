@@ -262,7 +262,7 @@
         .disclaimer-text {
             margin-top: 28px;
             font-size: 0.72rem;
-            color: rgba(212,175,55,0.80);
+            color: rgba(212,175,55,0.55);
             line-height: 1.6;
             letter-spacing: 0.03em;
             border-top: 1px solid rgba(212,175,55,0.15);
@@ -522,24 +522,32 @@
             border-bottom: 1px solid rgba(46,204,113,0.4);
         }
         .zenith-title-main {
-            font-size: 1rem;
+            font-size: 1.2rem;
             font-weight: 900;
-            letter-spacing: 0.15em;
+            letter-spacing: 0.12em;
             color: #2ecc71;
             margin: 0 0 2px 0;
             display: block;
+            text-shadow: 0 0 10px rgba(46,204,113,0.4);
         }
         .zenith-title-sub {
-            font-size: 0.75rem;
+            font-size: 0.78rem;
             font-weight: 700;
             letter-spacing: 0.3em;
             color: rgba(46,204,113,0.75);
             display: block;
         }
+        .zenith-title-block {
+            margin-bottom: 10px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid rgba(46,204,113,0.4);
+        }
         .zenith-oracle-text {
             font-size: 0.93rem;
             line-height: 1.85;
             color: rgba(255,255,255,0.88);
+            margin-top: 10px;
+            display: block;
         }
         .oracle-eye { font-size: 1.3rem; margin-right: 6px; }
         .guardian-energy {
@@ -695,36 +703,6 @@
             clip-path: polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%);
             background: #FFD700;
             box-shadow: 0 0 8px 3px rgba(255,215,0,0.8);
-        }
-        /* 제우스 최종신탁: 녹색 1.5배 강조 디자인 */
-        .zeus-header { 
-            font-size: 1.5rem !important; 
-            color: #2ecc71 !important; /* 선명한 녹색 */
-            font-weight: 900; 
-            display: block; 
-            margin: 20px 0 15px 0;
-            text-shadow: 0 0 10px rgba(46, 204, 113, 0.4);
-        }
-
-        /* 금색 데이터 강조: 추세, 행동, 타이밍, 리스크 */
-        .gold-point { 
-            color: #FFD700 !important; /* 진한 금색 */
-            font-weight: bold; 
-            font-size: 1.1rem; 
-            display: block; 
-            margin: 8px 0; 
-            text-shadow: 0 0 8px rgba(255, 215, 0, 0.5); 
-        }
-
-        /* 미니 카드 스타일 보강 */
-        .mini-card {
-            width: 48px; 
-            height: 72px;
-            object-fit: cover;
-            border-radius: 5px;
-            border: 1.5px solid rgba(212, 175, 55, 0.6);
-            flex-shrink: 0;
-            box-shadow: 0 0 10px rgba(0,0,0,0.5);
         }
     </style>
 </head>
@@ -1007,7 +985,7 @@ setInterval(() => {
     if (document.getElementById('home-view').style.display !== 'none') {
         launchTitleSparkles();
     }
-}, 2500);
+}, 3000);
 // 첫 로딩 시 즉시 발사
 setTimeout(launchTitleSparkles, 500);
 
@@ -1091,45 +1069,6 @@ function flipCard(index, card) {
     });
 }
 
-// ════════════════════════════════════
-// [NEW] 리딩 포맷팅 및 제우스 신탁 디자인
-// ════════════════════════════════════
-function formatReading(text, cards) {
-    // 1. 비문 방지를 위해 '제목' 뒤에 줄바꿈이 있는 경우를 기준으로 정밀 분할
-    const parts = text.split(/\n과거\n|\n현재\n|\n미래\n|\n제우스의 최종신탁 \(ZEUS SUPREME ORACLE\)\n/);
-
-    const formatText = t => (t || '').trim()
-        .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-        // 추세, 권장 행동, 타이밍, 리스크를 금색 강조(gold-point)로 코팅
-        .replace(/(추세|권장 행동|타이밍|리스크):\s*([^<|\n]+)/g, '<span class="gold-point">$1: $2</span>')
-        .replace(/\n/g, '<br>');
-
-    const sectionLabels = ['과거', '현재', '미래'];
-
-    // 2. 과거/현재/미래 섹션 생성 (설명란마다 미니 카드 매칭)
-    const cardSections = cards.map((card, i) => `
-        <div class="card-block">
-            <h2>${sectionLabels[i]}</h2>
-            <div class="card-inline">
-                <img src="${BASE_URL}${card.file}" class="mini-card" onerror="this.src='${BASE_URL}back.jpg'">
-                <div class="card-name">${card.name}</div>
-            </div>
-            <div class="card-text">${formatText(parts[i + 1])}</div>
-        </div>
-    `).join('');
-
-    // 3. 제우스의 최종신탁 (녹색 1.5배 강조 디자인)
-    const oraclePart = parts[4] ? `
-        <div class="final-reading">
-            <span class="zeus-header">제우스의 최종신탁 (ZEUS SUPREME ORACLE)</span>
-            <div class="oracle-text">
-                ${formatText(parts[4])}
-            </div>
-        </div>
-    ` : '';
-
-    return cardSections + oraclePart;
-}
 // ════════════════════════════════════
 //  결과창 렌더링
 // ════════════════════════════════════
@@ -1357,6 +1296,10 @@ function renderText(text, cards) {
     t0 = t0.replace(/👁\s*[\n\r]*\s*제우스\s*운명의?\s*[\n\r]*\s*신탁\s*[\n\r]*\s*(?:ZEUS\s*DESTINY\s*ORACLE)?/g, '[[ZENITH]]');
     // 패턴3: 제우스 운명의 신탁 (단독, 줄바꿈 포함)
     t0 = t0.replace(/제우스\s*운명의?\s*신탁/g, '[[ZENITH]]');
+    // 패턴: 제우스의 최종신탁 / ZEUS SUPREME ORACLE
+    t0 = t0.replace(/제우스의?\s*최종\s*신탁\s*(?:\(ZEUS\s*SUPREME\s*ORACLE\))?/g, '[[ZENITH]]');
+    t0 = t0.replace(/제우스의?\s*신탁/g, '[[ZENITH]]');
+    t0 = t0.replace(/ZEUS\s*SUPREME\s*ORACLE/g, '');
     // 패턴4: 남은 👁 단독 (신탁 마커로 처리)
     t0 = t0.replace(/👁\s*[\n\r]*/g, '[[ZENITH]]');
     // 패턴5: ZEUS DESTINY ORACLE 단독 잔재 제거
@@ -1472,102 +1415,17 @@ function expandCard(img) {
     document.body.appendChild(overlay);
 }
 
-// 카드 터치 확대
-function expandCard(img) {
-    const overlay = document.createElement('div');
-    overlay.style.cssText = `position:fixed;top:0;left:0;width:100%;height:100%;
-        background:rgba(0,0,0,0.92);z-index:99999;
-        display:flex;align-items:center;justify-content:center;cursor:pointer;`;
-    const big = document.createElement('img');
-    big.src = img.src;
-    big.style.cssText = `max-width:85vw;max-height:80vh;border-radius:12px;
-        border:2px solid #D4AF37;box-shadow:0 0 30px rgba(212,175,55,0.5);`;
-    overlay.appendChild(big);
-    overlay.onclick = () => overlay.remove();
-    document.body.appendChild(overlay);
-}
+
 
 // 카드 터치 확대
-function expandCard(img) {
-    const overlay = document.createElement('div');
-    overlay.style.cssText = `position:fixed;top:0;left:0;width:100%;height:100%;
-        background:rgba(0,0,0,0.92);z-index:99999;
-        display:flex;align-items:center;justify-content:center;cursor:pointer;`;
-    const big = document.createElement('img');
-    big.src = img.src;
-    big.style.cssText = `max-width:85vw;max-height:80vh;border-radius:12px;
-        border:2px solid #D4AF37;box-shadow:0 0 30px rgba(212,175,55,0.5);`;
-    overlay.appendChild(big);
-    overlay.onclick = () => overlay.remove();
-    document.body.appendChild(overlay);
-}
 
 // 카드 터치 확대
-function expandCard(img) {
-    const overlay = document.createElement('div');
-    overlay.style.cssText = `position:fixed;top:0;left:0;width:100%;height:100%;
-        background:rgba(0,0,0,0.92);z-index:99999;
-        display:flex;align-items:center;justify-content:center;cursor:pointer;`;
-    const big = document.createElement('img');
-    big.src = img.src;
-    big.style.cssText = `max-width:85vw;max-height:80vh;border-radius:12px;
-        border:2px solid #D4AF37;box-shadow:0 0 30px rgba(212,175,55,0.5);`;
-    overlay.appendChild(big);
-    overlay.onclick = () => overlay.remove();
-    document.body.appendChild(overlay);
-}
 
 // 카드 터치 확대
-function expandCard(img) {
-    const overlay = document.createElement('div');
-    overlay.style.cssText = `position:fixed;top:0;left:0;width:100%;height:100%;
-        background:rgba(0,0,0,0.92);z-index:99999;
-        display:flex;align-items:center;justify-content:center;cursor:pointer;`;
-    const big = document.createElement('img');
-    big.src = img.src;
-    big.style.cssText = `max-width:85vw;max-height:80vh;border-radius:12px;
-        border:2px solid #D4AF37;box-shadow:0 0 30px rgba(212,175,55,0.5);`;
-    overlay.appendChild(big);
-    overlay.onclick = () => overlay.remove();
-    document.body.appendChild(overlay);
-}
 
 // 카드 터치 확대
-function expandCard(img) {
-    const overlay = document.createElement('div');
-    overlay.style.cssText = `
-        position:fixed;top:0;left:0;width:100%;height:100%;
-        background:rgba(0,0,0,0.92);z-index:99999;
-        display:flex;align-items:center;justify-content:center;cursor:pointer;`;
-    const big = document.createElement('img');
-    big.src = img.src;
-    big.style.cssText = `
-        max-width:85vw;max-height:80vh;border-radius:12px;
-        border:2px solid #D4AF37;box-shadow:0 0 30px rgba(212,175,55,0.5);`;
-    overlay.appendChild(big);
-    overlay.onclick = () => overlay.remove();
-    document.body.appendChild(overlay);
-}
 
 // 카드 터치 확대 함수
-function expandCard(img) {
-    const overlay = document.createElement('div');
-    overlay.style.cssText = `
-        position:fixed;top:0;left:0;width:100%;height:100%;
-        background:rgba(0,0,0,0.92);z-index:99999;
-        display:flex;align-items:center;justify-content:center;
-        cursor:pointer;`;
-    const big = document.createElement('img');
-    big.src = img.src;
-    big.style.cssText = `
-        max-width:85vw;max-height:80vh;
-        border-radius:12px;
-        border:2px solid #D4AF37;
-        box-shadow:0 0 30px rgba(212,175,55,0.5);`;
-    overlay.appendChild(big);
-    overlay.onclick = () => overlay.remove();
-    document.body.appendChild(overlay);
-}
 
 // ════════════════════════════════════
 // 결제 모달 & 유료 전환
