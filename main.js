@@ -230,7 +230,6 @@ ${financeInject}
 - 미래 카드 해석 절대 생략 금지.
 - 마크다운 구분선('---','***') 절대 금지.
 - 👁 기호 절대 사용 금지.
-- ZEUS DESTINY ORACLE 텍스트 출력 금지.
 - ✦ 카드 흐름 종합 독해 ✦ 출력 금지.
 - 🌙 오늘의 수호 에너지 출력 금지.
 - "구도자" 단어 절대 금지.
@@ -247,6 +246,8 @@ ${financeInject}
 
 - 각 카드 해석은 반드시 5문장 이상 작성하라.
 - 카드 이름은 해석에만 사용하고 출력하지 마라.
+- "제우스의 운명신탁" 본문 내부에는 지표 데이터를 언급하지 말고 오직 통찰만 서술하라.
+
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 [출력 형식 — 반드시 준수]
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -262,12 +263,20 @@ ${financeInject}
 미래
 (서술형 단락)
 
-제우스의 신탁
-(결론 + 행동지침${isFinance ? " + 추세:" + trend + " 행동:" + action + " 타이밍:" + timingText + " 리스크:" + riskLevel : ""})
+<span style="color:#2ecc71; font-size:120%; font-weight:bold; display:block; margin-bottom:0px;">제우스의 운명신탁</span>
+<span style="color:#2ecc71; font-size:110%; font-weight:normal; display:block; margin-bottom:15px;">ZEUS DESTINY ORACLE</span>
+(서술형 문장으로만 작성된 심층 통찰 및 결론)
+
+${isFinance ? `
+📈 추세: ${trend}
+🧭 행동: ${action}
+⚡ 타이밍: ${finalTimingText}
+🛡️ 리스크: ${riskLevel}` : ""}
 
 규칙:
 - "과거" "현재" "미래" 는 단독 한 줄. 절대 두 번 출력 금지.
-- "제우스의 신탁" 은 단독 한 줄. 두 번 출력 금지.
+- 한글 타이틀과 영문 타이틀 사이에는 절대 빈 줄(공백)을 두지 마라.
+- "제우스의 운명신탁" 타이틀(HTML 포함)은 절대 두 번 출력 금지.
 `;
 
         // ── Gemini SSE 스트림 (기존 방식 유지)
