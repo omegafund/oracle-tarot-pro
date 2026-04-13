@@ -263,8 +263,7 @@ ${financeInject}
 미래
 (서술형 단락)
 
-<span style="color:#2ecc71; font-size:120%; font-weight:bold; display:block; margin-bottom:0px;">제우스의 운명신탁</span>
-<span style="color:#2ecc71; font-size:110%; font-weight:normal; display:block; margin-bottom:15px;">ZEUS DESTINY ORACLE</span>
+<span style="color:#2ecc71; font-size:120%; font-weight:bold; display:block; margin:0; line-height:1.2;">제우스의 운명신탁</span><span style="color:#2ecc71; font-size:110%; font-weight:normal; display:block; margin:0 0 15px 0; line-height:1.2;">ZEUS DESTINY ORACLE</span>
 (서술형 문장으로만 작성된 심층 통찰 및 결론)
 
 ${isFinance ? `
@@ -274,7 +273,7 @@ ${isFinance ? `
 🛡️ 리스크: ${riskLevel}` : ""}
 
 규칙:
-- "과거" "현재" "미래" 는 단독 한 줄. 절대 두 번 출력 금지.
+- "과거" "현재" "미래" 는 단독 한 줄. 텍스트 시작시 문장으로 한번만 언급하고 그외 출력 금지.
 - 한글 타이틀과 영문 타이틀 사이에는 절대 빈 줄(공백)을 두지 마라.
 - "제우스의 운명신탁" 타이틀(HTML 포함)은 절대 두 번 출력 금지.
 `;
