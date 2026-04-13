@@ -696,43 +696,42 @@
             background: #FFD700;
             box-shadow: 0 0 8px 3px rgba(255,215,0,0.8);
         }
-.zenith-title-main {
-            font-size: 1.2rem;
-            font-weight: 900;
-            letter-spacing: 0.12em;
-            color: #2ecc71;
-            margin: 0;
-            display: block;
-            line-height: 1.4;
-            text-shadow: 0 0 12px rgba(46,204,113,0.5);
-        }
-        .zenith-title-sub {
-            font-size: 0.82rem;
-            font-weight: 700;
-            letter-spacing: 0.25em;
-            color: rgba(46,204,113,0.8);
-            display: block;
-            margin-bottom: 6px;
-            line-height: 1.4;
-        }
-        .zenith-title-block {
-            margin-bottom: 10px;
-            padding-bottom: 8px;
-            border-bottom: 1px solid rgba(46,204,113,0.4);
-        }
-        .zenith-oracle-text {
-            font-size: 0.93rem;
-            line-height: 1.85;
-            color: rgba(255,255,255,0.88);
-            margin-top: 10px;
-            display: block;
-        }
-        /* 신탁 내 → 항목 스타일 */
-        .zenith-oracle-text br + .arrow-item,
-        .arrow-item {
-            color: #2ecc71;
-            font-weight: 700;
-        }
+        /* --- 유료 잠금 디자인 추가 --- */
+.locked-section {
+    position: relative;
+    margin: 20px 0;
+    border-radius: 15px;
+    overflow: hidden;
+    border: 1px solid rgba(212,175,55,0.3);
+}
+.locked-blur {
+    filter: blur(12px);
+    pointer-events: none;
+    user-select: none;
+    opacity: 0.7;
+}
+.unlock-overlay {
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    background: rgba(0,0,0,0.4);
+    z-index: 10;
+}
+.unlock-btn {
+    background: linear-gradient(135deg, var(--gold), var(--dark-gold));
+    color: #000;
+    border: none;
+    padding: 15px 30px;
+    font-weight: bold;
+    border-radius: 30px;
+    cursor: pointer;
+    box-shadow: 0 0 20px rgba(212,175,55,0.5);
+    font-size: 1.1rem;
+}
     </style>
 </head>
 <body>
@@ -1385,7 +1384,7 @@ function renderText(text, cards) {
                     <span class="zenith-title-main">제우스의 신탁</span>
                     <span class="zenith-title-sub">ZEUS DESTINY ORACLE</span>
                 </div>
-                <div class="zenith-oracle-text">${formatChunk(oracleText).replace(/→/g, '<span style="color:#2ecc71;font-weight:700;">→</span>')}</div>
+                <div class="zenith-oracle-text">${formatChunk(oracleText)}</div>
             </div>
         </div>` : '';
 
@@ -1428,21 +1427,20 @@ function showPayModal() {
     overlay.id = 'payModalOverlay';
     overlay.innerHTML = `
         <div class="pay-modal">
-            <h3>✦ 제우스 프리미엄 신탁 ✦</h3>
-            <p>미래 카드 해석과<br>제우스의 최종 신탁 전체를 확인하세요.</p>
+            <h3>✦ 프리미엄 신탁 ✦</h3>
+            <p>미래 카드 해석과 제우스의 신탁 전체를<br>확인하실 수 있습니다.</p>
             <div class="pay-account">
-                <div><strong>이용 금액</strong>: ₩2,900</div>
-                <div style="margin-top:8px;font-size:0.8rem;color:rgba(212,175,55,0.7);">
-                    * 계좌 정보는 준비 중입니다.<br>
-                    * 현재 테스트 모드로 운영 중입니다.
-                </div>
+                <div><strong>입금 금액</strong>: ₩2,900</div>
+                <div><strong>입금 은행</strong>: [은행명]</div>
+                <div><strong>계좌번호</strong>: [계좌번호]</div>
+                <div><strong>예금주</strong>: [예금주명]</div>
             </div>
             <p style="font-size:0.78rem;color:rgba(212,175,55,0.6);margin-bottom:16px;">
-                아래 버튼을 눌러 전체 신탁을 확인하세요.<br>
-                <span style="color:#2ecc71;">(테스트 모드: 바로 전체 공개)</span>
+                입금 확인 후 아래 버튼을 눌러주세요.<br>
+                (테스트 모드: 바로 확인 가능)
             </p>
             <button class="pay-confirm-btn" onclick="confirmPayment()">
-                🔓 전체 신탁 확인하기
+                ✅ 입금 완료 — 전체 보기
             </button>
             <button class="pay-close-btn" onclick="closePayModal()">
                 닫기
@@ -1458,21 +1456,51 @@ function closePayModal() {
 
 async function confirmPayment() {
     const btn = document.querySelector('.pay-confirm-btn');
+    
+    // 1. 사용자로부터 키를 직접 입력받음 (유저님은 DEV-ZEUS-2026 입력)
+    const userKey = prompt("결제 확인 키 또는 마스터 키를 입력하세요:");
+    if (!userKey) return; // 취소 시 중단
+
     if (btn) { btn.disabled = true; btn.textContent = '확인 중...'; }
 
     try {
         const res = await fetch('https://tarot-api.omegafund01.workers.dev/verify-payment', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ paymentKey: 'TEST-PAY-2900' })
+            body: JSON.stringify({ paymentKey: userKey }) // 입력받은 키를 서버로 전송
         });
+        
         const data = await res.json();
+        
         if (data.ok && data.token) {
+            // 서버가 발행한 '진짜 유료 토큰'을 저장
             localStorage.setItem('oracleSessionToken', data.token);
+            alert("제우스의 신탁이 승인되었습니다.");
+            
+            // 테스트 통과 플래그 설정 및 모달 닫기
+            localStorage.setItem('oracleTestPass', 'true');
+            closePayModal();
+
+            // 2. 중요: 결제 성공 후 즉시 데이터를 다시 불러와서 '미래'를 보여줌
+            if (selectedCards && selectedCards.length > 0) {
+                const contentEl = document.getElementById('oracle-content');
+                if (contentEl) contentEl.innerHTML = '';
+                
+                // 기존 질문 내용을 가져와서 재조회
+                const q = document.getElementById('seed-input')?.value || '재조회';
+                const streamPromise = startStreamFetch(q, selectedCards);
+                renderStream(streamPromise, selectedCards);
+            }
+        } else {
+            alert("인증 실패: " + (data.error || "키를 확인해주세요."));
+            if (btn) { btn.disabled = false; btn.textContent = '🔓 전체 신탁 확인하기'; }
         }
     } catch(e) {
-        console.warn('verify-payment 오류 (무시):', e.message);
+        console.error('인증 오류:', e.message);
+        alert("서버 통신 중 오류가 발생했습니다.");
+        if (btn) { btn.disabled = false; btn.textContent = '🔓 전체 신탁 확인하기'; }
     }
+}
 
     // ✅ 테스트 플래그 — 워커 성공/실패 무관하게 즉시 전체 공개
     localStorage.setItem('oracleTestPass', 'true');
