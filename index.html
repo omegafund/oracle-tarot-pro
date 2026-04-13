@@ -1457,9 +1457,9 @@ function closePayModal() {
 async function confirmPayment() {
     const btn = document.querySelector('.pay-confirm-btn');
     
-    // 1. 사용자로부터 키를 직접 입력받음 (유저님은 DEV-ZEUS-2026 입력)
+    // 유저님 전용 마스터 키 입력창
     const userKey = prompt("결제 확인 키 또는 마스터 키를 입력하세요:");
-    if (!userKey) return; // 취소 시 중단
+    if (!userKey) return; 
 
     if (btn) { btn.disabled = true; btn.textContent = '확인 중...'; }
 
@@ -1467,26 +1467,23 @@ async function confirmPayment() {
         const res = await fetch('https://tarot-api.omegafund01.workers.dev/verify-payment', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ paymentKey: userKey }) // 입력받은 키를 서버로 전송
+            body: JSON.stringify({ paymentKey: userKey }) 
         });
         
         const data = await res.json();
         
         if (data.ok && data.token) {
-            // 서버가 발행한 '진짜 유료 토큰'을 저장
             localStorage.setItem('oracleSessionToken', data.token);
             alert("제우스의 신탁이 승인되었습니다.");
             
-            // 테스트 통과 플래그 설정 및 모달 닫기
             localStorage.setItem('oracleTestPass', 'true');
             closePayModal();
 
-            // 2. 중요: 결제 성공 후 즉시 데이터를 다시 불러와서 '미래'를 보여줌
+            // 결제 성공 즉시 '미래' 데이터를 다시 불러오는 로직
             if (selectedCards && selectedCards.length > 0) {
                 const contentEl = document.getElementById('oracle-content');
                 if (contentEl) contentEl.innerHTML = '';
                 
-                // 기존 질문 내용을 가져와서 재조회
                 const q = document.getElementById('seed-input')?.value || '재조회';
                 const streamPromise = startStreamFetch(q, selectedCards);
                 renderStream(streamPromise, selectedCards);
@@ -1500,7 +1497,7 @@ async function confirmPayment() {
         alert("서버 통신 중 오류가 발생했습니다.");
         if (btn) { btn.disabled = false; btn.textContent = '🔓 전체 신탁 확인하기'; }
     }
-}
+
 
     // ✅ 테스트 플래그 — 워커 성공/실패 무관하게 즉시 전체 공개
     localStorage.setItem('oracleTestPass', 'true');
