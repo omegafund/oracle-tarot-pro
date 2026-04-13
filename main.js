@@ -157,18 +157,34 @@ let isValid = (paymentKey === MASTER_KEY) || (TEST_MODE && paymentKey?.startsWit
         const now     = new Date();
         const dayOfWeek= now.getDay();
         const DAYS    = ["일","월","화","수","목","금","토"];
-        const buyDayIdx = ((dayOfWeek + Math.abs(totalScore)) % 7 + 7) % 7;
-        const buyDayName= DAYS[buyDayIdx];
-        const buyHour   = (Math.abs(totalScore) * 3) % 24 || 10;
-        let finalTimingText = `${buyDayName}요일 ${buyHour}시`;
-        // ── 장 시간 보정 (한국 증시 기준)
+       const buyDayIdx = ((dayOfWeek + Math.abs(totalScore)) % 7 + 7) % 7;
+
+// 🔥 한국 주식: 주말 보정
+let adjustedDayIdx = buyDayIdx;
 if (isFinance) {
-  if (!finalTimingText.includes("다음 영업일")) {
-    if (buyHour < 9) {
-      finalTimingText = `${buyDayName}요일 9시`;
-    } else if (buyHour >= 15) {
-      finalTimingText = "다음 영업일 오전 9시";
-    }
+  if (adjustedDayIdx === 0) adjustedDayIdx = 1; // 일 → 월
+  if (adjustedDayIdx === 6) adjustedDayIdx = 1; // 토 → 월
+}
+
+// 👉 반드시 이걸로
+const buyDayName = DAYS[adjustedDayIdx];
+
+const buyHour = (Math.abs(totalScore) * 3) % 24 || 10;
+
+let finalTimingText = `${buyDayName}요일 ${buyHour}시`;
+
+// ── 장 시간 보정 (한국 증시 기준)
+if (isFinance) {
+  if (buyHour < 9) {
+    finalTimingText = `${buyDayName}요일 9시`;
+  } else if (buyHour >= 15) {
+    let nextDayIdx = adjustedDayIdx + 1;
+
+    if (nextDayIdx === 6) nextDayIdx = 1;
+    else if (nextDayIdx === 7) nextDayIdx = 1;
+
+    const nextDayName = DAYS[nextDayIdx];
+    finalTimingText = `${nextDayName}요일 오전 9시`;
   }
 }
 
