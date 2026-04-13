@@ -696,6 +696,43 @@
             background: #FFD700;
             box-shadow: 0 0 8px 3px rgba(255,215,0,0.8);
         }
+.zenith-title-main {
+            font-size: 1.2rem;
+            font-weight: 900;
+            letter-spacing: 0.12em;
+            color: #2ecc71;
+            margin: 0;
+            display: block;
+            line-height: 1.4;
+            text-shadow: 0 0 12px rgba(46,204,113,0.5);
+        }
+        .zenith-title-sub {
+            font-size: 0.82rem;
+            font-weight: 700;
+            letter-spacing: 0.25em;
+            color: rgba(46,204,113,0.8);
+            display: block;
+            margin-bottom: 6px;
+            line-height: 1.4;
+        }
+        .zenith-title-block {
+            margin-bottom: 10px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid rgba(46,204,113,0.4);
+        }
+        .zenith-oracle-text {
+            font-size: 0.93rem;
+            line-height: 1.85;
+            color: rgba(255,255,255,0.88);
+            margin-top: 10px;
+            display: block;
+        }
+        /* 신탁 내 → 항목 스타일 */
+        .zenith-oracle-text br + .arrow-item,
+        .arrow-item {
+            color: #2ecc71;
+            font-weight: 700;
+        }
     </style>
 </head>
 <body>
@@ -1348,7 +1385,7 @@ function renderText(text, cards) {
                     <span class="zenith-title-main">제우스의 신탁</span>
                     <span class="zenith-title-sub">ZEUS DESTINY ORACLE</span>
                 </div>
-                <div class="zenith-oracle-text">${formatChunk(oracleText)}</div>
+                <div class="zenith-oracle-text">${formatChunk(oracleText).replace(/→/g, '<span style="color:#2ecc71;font-weight:700;">→</span>')}</div>
             </div>
         </div>` : '';
 
@@ -1391,20 +1428,21 @@ function showPayModal() {
     overlay.id = 'payModalOverlay';
     overlay.innerHTML = `
         <div class="pay-modal">
-            <h3>✦ 프리미엄 신탁 ✦</h3>
-            <p>미래 카드 해석과 제우스의 신탁 전체를<br>확인하실 수 있습니다.</p>
+            <h3>✦ 제우스 프리미엄 신탁 ✦</h3>
+            <p>미래 카드 해석과<br>제우스의 최종 신탁 전체를 확인하세요.</p>
             <div class="pay-account">
-                <div><strong>입금 금액</strong>: ₩2,900</div>
-                <div><strong>입금 은행</strong>: [은행명]</div>
-                <div><strong>계좌번호</strong>: [계좌번호]</div>
-                <div><strong>예금주</strong>: [예금주명]</div>
+                <div><strong>이용 금액</strong>: ₩2,900</div>
+                <div style="margin-top:8px;font-size:0.8rem;color:rgba(212,175,55,0.7);">
+                    * 계좌 정보는 준비 중입니다.<br>
+                    * 현재 테스트 모드로 운영 중입니다.
+                </div>
             </div>
             <p style="font-size:0.78rem;color:rgba(212,175,55,0.6);margin-bottom:16px;">
-                입금 확인 후 아래 버튼을 눌러주세요.<br>
-                (테스트 모드: 바로 확인 가능)
+                아래 버튼을 눌러 전체 신탁을 확인하세요.<br>
+                <span style="color:#2ecc71;">(테스트 모드: 바로 전체 공개)</span>
             </p>
             <button class="pay-confirm-btn" onclick="confirmPayment()">
-                ✅ 입금 완료 — 전체 보기
+                🔓 전체 신탁 확인하기
             </button>
             <button class="pay-close-btn" onclick="closePayModal()">
                 닫기
