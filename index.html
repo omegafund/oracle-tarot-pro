@@ -1133,8 +1133,8 @@ async function startStreamFetch(userQuestion, cards) {
     const controller = new AbortController();
     setTimeout(() => controller.abort(), 30000);
 
-    return fetch('https://tarot-api.omegafund01.workers.dev', {
-        method: 'POST',
+    return fetch('https://tarot-api.omegafund01.workers.dev/tarot', { // 끝에 /tarot 추가
+    method: 'POST',
         headers: {
             'Content-Type':    'application/json',
             'x-session-token': sessionToken
