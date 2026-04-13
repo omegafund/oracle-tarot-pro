@@ -696,42 +696,6 @@
             background: #FFD700;
             box-shadow: 0 0 8px 3px rgba(255,215,0,0.8);
         }
-        /* --- 유료 잠금 디자인 추가 --- */
-.locked-section {
-    position: relative;
-    margin: 20px 0;
-    border-radius: 15px;
-    overflow: hidden;
-    border: 1px solid rgba(212,175,55,0.3);
-}
-.locked-blur {
-    filter: blur(12px);
-    pointer-events: none;
-    user-select: none;
-    opacity: 0.7;
-}
-.unlock-overlay {
-    position: absolute;
-    top: 0; left: 0;
-    width: 100%; height: 100%;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
-    background: rgba(0,0,0,0.4);
-    z-index: 10;
-}
-.unlock-btn {
-    background: linear-gradient(135deg, var(--gold), var(--dark-gold));
-    color: #000;
-    border: none;
-    padding: 15px 30px;
-    font-weight: bold;
-    border-radius: 30px;
-    cursor: pointer;
-    box-shadow: 0 0 20px rgba(212,175,55,0.5);
-    font-size: 1.1rem;
-}
     </style>
 </head>
 <body>
@@ -1133,8 +1097,8 @@ async function startStreamFetch(userQuestion, cards) {
     const controller = new AbortController();
     setTimeout(() => controller.abort(), 30000);
 
-    return fetch('https://tarot-api.omegafund01.workers.dev/tarot', { // 끝에 /tarot 추가
-    method: 'POST',
+    return fetch('https://tarot-api.omegafund01.workers.dev', {
+        method: 'POST',
         headers: {
             'Content-Type':    'application/json',
             'x-session-token': sessionToken
@@ -1456,48 +1420,21 @@ function closePayModal() {
 
 async function confirmPayment() {
     const btn = document.querySelector('.pay-confirm-btn');
-    
-    // 유저님 전용 마스터 키 입력창
-    const userKey = prompt("결제 확인 키 또는 마스터 키를 입력하세요:");
-    if (!userKey) return; 
-
     if (btn) { btn.disabled = true; btn.textContent = '확인 중...'; }
 
     try {
         const res = await fetch('https://tarot-api.omegafund01.workers.dev/verify-payment', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ paymentKey: userKey }) 
+            body: JSON.stringify({ paymentKey: 'TEST-PAY-2900' })
         });
-        
         const data = await res.json();
-        
         if (data.ok && data.token) {
             localStorage.setItem('oracleSessionToken', data.token);
-            alert("제우스의 신탁이 승인되었습니다.");
-            
-            localStorage.setItem('oracleTestPass', 'true');
-            closePayModal();
-
-            // 결제 성공 즉시 '미래' 데이터를 다시 불러오는 로직
-            if (selectedCards && selectedCards.length > 0) {
-                const contentEl = document.getElementById('oracle-content');
-                if (contentEl) contentEl.innerHTML = '';
-                
-                const q = document.getElementById('seed-input')?.value || '재조회';
-                const streamPromise = startStreamFetch(q, selectedCards);
-                renderStream(streamPromise, selectedCards);
-            }
-        } else {
-            alert("인증 실패: " + (data.error || "키를 확인해주세요."));
-            if (btn) { btn.disabled = false; btn.textContent = '🔓 전체 신탁 확인하기'; }
         }
     } catch(e) {
-        console.error('인증 오류:', e.message);
-        alert("서버 통신 중 오류가 발생했습니다.");
-        if (btn) { btn.disabled = false; btn.textContent = '🔓 전체 신탁 확인하기'; }
+        console.warn('verify-payment 오류 (무시):', e.message);
     }
-
 
     // ✅ 테스트 플래그 — 워커 성공/실패 무관하게 즉시 전체 공개
     localStorage.setItem('oracleTestPass', 'true');
