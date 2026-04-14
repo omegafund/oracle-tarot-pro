@@ -796,6 +796,7 @@
 
 </div>
 <script>
+let isFinanceGlobal = false;  // 🔥 여기 추가
 // ════════════════════════════════════
 //  카드 데이터 m00 ~ m77 (78장)
 // ════════════════════════════════════
@@ -1090,8 +1091,12 @@ function showResultView(question, streamPromise) {
 //  ① 병렬 API 호출 시작 (응답 객체만 반환)
 // ════════════════════════════════════
 async function startStreamFetch(userQuestion, cards) {
+
+    // 🔥 투자 질문 판별
+    isFinanceGlobal = /코인|비트코인|주식|투자|매수|매도/.test(userQuestion);
+
     const cardNames     = cards.map(c => c.name).join(', ');
-    const cardPositions = cards.map((c, i) => `${['과거','현재','미래'][i]}: ${c.name}`).join(', ');
+   const cardPositions = cards.map((c, i) => `${['과거','현재','미래'][i]}: ${c.name}`).join(', ');
     const sessionToken  = localStorage.getItem('oracleSessionToken') || '';
 
     const controller = new AbortController();
@@ -1127,6 +1132,7 @@ async function renderStream(fetchPromise, cards) {
     progressWrap.style.display = 'block';
     contentEl.innerHTML        = '';
 
+    // 유저님의 6단계 로딩 메시지 보존
     const loadingMessages = [
         '✨ 천상의 기운을 감지 중...',
         '🔮 운명의 카드를 해독 중...',
@@ -1136,15 +1142,15 @@ async function renderStream(fetchPromise, cards) {
         '✦ 거의 완성되었습니다...'
     ];
 
-    let msgIdx = 0, progressVal = 5;
+    let msgIdx = 0;
     loadingEl.textContent = loadingMessages[0];
     progressBar.style.width = '5%';
 
     const loadingTimer = setInterval(() => {
         msgIdx = Math.min(msgIdx + 1, loadingMessages.length - 1);
         loadingEl.textContent = loadingMessages[msgIdx];
-        progressVal = Math.min(progressVal + 14, 90);
-        progressBar.style.width = progressVal + '%';
+        let progressVal = parseInt(progressBar.style.width) || 5;
+        progressBar.style.width = Math.min(progressVal + 14, 90) + '%';
     }, 2800);
 
     try {
@@ -1152,71 +1158,85 @@ async function renderStream(fetchPromise, cards) {
         clearInterval(loadingTimer);
         if (!response.ok) throw new Error('HTTP ' + response.status);
 
+        // 유료 사용자 판정 로직
+        const isTestPass = localStorage.getItem('oracleTestPass') === 'true';
+        const xPaid      = response.headers.get('X-Paid') === 'true';
+        const isPaid     = isTestPass || xPaid;
+
         const reader  = response.body.getReader();
         const decoder = new TextDecoder();
+        let fullText = '';
 
-        loadingEl.style.display    = 'none';
-        progressWrap.style.display = 'none';
-        progressBar.style.width    = '100%';
-
+        // 스트리밍 커서 생성
         const cursor = document.createElement('span');
         cursor.className = 'streaming-cursor';
-        contentEl.appendChild(cursor);
 
-        let buffer = '', fullText = '';
+        loadingEl.style.display = 'none';
+        progressWrap.style.display = 'none';
+        progressBar.style.width = '100%';
+
+        contentEl.innerHTML = '';
+        contentEl.appendChild(cursor);
 
         while (true) {
             const { done, value } = await reader.read();
             if (done) break;
-            buffer += decoder.decode(value, { stream: true });
-            const lines = buffer.split('\n');
-            buffer = lines.pop();
+
+            const chunk = decoder.decode(value, { stream: true });
+            const lines = chunk.split('\n');
+
             for (const line of lines) {
                 if (!line.startsWith('data: ')) continue;
                 const jsonStr = line.slice(6).trim();
                 if (jsonStr === '[DONE]') continue;
+
                 try {
                     const parsed = JSON.parse(jsonStr);
-                    const chunk  = parsed?.candidates?.[0]?.content?.parts?.[0]?.text || '';
-                    if (!chunk) continue;
-                    fullText += chunk;
+                    const textChunk = parsed?.candidates?.[0]?.content?.parts?.[0]?.text ||
+                                     parsed?.candidates?.[0]?.parts?.[0]?.text || '';
+                    if (!textChunk) continue;
+                    fullText += textChunk;
+
+                    // 렌더링 후 커서 유지
                     cursor.remove();
                     contentEl.innerHTML = renderText(fullText, cards);
                     contentEl.appendChild(cursor);
-                } catch(_) {}
+
+                    // 무료 사용자는 실시간 블러 처리
+                    if (!isPaid) {
+                        applyLockUI(contentEl);
+                    }
+                } catch(e) {}
             }
         }
+        cursor.remove(); // 스트리밍 종료 후 커서 제거
 
-        cursor.remove();
+        // 최종 렌더링 (완전한 텍스트로 재렌더)
+        contentEl.innerHTML = renderText(fullText, cards);
 
-        const isTestMode = window.location.hostname === 'localhost'
-            || window.location.search.includes('admin=true');
-        const testPass = localStorage.getItem('oracleTestPass') === 'true';
-        const xPaid    = response.headers.get('X-Paid') === 'true';
-        const token    = localStorage.getItem('oracleSessionToken') || '';
-        const isPaid   = isTestMode || testPass || (xPaid && token.length > 10);
+        // 무료 사용자 최종 블러 적용
+        if (!isPaid) {
+            applyLockUI(contentEl);
+        }
 
-        if (isPaid) {
-            contentEl.innerHTML = renderText(fullText, cards);
-        } else {
-            contentEl.innerHTML = renderText(fullText, cards);
-            const cardBlocks   = contentEl.querySelectorAll('.card-block');
-            const finalReading = contentEl.querySelector('.final-reading');
-            if (cardBlocks.length >= 3) {
-                const lockWrapper = document.createElement('div');
-                lockWrapper.className = 'locked-section';
-                const blurDiv = document.createElement('div');
-                blurDiv.className = 'locked-blur';
-                const futureBlock = cardBlocks[2];
-                blurDiv.appendChild(futureBlock.cloneNode(true));
-                if (finalReading) {
-                    blurDiv.appendChild(finalReading.cloneNode(true));
-                    finalReading.remove();
-                }
-                futureBlock.replaceWith(lockWrapper);
-                lockWrapper.appendChild(blurDiv);
-                lockWrapper.innerHTML += '<div class="unlock-overlay"><button class="unlock-btn" onclick="showPayModal()">🔓 미래 신탁 전체 보기</button><div class="unlock-desc">프리미엄 전체 점사를 확인하세요</div></div>';
+        // 📊 투자 질문일 경우 하단 투자 전략 강제 삽입 (유저님 로직 복구)
+        if (window.isFinanceGlobal) {
+            let entryStrategy = "👉 방향성 확인 전 관망이 유리합니다.";
+            let exitStrategy  = "👉 명확한 신호 전까지 유지 전략.";
+
+            if (/상승|기회|긍정/.test(fullText)) {
+                entryStrategy = "👉 저점 분할 매수 전략이 유효합니다.";
+                exitStrategy  = "👉 단기 목표 구간에서 분할 매도 권장.";
+            } else if (/하락|위험|손실/.test(fullText)) {
+                entryStrategy = "👉 신규 진입은 보류하는 것이 안전합니다.";
+                exitStrategy  = "👉 보유 물량 비중 축소 고려.";
             }
+
+            const investBlock = document.createElement('div');
+            investBlock.className = 'invest-block';
+            investBlock.style.cssText = "margin-top:20px;padding:15px;border-top:1px solid rgba(255,255,255,0.2);";
+            investBlock.innerHTML = `📊 <strong>실전 투자 신탁</strong><br><br>${entryStrategy}<br>${exitStrategy}`;
+            contentEl.appendChild(investBlock);
         }
 
         setTimeout(() => {
@@ -1228,7 +1248,36 @@ async function renderStream(fetchPromise, cards) {
         clearInterval(loadingTimer);
         loadingEl.style.display    = 'none';
         progressWrap.style.display = 'none';
-        contentEl.innerHTML = '<div style="color:#ff6b6b;padding:20px;border:1px solid #ff6b6b;border-radius:10px;"><strong>⚠️ 연결 실패</strong><br><br><pre style="white-space:pre-wrap;font-size:0.8rem;color:#eee;">' + error.message + '</pre></div>';
+        contentEl.innerHTML = `<div style="color:red;padding:20px;">⚠️ 오류: ${error.message}</div>`;
+    }
+}
+
+// ════════════════════════════════════
+// ③ 응답 수신 + 유료/무료 분기 렌더링 (축소 없는 통합본)
+// ════════════════════════════════════
+
+// 🔐 잠금 함수를 외부로 독립시켜 에러 해결
+function applyLockUI(container) {
+    const cardBlocks = container.querySelectorAll('.card-block');
+    const finalReading = container.querySelector('.final-reading');
+
+    if (cardBlocks.length >= 3 && !container.querySelector('.locked-section')) {
+        const lockWrapper = document.createElement('div');
+        lockWrapper.className = 'locked-section';
+        const blurDiv = document.createElement('div');
+        blurDiv.className = 'locked-blur';
+
+        const futureBlock = cardBlocks[2];
+        blurDiv.appendChild(futureBlock.cloneNode(true));
+        if (finalReading) blurDiv.appendChild(finalReading.cloneNode(true));
+        
+        futureBlock.replaceWith(lockWrapper);
+        lockWrapper.appendChild(blurDiv);
+        lockWrapper.innerHTML += `
+            <div class="unlock-overlay">
+                <button class="unlock-btn" onclick="showPayModal()">🔓 미래 신탁 전체 보기</button>
+                <div class="unlock-desc">프리미엄 전체 점사를 확인하세요</div>
+            </div>`;
     }
 }
 
@@ -1238,33 +1287,22 @@ async function renderStream(fetchPromise, cards) {
 //  또는 워커 HTML 태그 직접 렌더 (두 방식 모두 지원)
 // ════════════════════════════════════
 function renderText(text, cards) {
-
-    // ══════════════════════════════════════════
-    // 전처리: 신탁 시작점을 [[ZEUS]]로 정규화
-    // Gemini가 어떤 형태로 보내도 전부 잡음
-    // ══════════════════════════════════════════
+    // 1. 전처리: 신탁 시작점을 [[ZENITH]]로 정규화 및 불필요한 마커 제거
     let t0 = text
         .replace(/👁/g, '')
         .replace(/\[합산 과정:[^\]]*\]/g, '')
-        .replace(/✦\s*카드\s*흐름\s*종합\s*독해\s*✦[^]*?(?=👁|제우스|ZENITH|\[\[|$)/g, '');
+        .replace(/✦\s*카드\s*흐름\s*종합\s*독해\s*✦[^]*?(?=👁|제우스|ZEUS|\[\[|$)/g, '');
 
-    // 신탁 헤더 정규화 — 가장 넓은 패턴부터 좁은 순서로
-    // 패턴1: 제우스 운명의 신탁ZEUS DESTINY ORACLE (붙어있음)
     t0 = t0.replace(/제우스\s*운명의?\s*신탁\s*ZEUS\s*DESTINY\s*ORACLE/g, '[[ZENITH]]');
-    // 패턴2: 👁\n제우스 운명의 신탁\nZEUS (여러줄)
     t0 = t0.replace(/👁\s*[\n\r]*\s*제우스\s*운명의?\s*[\n\r]*\s*신탁\s*[\n\r]*\s*(?:ZEUS\s*DESTINY\s*ORACLE)?/g, '[[ZENITH]]');
-    // 패턴3: 제우스 운명의 신탁 (단독, 줄바꿈 포함)
     t0 = t0.replace(/제우스\s*운명의?\s*신탁/g, '[[ZENITH]]');
-    // 패턴4: 남은 👁 단독 (신탁 마커로 처리)
     t0 = t0.replace(/👁\s*[\n\r]*/g, '[[ZENITH]]');
-    // 패턴5: ZEUS DESTINY ORACLE 단독 잔재 제거
+    t0 = t0.replace(/\[\[ZEUS\]\]/g, '[[ZENITH]]'); 
+
     t0 = t0.replace(/ZEUS\s*DESTINY\s*ORACLE/g, '');
-    // [[ZEUS]] 중복 제거
     t0 = t0.replace(/\[\[ZENITH\]\]\s*\[\[ZENITH\]\]/g, '[[ZENITH]]');
     t0 = t0.replace(/(\[\[ZENITH\]\][^]*?)\[\[ZENITH\]\]/g, '$1');
-    // 수호에너지 이후 제거
     t0 = t0.replace(/🌙[^]*/g, '');
-    // 빈줄 압축
     t0 = t0.replace(/\n{3,}/g, '\n\n');
 
     const formatChunk = t => (t || '').trim()
@@ -1275,12 +1313,12 @@ function renderText(text, cards) {
 
     const labels = ['과거','현재','미래'];
 
-    // ── 신탁 분리
+    // 2. 신탁 분리
     const zIdx = t0.indexOf('[[ZENITH]]');
     let mainText   = zIdx > -1 ? t0.substring(0, zIdx).trim() : t0.trim();
     let oracleText = zIdx > -1 ? t0.substring(zIdx + 10).trim() : '';
 
-    // ── 카드 섹션 분리
+    // 3. 카드 섹션 분리 (유저님 원본 로직 100% 반영)
     let introPart = '';
     let cardTexts = ['','',''];
 
@@ -1313,7 +1351,7 @@ function renderText(text, cards) {
         introPart = mainText.trim();
     }
 
-    // 카드명 + 중복 레이블 제거
+    // 4. 카드명 및 중복 레이블 정제
     cardTexts = cardTexts.map((t, i) => {
         let r = t.replace(/^[ \t]*(과거|현재|미래)[ \t]*\n?/,'').trim();
         if (cards && cards[i]) {
@@ -1323,13 +1361,11 @@ function renderText(text, cards) {
         return r;
     });
 
-    // ── 카드 렌더
+    // 5. 카드 섹션 렌더링
     const cardSections = (cards || []).map((card, i) => `
         <div class="card-block">
             <h2>${labels[i]}</h2>
-            <img src="${BASE_URL}${card.file}" class="mini-card-float"
-                 onclick="expandCard(this)"
-                 onerror="this.style.display='none'">
+            <img src="${BASE_URL}${card.file}" class="mini-card-float" onclick="expandCard(this)" onerror="this.style.display='none'">
             <div class="card-text-wrap">
                 <span class="card-name-inline">${card.name}</span>
                 <div class="card-text">${formatChunk(cardTexts[i])}</div>
@@ -1340,19 +1376,18 @@ function renderText(text, cards) {
         ? `<div style="margin-bottom:8px;color:rgba(255,255,255,0.85);line-height:1.75;font-size:0.9rem;">${formatChunk(introPart)}</div>`
         : '';
 
-    // ── 신탁 렌더 — 항상 동일한 2줄 타이틀
+    // 6. 🎯 유저님 디자인: 미래 텍스트 후 40px 여백 + 녹색 밀착 타이틀
     const oracleHtml = oracleText ? `
-        <div class="final-reading">
-            <div class="final-reading-inner">
-                <div class="zenith-title-block">
-                    <span class="zenith-title-main">제우스의 신탁</span>
-                    <span class="zenith-title-sub">ZEUS DESTINY ORACLE</span>
-                </div>
-                <div class="zenith-oracle-text">${formatChunk(oracleText)}</div>
+        <div class="final-reading-container" style="margin-top: 40px;">
+            <div class="zenith-title-block" style="margin-bottom: 12px;">
+                <span style="color:#2ecc71; font-size:1.25rem; font-weight:900; display:block; margin:0; line-height:1.1;">제우스의 운명신탁</span>
+                <span style="color:#2ecc71; font-size:0.9rem; font-weight:700; display:block; margin:0; letter-spacing:0.15em; line-height:1.1;">ZEUS DESTINY ORACLE</span>
+            </div>
+            <div class="zenith-oracle-text" style="color:rgba(255,255,255,0.95); line-height:1.85;">
+                ${formatChunk(oracleText)}
             </div>
         </div>` : '';
-
-    return introHtml + cardSections + oracleHtml;
+   
 }
 
 // 카드 터치 확대
@@ -1370,20 +1405,8 @@ function expandCard(img) {
     document.body.appendChild(overlay);
 }
 
-// 카드 터치 확대
-
-// 카드 터치 확대
-
-// 카드 터치 확대
-
-// 카드 터치 확대
-
-// 카드 터치 확대
-
-// 카드 터치 확대 함수
-
 // ════════════════════════════════════
-// 결제 모달 & 유료 전환
+// 결제 모달 & 유료 전환 (최종 시정본)
 // ════════════════════════════════════
 function showPayModal() {
     const overlay = document.createElement('div');
@@ -1394,17 +1417,13 @@ function showPayModal() {
             <h3>✦ 프리미엄 신탁 ✦</h3>
             <p>미래 카드 해석과 제우스의 신탁 전체를<br>확인하실 수 있습니다.</p>
             <div class="pay-account">
-                <div><strong>입금 금액</strong>: ₩2,900</div>
-                <div><strong>입금 은행</strong>: [은행명]</div>
-                <div><strong>계좌번호</strong>: [계좌번호]</div>
-                <div><strong>예금주</strong>: [예금주명]</div>
+                <div><strong>이용 금액</strong>: ₩2,900</div>
+                <div style="margin-top:8px;font-size:0.8rem;color:rgba(212,175,55,0.7);">
+                    * 테스트 마스터 키: <strong>DEV-ZEUS-2026</strong>
+                </div>
             </div>
-            <p style="font-size:0.78rem;color:rgba(212,175,55,0.6);margin-bottom:16px;">
-                입금 확인 후 아래 버튼을 눌러주세요.<br>
-                (테스트 모드: 바로 확인 가능)
-            </p>
             <button class="pay-confirm-btn" onclick="confirmPayment()">
-                ✅ 입금 완료 — 전체 보기
+                🔓 전체 신탁 확인하기
             </button>
             <button class="pay-close-btn" onclick="closePayModal()">
                 닫기
@@ -1420,35 +1439,43 @@ function closePayModal() {
 
 async function confirmPayment() {
     const btn = document.querySelector('.pay-confirm-btn');
+    const userKey = prompt("결제 확인 키 또는 마스터 키를 입력하세요:");
+    if (!userKey) return; 
+
     if (btn) { btn.disabled = true; btn.textContent = '확인 중...'; }
 
     try {
         const res = await fetch('https://tarot-api.omegafund01.workers.dev/verify-payment', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ paymentKey: 'TEST-PAY-2900' })
+            body: JSON.stringify({ paymentKey: userKey }) 
         });
+        
         const data = await res.json();
+        
         if (data.ok && data.token) {
+            // 1. 보안 토큰 저장 (미래 봉인 해제 키)
             localStorage.setItem('oracleSessionToken', data.token);
+            localStorage.setItem('oracleTestPass', 'true');
+            alert("제우스의 신탁이 승인되었습니다. 미래의 봉인이 해제됩니다.");
+            closePayModal();
+
+            // 2. 즉시 재조회 (블러 없이 전체 내용 렌더링)
+            if (selectedCards && selectedCards.length > 0) {
+                const contentEl = document.getElementById('oracle-content');
+                if (contentEl) contentEl.innerHTML = '';
+                const q = document.getElementById('seed-input')?.value || '재조회';
+                const streamPromise = startStreamFetch(q, selectedCards);
+                renderStream(streamPromise, selectedCards);
+            }
+        } else {
+            alert("인증 실패: " + (data.error || "키를 확인해주세요."));
+            if (btn) { btn.disabled = false; btn.textContent = '🔓 전체 신탁 확인하기'; }
         }
     } catch(e) {
-        console.warn('verify-payment 오류 (무시):', e.message);
-    }
-
-    // ✅ 테스트 플래그 — 워커 성공/실패 무관하게 즉시 전체 공개
-    localStorage.setItem('oracleTestPass', 'true');
-    closePayModal();
-
-    // 전체 공개 버전으로 재조회
-    if (selectedCards && selectedCards.length > 0) {
-        const contentEl = document.getElementById('oracle-content');
-        if (contentEl) contentEl.innerHTML = '';
-        const q = (document.getElementById('seed-input') || {}).value || '재조회';
-        const streamPromise = startStreamFetch(q, selectedCards);
-        renderStream(streamPromise, selectedCards);
-    } else {
-        location.reload();
+        console.error('인증 오류:', e.message);
+        alert("서버 통신 오류가 발생했습니다.");
+        if (btn) { btn.disabled = false; btn.textContent = '🔓 전체 신탁 확인하기'; }
     }
 }
 </script>
