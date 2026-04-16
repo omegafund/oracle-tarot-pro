@@ -320,16 +320,6 @@
             width: 100%;
             position: relative;
         }
-        .oracle-seal {
-            width: 70px; height: 70px;
-            margin: 15px auto 0;
-            background: url('https://omegafund.github.io/oracle-tarot-pro/images/seal_pattern.png') no-repeat center/contain;
-            opacity: 0;
-            transition: all 1.5s ease;
-            filter: sepia(1) saturate(5) hue-rotate(-10deg);
-        }
-        .oracle-seal.stamped { opacity: 0.6; transform: scale(1.1); filter: drop-shadow(0 0 8px var(--gold)); }
-
         /* 로딩 & 진행바 */
         #ai-loading-text {
             color: var(--gold);
@@ -379,47 +369,6 @@
             0%,100%{ opacity: 1; }
             50%{ opacity: 0; }
         }
-        /* ── 유료 잠금 블러 */
-        .locked-section {
-            position: relative;
-            margin-top: 10px;
-        }
-        .locked-blur {
-            filter: blur(5px);
-            pointer-events: none;
-            user-select: none;
-            opacity: 0.7;
-        }
-        .unlock-overlay {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            z-index: 10;
-            text-align: center;
-            width: 90%;
-        }
-        .unlock-btn {
-            background: linear-gradient(180deg, #FFF5C3 0%, #D4AF37 100%);
-            color: #000;
-            border: none;
-            padding: 14px 24px;
-            border-radius: 50px;
-            font-weight: 900;
-            font-size: 1rem;
-            font-family: var(--font);
-            cursor: pointer;
-            box-shadow: 0 0 20px rgba(212,175,55,0.5);
-            transition: transform 0.1s;
-        }
-        .unlock-btn:active { transform: scale(0.97); }
-        .unlock-desc {
-            color: rgba(212,175,55,0.8);
-            font-size: 0.78rem;
-            margin-top: 8px;
-            letter-spacing: 0.05em;
-        }
-
         .reset-btn {
             margin-top: 35px;
             background: none;
@@ -438,14 +387,6 @@
             pointer-events: none;
             z-index: 9999;
             border-radius: 50%;
-        }
-        .gold-divider {
-            border: none;
-            height: 4px;
-            border-top: 2px solid #D4AF37;
-            border-bottom: 2px solid #C5A028;
-            margin: 25px 0;
-            box-shadow: 0 1px 2px rgba(0,0,0,0.2);
         }
         .card-block {
             margin-bottom: 16px;
@@ -570,22 +511,6 @@
             color: rgba(255,255,255,0.88);
             font-size: 0.9rem;
             line-height: 1.7;
-        }
-        .oracle-eye { font-size: 1.3rem; margin-right: 6px; }
-        .guardian-energy {
-            margin-top: 12px;
-            padding: 12px 0 16px 0;
-            border-top: 1px solid rgba(46,204,113,0.4);
-            font-size: 0.93rem;
-            line-height: 1.6;
-            color: rgba(255,255,255,0.88);
-        }
-        .guardian-energy strong { color: var(--gold); }
-        .oracle-header {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            margin-bottom: 8px;
         }
 
         /* ── 유료 잠금 블러 */
@@ -1012,6 +937,90 @@ function flipCard(index, card) {
     });
 }
 
+async function getUpbitData(market = "KRW-BTC") {
+    try {
+        const priceRes = await fetch(`https://api.upbit.com/v1/ticker?markets=${market}`);
+        const priceData = await priceRes.json();
+
+        const candleRes = await fetch(`https://api.upbit.com/v1/candles/minutes/5?market=${market}&count=50`);
+        const candleData = await candleRes.json();
+
+        return {
+            price: priceData[0].trade_price,
+            candles: candleData.map(c => c.trade_price).reverse()
+        };
+    } catch (e) {
+        console.error("업비트 API 실패", e);
+        return null;
+    }
+}
+
+function calculateRSI(prices, period = 14) {
+    let gains = 0;
+    let losses = 0;
+
+    for (let i = 1; i <= period; i++) {
+        const diff = prices[i] - prices[i - 1];
+        if (diff >= 0) gains += diff;
+        else losses -= diff;
+    }
+
+    let avgGain = gains / period;
+    let avgLoss = losses / period;
+
+    for (let i = period + 1; i < prices.length; i++) {
+        const diff = prices[i] - prices[i - 1];
+
+        if (diff >= 0) {
+            avgGain = (avgGain * (period - 1) + diff) / period;
+            avgLoss = (avgLoss * (period - 1)) / period;
+        } else {
+            avgGain = (avgGain * (period - 1)) / period;
+            avgLoss = (avgLoss * (period - 1) - diff) / period;
+        }
+    }
+
+    const rs = avgGain / (avgLoss || 1);
+    return 100 - (100 / (1 + rs));
+}
+
+async function getTradingSignal(fullText) {
+
+    const data = await getUpbitData("KRW-BTC");
+    if (!data) return null;
+
+    const rsi = calculateRSI(data.candles);
+
+    // 🔥 타로 점수
+    let tarotScore = 0;
+
+    if (/Sun|Ace of Pentacles|Queen of Wands/.test(fullText)) tarotScore += 2;
+    if (/Devil|Tower|Death/.test(fullText)) tarotScore -= 3;
+
+    // 🔥 RSI 판단
+    let rsiSignal = "중립";
+    if (rsi < 30) rsiSignal = "과매도";      // 매수 신호
+    else if (rsi > 70) rsiSignal = "과매수"; // 매도 신호
+
+    // 🔥 최종 결론
+    let finalAction = "관망";
+
+    if (tarotScore > 0 && rsi < 35) {
+        finalAction = "🔥 강한 매수";
+    } else if (tarotScore < 0 && rsi > 65) {
+        finalAction = "❌ 매수 금지";
+    } else if (tarotScore > 0) {
+        finalAction = "분할 매수";
+    }
+
+    return {
+        price: data.price,
+        rsi: rsi.toFixed(2),
+        signal: finalAction,
+        rsiState: rsiSignal
+    };
+}
+
 // ════════════════════════════════════
 //  결과창 렌더링
 // ════════════════════════════════════
@@ -1023,7 +1032,7 @@ function showResultView(question, streamPromise) {
         <div style="flex:1;max-width:100px;display:flex;flex-direction:column;align-items:center;">
             <div class="result-card-item">
                 <img src="${BASE_URL}${card.file}" alt="${card.name}"
-                     onerror="this.src='${BASE_URL}back.jpg'">
+                     onerror="this.onerror=null;this.src='${BASE_URL}back.jpg'">
                 <div class="result-card-label">${card.name}</div>
             </div>
             <div class="result-position-label">${positions[i]}</div>
@@ -1139,7 +1148,7 @@ async function renderStream(fetchPromise, cards) {
                     // 스트리밍 중: 전체 텍스트 실시간 렌더 (미래/신탁 포함)
                     // → 완료 후 유료 분기에서 블러 처리
                     cursor.remove();
-                    contentEl.innerHTML = renderText(fullText, cards);
+                    contentEl.innerHTML = renderText(fullText, cards, undefined, undefined, undefined);
                     contentEl.appendChild(cursor);
                 } catch(_) {}
             }
@@ -1148,6 +1157,55 @@ async function renderStream(fetchPromise, cards) {
         // ── 스트리밍 완료
         cursor.remove();
 
+        // 🔥 리스크 분석
+        const riskScore = analyzeRisk(cards);
+
+        // 🔥 카드 점수 → decision 객체 (trend/action/timing/risk 포함)
+        const cardScore    = calculateScore(cards);
+        const cardDecision = getDecision(cardScore);
+
+        // 🔥 투자 질문 판별
+        const isFinance = /코인|비트코인|주식|투자|매수|매도/.test(fullText);
+
+        // 🔥 리스크 트리거 적용 (인자 2개: text, risk)
+        fullText = applyRiskTrigger(fullText, riskScore);
+
+        // 🔥 RSI + 매매 신호
+        let tradingSignal = null;
+        if (typeof getTradingSignal === "function") {
+            try {
+                tradingSignal = await getTradingSignal(fullText);
+            } catch(e) {
+                console.log("trading signal error:", e);
+            }
+        }
+
+        // 🔥 RSI 신호 문자열 추출
+        const rsiSignalLabel = tradingSignal
+            ? (tradingSignal.rsi < 30 ? "매수" : tradingSignal.rsi > 70 ? "회피" : "관망")
+            : null;
+
+        // 🔥 카드+RSI 병합 판단
+        const mergedLabel = rsiSignalLabel
+            ? mergeDecision(cardDecision.label, rsiSignalLabel)
+            : cardDecision.label;
+
+        // 🔥 기본 텍스트 렌더
+        let finalHTML = renderText(fullText, cards, cardDecision, tradingSignal, mergedLabel);
+
+        // 🔥 투자 블록 추가 (투자 질문일 때만)
+        if (isFinance) {
+            const rsiLine = tradingSignal
+                ? `<br>📊 RSI: ${tradingSignal.rsi} (${rsiSignalLabel}) | 최종판단: <strong>${mergedLabel}</strong>`
+                : '';
+            finalHTML += `
+    <div class="invest-block" style="margin-top:20px;padding:15px;border-top:1px solid rgba(255,255,255,0.2);">
+        📊 <strong>실전 투자 신탁</strong>${rsiLine}<br><br>
+        지금은 감정적 진입보다 흐름 확인이 우선입니다.<br>
+        분할 접근과 리스크 관리가 핵심입니다.
+    </div>
+    `;
+        }
         // ── 테스트 모드 프리패스
         const isTestMode = window.location.hostname === 'localhost'
             || window.location.search.includes('admin=true');
@@ -1157,12 +1215,11 @@ async function renderStream(fetchPromise, cards) {
         const isPaid = isTestMode || isPaidUser || (xPaid && token.length > 10);
 
         if (isPaid) {
-            // ── 유료/테스트: 전체 그대로
-            contentEl.innerHTML = renderText(fullText, cards);
+            // ── 유료/테스트: finalHTML 전체 그대로
+            contentEl.innerHTML = finalHTML;
         } else {
-            // ── 무료: renderText로 전체 렌더 후
-            //    미래 카드 div + 신탁 div만 블러 처리
-            contentEl.innerHTML = renderText(fullText, cards);
+            // ── 무료: finalHTML 렌더 후 미래+신탁 블러 처리
+            contentEl.innerHTML = finalHTML;
 
             // 미래 card-block (3번째) 과 final-reading 에 블러 적용
             const cardBlocks = contentEl.querySelectorAll('.card-block');
@@ -1218,11 +1275,115 @@ async function renderStream(fetchPromise, cards) {
 }
 
 // ════════════════════════════════════
+// 🔥 투자 판단 엔진 — 전역 함수
+// ════════════════════════════════════
+function analyzeRisk(cards) {
+    let risk = 0;
+    cards.forEach(c => {
+        if (!c) return;
+        const name = c.name || "";
+        if (name.includes("Devil")) risk += 3;
+        if (name.includes("Tower")) risk += 4;
+        if (name.includes("Death")) risk += 2;
+        if (name.includes("Ten of Swords")) risk += 3;
+    });
+    return risk;
+}
+
+function getInvestmentDecision(risk) {
+    if (risk >= 6) return "회피";
+    if (risk >= 3) return "관망";
+    return "매수 가능";
+}
+
+function applyRiskTrigger(text, risk) {
+    if (risk >= 6) {
+        return text + `\n\n⚠️ 현재 흐름은 강한 붕괴 또는 손실 가능성이 감지됩니다.\n감정적 진입은 매우 위험합니다. 반드시 관망하십시오.\n`;
+    }
+    if (risk >= 3) {
+        return text + `\n\n⚠️ 변동성이 높은 구간입니다.\n확신 없는 진입은 손실로 이어질 수 있습니다.\n`;
+    }
+    return text;
+}
+
+function getNumerologyScore() {
+    const now = new Date();
+    let num = (now.getDate() + now.getHours());
+    while (num > 9) {
+        num = num.toString().split("").reduce((a,b)=>a+parseInt(b),0);
+    }
+    return num;
+}
+
+// ════════════════════════════════════
+// 🔥 카드 점수 계산 → decision 객체 반환
+// ════════════════════════════════════
+function calculateScore(cards) {
+    let score = 0;
+    cards.forEach(c => {
+        if (!c) return;
+        const name = c.name || "";
+        if (name.includes("Sun") || name.includes("태양")) score += 3;
+        if (name.includes("Ace of Pentacles") || name.includes("펜타클 에이스")) score += 2;
+        if (name.includes("Nine of Cups") || name.includes("컵9")) score += 2;
+        if (name.includes("Star") || name.includes("별")) score += 1;
+        if (name.includes("Wheel of Fortune")) score += 1;
+        if (name.includes("Devil") || name.includes("악마")) score -= 3;
+        if (name.includes("Tower") || name.includes("탑")) score -= 4;
+        if (name.includes("Ten of Swords")) score -= 3;
+        if (name.includes("Death") || name.includes("죽음")) score -= 2;
+        if (name.includes("Moon") || name.includes("달")) score -= 1;
+    });
+    return score;
+}
+
+function getDecision(score) {
+    const num = getNumerologyScore();
+    if (score >= 4) {
+        const trend   = "상승 흐름 우세 — 긍정 에너지 감지";
+        const action  = num === 7 || num === 9 ? "분할 매수 (⚠️ 타이밍 지연 — 신중)" : "분할 매수 진입 고려";
+        const timing  = "현재~단기 진입 적기";
+        const risk    = "낮음 — 단, 감정적 추격매수 금지";
+        return { label: "매수", trend, action, timing, risk };
+    } else if (score >= 1) {
+        const trend   = "방향성 불명확 — 관망 구간";
+        const action  = num === 1 || num === 3 ? "소량 분할 진입 (🔥 수비학 기회 신호)" : "현금 보유 유지";
+        const timing  = "돌파 확인 후 진입";
+        const risk    = "중간 — 변동성 주의";
+        return { label: "관망", trend, action, timing, risk };
+    } else {
+        const trend   = "하락 에너지 감지 — 리스크 구간";
+        const action  = "진입 금지 / 보유 시 손절 기준 재검토";
+        const timing  = "시장 안정 확인 전까지 대기";
+        const risk    = "높음 — 붕괴 가능성 주의";
+        return { label: "회피", trend, action, timing, risk };
+    }
+}
+
+// ════════════════════════════════════
+// 🔥 카드판단 + RSI신호 병합
+// ════════════════════════════════════
+function mergeDecision(cardDecision, rsiSignal) {
+    if (cardDecision === "회피") {
+        return "회피"; // 🔥 카드가 무조건 우선
+    }
+    if (cardDecision === "관망") {
+        if (rsiSignal === "매수") return "관망 (신중)";
+        return "관망";
+    }
+    if (cardDecision === "매수") {
+        if (rsiSignal === "관망") return "분할 매수";
+        return "매수";
+    }
+    return cardDecision;
+}
+
+// ════════════════════════════════════
 //  텍스트 → HTML 변환
 //  [과거]/[현재]/[미래]/[제우스의 신탁] 섹션 분리 렌더
 //  또는 워커 HTML 태그 직접 렌더 (두 방식 모두 지원)
 // ════════════════════════════════════
-function renderText(text, cards) {
+function renderText(text, cards, cardDecision, tradingSignal, mergedLabel) {
 
     // ══════════════════════════════════════════
     // 전처리: 신탁 시작점을 [[ZEUS]]로 정규화
@@ -1376,17 +1537,38 @@ function renderText(text, cards) {
         return formatChunk(raw);
     }
 
-    // ── 신탁 렌더 — 항상 동일한 2줄 타이틀
-    const oracleHtml = oracleText ? `
+    // ── 신탁 4개 카테고리 블록 — cardDecision 기반으로 항상 생성
+    function buildDecisionCats(dec, signal, merged) {
+        if (!dec) return '';
+        const finalLabel = merged || dec.label;
+        const rsiLine = signal
+            ? `<br><small style="color:rgba(255,255,255,0.5);">RSI ${signal.rsi} 반영 → 최종: ${finalLabel}</small>`
+            : '';
+        return `<div class="oracle-categories">
+            <div class="oracle-cat-row"><span class="oracle-cat-icon">📈</span><span class="oracle-cat-label">추세</span><span class="oracle-cat-val">${dec.trend}</span></div>
+            <div class="oracle-cat-row"><span class="oracle-cat-icon">🧭</span><span class="oracle-cat-label">행동</span><span class="oracle-cat-val">${dec.action}${rsiLine}</span></div>
+            <div class="oracle-cat-row"><span class="oracle-cat-icon">⚡</span><span class="oracle-cat-label">타이밍</span><span class="oracle-cat-val">${dec.timing}</span></div>
+            <div class="oracle-cat-row"><span class="oracle-cat-icon">🛡️</span><span class="oracle-cat-label">리스크</span><span class="oracle-cat-val">${dec.risk}</span></div>
+        </div>`;
+    }
+
+    // ── 신탁 렌더 — 항상 동일한 2줄 타이틀 + 4개 카테고리 항상 출력
+    const aiOracleBody = oracleText ? buildOracleCategories(oracleText) : '';
+    const decisionCats = buildDecisionCats(cardDecision, tradingSignal, mergedLabel);
+    const oracleBody   = aiOracleBody
+        ? aiOracleBody + (decisionCats ? '<br>' + decisionCats : '')
+        : decisionCats;
+
+    const oracleHtml = `
         <div class="final-reading">
             <div class="final-reading-inner">
                 <div class="zenith-title-block">
                     <span class="zenith-title-main">제우스의 최종신탁</span>
                     <span class="zenith-title-sub">ZEUS FINAL ORACLE</span>
                 </div>
-                <div class="zenith-oracle-text">${buildOracleCategories(oracleText)}</div>
+                <div class="zenith-oracle-text">${oracleBody}</div>
             </div>
-        </div>` : '';
+        </div>`;
 
     return introHtml + cardSections + oracleHtml;
 }
@@ -1458,9 +1640,9 @@ async function confirmPayment() {
         const res = await fetch('https://tarot-api.omegafund01.workers.dev/verify-payment', {
             method: 'POST',
             headers: {
-            'Content-Type': 'application/json',
-            'x-session-token': sessionToken
-        },
+                'Content-Type': 'application/json',
+                'x-session-token': localStorage.getItem('oracleSessionToken') || ''
+            },
             body: JSON.stringify({ paymentKey: 'TEST-PAY-2900' })
         });
         const data = await res.json();
