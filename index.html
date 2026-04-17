@@ -727,6 +727,7 @@
 // ════════════════════════════════════
 //  카드 데이터 m00 ~ m77 (78장)
 // ════════════════════════════════════
+
 const CARD_NAMES = [
     'The Fool (바보)','The Magician (마법사)','The High Priestess (여교황)',
     'The Empress (여황제)','The Emperor (황제)','The Hierophant (교황)',
@@ -1328,89 +1329,103 @@ function mergeDecision(cardDecision, rsiSignal) {
 // 🔥 여기 삽입 (함수 위)
 
 const cardStateMap = {
-
-  "The Emperor": "stable",
-  "Ten of Swords": "bottom",
-  "Seven of Wands": "resistance",
-
-  "The Tower": "crash",
-  "The Sun": "strong_up",
-  "The Star": "recovery",
-  "The Moon": "unclear",
-
-  "Death": "transition",
-  "Wheel of Fortune": "turning",
-
-  "Five of Wands": "chaos",
-  "Five of Swords": "loss",
-
-  "Ace of Wands": "start_up",
-  "Ace of Cups": "new_flow",
-
-  "Five of Pentacles": "weak",
-  "Ten of Pentacles": "long_term"
+    "The Emperor": { state: "stable", risk: 2, power: 6, label: "안정성장" },
+    "Ten of Swords": { state: "bottom", risk: 5, power: 2, label: "바닥확인" },
+    "Seven of Wands": { state: "resistance", risk: 5, power: 3, label: "저항직면" },
+    "The Tower": { state: "crash", risk: 9, power: -5, label: "붕괴/급변" },
+    "The Sun": { state: "strong_up", risk: 1, power: 9, label: "강력상승" },
+    "The Star": { state: "recovery", risk: 2, power: 7, label: "회복국면" },
+    "The Moon": { state: "unclear", risk: 7, power: -3, label: "불투명" },
+    "Death": { state: "transition", risk: 6, power: -2, label: "추세전환" },
+    "Wheel of Fortune": { state: "turning", risk: 4, power: 5, label: "운명적변곡" },
+    "Five of Wands": { state: "chaos", risk: 6, power: -1, label: "경쟁과열" },
+    "Five of Swords": { state: "loss", risk: 7, power: -4, label: "손실경고" },
+    "Ace of Wands": { state: "start_up", risk: 3, power: 7, label: "추진력발생" },
+    "Ace of Cups": { state: "new_flow", risk: 2, power: 6, label: "새로운흐름" },
+    "Five of Pentacles": { state: "weak", risk: 8, power: -5, label: "자금악화" },
+    "Ten of Pentacles": { state: "long_term", risk: 2, power: 7, label: "장기번영" }
 };
 // ════════════════════════════════════
-// 🔥 투자 데이터 생성 (isFinance일 때만 호출)
+// 🔥 제우스 투자 판단 엔진 (Guardian Edition)
 // ════════════════════════════════════
 function generateInvestmentData(cards, text) {
-    let risk = 0;
-    let positive = 0;
+    // 1. 데이터 파싱 및 기초 가중치 추출
+    const cardData = cards.map(c => {
+        const name = c.name.split(' (')[0];
+        return {
+            name,
+            ...(cardStateMap[name] || { state: "normal", risk: 3, power: 0, label: "중립" })
+        };
+    });
 
-    // 1. 카드 점수 계산
-    cards.forEach(card => {
-    const name = card.name || "";
-    const state = cardStateMap[name];
+    // 2. 데이터 지표 산출
+    const totalPower = cardData.reduce((acc, curr) => acc + curr.power, 0);
+    const avgRisk = cardData.reduce((acc, curr) => acc + curr.risk, 0) / 3;
+    const maxRiskCard = cardData.reduce((prev, curr) => (prev.risk > curr.risk) ? prev : curr);
 
-    if (state === "crash") risk += 4;
-    if (state === "bottom") risk += 2;
-    if (state === "strong_up") positive += 3;
-});
+    // 3. [엄격화] 제우스 가디언 로직 적용
+    const riskPenalty = cardData.some(d => d.risk >= 8) ? 2.5 : 0;
+    const finalRiskScore = avgRisk + riskPenalty;
+    const hasCriticalRisk = cardData.some(d => d.risk >= 8 || d.state === "crash");
+    const adjustedPower = hasCriticalRisk ? totalPower * 0.5 : totalPower;
 
-    if (/상승|기회|호재/.test(text)) positive += 1;
-    if (/하락|손실|리스크|불안/.test(text)) risk += 1;
+    let trend, action, riskLabel, finalOracle;
 
-    // 2. [필수] 변수 정의 (이 부분이 판단문보다 위에 있어야 합니다)
-    let trend = "중립";
-    let trendDesc = "시장 방향성이 아직 명확하지 않은 상태입니다.";
-    if (positive >= 4) {
-        trend = "상승";
-        trendDesc = "시장에 점진적인 상승 에너지가 유입되고 있는 흐름입니다.";
-    } else if (risk >= 5) {
-        trend = "하락";
-        trendDesc = "하락 압력이 우세하며 단기 반등은 제한적일 가능성이 큽니다.";
-    }
+    // 4. 최종 판단 임계값 (Threshold) 적용
+    if (maxRiskCard.risk >= 7.5 || finalRiskScore >= 7.5) {
+        trend = "위험 감지";
+        action = "즉시 회피";
+        riskLabel = "치명적";
+        finalOracle = `🚨 [데이터 경고] 본문의 긍정적 서사는 '시장 과열'에 의한 착시일 확률이 높습니다. ${maxRiskCard.label} 에너지가 붕괴 신호를 보내고 있습니다.`;
+    } else if (adjustedPower >= 15) { 
+        // [상태: 압도적 우위]
+        trend = "강력 상승";
+        action = "적극 매수";
+        riskLabel = "안전";
+        finalOracle = "🚀 데이터가 본문의 낙관론을 완벽히 지지합니다. 과거와 현재의 에너지가 미래의 결실로 이어지는 확신 구간입니다.";
 
-    let action = "관망";
-    let actionDesc = "지금은 성급한 진입보다 흐름을 확인하는 것이 중요합니다.";
-    if (positive >= 4 && risk < 3) {
+    } else if (adjustedPower >= 6) { 
+        // [상태: 완만한 우상향]
+        trend = "상승 우세";
         action = "분할 매수";
-        actionDesc = "추세를 따라가되 분할 접근으로 리스크를 관리하는 전략이 유효합니다.";
-    } else if (risk >= 5) {
-        action = "회피";
-        actionDesc = "현재 구간은 진입 리스크가 높아 관망 또는 회피가 바람직합니다.";
+        riskLabel = "보통";
+        finalOracle = "📈 데이터가 우상향 궤적을 그리고 있습니다. 본문의 긍정적 흐름을 타되, 적절한 비중 조절로 수익을 확정하십시오.";
+
+    } else if (totalPower >= 10 && adjustedPower < 6) {
+        // [핵심: 문맥 부조화 해결 로직] 
+        // 본문은 좋은데(totalPower 높음) 리스크가 에너지를 깎아먹은 경우
+        trend = "에너지 충돌";
+        action = "비중 축소";
+        riskLabel = "주의";
+        finalOracle = "⚠️ [경고] 본문의 화려한 낙관론과 달리, 미래의 리스크 지표가 상승 에너지를 심각하게 억제하고 있습니다. 겉모습에 현혹되지 마십시오.";
+
+    } else {
+        // [상태: 근거 부족 및 저점 정체]
+        trend = "판단 유보";
+        action = "보수적 접근";
+        riskLabel = "주의";
+        finalOracle = "⚖️ 데이터적 신뢰도가 임계치에 미달합니다. 본문의 서사적 해석보다는 실질적인 시장의 지표 확인이 선행되어야 합니다.";
     }
 
-    const timing = "변동성 구간";
-    const timingDesc = "단기 변동성이 확대될 수 있는 시점으로 신중한 접근이 필요합니다.";
+    // 5. 최종 데이터 리턴 (여기서 함수가 끝납니다)
+    return {
+        trend, 
+        trendDesc: `${trend} 에너지가 주도하는 장세입니다.`,
+        action, 
+        actionDesc: `${action} 전략이 데이터적으로 유효합니다.`,
+        timing: "데이터 변곡점",
+        timingDesc: "통계적 유의성이 확보된 구간입니다.",
+        risk: riskLabel, 
+        riskDesc: `종합 리스크 지수 ${finalRiskScore.toFixed(1)}점으로 측정되었습니다.`,
+        finalOracle
+    };
+} 
 
-    let riskLabel = "보통";
-    let riskDesc = "일반적인 변동성 구간입니다.";
-    if (risk >= 7) {
-        riskLabel = "매우 높음";
-        riskDesc = "강한 변동성과 급락 가능성이 존재하는 위험 구간입니다.";
-    } else if (risk >= 5) {
-        riskLabel = "높음";
-        riskDesc = "손실 가능성이 높은 구간으로 보수적인 대응이 요구됩니다.";
-    }
 // ════════════════════════════════════
-// 🔥 카드 조합 기반 최종 한줄 생성 엔진
+// 🔥 2. 카드 조합 기반 최종 한줄 신탁 엔진
 // ════════════════════════════════════
 function generateFinalAdviceFromCards(cards) {
-
-    let hasTenSwords = false;
-    let hasSevenWands = false;
-    let hasEmperor = false;
+    let hasTenSwords = false, hasSevenWands = false, hasEmperor = false;
 
     cards.forEach(card => {
         const name = card.name || "";
@@ -1419,51 +1434,12 @@ function generateFinalAdviceFromCards(cards) {
         if (name.includes("Emperor")) hasEmperor = true;
     });
 
-    // 🔥 핵심 조합 (현재 당신 케이스)
-    if (hasTenSwords && hasSevenWands) {
-        return "지금은 공포 구간이 아니라 ‘버티는 시장’이며, 큰 수익보다 손실 회피와 짧은 반등 대응이 중요한 구간입니다.";
-    }
+    if (hasTenSwords && hasSevenWands) return "공포가 아닌 ‘버티기’가 중요한 구간이며, 짧은 반등에 대응하십시오.";
+    if (hasTenSwords) return "하락 충격이 큰 구간으로 추가 리스크 관리가 필요합니다.";
+    if (hasSevenWands) return "반등 시도는 있으나 상단 저항이 매우 강력한 시점입니다.";
+    if (hasEmperor) return "안정적인 흐름이나 시장의 변화를 예의주시해야 합니다.";
 
-    // 하락 지속
-    if (hasTenSwords) {
-        return "현재는 하락 충격이 반영된 구간으로 추가 하락 리스크에 주의가 필요합니다.";
-    }
-
-    // 저항 구간
-    if (hasSevenWands) {
-        return "반등 시도는 가능하지만 강한 저항으로 인해 상승은 제한될 가능성이 높습니다.";
-    }
-
-    // 안정
-    if (hasEmperor) {
-        return "안정적인 흐름이 유지되고 있으나 시장 변화에 대한 대응이 필요한 시점입니다.";
-    }
-
-    return "현재는 방향성이 뚜렷하지 않은 구간으로 신중한 접근이 필요합니다.";
-}
-    // 3. 지능형 신탁 문구 판단 (변수들이 모두 정의된 후 실행)
-    let finalOracle = "현재 운명의 흐름이 재편되고 있습니다. 상세 분석 리포트를 참고하십시오.";
-
-    // 🔥 카드 기반 최종 결론 생성
-const cardBasedAdvice = generateFinalAdviceFromCards(cards);
-
-// 기존 로직 유지 + 덮어쓰기
-if (trend === "중립" && action === "관망") {
-    finalOracle = cardBasedAdvice;
-} else if (trend === "상승") {
-    finalOracle = cardBasedAdvice;
-} else if (trend === "하락") {
-    finalOracle = cardBasedAdvice;
-}
-
-    // 4. 최종 데이터 객체 리턴
-    return { 
-        trend, trendDesc, 
-        action, actionDesc, 
-        timing, timingDesc, 
-        risk: riskLabel, riskDesc,
-        finalOracle 
-    };
+    return "현재는 방향성이 뚜렷하지 않으므로 신중한 접근이 필요합니다.";
 }
 
 // ════════════════════════════════════
