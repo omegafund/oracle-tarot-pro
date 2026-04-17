@@ -623,7 +623,13 @@
             cursor: pointer;
             font-size: 0.88rem;
         }
-    </style>
+        /* ... 기존 스타일 코드 끝 ... */
+        .lock-open #lock-icon {
+            transform: scale(1.5) rotate(15deg);
+            filter: drop-shadow(0 0 20px var(--gold));
+        }
+        .pay-confirm-btn:disabled { opacity: 0.8; cursor: wait; }
+</style>
 </head>
 <body>
 <div id="app-container">
@@ -762,7 +768,8 @@ const CARDS = Array.from({length: 78}, (_, i) => ({
 
 const BASE_URL = 'https://omegafund.github.io/oracle-tarot-pro/images/cards/';
 let selectedCards = [];
-let isPaidUser = false; // 결제 완료 후 true로 설정
+let isPaidUser = false; 
+let cachedFullText = ""; // 👈 [이 줄을 추가하세요] 수신된 데이터를 저장하는 창고입니다.
 
 // ════════════════════════════════════
 //  홈 카드 0.5초마다 랜덤 교체
@@ -1149,6 +1156,7 @@ async function renderStream(fetchPromise, cards) {
                     const chunk  = parsed?.candidates?.[0]?.content?.parts?.[0]?.text || '';
                     if (!chunk) continue;
                     fullText += chunk;
+                    cachedFullText = fullText; // 👈 [이 줄을 추가하세요] 텍스트를 실시간으로 캐싱합니다.
                     cursor.remove();
                     contentEl.innerHTML = renderText(fullText, cards, null, false);
                     contentEl.appendChild(cursor);
@@ -1345,10 +1353,36 @@ const cardStateMap = {
     "Five of Pentacles": { state: "weak", risk: 8, power: -5, label: "자금악화" },
     "Ten of Pentacles": { state: "long_term", risk: 2, power: 7, label: "장기번영" }
 };
-// ════════════════════════════════════
-// 🔥 제우스 투자 판단 엔진 (Guardian Edition)
-// ════════════════════════════════════
+// ════════════════════════════════════════════════
+// 🔥 1. 카드 조합 기반 최종 한줄 신탁 엔진 (보조 엔진)
+// ════════════════════════════════════════════════
+// [참고] 메인 엔진에서 호출하므로 메인 엔진보다 위에 배치하여 참조 에러를 방지합니다.
+function generateFinalAdviceFromCards(cards) {
+    if (!cards) return "현재는 방향성이 뚜렷하지 않으므로 신중한 접근이 필요합니다.";
+    
+    let hasTenSwords = false, hasSevenWands = false, hasEmperor = false;
+
+    cards.forEach(card => {
+        const name = card.name || "";
+        if (name.includes("Ten of Swords")) hasTenSwords = true;
+        if (name.includes("Seven of Wands")) hasSevenWands = true;
+        if (name.includes("Emperor")) hasEmperor = true;
+    });
+
+    if (hasTenSwords && hasSevenWands) return "⚔️ 공포가 아닌 ‘버티기’가 중요한 구간이며, 짧은 반등에 대응하십시오.";
+    if (hasTenSwords) return "💀 하락 충격이 큰 구간으로 추가 리스크 관리가 필요합니다.";
+    if (hasSevenWands) return "🛡️ 반등 시도는 있으나 상단 저항이 매우 강력한 시점입니다.";
+    if (hasEmperor) return "🏛️ 안정적인 흐름이나 시장의 변화를 예의주시해야 합니다.";
+
+    return "⚖️ 현재는 방향성이 뚜렷하지 않으므로 신중한 접근이 필요합니다.";
+}
+
+// ════════════════════════════════════════════════
+// 🔥 2. 제우스 투자 판단 엔진 (Guardian 2.1 - 정밀 튜닝형)
+// ════════════════════════════════════════════════
 function generateInvestmentData(cards, text) {
+    if (!cards || cards.length < 3) return null;
+
     // 1. 데이터 파싱 및 기초 가중치 추출
     const cardData = cards.map(c => {
         const name = c.name.split(' (')[0];
@@ -1363,51 +1397,46 @@ function generateInvestmentData(cards, text) {
     const avgRisk = cardData.reduce((acc, curr) => acc + curr.risk, 0) / 3;
     const maxRiskCard = cardData.reduce((prev, curr) => (prev.risk > curr.risk) ? prev : curr);
 
-    // 3. [엄격화] 제우스 가디언 로직 적용
+    // 3. [튜닝] 가디언 로직 적용 (감쇄율 30% 완화로 변별력 강화)
     const riskPenalty = cardData.some(d => d.risk >= 8) ? 2.5 : 0;
     const finalRiskScore = avgRisk + riskPenalty;
     const hasCriticalRisk = cardData.some(d => d.risk >= 8 || d.state === "crash");
-    const adjustedPower = hasCriticalRisk ? totalPower * 0.5 : totalPower;
+    const adjustedPower = hasCriticalRisk ? totalPower * 0.7 : totalPower; // 50% -> 30% 삭감으로 조정
 
-    let trend, action, riskLabel, finalOracle;
+    let trend, action, riskLabel, oracleMessage;
 
-    // 4. 최종 판단 임계값 (Threshold) 적용
+    // 4. 최종 판단 임계값 (Threshold) 적용 - 4점 기준으로 세분화
     if (maxRiskCard.risk >= 7.5 || finalRiskScore >= 7.5) {
         trend = "위험 감지";
         action = "즉시 회피";
         riskLabel = "치명적";
-        finalOracle = `🚨 [데이터 경고] 본문의 긍정적 서사는 '시장 과열'에 의한 착시일 확률이 높습니다. ${maxRiskCard.label} 에너지가 붕괴 신호를 보내고 있습니다.`;
-    } else if (adjustedPower >= 15) { 
-        // [상태: 압도적 우위]
+        oracleMessage = `🚨 [데이터 경고] 본문의 긍정적 서사는 '시장 과열'에 의한 착시일 확률이 높습니다. ${maxRiskCard.label} 에너지가 붕괴 신호를 보내고 있습니다.`;
+    } else if (adjustedPower >= 12) { 
         trend = "강력 상승";
         action = "적극 매수";
         riskLabel = "안전";
-        finalOracle = "🚀 데이터가 본문의 낙관론을 완벽히 지지합니다. 과거와 현재의 에너지가 미래의 결실로 이어지는 확신 구간입니다.";
-
-    } else if (adjustedPower >= 6) { 
-        // [상태: 완만한 우상향]
+        oracleMessage = "🚀 데이터가 본문의 낙관론을 완벽히 지지합니다. 과거와 현재의 에너지가 미래의 결실로 이어지는 확신 구간입니다.";
+    } else if (adjustedPower >= 4) { // [문턱 하향] 6점 -> 4점으로 낮추어 종목별 차별성 부여
         trend = "상승 우세";
         action = "분할 매수";
         riskLabel = "보통";
-        finalOracle = "📈 데이터가 우상향 궤적을 그리고 있습니다. 본문의 긍정적 흐름을 타되, 적절한 비중 조절로 수익을 확정하십시오.";
-
-    } else if (totalPower >= 10 && adjustedPower < 6) {
-        // [핵심: 문맥 부조화 해결 로직] 
-        // 본문은 좋은데(totalPower 높음) 리스크가 에너지를 깎아먹은 경우
+        oracleMessage = "📈 데이터가 우상향 궤적을 그리고 있습니다. 본문의 긍정적 흐름을 타되 비중을 조절하십시오.";
+    } else if (totalPower >= 10 && adjustedPower < 4) {
         trend = "에너지 충돌";
         action = "비중 축소";
         riskLabel = "주의";
-        finalOracle = "⚠️ [경고] 본문의 화려한 낙관론과 달리, 미래의 리스크 지표가 상승 에너지를 심각하게 억제하고 있습니다. 겉모습에 현혹되지 마십시오.";
-
+        oracleMessage = "⚠️ [경고] 본문의 낙관론과 달리, 미래의 리스크 지표가 상승 에너지를 심각하게 억제하고 있습니다.";
     } else {
-        // [상태: 근거 부족 및 저점 정체]
         trend = "판단 유보";
         action = "보수적 접근";
         riskLabel = "주의";
-        finalOracle = "⚖️ 데이터적 신뢰도가 임계치에 미달합니다. 본문의 서사적 해석보다는 실질적인 시장의 지표 확인이 선행되어야 합니다.";
+        oracleMessage = "⚖️ 데이터적 신뢰도가 임계치에 미달합니다. 본문의 서사적 해석보다는 실질적인 지표 확인이 선행되어야 합니다.";
     }
 
-    // 5. 최종 데이터 리턴 (여기서 함수가 끝납니다)
+    // 5. [죽은 코드 부활] 보조 엔진 호출 및 결합
+    const comboAdvice = generateFinalAdviceFromCards(cards);
+
+    // 6. 최종 데이터 리턴 (그릇 맞춤)
     return {
         trend, 
         trendDesc: `${trend} 에너지가 주도하는 장세입니다.`,
@@ -1417,31 +1446,10 @@ function generateInvestmentData(cards, text) {
         timingDesc: "통계적 유의성이 확보된 구간입니다.",
         risk: riskLabel, 
         riskDesc: `종합 리스크 지수 ${finalRiskScore.toFixed(1)}점으로 측정되었습니다.`,
-        finalOracle
+        // 🔥 핵심: 두 엔진의 결과물을 합쳐서 내보냅니다.
+        finalOracle: `${comboAdvice}\n\n${oracleMessage}`
     };
-} 
-
-// ════════════════════════════════════
-// 🔥 2. 카드 조합 기반 최종 한줄 신탁 엔진
-// ════════════════════════════════════
-function generateFinalAdviceFromCards(cards) {
-    let hasTenSwords = false, hasSevenWands = false, hasEmperor = false;
-
-    cards.forEach(card => {
-        const name = card.name || "";
-        if (name.includes("Ten of Swords")) hasTenSwords = true;
-        if (name.includes("Seven of Wands")) hasSevenWands = true;
-        if (name.includes("Emperor")) hasEmperor = true;
-    });
-
-    if (hasTenSwords && hasSevenWands) return "공포가 아닌 ‘버티기’가 중요한 구간이며, 짧은 반등에 대응하십시오.";
-    if (hasTenSwords) return "하락 충격이 큰 구간으로 추가 리스크 관리가 필요합니다.";
-    if (hasSevenWands) return "반등 시도는 있으나 상단 저항이 매우 강력한 시점입니다.";
-    if (hasEmperor) return "안정적인 흐름이나 시장의 변화를 예의주시해야 합니다.";
-
-    return "현재는 방향성이 뚜렷하지 않으므로 신중한 접근이 필요합니다.";
 }
-
 // ════════════════════════════════════
 //  텍스트 → HTML 변환
 //  신탁 마커 정규화 → 카드섹션 렌더 → 제우스의 최종신탁 고정 조립
@@ -1595,52 +1603,45 @@ function closePayModal() {
 
 async function confirmPayment() {
     const btn = document.querySelector('.pay-confirm-btn');
-    if (btn) { btn.disabled = true; btn.textContent = '확인 중...'; }
-
-    try {
-        // 워커 /verify-payment 엔드포인트에서 HMAC 서명 토큰 발급
-        // 테스트 모드: paymentKey = "TEST-PAY-2900"
-        // 실제 운영 시: PG사에서 받은 결제키로 교체
-        const res = await fetch('https://tarot-api.omegafund01.workers.dev/verify-payment', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'x-session-token': localStorage.getItem('oracleSessionToken') || ''
-            },
-            body: JSON.stringify({ paymentKey: 'TEST-PAY-2900' })
-        });
-        const data = await res.json();
-
-        if (!data.ok) {
-            // 데모 모드: ok가 false여도 테스트 통과 처리
-            console.warn('결제 확인 서버 응답 실패(데모 모드 — 계속 진행):', data.error);
-        }
-
-        // 서버 서명 토큰 저장 (위조 불가 — 서버만 발급 가능)
-        if (data.token) localStorage.setItem('oracleSessionToken', data.token);
-        isPaidUser = true; // 결제 완료 플래그
-
-    } catch(e) {
-        // 데모 모드: 네트워크 오류여도 결제 완료로 처리
-        console.warn('결제 확인 네트워크 오류(데모 모드 — 계속 진행):', e.message);
-        isPaidUser = true;
+    const modal = document.querySelector('.pay-modal');
+    if (btn) { 
+        btn.disabled = true; 
+        btn.innerHTML = "🔓 봉인 해제 중..."; 
     }
 
-    closePayModal();
+    // 1. 유료 유저 상태로 즉시 전환
+    isPaidUser = true; 
+    localStorage.setItem('oracleSessionToken', 'PAID_TOKEN_DEMO');
 
-    // 결과 재조회
-    const question = document.getElementById('seed-input')
-        ? document.getElementById('seed-input').value
-        : '';
+    // 2. UX 연출: 모달에 'lock-open' 클래스 추가하여 애니메이션 가동
+    if (modal) {
+        modal.classList.add('lock-open');
+        const title = modal.querySelector('h3');
+        if (title) title.innerText = "🔓 봉인 해제 완료";
+        
+        const desc = modal.querySelector('p');
+        if (desc) desc.innerText = "✧ 제우스의 신탁이 승인되었습니다. 운명의 문이 열립니다.";
+    }
 
-    if (selectedCards && selectedCards.length > 0) {
+    // 3. 1.2초의 '운명적 지연' 후 화면 갱신
+    setTimeout(() => {
+        closePayModal();
         const contentEl = document.getElementById('oracle-content');
-        if (contentEl) contentEl.innerHTML = '';
-        const streamPromise = startStreamFetch(question || '재조회', selectedCards);
-        renderStream(streamPromise, selectedCards);
-    } else {
-        location.reload();
-    }
+        
+        if (contentEl && cachedFullText) {
+            // 1. [핵심] 투자 질문 여부를 다시 한번 체크하여 데이터를 생성합니다.
+            const isFinance = window._isFinanceQuery || /코인|주식|투자|매수|매도|부동산/.test(cachedFullText);
+            
+            // 2. [핵심] 투자 데이터 엔진을 가동하여 결과값을 만듭니다.
+            const investData = isFinance ? generateInvestmentData(selectedCards, cachedFullText) : null;
+            
+            // 3. 생성된 investData를 포함하여 전체 화면을 다시 그립니다.
+            contentEl.innerHTML = renderText(cachedFullText, selectedCards, investData, true);
+            
+            // 4. 결과창으로 부드럽게 이동
+            contentEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+    }, 1200);
 }
 </script>
 </body>
