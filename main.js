@@ -296,13 +296,6 @@ ${financeInject}
 <span style="color:#2ecc71; font-size:120%; font-weight:bold; display:block; margin:0; line-height:1.2;">제우스의 운명신탁</span><span style="color:#2ecc71; font-size:110%; font-weight:normal; display:block; margin:0 0 15px 0; line-height:1.2;">ZEUS DESTINY ORACLE</span>
 (서술형 문장으로만 작성된 심층 통찰 및 결론)
 
-(제우스 최종신탁 본문)
-
-📈 추세: ${trend}
-🧭 행동: ${action}
-⚡ 타이밍: ${finalTimingText}
-🛡️ 리스크: ${riskLevel}
-
 [데이터 출력 규칙: 질문 유형에 따른 언어 치환]
 1. 경제/투자 질문 시: 기존 투자 용어(상승/하락, 매수/매도 등) 사용.
 2. 일반 운세/연애 질문 시: 반드시 아래와 같은 영성적 언어로 치환하여 출력하라.
