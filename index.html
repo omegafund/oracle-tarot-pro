@@ -262,7 +262,7 @@
         .disclaimer-text {
             margin-top: 28px;
             font-size: 0.72rem;
-            color: rgba(212,175,55,0.55);
+            color: rgba(212,175,55,0.75);
             line-height: 1.6;
             letter-spacing: 0.03em;
             border-top: 1px solid rgba(212,175,55,0.15);
@@ -706,13 +706,13 @@
         </div>
     </div>
 
-    <div id="result-view">
-        <div style="display:flex;align-items:center;justify-content:center;gap:15px;margin-bottom:5px;">
+    <div id="result-view" style="display: none;">
+        <div style="display:flex;align-items:center;justify-content:center;gap:15px;margin-bottom:10px;">
             <span class="star-icon">✧</span>
             <h1 class="gold-title" style="position:static;font-size:1.8rem;margin:0;">제우스 운명의 신탁</h1>
             <span class="star-icon">✧</span>
         </div>
-        <span class="sub-title" style="font-size:0.8rem;">ZEUS DESTINY ORACLE</span>
+        <span class="sub-title" style="font-size:0.8rem; letter-spacing: 0.2em; color: rgba(212,175,55,0.7);">ZEUS DESTINY ORACLE</span>
 
         <div class="result-cards" id="result-cards-container"></div>
 
@@ -722,14 +722,70 @@
                 <div id="oracle-progress-bar"></div>
             </div>
             <div id="oracle-content"></div>
-            <!-- seal_pattern.png 404 방지: seal 제거 -->
         </div>
 
-        <button class="reset-btn" onclick="location.reload()">✦ 처음으로 돌아가기 ✦</button>
-    </div>
+        <div id="dynamic-action-area" style="margin-top: 30px; text-align: center; min-height: 100px;">
+            <div id="holding-message">
+                <div style="color: #50C878; font-size: 1.2rem; font-weight: 900; letter-spacing: 0.05em; animation: emerald-glow 2s infinite alternate; line-height: 1.6;">
+                    신탁의 실타래가<br>유저님의 운명과 엮이고 있습니다
+                </div>
+                <div style="color: rgba(80, 200, 120, 0.5); font-size: 0.8rem; letter-spacing: 0.2em; margin-top: 10px; font-weight: bold;">
+                    THE THREADS OF FATE ARE WEAVING YOUR DESTINY
+                </div>
+            </div>
+            
+            <button id="final-reset-btn" class="reset-btn" onclick="location.reload()" style="display: none; background: var(--gold); color: #000; padding: 12px 35px; border-radius: 30px; font-weight: 900; border: none; cursor: pointer; box-shadow: 0 4px 15px rgba(212,175,55,0.3);">
+                ✦ 새로운 신탁 구하기 ✦
+            </button>
+        </div>
+    </div> </div> <style>
+    /* 에메랄드 그린 신비로운 점멸 효과 */
+    @keyframes emerald-glow {
+        from { opacity: 0.4; text-shadow: 0 0 10px #50C878; }
+        to { opacity: 1; text-shadow: 0 0 25px #50C878, 0 0 40px #50C878; }
+    }
+</style>
 
-</div>
 <script>
+// ════════════════════════════════════
+//  ✦ 결제 설정 — 이 블록만 수정하면 모달 전체에 자동 반영됩니다
+//    토스뱅크 기반 계좌이체 + 토스 딥링크 지원
+// ════════════════════════════════════
+const PAYMENT_CONFIG = {
+    amount:      2900,               // 입금 금액 (숫자)
+    bank:        '토스뱅크',          // 입금 은행명
+    account:     '100-000-000000',   // ← 실제 계좌번호로 교체
+    holder:      '예금주명',           // ← 실제 예금주명으로 교체
+    tossId:      '',                 // ← 토스 아이디 입력 시 딥링크 버튼 자동 활성화 (예: 'zeus_oracle')
+    productName: '제우스 프리미엄 신탁'  // 토스 송금 메모에 표시
+};
+
+// [삽입 위치: <script> 태그 시작 직후]
+
+// 1. 퀀트 엔진: 질문에서 티커 및 투자 성향 추출
+function parseQuestion(q) {
+    const lowerQ = (q || "").toLowerCase();
+    const tickerMatch = q.match(/[A-Z]{2,5}/); 
+    return {
+        ticker: tickerMatch ? tickerMatch[0] : (q.includes("우리로") ? "우리로" : (q.includes("이브이") ? "EV첨단" : null)),
+        intent: lowerQ.includes("매도") ? "sell" : lowerQ.includes("매수") ? "buy" : "hold",
+        timeframe: lowerQ.includes("단타") || lowerQ.includes("단기") ? "short" : lowerQ.includes("장기") ? "long" : "mid"
+    };
+}
+
+// 2. 결정론적 시뮬레이션: 질문을 시드로 하여 일관된 시장 데이터 생성
+function marketSim(question) {
+    let s = 0;
+    const qStr = question || "default";
+    for (let i = 0; i < qStr.length; i++) s += qStr.charCodeAt(i);
+    const pseudoRand = () => { s = (s * 1664525 + 1013904223) >>> 0; return s / 0xFFFFFFFF; };
+
+    return {
+        trend: ["up", "down", "sideways"][Math.floor(pseudoRand() * 3)],
+        strength: pseudoRand(),
+        price: (pseudoRand() * 100 + 20).toFixed(2)
+    };
+}    
 // ════════════════════════════════════
 //  카드 데이터 m00 ~ m77 (78장)
 // ════════════════════════════════════
@@ -1063,8 +1119,10 @@ async function startStreamFetch(userQuestion, cards) {
     const cardPositions = cards.map((c, i) => `${['과거','현재','미래'][i]}: ${c.name}`).join(', ');
     const sessionToken  = localStorage.getItem('oracleSessionToken') || '';
 
-    // ── 질문 유형 분기: 투자/주식 vs 일반운세
-    window._isFinanceQuery = /코인|비트코인|주식|투자|매수|매도|ETF|선물|암호화폐|달러|환율/.test(userQuestion);
+    // ── 질문 유형 4분류 + CURRENT_MODE 전역 설정
+    window._queryType      = classifyQuery(userQuestion);
+    window._isFinanceQuery = (window._queryType !== 'life');
+    CURRENT_MODE           = window._queryType; // 단일 진실 소스
 
     const controller = new AbortController();
     setTimeout(() => controller.abort(), 30000);
@@ -1085,9 +1143,8 @@ async function startStreamFetch(userQuestion, cards) {
         signal: controller.signal
     });
 }
-
 // ════════════════════════════════════
-//  ③ 응답 수신 + 유료/무료 분기 렌더링
+//  응답 수신 + 유료/무료 분기 렌더링
 // ════════════════════════════════════
 async function renderStream(fetchPromise, cards) {
     const loadingEl    = document.getElementById('ai-loading-text');
@@ -1167,69 +1224,59 @@ async function renderStream(fetchPromise, cards) {
         // ── 스트리밍 완료
         cursor.remove();
 
-        const riskScore = analyzeRisk(cards);
-        const isFinance = window._isFinanceQuery || /코인|주식|투자|매수|매도|부동산/.test(fullText);
+        // ── CURRENT_MODE가 단일 진실 소스 — 본문 키워드 오감지 방지
+        // CURRENT_MODE 단일 진실 소스 — life이면 본문 키워드 오감지 방지
+        const isFinance = (CURRENT_MODE !== 'life');
+        const queryType = CURRENT_MODE;
 
-        let investmentData = isFinance ? generateInvestmentData(cards, fullText) : null;
-        if (isFinance) fullText = applyRiskTrigger(fullText, riskScore);
-
-        window.lastResponseText = fullText;
-        window.lastCards = cards;
-        window.lastInvestData = investmentData;
-
-        const isTestMode = window.location.hostname === 'localhost' || window.location.search.includes('admin=true');
-        const isPaid = isTestMode || isPaidUser;
-
-        let finalHTML = renderText(fullText, cards, investmentData, isPaid);
-
-        if (isPaid) {
-            contentEl.innerHTML = finalHTML;
-        } else {
-            const tempDiv = document.createElement('div');
-            tempDiv.innerHTML = finalHTML;
-            const cardBlocks = tempDiv.querySelectorAll('.card-block');
-            const finalReading = tempDiv.querySelector('.final-reading');
-
-            if (cardBlocks.length >= 3) {
-                const futureBlock = cardBlocks[2];
-                const futureText = futureBlock.querySelector('.card-text, div[style]');
-                if (futureText) futureText.innerHTML = '결제 후 확인 가능한 미래 신탁입니다.';
-                if (finalReading) finalReading.remove();
-
-                const lockWrapper = document.createElement('div');
-                lockWrapper.className = 'locked-section';
-                const blurDiv = document.createElement('div');
-                blurDiv.className = 'locked-blur';
-                blurDiv.appendChild(futureBlock.cloneNode(true));
-                lockWrapper.appendChild(blurDiv);
-
-                const overlayDiv = document.createElement('div');
-                overlayDiv.className = 'unlock-overlay';
-                overlayDiv.innerHTML = `
-                    <button class="unlock-btn" onclick="showPayModal()">🔓 미래 신탁 전체 보기</button>
-                    <div class="unlock-desc">과거/현재를 넘어 당신의 미래를 확인하세요</div>`;
-                lockWrapper.appendChild(overlayDiv);
-                futureBlock.replaceWith(lockWrapper);
-            }
-            contentEl.innerHTML = tempDiv.innerHTML;
+        let investmentData = null;
+        if (isFinance) {
+            // Yahoo 실시간 데이터 병렬 조회 (실패해도 카드 엔진으로 정상 작동)
+            const ticker = extractTicker(document.getElementById('seed-input')?.value || '', queryType);
+            const mktResult = await Promise.allSettled([
+                ticker ? fetchMarketData(ticker) : Promise.resolve(null)
+            ]);
+            const marketData = mktResult[0].status === 'fulfilled' ? mktResult[0].value : null;
+            const marketInterpret = interpretMarketData(marketData);
+            investmentData = generateInvestmentData(cards, fullText, queryType, marketInterpret);
         }
 
-        setTimeout(() => {
-            const seal = document.getElementById('oracle-seal');
-            if (seal) seal.classList.add('stamped');
-        }, 800);
+        // [수정] isPaidUser || true → isPaidUser 단독 사용 (결제 우회 제거)
+        const isPaid = isPaidUser;
+        // [수정] isFinance를 renderText 5번째 인자로 명시 전달 → investBlock 분기 연결
+        contentEl.innerHTML = renderText(fullText, cards, investmentData, isPaid, isFinance);
+
+        // UI 상태 전환: 에메랄드 대기 문구 삭제 → 황금 버튼 노출 (유료 완료 시)
+        const holdingMsg = document.getElementById('holding-message');
+        const finalBtn   = document.getElementById('final-reset-btn');
+
+if (holdingMsg) holdingMsg.style.display = 'none'; // 대기 문구 제거
+if (finalBtn) {
+    finalBtn.style.display = 'inline-block'; // 황금 버튼 부활
+    finalBtn.style.marginTop = '25px';
+}
+
+// 4. 유저의 시선을 결과물 하단(버튼)으로 인도
+contentEl.scrollIntoView({ behavior: 'smooth', block: 'end' });
+
+// 제우스의 인장 애니메이션
+setTimeout(() => {
+    const seal = document.getElementById('oracle-seal');
+    if (seal) seal.classList.add('stamped');
+}, 800);
 
     } catch (error) {
+        // 🚨 통신 장애 발생 시 긴급 복구 로직
         clearInterval(loadingTimer);
         loadingEl.style.display    = 'none';
         progressWrap.style.display = 'none';
         contentEl.innerHTML = `
             <div style="color:#ff6b6b;padding:20px;border:1px solid #ff6b6b;border-radius:10px;">
-                <strong>⚠️ 연결 실패</strong><br><br>
+                <strong>⚠️ 신탁 연결 실패</strong><br><br>
                 <pre style="white-space:pre-wrap;font-size:0.8rem;color:#eee;">${error.message}</pre>
             </div>`;
     }
-}
+} // renderStream 함수 종료
 
 // ════════════════════════════════════
 // 🔥 투자 판단 엔진 — 전역 함수
@@ -1334,127 +1381,689 @@ function mergeDecision(cardDecision, rsiSignal) {
     }
     return cardDecision;
 }
-// 🔥 여기 삽입 (함수 위)
+// ════════════════════════════════════
+// 🔥 질문 유형 3분류 엔진
+// ════════════════════════════════════
+// ════════════════════════════════════
+// 🔥 질문 유형 4분류 엔진
+//    life / stock / crypto / realestate
+//    CURRENT_MODE: 전역 모드 — 운세/투자 UI 분기의 단일 진실 소스
+// ════════════════════════════════════
+let CURRENT_MODE = 'life'; // 전역 모드 변수
 
-const cardStateMap = {
-    "The Emperor": { state: "stable", risk: 2, power: 6, label: "안정성장" },
-    "Ten of Swords": { state: "bottom", risk: 5, power: 2, label: "바닥확인" },
-    "Seven of Wands": { state: "resistance", risk: 5, power: 3, label: "저항직면" },
-    "The Tower": { state: "crash", risk: 9, power: -5, label: "붕괴/급변" },
-    "The Sun": { state: "strong_up", risk: 1, power: 9, label: "강력상승" },
-    "The Star": { state: "recovery", risk: 2, power: 7, label: "회복국면" },
-    "The Moon": { state: "unclear", risk: 7, power: -3, label: "불투명" },
-    "Death": { state: "transition", risk: 6, power: -2, label: "추세전환" },
-    "Wheel of Fortune": { state: "turning", risk: 4, power: 5, label: "운명적변곡" },
-    "Five of Wands": { state: "chaos", risk: 6, power: -1, label: "경쟁과열" },
-    "Five of Swords": { state: "loss", risk: 7, power: -4, label: "손실경고" },
-    "Ace of Wands": { state: "start_up", risk: 3, power: 7, label: "추진력발생" },
-    "Ace of Cups": { state: "new_flow", risk: 2, power: 6, label: "새로운흐름" },
-    "Five of Pentacles": { state: "weak", risk: 8, power: -5, label: "자금악화" },
-    "Ten of Pentacles": { state: "long_term", risk: 2, power: 7, label: "장기번영" }
-};
-// ════════════════════════════════════════════════
-// 🔥 1. 카드 조합 기반 최종 한줄 신탁 엔진 (보조 엔진)
-// ════════════════════════════════════════════════
-// [참고] 메인 엔진에서 호출하므로 메인 엔진보다 위에 배치하여 참조 에러를 방지합니다.
-function generateFinalAdviceFromCards(cards) {
-    if (!cards) return "현재는 방향성이 뚜렷하지 않으므로 신중한 접근이 필요합니다.";
-    
-    let hasTenSwords = false, hasSevenWands = false, hasEmperor = false;
+function classifyQuery(question) {
+    const cryptoKeywords = [
+        '비트코인','이더리움','코인','알트코인','업비트','바이낸스',
+        'BTC','ETH','리플','솔라나','도지','XRP','에이다','폴리곤',
+        '디파이','NFT','블록체인','채굴','김치프리미엄','선물청산',
+        '암호화폐','가상화폐','코인베이스','빗썸','코빗'
+    ];
+    const stockKeywords = [
+        '주식','삼성','코스피','코스닥','나스닥','종목','상장',
+        '배당','실적','매출','PER','ETF','펀드','증권','거래소',
+        '주가','티엘비','우리은행','카카오','네이버','하이닉스',
+        '현대','기아','LG','SK','포스코','셀트리온','KB','신한','하나',
+        '선물','옵션','공매도','시가총액','상한가','하한가','증시'
+    ];
+    // 부동산 — 한국 주요 키워드
+    const realEstateKeywords = [
+        '부동산','아파트','빌라','주택','다세대','다가구','오피스텔',
+        '분양','청약','재건축','재개발','갭투자','전세','월세','임대',
+        '매매','타운하우스','단독주택','상가','토지','땅','경매',
+        '입주','실거주','LH','한국토지','국토부','공시지가'
+    ];
 
-    cards.forEach(card => {
-        const name = card.name || "";
-        if (name.includes("Ten of Swords")) hasTenSwords = true;
-        if (name.includes("Seven of Wands")) hasSevenWands = true;
-        if (name.includes("Emperor")) hasEmperor = true;
-    });
+    const isCrypto     = cryptoKeywords.some(k => question.includes(k));
+    const isStock      = stockKeywords.some(k => question.includes(k));
+    const isRealEstate = realEstateKeywords.some(k => question.includes(k));
 
-    if (hasTenSwords && hasSevenWands) return "⚔️ 공포가 아닌 ‘버티기’가 중요한 구간이며, 짧은 반등에 대응하십시오.";
-    if (hasTenSwords) return "💀 하락 충격이 큰 구간으로 추가 리스크 관리가 필요합니다.";
-    if (hasSevenWands) return "🛡️ 반등 시도는 있으나 상단 저항이 매우 강력한 시점입니다.";
-    if (hasEmperor) return "🏛️ 안정적인 흐름이나 시장의 변화를 예의주시해야 합니다.";
-
-    return "⚖️ 현재는 방향성이 뚜렷하지 않으므로 신중한 접근이 필요합니다.";
+    if (isCrypto)     return 'crypto';
+    if (isRealEstate) return 'realestate'; // 부동산은 주식보다 우선 체크
+    if (isStock)      return 'stock';
+    return 'life';
 }
 
-// ════════════════════════════════════════════════
-// 🔥 2. 제우스 투자 판단 엔진 (Guardian 2.1 - 정밀 튜닝형)
-// ════════════════════════════════════════════════
-function generateInvestmentData(cards, text) {
-    if (!cards || cards.length < 3) return null;
+// 질문에서 종목 티커 추출 (Yahoo Finance 심볼 형식)
+function extractTicker(question, queryType) {
+    if (queryType === 'realestate' || queryType === 'life') return null;
+    const q = question.toUpperCase();
+    // 한국 주요 종목 매핑
+    const KR_MAP = {
+        '삼성전자':'005930.KS','삼성':'005930.KS','하이닉스':'000660.KS','SK하이닉스':'000660.KS',
+        '카카오':'035720.KS','네이버':'035420.KS','LG에너지':'373220.KS','현대차':'005380.KS',
+        '기아':'000270.KS','포스코':'005490.KS','셀트리온':'068270.KS','티엘비':'317690.KS',
+        '코스피':'^KS11','나스닥':'^IXIC','S&P':'%5EGSPC'
+    };
+    // 코인 심볼 매핑
+    const CRYPTO_MAP = {
+        'BTC':'BTC-USD','비트코인':'BTC-USD','ETH':'ETH-USD','이더리움':'ETH-USD',
+        'XRP':'XRP-USD','리플':'XRP-USD','SOL':'SOL-USD','솔라나':'SOL-USD',
+        'DOGE':'DOGE-USD','도지':'DOGE-USD'
+    };
+    const sourceMap = queryType === 'crypto' ? CRYPTO_MAP : KR_MAP;
+    for (const [keyword, symbol] of Object.entries(sourceMap)) {
+        if (question.includes(keyword) || q.includes(keyword.toUpperCase())) return symbol;
+    }
+    // 직접 입력된 티커 (영문 대문자 2~5자 패턴 + .KS)
+    const direct = question.match(/\b([A-Z]{2,5})\b/);
+    if (direct && queryType === 'stock') return `${direct[1]}.KS`;
+    return null;
+}
 
-    // 1. 데이터 파싱 및 기초 가중치 추출
-    const cardData = cards.map(c => {
-        const name = c.name.split(' (')[0];
-        return {
-            name,
-            ...(cardStateMap[name] || { state: "normal", risk: 3, power: 0, label: "중립" })
-        };
-    });
+// ════════════════════════════════════
+// 🔥 Yahoo Finance 실시간 데이터 엔진
+//    브라우저 CORS 문제 → 기존 Worker를 프록시로 활용
+//    Worker에 /yahoo 엔드포인트 추가 필요 (아래 주석 참조)
+// ════════════════════════════════════
 
-    // 2. 데이터 지표 산출
-    const totalPower = cardData.reduce((acc, curr) => acc + curr.power, 0);
-    const avgRisk = cardData.reduce((acc, curr) => acc + curr.risk, 0) / 3;
-    const maxRiskCard = cardData.reduce((prev, curr) => (prev.risk > curr.risk) ? prev : curr);
+// Worker에 추가할 라우팅 예시 (omegafund01.workers.dev):
+// if (url.pathname === '/yahoo') {
+//   const symbol = new URL(request.url).searchParams.get('symbol');
+//   const res = await fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?interval=1d&range=3mo`);
+//   const data = await res.json();
+//   return new Response(JSON.stringify(data), {headers: {'Access-Control-Allow-Origin':'*'}});
+// }
 
-    // 3. [튜닝] 가디언 로직 적용 (감쇄율 30% 완화로 변별력 강화)
-    const riskPenalty = cardData.some(d => d.risk >= 8) ? 2.5 : 0;
-    const finalRiskScore = avgRisk + riskPenalty;
-    const hasCriticalRisk = cardData.some(d => d.risk >= 8 || d.state === "crash");
-    const adjustedPower = hasCriticalRisk ? totalPower * 0.7 : totalPower; // 50% -> 30% 삭감으로 조정
+async function fetchMarketData(symbol) {
+    try {
+        // Worker 프록시를 통해 Yahoo Finance 우회 (CORS 해결)
+        const workerUrl = `https://tarot-api.omegafund01.workers.dev/yahoo?symbol=${encodeURIComponent(symbol)}`;
+        const res  = await fetch(workerUrl, { signal: AbortSignal.timeout(5000) });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+        const result = data?.chart?.result?.[0];
+        if (!result) return null;
 
-    let trend, action, riskLabel, oracleMessage;
+        const closes  = result.indicators.quote[0].close;
+        const highs   = result.indicators.quote[0].high;
+        const lows    = result.indicators.quote[0].low;
+        const volumes = result.indicators.quote[0].volume;
 
-    // 4. 최종 판단 임계값 (Threshold) 적용 - 4점 기준으로 세분화
-    if (maxRiskCard.risk >= 7.5 || finalRiskScore >= 7.5) {
-        trend = "위험 감지";
-        action = "즉시 회피";
-        riskLabel = "치명적";
-        oracleMessage = `🚨 [데이터 경고] 본문의 긍정적 서사는 '시장 과열'에 의한 착시일 확률이 높습니다. ${maxRiskCard.label} 에너지가 붕괴 신호를 보내고 있습니다.`;
-    } else if (adjustedPower >= 12) { 
-        trend = "강력 상승";
-        action = "적극 매수";
-        riskLabel = "안전";
-        oracleMessage = "🚀 데이터가 본문의 낙관론을 완벽히 지지합니다. 과거와 현재의 에너지가 미래의 결실로 이어지는 확신 구간입니다.";
-    } else if (adjustedPower >= 4) { // [문턱 하향] 6점 -> 4점으로 낮추어 종목별 차별성 부여
-        trend = "상승 우세";
-        action = "분할 매수";
-        riskLabel = "보통";
-        oracleMessage = "📈 데이터가 우상향 궤적을 그리고 있습니다. 본문의 긍정적 흐름을 타되 비중을 조절하십시오.";
-    } else if (totalPower >= 10 && adjustedPower < 4) {
-        trend = "에너지 충돌";
-        action = "비중 축소";
-        riskLabel = "주의";
-        oracleMessage = "⚠️ [경고] 본문의 낙관론과 달리, 미래의 리스크 지표가 상승 에너지를 심각하게 억제하고 있습니다.";
+        // 최신값 (null 제거)
+        const validCloses = closes.filter(v => v !== null);
+        const lastClose   = validCloses[validCloses.length - 1];
+        const prevClose   = validCloses[validCloses.length - 2];
+        const changeRate  = ((lastClose - prevClose) / prevClose * 100).toFixed(2);
+
+        // RSI(14) 계산
+        const rsi = calcRSI(validCloses, 14);
+        // 이동평균 5일·20일
+        const ma5  = average(validCloses.slice(-5));
+        const ma20 = average(validCloses.slice(-20));
+        // 거래량 평균 대비 (최근 5일 평균 vs 20일 평균)
+        const validVols = volumes.filter(v => v !== null);
+        const volRatio  = (average(validVols.slice(-5)) / average(validVols.slice(-20))).toFixed(2);
+
+        return { lastClose, changeRate, rsi, ma5, ma20, volRatio, symbol };
+    } catch(e) {
+        console.warn('Yahoo 데이터 조회 실패:', e.message);
+        return null; // 실패 시 카드 엔진만으로 작동
+    }
+}
+
+function calcRSI(prices, period = 14) {
+    if (prices.length < period + 1) return 50;
+    let gains = 0, losses = 0;
+    for (let i = 1; i <= period; i++) {
+        const d = prices[i] - prices[i - 1];
+        if (d >= 0) gains += d; else losses -= d;
+    }
+    let ag = gains / period, al = losses / period;
+    for (let i = period + 1; i < prices.length; i++) {
+        const d = prices[i] - prices[i - 1];
+        ag = (ag * (period - 1) + (d > 0 ? d : 0)) / period;
+        al = (al * (period - 1) + (d < 0 ? -d : 0)) / period;
+    }
+    return al === 0 ? 100 : Math.round(100 - 100 / (1 + ag / al));
+}
+
+function average(arr) {
+    const valid = arr.filter(v => v !== null && !isNaN(v));
+    return valid.length ? valid.reduce((a, b) => a + b, 0) / valid.length : 0;
+}
+
+// Yahoo 데이터 → 신호 해석
+function interpretMarketData(mkt) {
+    if (!mkt) return null;
+    const signals = [];
+    let marketScore = 0;
+
+    // RSI 해석
+    if (mkt.rsi < 30) {
+        signals.push(`📉 RSI ${mkt.rsi} — 과매도 구간 (반등 에너지 가능성)`);
+        marketScore += 2;
+    } else if (mkt.rsi > 70) {
+        signals.push(`📈 RSI ${mkt.rsi} — 과매수 구간 (조정 가능성 주의)`);
+        marketScore -= 1;
     } else {
-        trend = "판단 유보";
-        action = "보수적 접근";
-        riskLabel = "주의";
-        oracleMessage = "⚖️ 데이터적 신뢰도가 임계치에 미달합니다. 본문의 서사적 해석보다는 실질적인 지표 확인이 선행되어야 합니다.";
+        signals.push(`⚖️ RSI ${mkt.rsi} — 중립 구간`);
     }
 
-    // 5. [죽은 코드 부활] 보조 엔진 호출 및 결합
-    const comboAdvice = generateFinalAdviceFromCards(cards);
+    // 이동평균 배열 해석
+    if (mkt.ma5 > mkt.ma20) {
+        signals.push(`📈 단기(5일) > 장기(20일) 이평선 — 상승 배열`);
+        marketScore += 2;
+    } else {
+        signals.push(`📉 단기(5일) < 장기(20일) 이평선 — 하락 배열`);
+        marketScore -= 2;
+    }
 
-    // 6. 최종 데이터 리턴 (그릇 맞춤)
+    // 거래량 해석
+    if (mkt.volRatio > 1.5) {
+        signals.push(`🔥 거래량 평균 대비 ${mkt.volRatio}배 — 강한 수급 유입`);
+        marketScore += 1;
+    } else if (mkt.volRatio < 0.7) {
+        signals.push(`😶 거래량 평균 대비 ${mkt.volRatio}배 — 수급 부재 (방향성 신뢰도 낮음)`);
+        marketScore -= 1;
+    } else {
+        signals.push(`📊 거래량 평균 대비 ${mkt.volRatio}배 — 보통 수준`);
+    }
+
+    // 당일 등락
+    const chg = parseFloat(mkt.changeRate);
+    signals.push(`${chg >= 0 ? '▲' : '▼'} 현재가 ${mkt.lastClose?.toLocaleString()}원 (전일 대비 ${chg >= 0 ? '+' : ''}${chg}%)`);
+
+    return { signals, marketScore, summary: marketScore >= 3 ? '강한 매수 신호' : marketScore >= 1 ? '약한 매수 신호' : marketScore >= -1 ? '중립' : '매도/관망 신호' };
+}
+function analyzeAISentiment(text) {
+    const bull = ['상승','돌파','매수','호재','성장','강세','반등','기회','긍정','확대','증가','회복','저점','급등'];
+    const bear = ['하락','위험','손실','리스크','약세','저항','불안','경계','매도','과열','거품','고점','폭락','급락','붕괴'];
+    let b = 0, s = 0;
+    bull.forEach(k => { b += (text.match(new RegExp(k, 'g')) || []).length; });
+    bear.forEach(k => { s += (text.match(new RegExp(k, 'g')) || []).length; });
+    return { bull: b, bear: s, net: b - s };
+}
+
+// ════════════════════════════════════
+// 🔥 카드 상태 맵 (31종 — 미등록 카드는 기본값 처리)
+// ════════════════════════════════════
+const CARD_STATE_MAP = {
+    "The Fool":          { risk: 4, power: 2  },
+    "The Magician":      { risk: 2, power: 7  },
+    "The High Priestess":{ risk: 5, power: 1  },
+    "The Empress":       { risk: 2, power: 6  },
+    "The Emperor":       { risk: 2, power: 6  },
+    "The Hierophant":    { risk: 3, power: 4  },
+    "The Lovers":        { risk: 3, power: 5  },
+    "The Chariot":       { risk: 3, power: 7  },
+    "Strength":          { risk: 3, power: 6  },
+    "The Hermit":        { risk: 4, power: 2  },
+    "Wheel of Fortune":  { risk: 4, power: 5  },
+    "Justice":           { risk: 3, power: 4  },
+    "The Hanged Man":    { risk: 5, power: -1 },
+    "Death":             { risk: 6, power: -2 },
+    "Temperance":        { risk: 2, power: 5  },
+    "The Devil":         { risk: 8, power: -4 },
+    "The Tower":         { risk: 9, power: -5 },
+    "The Star":          { risk: 2, power: 7  },
+    "The Moon":          { risk: 7, power: -3 },
+    "The Sun":           { risk: 1, power: 9  },
+    "Judgement":         { risk: 3, power: 6  },
+    "The World":         { risk: 1, power: 9  },
+    "Ace of Wands":      { risk: 3, power: 7  },
+    "Seven of Wands":    { risk: 5, power: 3  },
+    "Ten of Wands":      { risk: 5, power: -1 },
+    "Ace of Cups":       { risk: 2, power: 6  },
+    "Nine of Cups":      { risk: 2, power: 7  },
+    "Five of Swords":    { risk: 7, power: -4 },
+    "Seven of Swords":   { risk: 6, power: -3 },
+    "Ten of Swords":     { risk: 8, power: -5 },
+    "Ace of Pentacles":  { risk: 2, power: 6  },
+    "Five of Pentacles": { risk: 8, power: -5 },
+    "Nine of Pentacles": { risk: 2, power: 6  },
+    "Ten of Pentacles":  { risk: 2, power: 7  },
+    "Five of Wands":     { risk: 6, power: -1 }
+};
+const DEFAULT_CARD = { risk: 4, power: 0 };
+
+// ════════════════════════════════════
+// 🔥 카드 조합 특수 메시지 (주식/코인 분기)
+// ════════════════════════════════════
+function getComboNote(cardData, queryType) {
+    const has = name => cardData.some(d => d.name.includes(name));
+    if (has("Ten of Swords") && has("Seven of Wands"))
+        return queryType === 'crypto'
+            ? "⚔️ 코인 공포장 — 패닉셀 이후 단기 반등 구간일 수 있습니다."
+            : "⚔️ 주식 급락 후 저점 탐색 — 버티기와 분할 접근이 핵심입니다.";
+    if (has("Ten of Swords"))
+        return queryType === 'crypto'
+            ? "💀 코인 붕괴 에너지 — 추가 하락 리스크가 높습니다."
+            : "💀 하락 충격 구간 — 손절선 점검이 필요합니다.";
+    if (has("The Tower"))
+        return queryType === 'crypto'
+            ? "⚡ 타워 카드: 거래소 해킹·규제 발표 등 외부 충격 경계."
+            : "⚡ 타워 카드: 어닝쇼크·공시 리스크 등 급변 가능성 경계.";
+    if (has("The Sun") || has("The Star"))
+        return queryType === 'crypto'
+            ? "☀️ 코인 시장 심리 회복 신호 — 단, 변동성은 여전히 높음."
+            : "☀️ 주식 상승 에너지 우세 — 긍정적 모멘텀이 감지됩니다.";
+    if (has("Seven of Wands"))
+        return queryType === 'crypto'
+            ? "🛡️ 코인 반등 시도 중이나 매도 압력이 강합니다."
+            : "🛡️ 주가 반등 시도 중이나 상단 저항이 강력합니다.";
+    return "";
+}
+
+// ════════════════════════════════════
+// 🔥 카드 점수 기반 타이밍 엔진
+//    매수/매도/코인 의도를 감지하여 카드 power 합산으로 최적 날/시간 산출
+//    랜덤이 아닌 결정론적 — 같은 카드 조합 + 같은 질문이면 항상 같은 결과
+// ════════════════════════════════════
+function calcCardPower(cards) {
+    return cards.reduce((sum, c) => {
+        const name = (c.name || '').split(' (')[0];
+        return sum + ((CARD_STATE_MAP[name] || DEFAULT_CARD).power);
+    }, 0);
+}
+
+function getCardBasedTiming(cards, queryType, intent, qRaw) {
+    const totalPower = calcCardPower(cards);
+    let seed = 0;
+    for (let i = 0; i < qRaw.length; i++) seed += qRaw.charCodeAt(i);
+    cards.forEach(c => { seed += c.id; });
+
+    const pick  = (arr) => arr[Math.abs(seed) % arr.length];
+    const pick2 = (arr) => arr[Math.abs(seed + totalPower + 7) % arr.length];
+
+    // ────────────────────────────────
+    // 부동산 — 계절·시기 기반 타이밍
+    // ────────────────────────────────
+    if (queryType === 'realestate') {
+        const buySeasons  = ["2~3월 (봄 이사철 직전)", "9~10월 (가을 이사철 직전)", "12~1월 (비수기 저점)"];
+        const sellSeasons = ["3~4월 (봄 이사철 성수기)", "10~11월 (가을 이사철 성수기)", "6~7월 (여름 전 마지막 수요)"];
+        // 숫자만 — 템플릿에서 "월" 붙임 ("월월" 방지)
+        const monthNums = [1,2,3,4,5,6,7,8,9,10,11,12];
+        const bestMonth  = monthNums[Math.abs(seed) % 12];
+        const bestMonth2 = monthNums[(Math.abs(seed) + 3) % 12];
+
+        if (intent === 'sell') {
+            if (totalPower <= -4) return `📅 부동산 매각 타이밍: 즉시 매물 등록 검토 — 카드 에너지 하락 우세, 추가 하락 전 선제 대응 권고`;
+            if (totalPower <= 0)  return `📅 부동산 매각 타이밍: ${pick(sellSeasons)} 매물 등록 — 카드 에너지 약세, 호가 조정 후 거래 가능성`;
+            return `📅 부동산 매각 타이밍: ${pick(sellSeasons)} 적극 매물 등록 · ${bestMonth}월~${bestMonth2}월 계약 완료 목표`;
+        }
+        if (totalPower <= -5) return `📅 부동산 매수 타이밍: 진입 자제 — 카드 에너지 부정적, 추가 조정 가능성 높음`;
+        if (totalPower <= 0)  return `📅 부동산 매수 타이밍: ${pick(buySeasons)} 소극적 탐색 — 에너지 중립, 급매 물건 위주 검토`;
+        if (totalPower <= 5)  return `📅 부동산 매수 타이밍: ${pick(buySeasons)} 계약 검토 · ${bestMonth}월 전후 집중 탐색`;
+        return `📅 부동산 매수 타이밍: ${pick(buySeasons)} 적극 매수 — ${bestMonth}월~${bestMonth2}월 계약 적기 (카드 에너지 강한 상승)`;
+    }
+
+    // ────────────────────────────────
+    // 코인 (24h 거래 — 장중 개념 없음)
+    // ────────────────────────────────
+    if (queryType === 'crypto') {
+        const coinBuyHours  = ["02:00~04:00 (새벽 저유동 반등)", "09:00~10:00 (아시아 개장)", "14:00~15:00 (유럽 프리마켓)", "21:00~23:00 (미국 개장 직전)"];
+        const coinSellHours = ["06:00~07:00 (아시아 고점)", "11:00~12:00 (오전 고점권)", "17:00~18:00 (유럽 장중 피크)", "23:30~00:30 (미국 장중 피크)"];
+        const days7 = ["월요일", "화요일", "수요일", "목요일", "금요일", "토요일", "일요일"];
+        const bestDay = pick(days7);
+        const bestDay2 = days7[(Math.abs(seed) + 2) % 7];
+
+        if (intent === 'sell') {
+            if (totalPower <= -3) return `📅 매도 타이밍: 즉시 또는 다음 반등 시 청산 권고 — 카드 에너지 하락 우세`;
+            return `📅 코인 매도 타이밍: ${bestDay} ${pick(coinSellHours)} · 이후 ${bestDay2}까지 분할 매도 고려`;
+        }
+        // 매수 or 기본
+        if (totalPower <= -5) return `📅 코인 매수 타이밍: 진입 절대 금지 — 카드 붕괴 에너지 감지. 저점 확인 후 재판단 요망`;
+        if (totalPower <= 0)  return `📅 코인 매수 타이밍: ${bestDay} ${pick2(coinBuyHours)} 소량 분할 (카드 에너지 중립, 변동성 주의)`;
+        return `📅 코인 매수 타이밍: ${bestDay} ${pick(coinBuyHours)} · ${bestDay2} ${pick2(coinBuyHours)} 분할 진입 유효`;
+    }
+
+    // ────────────────────────────────
+    // 주식 (장중 시간 기반)
+    // ────────────────────────────────
+    const stockBuySlots  = ["09:15 (장초반 골든타임)", "10:00~10:30 (오전 추세 안착)", "13:30~14:00 (오후 변곡 초입)", "14:30~15:00 (장마감 전 눌림)"];
+    const stockSellSlots = ["09:30~10:00 (갭 상승 익절)", "11:00~11:30 (오전 고점권)", "14:00~14:30 (오후 저항권)", "15:10~15:20 (장마감 직전 매도)"];
+    const extSlots       = ["08:30 (장전 시간외)", "16:00~16:40 (장후 시간외 단일가)"];
+    const weekdays       = ["월요일", "화요일", "수요일", "목요일", "금요일"];
+    const bestDay        = pick(weekdays);
+    const bestDay2       = weekdays[(Math.abs(seed) + 2) % 5];
+
+    if (intent === 'sell') {
+        if (totalPower <= -5) return `📅 매도 타이밍: 즉시 손절 검토 — 카드 붕괴 에너지. ${pick(stockSellSlots)} 시장가 매도 고려`;
+        if (totalPower <= 0)  return `📅 매도 타이밍: ${bestDay} ${pick(stockSellSlots)} 분할 매도 (카드 에너지 약세, 추가 보유 리스크 있음)`;
+        return `📅 매도 타이밍: ${bestDay} ${pick(stockSellSlots)} 1차 익절 · ${bestDay2} ${pick2(stockSellSlots)} 잔량 매도`;
+    }
+
+    // 매수
+    if (totalPower <= -5) return `📅 매수 타이밍: 진입 절대 금지 — 카드 에너지 극히 부정적. 관망 후 재판단 요망`;
+    if (totalPower <= 0)  return `📅 매수 타이밍: ${bestDay} ${pick2(stockBuySlots)} 극소량만 (카드 에너지 부정적, 손절선 필수)`;
+    if (totalPower <= 5)  return `📅 매수 타이밍: ${bestDay} ${pick(stockBuySlots)} 분할 매수 · 혹은 ${pick(extSlots)} 장외 진입 고려`;
+    return `📅 매수 타이밍: ${bestDay} ${pick(stockBuySlots)} 1차 · ${bestDay2} ${pick2(stockBuySlots)} 2차 분할 진입 유효`;
+}
+
+// ════════════════════════════════════
+// 🔥 운세 질문용 — 카드 power 기반 기운 강한 날/시간 산출
+// ════════════════════════════════════
+function getLuckyTiming(cards, qRaw) {
+    const totalPower = calcCardPower(cards);
+    let seed = 0;
+    for (let i = 0; i < qRaw.length; i++) seed += qRaw.charCodeAt(i);
+    cards.forEach(c => { seed += c.id; });
+
+    const pick  = arr => arr[Math.abs(seed) % arr.length];
+    const pick2 = arr => arr[Math.abs(seed + totalPower + 13) % arr.length];
+
+    const weekdays = ["월요일", "화요일", "수요일", "목요일", "금요일", "토요일", "일요일"];
+    const hours    = ["오전 6~8시 (새벽 기운)", "오전 10~12시 (활동 정점)", "오후 2~4시 (안정 흐름)", "오후 6~8시 (전환 기운)", "밤 10~12시 (내면 집중)"];
+    const moonPhases = ["초승달 뜨는 날", "보름달 뜨는 날", "달이 없는 그믐 전날"];
+
+    const bestDay  = pick(weekdays);
+    const bestDay2 = weekdays[(Math.abs(seed) + 3) % 7];
+    const bestHour = pick(hours);
+
+    if (totalPower >= 8) {
+        return `✨ 기운이 가장 강한 때: <strong>${bestDay} ${bestHour}</strong> — 카드 에너지가 매우 높습니다. 중요한 결정이나 만남은 이 시간대가 최적입니다.`;
+    } else if (totalPower >= 3) {
+        return `✨ 기운이 강한 날: <strong>${bestDay}, ${bestDay2}</strong> · 특히 <strong>${bestHour}</strong>에 긍정 에너지가 집중됩니다.`;
+    } else if (totalPower >= 0) {
+        return `✨ 기운의 전환점: <strong>${pick2(moonPhases)}</strong> 이후 ${bestDay}부터 에너지가 서서히 회복됩니다. <strong>${bestHour}</strong>에 명상이나 집중을 권합니다.`;
+    } else {
+        return `✨ 기운 회복 시기: 현재 카드 에너지가 낮습니다. <strong>${bestDay2} ${pick2(hours)}</strong> 이후 행동에 나서는 것이 유리합니다. 무리한 결정은 삼가세요.`;
+    }
+}
+
+// ════════════════════════════════════
+// 🔥 V6.1 통합 의사결정 엔진
+//    단일 netScore → 추세·행동·비중·손절·목표 전부 파생
+//    임계값을 실제 카드 점수 분포에 맞게 조정 (대부분 -8 ~ +12 범위)
+// ════════════════════════════════════
+function getFinalDecision(netScore, maxRisk, avgRisk, hasCritical,
+                          isVolatile, queryType, intent) {
+
+    // ── ① 레버리지·세력 감지 (최우선 차단)
+    if (isVolatile) {
+        return {
+            decision: "🚫 진입 금지 (고변동/레버리지)",
+            trendLabel: "변동성 극단",
+            position: "0%",
+            stop: "-", target: "-", riskLabel: "극고위험",
+            canEnter: false, score: netScore
+        };
+    }
+
+    // ── ② 카드 위험도 최우선 거부 (Tower·Devil·Ten of Swords 등 포함 시)
+    if (maxRisk >= 8 || avgRisk >= 6.5) {
+        return {
+            decision: intent === 'sell' ? "즉시 청산 검토" : "🚫 진입 금지 (고위험 카드)",
+            trendLabel: "하락 위험 구간",
+            position: "0%",
+            stop: intent === 'sell' ? "즉시" : "-",
+            target: "-", riskLabel: "극고위험",
+            canEnter: false, score: netScore
+        };
+    }
+
+    // ── ③ 통합 점수 기반 결정
+    //    실제 netScore 분포: 카드 power(-15~+27) + sentiment(-3~+5 수준)
+    //    현실적 도달 범위: 대부분 -8 ~ +12 → 임계값을 이에 맞춤
+    let decision, trendLabel, position, stop, target, riskLabel, canEnter;
+
+    if (netScore >= 7) {
+        // 좋은 카드 3장 + 긍정 AI 응답 → 강력 상승
+        trendLabel = "강력 상승 추진력";
+        decision   = queryType === 'crypto' ? "분할 매수 (자산 20~30%)" : "적극 분할 매수";
+        position   = queryType === 'crypto' ? "20~30%" : "30~50%";
+        stop       = queryType === 'crypto' ? "-8%" : "-5%";
+        target     = queryType === 'crypto' ? "+15~20%" : "+10~15%";
+        riskLabel  = "낮음"; canEnter = true;
+
+    } else if (netScore >= 3) {
+        // 긍정 카드 우세
+        trendLabel = "상승 우세";
+        decision   = "분할 매수";
+        position   = queryType === 'crypto' ? "10~20%" : "20~30%";
+        stop       = "-5%"; target = "+8~12%";
+        riskLabel  = "보통"; canEnter = true;
+
+    } else if (netScore >= 1) {
+        // 약한 긍정 — 조건부 소량
+        trendLabel = "상승 시도 중";
+        decision   = "조건부 소량 진입";
+        position   = queryType === 'crypto' ? "5~10%" : "10~20%";
+        stop       = "-4%"; target = "+6~10%";
+        riskLabel  = "보통"; canEnter = true;
+
+    } else if (netScore >= -1) {
+        // 중립 구간
+        trendLabel = "중립 — 관망 구간";
+        decision   = "관망 (방향성 대기)";
+        position   = "0%";
+        stop       = "-"; target = "-";
+        riskLabel  = "보통"; canEnter = false;
+
+    } else if (netScore >= -4) {
+        // 약한 하락
+        trendLabel = "하락 압력 우세";
+        decision   = intent === 'sell' ? "분할 매도" : "신규 진입 금지";
+        position   = "0%";
+        stop       = "-"; target = "-";
+        riskLabel  = "높음"; canEnter = false;
+
+    } else {
+        // 강한 하락
+        trendLabel = "강한 하락 신호";
+        decision   = intent === 'sell' ? "즉시 매도 검토" : "🚫 진입 금지";
+        position   = "0%";
+        stop       = "-"; target = "-";
+        riskLabel  = "매우 높음"; canEnter = false;
+    }
+
+    return { decision, trendLabel, position, stop, target, riskLabel, canEnter, score: netScore };
+}
+
+// ════════════════════════════════════
+// 🔥 V6.0 통합 투자 판단 엔진
+//    모든 출력이 단일 netScore에서 파생 — 모순 불가
+// ════════════════════════════════════
+function generateInvestmentData(cards, text, queryType = 'stock', marketInterpret = null) {
+    if (!cards || cards.length < 3) return null;
+
+    const qRaw      = (document.getElementById('seed-input')?.value || "").toLowerCase();
+    const ctx       = parseQuestion(qRaw);
+    const sentiment = analyzeAISentiment(text);
+    const isLeverage = /레버리지|3x|2x|etf|crdc|우리로|이브이/.test(qRaw);
+
+    // ── 카드 데이터 파싱
+    const cardData = cards.map(c => {
+        const name = c.name.split(' (')[0];
+        return { name, ...(CARD_STATE_MAP[name] || DEFAULT_CARD) };
+    });
+    const totalPower  = cardData.reduce((a, c) => a + c.power, 0);
+    const totalRisk   = cardData.reduce((a, c) => a + c.risk,  0);
+    const avgRisk     = totalRisk / cardData.length;
+    const maxRisk     = Math.max(...cardData.map(d => d.risk));
+    const hasCritical = cardData.some(d => d.risk >= 8);
+
+    // ── 단일 순에너지 점수 (코인은 sentiment 가중 2.5배, 주식 1.5배)
+    const sentWeight = queryType === 'crypto' ? 2.5 : 1.5;
+    const adjPower   = hasCritical ? totalPower * (queryType === 'crypto' ? 0.6 : 0.7) : totalPower;
+    const netScore   = adjPower + (sentiment.net * sentWeight);
+
+    // ── 통합 의사결정 (시그니처 맞춤: totalRisk·hasNoVol 제거)
+    const d = getFinalDecision(
+        netScore, maxRisk, avgRisk, hasCritical,
+        isLeverage, queryType, ctx.intent
+    );
+
+    // ── 비중 → 숫자
+    const posNum = d.canEnter ? parseInt(d.position) || 0 : 0;
+
+    // ── 카드 기반 타이밍
+    const timingLine = !d.canEnter
+        ? `📅 타이밍: ${d.trendLabel === "중립 — 관망 구간" ? "방향성 확인 후 재진입" : "시장 안정 후 재판단"}`
+        : getCardBasedTiming(cards, queryType, ctx.intent, qRaw);
+
+    // ── 손절·목표
+    const stopLine   = d.stop   !== '-' ? `🛑 손절 기준선: 진입가 대비 ${d.stop} 이탈 시 재검토` : `🛑 손절 기준선: 해당 없음 (진입 불가)`;
+    const targetLine = d.target !== '-' ? `🎯 목표 에너지 구간: ${d.target} 도달 시 분할 익절 고려` : `🎯 목표 구간: 해당 없음 (진입 불가)`;
+
+    // ① 카드 3장 서사
+    const CARD_INVEST_MEANING = {
+        "The Fool":{"flow":"새로운 시작·무모한 진입","signal":"과감한 첫 진입 에너지, 단 리스크 무시 주의"},
+        "The Magician":{"flow":"의지·실행력","signal":"강한 실행 에너지 — 준비된 진입 시점"},
+        "The High Priestess":{"flow":"내면의 직관·기다림","signal":"섣부른 진입보다 관망이 유리한 구간"},
+        "The Empress":{"flow":"성장·풍요","signal":"긍정적 성장 흐름 — 중장기 보유 유리"},
+        "The Emperor":{"flow":"안정·지배력","signal":"견고한 구조 — 안정적 흐름 유지 신호"},
+        "The Hierophant":{"flow":"전통·보수적 접근","signal":"기존 전략 고수 — 변동성 낮은 구간"},
+        "The Lovers":{"flow":"선택의 기로","signal":"진입 여부 결정이 필요한 분기점"},
+        "The Chariot":{"flow":"전진·돌파","signal":"강한 상승 돌파 에너지 감지"},
+        "Strength":{"flow":"인내·꾸준함","signal":"단기 변동 무시, 중기 보유 에너지 우세"},
+        "The Hermit":{"flow":"고독·내면 탐색","signal":"시장 방관 — 섣부른 진입 자제 구간"},
+        "Wheel of Fortune":{"flow":"순환·전환점","signal":"추세 전환 신호 — 방향성 주시 필요"},
+        "Justice":{"flow":"균형·공정한 결과","signal":"리스크·수익 균형 — 중립적 구간"},
+        "The Hanged Man":{"flow":"정체·관점 전환","signal":"일시적 정체 — 관망 후 반전 가능성"},
+        "Death":{"flow":"종말·새로운 시작","signal":"기존 포지션 마무리, 전환 준비 구간"},
+        "Temperance":{"flow":"절제·균형","signal":"과도한 비중 지양 — 분산 접근 권고"},
+        "The Devil":{"flow":"집착·하락 함정","signal":"손실 집착 위험 — 감정적 대응 금지"},
+        "The Tower":{"flow":"붕괴·급격한 변화","signal":"급락 리스크 — 보유 포지션 점검 시급"},
+        "The Star":{"flow":"희망·회복","signal":"저점 통과 신호 — 반등 에너지 감지"},
+        "The Moon":{"flow":"불확실·환상","signal":"정보 불명확 — 섣부른 판단 금물"},
+        "The Sun":{"flow":"성공·명확성","signal":"강한 상승 확신 에너지 — 적극적 흐름"},
+        "Judgement":{"flow":"각성·재평가","signal":"포지션 재검토 시점 — 새 흐름 시작"},
+        "The World":{"flow":"완성·통합","signal":"목표 달성 에너지 — 익절 고려 구간"},
+        "Ace of Wands":{"flow":"열정·새 출발","signal":"새로운 상승 사이클 진입 신호"},
+        "Ace of Cups":{"flow":"감성·새 흐름","signal":"긍정적 전환 — 감정 과잉 주의"},
+        "Ace of Pentacles":{"flow":"물질적 새 시작","signal":"실질적 수익 에너지 — 진입 적기"},
+        "Nine of Cups":{"flow":"만족·성취","signal":"목표 근접 — 익절 타이밍 점검"},
+        "Ten of Pentacles":{"flow":"장기 풍요","signal":"장기 보유 에너지 우세"},
+        "Ten of Swords":{"flow":"최악·바닥","signal":"최대 하락 에너지 — 신규 진입 절대 금지"},
+        "Five of Pentacles":{"flow":"결핍·손실","signal":"손실 구간 — 추가 매수 금지"},
+        "Seven of Wands":{"flow":"저항·방어","signal":"상승 시도 중 강한 매도 저항"},
+        "Five of Wands":{"flow":"경쟁·혼란","signal":"변동성 확대 — 방향성 불명확"}
+    };
+    const posLabels = ['과거','현재','미래'];
+    const cardNarrative = cards.map((card, i) => {
+        const base = card.name.split(' (')[0];
+        const m = CARD_INVEST_MEANING[base] || {flow:"에너지 탐색 중", signal:"방향성 주시"};
+        return `${posLabels[i]}(${card.name}): ${m.flow} — ${m.signal}`;
+    });
+    const powers = cardData.map(c => c.power);
+    const flowSummary = powers[2] > powers[0]
+        ? "과거 → 미래 에너지 상승 흐름 (진입 에너지 강화 중)"
+        : powers[2] < powers[0]
+        ? "과거 → 미래 에너지 하강 흐름 (에너지 소진 주의)"
+        : "에너지 균형 흐름 (방향성 확인 후 대응)";
+
+    // ② 카드별 리스크 체크
+    const riskChecks = cardData.map(c => {
+        if (c.risk >= 8)                  return `🔴 ${c.name}: 붕괴·급락 에너지 — 강한 리스크 신호`;
+        if (c.risk >= 6)                  return `🟠 ${c.name}: 변동성 확대 에너지 — 손절 기준 필수`;
+        if (c.risk <= 2 && c.power >= 6)  return `🟢 ${c.name}: 안정적 상승 에너지 — 긍정 신호`;
+        if (c.power <= -3)                return `🟠 ${c.name}: 하락 압력 에너지 — 추가 진입 자제`;
+        return `⚪ ${c.name}: 중립 에너지 — 흐름 관찰`;
+    });
+
+    // ③ 3가지 시나리오
+    const scenarios = d.canEnter ? (() => {
+        const tParts = d.target !== '-' ? d.target.split('~') : ['+6%','+10%'];
+        const upT = tParts[1] || tParts[0];
+        const baseT = tParts[0];
+        const dn = d.stop !== '-' ? d.stop : '-5%';
+        return {
+            bull: `🟢 낙관 (미래 카드 에너지 완전 실현 시): ${upT} 도달 가능 — ${cards[2].name.split(' (')[0]} 에너지 극대화 구간`,
+            base: `⚪ 기본 (현재 흐름 유지 시): ${baseT} 수준 — 현재 카드 에너지 지속`,
+            bear: `🔴 비관 (리스크 카드 현실화 시): ${dn} 이탈 가능 — 손절 기준선 엄수 필요`
+        };
+    })() : null;
+
+    // ④ 포지션 관리 로드맵 — queryType별 언어 분리
+    const roadmap = d.canEnter ? (() => {
+        const t1 = timingLine.replace(/^📅\s*/,'').split('·')[0].trim();
+        const t2 = timingLine.includes('·') ? (timingLine.split('·')[1]||'').trim() : '흐름 확인 후';
+        const h1 = Math.round(posNum / 2);
+        const h2 = posNum - h1;
+        const tParts = d.target !== '-' ? d.target.split('~') : ['+6%','+10%'];
+
+        // 부동산 전용 로드맵 — 주식 언어(익절/손절) 대신 부동산 언어 사용
+        if (queryType === 'realestate') {
+            const isSell = ctx.intent === 'sell';
+            return isSell ? [
+                `1차 매각 행동: ${t1} 매물 등록 및 호가 설정`,
+                `2차 매각 행동: ${t2} 조건 조정 후 적극 협상`,
+                `계약 목표: 등록 후 1~2개월 내 계약 완료 목표`,
+                `호가 조정 기준: 시세 대비 -3% 이내에서 유연하게 협의`,
+                `철회 기준: 카드 에너지 재판단 후 3개월 이상 미거래 시 전략 재수립`
+            ] : [
+                `1차 탐색: ${t1} 집중 임장 및 급매 물건 검토`,
+                `2차 진입: ${t2} 조건 협의 후 계약금 투입`,
+                `목표 수익: 취득 후 ${tParts[1]||tParts[0]} 시세 상승 시 매각 검토`,
+                `보유 기간: 카드 에너지 기준 최소 1~2년 이상 중장기 보유 권장`,
+                `리스크 기준: 취득가 대비 -5% 이상 조정 시 포지션 재검토`
+            ];
+        }
+
+        // 주식/코인 로드맵
+        return [
+            `1차 진입: ${t1} — 자산의 ${h1}% (카드 에너지 1차 수렴 시점)`,
+            `2차 진입: ${t2} — 추가 ${h2}% (에너지 강화 확인 후)`,
+            `익절 1차: ${tParts[0]} 도달 시 절반 정리`,
+            `익절 2차: ${tParts[1]||tParts[0]} 도달 시 잔량 정리`,
+            `손절 기준: ${d.stop !== '-' ? d.stop : '-5%'} 이탈 시 카드 에너지 소멸로 보고 청산`
+        ];
+    })() : null;
+
     return {
-        trend, 
-        trendDesc: `${trend} 에너지가 주도하는 장세입니다.`,
-        action, 
-        actionDesc: `${action} 전략이 데이터적으로 유효합니다.`,
-        timing: "데이터 변곡점",
-        timingDesc: "통계적 유의성이 확보된 구간입니다.",
-        risk: riskLabel, 
-        riskDesc: `종합 리스크 지수 ${finalRiskScore.toFixed(1)}점으로 측정되었습니다.`,
-        // 🔥 핵심: 두 엔진의 결과물을 합쳐서 내보냅니다.
-        finalOracle: `${comboAdvice}\n\n${oracleMessage}`
+        trend:  `📈 추세: ${d.trendLabel}`,
+        action: `🧭 행동: ${d.decision}`,
+        risk:   `🛡️ 리스크: ${d.riskLabel}`,
+        cardNarrative, flowSummary, riskChecks, scenarios, roadmap,
+        marketInterpret, // Yahoo 실시간 데이터 (null이면 섹션 미표시)
+        finalOracle: [
+            `💰 권장 비중: ${posNum}% ${d.canEnter ? '(분할 접근)' : '(진입 불가 — 관망)'}`,
+            stopLine, targetLine, timingLine,
+            isLeverage ? `⚠️ [경고] 고변동 자산: 설정 비중 엄수` : ''
+        ].filter(Boolean).join('<br>')
     };
 }
 // ════════════════════════════════════
-//  텍스트 → HTML 변환
-//  신탁 마커 정규화 → 카드섹션 렌더 → 제우스의 최종신탁 고정 조립
+// 🔮 운세 전용 영성 지표 4종 생성
+//    워커 지시: 운세 질문 시 투자 언어 대신 영성적 언어로 치환
+//    추세/행동/타이밍/리스크 → 감정·운명·수비학 언어
 // ════════════════════════════════════
-function renderText(text, cards, investData, isPaid = false) {
+function buildFortuneIndicators(cards, qRaw) {
+    const totalPower = calcCardPower(cards);
+    let seed = 0;
+    for (let i = 0; i < qRaw.length; i++) seed += qRaw.charCodeAt(i);
+    cards.forEach(c => { seed += c.id; });
+    const pick = arr => arr[Math.abs(seed) % arr.length];
+    const pick2 = arr => arr[Math.abs(seed + totalPower + 5) % arr.length];
+
+    // 📈 흐름 (추세) — 카드 power 기반 감정 흐름
+    const trends = totalPower >= 7
+        ? ["감정의 고조기","기운의 정점","운명의 상승기","관계의 확장기"]
+        : totalPower >= 3
+        ? ["기운의 반등","새로운 흐름의 시작","전환의 기운","희망의 싹틈"]
+        : totalPower >= 0
+        ? ["운명의 정체기","내면 성찰의 시기","균형을 찾는 구간","고요한 흐름"]
+        : ["에너지 소진기","내면의 갈등기","재정비의 시간","어둠 속 빛을 찾는 시기"];
+    const trend = pick(trends);
+
+    // 🧭 행동 — 카드 조합 기반
+    const actions = totalPower >= 5
+        ? ["적극적 소통","과감한 결단","새로운 시도","주도적 행보","감정 표현 확대"]
+        : totalPower >= 1
+        ? ["유연한 수용","신중한 관찰","기회 포착 준비","주변과의 조화"]
+        : ["내면 성찰","에너지 충전","무리한 행동 자제","현재에 집중"];
+    const action = pick(actions);
+
+    // ⚡ 타이밍 — 수비학·달력·자연 기반 (워커 지시: "금요일 밤", "보름달", "새벽 2시" 등)
+    const now = new Date();
+    const numScore = getNumerologyScore();
+    const moonTimings = ["보름달이 뜨는 날 밤","초승달이 뜨는 새벽","그믐 전날 저녁"];
+    const dayTimings  = ["금요일 저녁 7시 이후","수요일 오전 10시","토요일 새벽 2시","화요일 정오"];
+    const timingBase  = pick(totalPower >= 3 ? dayTimings : moonTimings);
+    const timing = `${timingBase} (수비학 ${numScore}번 에너지 — ${numScore >= 7 ? '강한 행동 에너지' : numScore >= 4 ? '균형의 에너지' : '내면 집중 에너지'})`;
+
+    // 🛡️ 주의 (리스크)
+    const risks = totalPower >= 5
+        ? ["과도한 기대로 인한 실망","감정 과잉으로 인한 에너지 소모","무리한 진전 시도"]
+        : totalPower >= 0
+        ? ["오해의 소지","외부 개입으로 인한 혼선","방향성 부재"]
+        : ["에너지 소모 경계","감정적 판단 주의","외부 영향에 흔들림 경계","자기 비하 금물"];
+    const risk = pick2(risks);
+
+    return { trend, action, timing, risk };
+}
+function renderText(text, cards, investData, isPaid = false, isFinanceQuery = false) {
     // 1. 텍스트 정화: 본문 내 "과거:", "현재:", "미래:" 중복 삭제
     let cleanText = text
         .replace(/안녕하세요.*유저님\.?/g, '')
@@ -1491,8 +2100,8 @@ function renderText(text, cards, investData, isPaid = false) {
 
     // 4. 결제 상태에 따른 분기
     if (isPaid) {
-        // 미래 카드 블록 (별도 — 최종신탁과 분리)
-        const futureCardHTML = `
+        // ── 미래 카드 블록 (let으로 선언해야 레버리지 경고 추가 가능)
+        let futureCardHTML = `
             <div class="card-block" style="margin: 0 0 10px 0; padding-bottom: 10px; border-bottom: 1px solid rgba(212,175,55,0.15);">
                 <h2 style="margin: 0 0 5px 0; color: var(--gold); font-size: 1rem;">${labels[2]}</h2>
                 <img src="${BASE_URL}${cards[2].file}" class="mini-card-float" onclick="expandCard(this)" onerror="this.style.display='none'">
@@ -1502,37 +2111,163 @@ function renderText(text, cards, investData, isPaid = false) {
                 </div>
             </div>`;
 
-        // 최종신탁 섹션 (미래 카드 블록과 완전히 분리된 독립 div)
-        const oracleHTML = `
-            <div class="final-reading" style="margin-top: 24px;">
-                <div class="zenith-title-block" style="margin-bottom: 12px; border-bottom: 2px solid rgba(39,174,96,0.5); padding-bottom: 6px;">
-                    <span class="zenith-title-main" style="color: #2ecc71; font-size: 1.2rem; font-weight: 900; display: block;">제우스의 최종신탁</span>
-                    <div class="zenith-title-sub" style="color: rgba(46,204,113,0.85); font-size: 0.85rem; font-weight: 800; letter-spacing: 0.2em;">ZEUS FINAL ORACLE</div>
+        // ── 레버리지 경고: 투자 질문일 때만 futureCardHTML에 추가
+        if (isFinanceQuery) {
+            const q = (document.getElementById('seed-input')?.value || "").toLowerCase();
+            const isLeverage =
+                q.includes("레버리지") || q.includes("etf") || q.includes("etn") ||
+                q.includes("3x") || q.includes("2x") || q.includes("crdc");
+            if (isLeverage) {
+                futureCardHTML += `
+                <div style="margin-top:15px; padding:12px; border:1px solid #aa0000; border-radius:8px; color:#ff8080; font-size:0.85rem; line-height:1.5; background:rgba(170,0,0,0.1);">
+                    ⚠️ 고변동성 자산 감지됨 (레버리지/특수종목)<br>
+                    → 상승 해석 = 방향 상승이 아니라 변동성 확대 가능성<br>
+                    → 분할매수 + 손절 기준 필수 설정 권장
+                </div>`;
+            }
+        }
+
+        // ── 최종신탁: 투자질문이면 투자 데이터 포함, 운세질문이면 순수 오라클 텍스트만
+        // [수정] window._isFinanceQuery → isFinanceQuery 파라미터 사용 (분기 연결 복구)
+        const investBlock = (isFinanceQuery && investData) ? (() => {
+            const ac = investData.action.includes("매수") ? "#2ecc71"
+                     : investData.action.includes("매도") ? "#e67e22"
+                     : investData.action.includes("금지") ? "#e74c3c" : "#f1c40f";
+
+            // ① 카드 서사 섹션
+            const narrativeHTML = investData.cardNarrative ? `
+                <div style="margin-bottom:14px; padding-bottom:12px; border-bottom:1px solid rgba(212,175,55,0.15);">
+                    <div style="color:var(--gold);font-size:0.8rem;font-weight:900;letter-spacing:0.1em;margin-bottom:8px;">🃏 카드 에너지 → 투자 맥락</div>
+                    ${investData.cardNarrative.map(line => `<div style="font-size:0.82rem;color:rgba(255,255,255,0.85);line-height:1.7;margin-bottom:3px;">• ${line}</div>`).join('')}
+                    <div style="margin-top:6px;font-size:0.8rem;color:rgba(212,175,55,0.8);font-style:italic;">↳ ${investData.flowSummary}</div>
+                </div>` : '';
+
+            // ② 리스크 체크 섹션
+            const riskHTML = investData.riskChecks ? `
+                <div style="margin-bottom:14px; padding-bottom:12px; border-bottom:1px solid rgba(212,175,55,0.15);">
+                    <div style="color:var(--gold);font-size:0.8rem;font-weight:900;letter-spacing:0.1em;margin-bottom:8px;">⚠️ 카드별 리스크 점검</div>
+                    ${investData.riskChecks.map(line => `<div style="font-size:0.82rem;color:rgba(255,255,255,0.85);line-height:1.7;margin-bottom:3px;">${line}</div>`).join('')}
+                </div>` : '';
+
+            // ③ 시나리오 섹션
+            const scenarioHTML = investData.scenarios ? `
+                <div style="margin-bottom:14px; padding-bottom:12px; border-bottom:1px solid rgba(212,175,55,0.15);">
+                    <div style="color:var(--gold);font-size:0.8rem;font-weight:900;letter-spacing:0.1em;margin-bottom:8px;">📊 3가지 에너지 시나리오</div>
+                    <div style="font-size:0.82rem;line-height:1.8;">
+                        <div style="margin-bottom:3px;">${investData.scenarios.bull}</div>
+                        <div style="margin-bottom:3px;">${investData.scenarios.base}</div>
+                        <div>${investData.scenarios.bear}</div>
+                    </div>
+                </div>` : '';
+
+            // ④ 포지션 로드맵 섹션
+            const roadmapHTML = investData.roadmap ? `
+                <div style="margin-bottom:14px; padding-bottom:12px; border-bottom:1px solid rgba(212,175,55,0.15);">
+                    <div style="color:var(--gold);font-size:0.8rem;font-weight:900;letter-spacing:0.1em;margin-bottom:8px;">📋 포지션 관리 로드맵</div>
+                    ${investData.roadmap.map((line, i) => `<div style="font-size:0.82rem;color:rgba(255,255,255,0.85);line-height:1.7;margin-bottom:3px;">${i+1}. ${line}</div>`).join('')}
+                </div>` : '';
+
+            // ⑤ Yahoo 실시간 시장 데이터 섹션 (데이터 있을 때만)
+            const yahooHTML = investData.marketInterpret ? `
+                <div style="margin-bottom:14px; padding-bottom:12px; border-bottom:1px solid rgba(212,175,55,0.15);">
+                    <div style="color:var(--gold);font-size:0.8rem;font-weight:900;letter-spacing:0.1em;margin-bottom:8px;">📡 실시간 시장 신호 <span style="font-size:0.7rem;color:rgba(212,175,55,0.5);font-weight:400;">(Yahoo Finance)</span></div>
+                    ${investData.marketInterpret.signals.map(s => `<div style="font-size:0.82rem;color:rgba(255,255,255,0.85);line-height:1.7;margin-bottom:3px;">${s}</div>`).join('')}
+                    <div style="margin-top:6px;padding:4px 10px;background:rgba(212,175,55,0.1);border-radius:4px;font-size:0.8rem;color:var(--gold);font-weight:bold;">종합: ${investData.marketInterpret.summary}</div>
+                </div>` : '';
+
+            return `<div class="final-oracle" style="padding:18px;background:rgba(212,175,55,0.07);border:1px solid var(--gold);border-radius:12px;line-height:1.8;margin-top:16px;">
+                <h3 style="color:var(--gold);margin:0 0 14px 0;font-size:1.05rem;border-bottom:1px solid rgba(212,175,55,0.25);padding-bottom:8px;text-align:center;">📊 실전 투자 신탁</h3>
+
+                ${yahooHTML}
+                ${narrativeHTML}
+                ${riskHTML}
+                ${scenarioHTML}
+                ${roadmapHTML}
+
+                <div style="padding:12px;background:rgba(0,0,0,0.3);border-radius:8px;font-size:0.88rem;color:#eee;line-height:1.9;margin-bottom:12px;">
+                    ${investData.finalOracle}
                 </div>
-                <div style="line-height: 1.8; color: rgba(255,255,255,0.95); font-size: 0.96rem; margin-bottom: 20px;">${formatChunk(oracleContent)}</div>
-                ${investData ? (() => {
-                    const ac = investData.action.includes("매수") ? "#2ecc71" : (investData.action.includes("회피") ? "#e74c3c" : "#f1c40f");
-                    return `<div class="final-oracle" style="padding: 18px; background: rgba(212,175,55,0.1); border: 1px solid var(--gold); border-radius: 12px;">
-                        <h3 style="color: var(--gold); margin: 0 0 10px 0; font-size: 1.1rem; border-bottom: 1px solid rgba(212,175,55,0.2); padding-bottom: 8px;">📊 실전 투자 신탁</h3>
-                        <p style="line-height: 1.6; color: #fff; white-space: pre-line; font-size: 0.94rem; margin-bottom: 15px;">${investData.finalOracle}</p>
-                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; font-size: 0.88rem; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 12px;">
-                            <div>📈 추세: <strong style="color: var(--gold);">${investData.trend}</strong></div>
-                            <div>🧭 행동: <strong style="color: ${ac};">${investData.action}</strong></div>
-                            <div>⚡ 타이밍: <strong style="color: var(--gold);">${investData.timing}</strong></div>
-                            <div>🛡️ 리스크: <strong style="color: var(--gold);">${investData.risk}</strong></div>
-                        </div>
-                    </div>`;
-                })() : ''}
+
+                <div style="display:flex;flex-direction:column;gap:8px;font-size:0.9rem;margin-bottom:12px;">
+                    <div style="color:var(--gold);">${investData.trend}</div>
+                    <div style="color:${ac};font-weight:bold;">${investData.action}</div>
+                    <div style="font-weight:bold;">${investData.risk}</div>
+                </div>
+
+                <div style="margin-top:10px;padding:8px 12px;border-top:1px solid rgba(212,175,55,0.2);font-size:0.72rem;color:rgba(255,255,255,0.4);text-align:center;line-height:1.5;">
+                    ※ 본 신탁은 타로 에너지 해석 기반 참고 정보이며, 실제 투자 판단의 근거로 사용할 수 없습니다.
+                </div>
             </div>`;
+        })() : '';
+
+        const oracleHTML = `
+    <div class="final-reading" style="margin-top: 24px;">
+        <div class="zenith-title-block" style="margin-bottom: 12px; border-bottom: 2px solid rgba(39,174,96,0.5); padding-bottom: 6px;">
+            ${!isFinanceQuery ? `
+            <span class="zenith-title-main" style="color: #2ecc71; font-size: 1.2rem; font-weight: 900; display: block;">제우스의 최종 운세 신탁</span>
+            <div class="zenith-title-sub" style="color: rgba(46,204,113,0.85); font-size: 0.85rem; font-weight: 800; letter-spacing: 0.2em;">ZEUS FORTUNE ORACLE</div>
+            ` : `
+            <span class="zenith-title-main" style="color: #2ecc71; font-size: 1.2rem; font-weight: 900; display: block;">제우스의 최종 투자 신탁</span>
+            <div class="zenith-title-sub" style="color: rgba(46,204,113,0.85); font-size: 0.85rem; font-weight: 800; letter-spacing: 0.2em;">ZEUS INVESTMENT ORACLE</div>
+            `}
+        </div>
+        <div style="line-height: 1.8; color: rgba(255,255,255,0.95); font-size: 0.96rem; margin-bottom: 20px;">${formatChunk(oracleContent)}</div>
+        ${!isFinanceQuery ? (() => {
+            const qRaw2 = (document.getElementById('seed-input')?.value || '').toLowerCase();
+            const lucky = getLuckyTiming(cards, qRaw2);
+            const fi = buildFortuneIndicators(cards, qRaw2);
+            return `
+                <div style="margin-top:14px; padding:14px 16px; background:rgba(212,175,55,0.07); border-left:3px solid var(--gold); border-radius:0 8px 8px 0; font-size:0.9rem; line-height:1.8; color:rgba(255,255,255,0.9); margin-bottom:14px;">${lucky}</div>
+                <div style="padding:14px 16px; background:rgba(46,204,113,0.05); border:1px solid rgba(46,204,113,0.2); border-radius:8px; font-size:0.88rem; line-height:1.9;">
+                    <div style="color:#2ecc71; font-size:0.78rem; font-weight:900; letter-spacing:0.1em; margin-bottom:10px;">✦ 운세 에너지 지표</div>
+                    <div style="margin-bottom:4px;">📈 흐름: <span style="color:rgba(255,255,255,0.9);">${fi.trend}</span></div>
+                    <div style="margin-bottom:4px;">🧭 행동: <span style="color:rgba(255,255,255,0.9);">${fi.action}</span></div>
+                    <div style="margin-bottom:4px;">⚡ 타이밍: <span style="color:rgba(255,255,255,0.9);">${fi.timing}</span></div>
+                    <div>🛡️ 주의: <span style="color:rgba(255,255,255,0.9);">${fi.risk}</span></div>
+                </div>`;
+        })() : ''}
+        ${investBlock}
+    </div>`;
 
         return publicSections + futureCardHTML + oracleHTML;
     } else {
+        // 🔥 [V6.3] 떨림 방지 및 즉시 안착 로직 적용
         return publicSections + `
-            <div class="lock-section" style="padding: 35px 20px; text-align: center; background: rgba(0,0,0,0.5); border: 1px dashed var(--gold); border-radius: 15px; margin: 20px 0;">
-                <div style="font-size: 2.5rem; margin-bottom: 15px;">🔓</div>
-                <h3 style="color: var(--gold); margin: 0 0 10px 0;">미래 신탁 전체 보기</h3>
-                <p style="font-size: 0.9rem; color: #bbb; margin-bottom: 20px;">과거/현재를 넘어 당신의 미래를 확인하세요</p>
-                <button onclick="showPayModal()" style="background: var(--gold); color: #000; border: none; padding: 12px 30px; border-radius: 6px; font-weight: bold; cursor: pointer;">지금 확인하기</button>
+            <div class="lock-section" style="
+                padding: 40px 20px; 
+                text-align: center; 
+                background: rgba(0,0,0,0.4); 
+                border: 2px solid var(--gold); 
+                border-radius: 18px; 
+                margin: 25px 0; 
+                min-height: 320px; /* 👈 높이를 미리 확보하여 덜덜거림 방지 */
+                display: flex; 
+                flex-direction: column; 
+                justify-content: center;
+                box-sizing: border-box;
+                backface-visibility: hidden; /* 👈 떨림 방지용 하드웨어 가속 */
+            ">
+                
+                <div style="margin-bottom: 20px;">
+                    <div style="width: 60px; height: 60px; margin: 0 auto; border-radius: 50%; background: radial-gradient(circle, var(--gold) 0%, transparent 70%); animation: zeus-pulse 2s infinite ease-in-out;"></div>
+                    <div style="margin-top: -40px; font-size: 1.5rem; color: var(--gold); animation: lightning-flicker 0.6s infinite alternate;">⚡</div>
+                </div>
+
+                <h3 style="color: var(--gold); margin: 0 0 10px 0; font-weight: 900; font-size: 1.1rem; line-height: 1.4;">
+                    제우스의 시선이<br>유저님의 운명을 향하고 있습니다
+                </h3>
+                
+                <p style="font-size: 0.9rem; color: rgba(255,255,255,0.7); margin-bottom: 20px; line-height: 1.6;">
+                    미래의 신탁 데이터와 교신 중입니다.<br>잠시만 기다리시면 당신의 운명이 열립니다.
+                </p>
+
+                <button onclick="showPayModal()" style="background: linear-gradient(135deg, #d4af37, #f1c40f); color: #000; border: none; padding: 12px 35px; border-radius: 30px; font-weight: 900; cursor: pointer; box-shadow: 0 4px 15px rgba(212,175,55,0.4);">
+                    🔓 미래 신탁 잠금 해제
+                </button>
+
+                <div style="margin-top: 20px; color: #50C878; font-size: 0.85rem; font-weight: bold; animation: emerald-glow 2s infinite alternate;">
+                    신탁의 실타래가 유저님의 운명과 엮이는 중...
+                </div>
             </div>`;
     }
 }
@@ -1556,19 +2291,23 @@ function expandCard(img) {
     overlay.onclick = () => overlay.remove();
     document.body.appendChild(overlay);
 }
-// 데모 결제 실행 함수
-function demoPayment() {
-    isPaidUser = true;
-    const contentEl = document.getElementById('oracle-content');
-    if (contentEl) contentEl.innerHTML = '';
-    const question = document.getElementById('seed-input') ? document.getElementById('seed-input').value : '';
-    const streamPromise = startStreamFetch(question || '재조회', selectedCards);
-    renderStream(streamPromise, selectedCards);
-}
+// ════════════════════════════════════
+// 결제 모달 & 유료 전환
+// ════════════════════════════════════
 // ════════════════════════════════════
 // 결제 모달 & 유료 전환
 // ════════════════════════════════════
 function showPayModal() {
+    const cfg = PAYMENT_CONFIG;
+    const amountFmt = cfg.amount.toLocaleString('ko-KR');
+
+    // 토스 딥링크: tossId가 설정된 경우에만 버튼 표시
+    const tossBtn = cfg.tossId ? `
+        <a href="supertoss://send?amount=${cfg.amount}&bank=${encodeURIComponent(cfg.bank)}&accountNo=${cfg.account.replace(/-/g,'')}&origin=qr"
+           style="display:block;margin-bottom:10px;padding:13px 0;background:#0064ff;color:#fff;border-radius:50px;font-weight:900;font-size:1rem;text-align:center;text-decoration:none;letter-spacing:0.03em;">
+            💙 토스로 바로 송금하기
+        </a>` : '';
+
     const overlay = document.createElement('div');
     overlay.className = 'pay-modal-overlay';
     overlay.id = 'payModalOverlay';
@@ -1576,15 +2315,19 @@ function showPayModal() {
         <div class="pay-modal">
             <h3>✦ 프리미엄 신탁 ✦</h3>
             <p>미래 카드 해석과 제우스의 신탁 전체를<br>확인하실 수 있습니다.</p>
+
             <div class="pay-account">
-                <div><strong>입금 금액</strong>: ₩2,900</div>
-                <div><strong>입금 은행</strong>: [은행명]</div>
-                <div><strong>계좌번호</strong>: [계좌번호]</div>
-                <div><strong>예금주</strong>: [예금주명]</div>
+                <div><strong>입금 금액</strong>: ₩${amountFmt}</div>
+                <div><strong>입금 은행</strong>: ${cfg.bank}</div>
+                <div><strong>계좌번호</strong>: ${cfg.account}</div>
+                <div><strong>예금주</strong>: ${cfg.holder}</div>
+                <div style="margin-top:6px;font-size:0.78rem;color:rgba(212,175,55,0.5);">송금 메모: ${cfg.productName}</div>
             </div>
+
+            ${tossBtn}
+
             <p style="font-size:0.78rem;color:rgba(212,175,55,0.6);margin-bottom:16px;">
-                입금 확인 후 아래 버튼을 눌러주세요.<br>
-                (테스트 모드: 바로 확인 가능)
+                입금 확인 후 아래 버튼을 눌러주세요.
             </p>
             <button class="pay-confirm-btn" onclick="confirmPayment()">
                 ✅ 입금 완료 — 전체 보기
@@ -1609,37 +2352,37 @@ async function confirmPayment() {
         btn.innerHTML = "🔓 봉인 해제 중..."; 
     }
 
-    // 1. 유료 유저 상태로 즉시 전환
     isPaidUser = true; 
-    localStorage.setItem('oracleSessionToken', 'PAID_TOKEN_DEMO');
+    localStorage.setItem('oracleSessionToken', 'PAID_' + Date.now());
 
-    // 2. UX 연출: 모달에 'lock-open' 클래스 추가하여 애니메이션 가동
     if (modal) {
         modal.classList.add('lock-open');
         const title = modal.querySelector('h3');
         if (title) title.innerText = "🔓 봉인 해제 완료";
-        
-        const desc = modal.querySelector('p');
-        if (desc) desc.innerText = "✧ 제우스의 신탁이 승인되었습니다. 운명의 문이 열립니다.";
     }
 
-    // 3. 1.2초의 '운명적 지연' 후 화면 갱신
     setTimeout(() => {
         closePayModal();
         const contentEl = document.getElementById('oracle-content');
         
         if (contentEl && cachedFullText) {
-            // 1. [핵심] 투자 질문 여부를 다시 한번 체크하여 데이터를 생성합니다.
-            const isFinance = window._isFinanceQuery || /코인|주식|투자|매수|매도|부동산/.test(cachedFullText);
+            // CURRENT_MODE가 단일 진실 소스 — 결제 후 재렌더링도 동일 모드 유지
+            const isFinance = (CURRENT_MODE !== 'life');
+            const queryType = CURRENT_MODE;
+
+            // 투자 데이터 생성 (투자 질문일 때만)
+            const investData = isFinance ? generateInvestmentData(selectedCards, cachedFullText, queryType) : null;
             
-            // 2. [핵심] 투자 데이터 엔진을 가동하여 결과값을 만듭니다.
-            const investData = isFinance ? generateInvestmentData(selectedCards, cachedFullText) : null;
+            // 유료 모드로 전체 화면 재렌더링
+            contentEl.innerHTML = renderText(cachedFullText, selectedCards, investData, true, isFinance);
+
+            // 4. 🔥 [통합 제어] 대기 문구 삭제 및 황금 버튼 노출
+            const holdingMsg = document.getElementById('holding-message');
+            const finalBtn = document.getElementById('final-reset-btn');
+            if (holdingMsg) holdingMsg.style.display = 'none';
+            if (finalBtn) finalBtn.style.display = 'inline-block';
             
-            // 3. 생성된 investData를 포함하여 전체 화면을 다시 그립니다.
-            contentEl.innerHTML = renderText(cachedFullText, selectedCards, investData, true);
-            
-            // 4. 결과창으로 부드럽게 이동
-            contentEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            contentEl.scrollIntoView({ behavior: 'smooth', block: 'end' });
         }
     }, 1200);
 }

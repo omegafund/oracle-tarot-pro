@@ -14,8 +14,28 @@ export default {
 
     const url = new URL(request.url);
 
+// ══════════════════════════════════════════
+// 🚀 엔드포인트 4: /yahoo (실시간 시장 데이터)
+// ══════════════════════════════════════════
+if (url.pathname === "/yahoo" && request.method === "GET") {
+  const symbol = url.searchParams.get("symbol") || "005930.KS"; // 기본 삼성전자
+  try {
+    // Yahoo Finance API 직접 호출 (CORS 우회)
+    const yResponse = await fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?interval=1d&range=5d`);
+    const yData = await yResponse.json();
+    
+    return new Response(JSON.stringify(yData), {
+      headers: { 
+        "Content-Type": "application/json", 
+        "Access-Control-Allow-Origin": "*" 
+      }
+    });
+  } catch (e) {
+    return new Response(JSON.stringify({ error: e.message }), { status: 500 });
+  }
+}
     // ══════════════════════════════════════════
-    // 🔐 엔드포인트 1: /verify-payment
+    // 🔐 엔드포인트 3: /verify-payment
     // ══════════════════════════════════════════
     if (url.pathname === "/verify-payment" && request.method === "POST") {
       try {
@@ -412,4 +432,28 @@ async function verifyToken(rawToken, secret) {
   } catch(_) {
     return false;
   }
+}
+// ══════════════════════════════════════════
+// 🔍 자동 티커 변환 엔진 (Yahoo 심볼 매핑)
+// ══════════════════════════════════════════
+function extractTicker(prompt) {
+  const p = (prompt || "").toLowerCase();
+  
+  // 1. 한국 주요 종목 매핑
+  if (p.includes("삼성전자")) return "005930.KS";
+  if (p.includes("티엘비")) return "317690.KS";
+  if (p.includes("하이닉스")) return "000660.KS";
+  if (p.includes("우리로")) return "046970.KQ";
+  if (p.includes("현대차")) return "005380.KS";
+  
+  // 2. 가상화폐 매핑
+  if (p.includes("비트코인") || p.includes("btc")) return "BTC-USD";
+  if (p.includes("이더리움") || p.includes("eth")) return "ETH-USD";
+  if (p.includes("리플") || p.includes("xrp")) return "XRP-USD";
+  
+  // 3. 미국 시장 및 일반 티커 추출 (영문 2~5자)
+  const tickerMatch = prompt.match(/[A-Z]{2,5}/);
+  if (tickerMatch) return tickerMatch[0];
+
+  return null; // 매칭 실패 시
 }
