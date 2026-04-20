@@ -767,7 +767,7 @@ function parseQuestion(q) {
     const lowerQ = (q || "").toLowerCase();
     const tickerMatch = q.match(/[A-Z]{2,5}/); 
     return {
-        ticker: tickerMatch ? tickerMatch[0] : (q.includes("우리로") ? "우리로" : (q.includes("이브이") ? "EV첨단" : null)),
+        ticker: tickerMatch ? tickerMatch[0] : (q.includes("crdc") ? "crdc" : (q.includes("이브이") ? "EV첨단" : null)),
         intent: lowerQ.includes("매도") ? "sell" : lowerQ.includes("매수") ? "buy" : "hold",
         timeframe: lowerQ.includes("단타") || lowerQ.includes("단기") ? "short" : lowerQ.includes("장기") ? "long" : "mid"
     };
@@ -1860,7 +1860,7 @@ function generateInvestmentData(cards, text, queryType = 'stock', marketInterpre
     const qRaw      = (document.getElementById('seed-input')?.value || "").toLowerCase();
     const ctx       = parseQuestion(qRaw);
     const sentiment = analyzeAISentiment(text);
-    const isLeverage = /레버리지|3x|2x|etf|crdc|우리로|이브이/.test(qRaw);
+    const isLeverage = /레버리지|3x|2x|etf|crdc|이브이/.test(qRaw);
 
     // ── 카드 데이터 파싱
     const cardData = cards.map(c => {
