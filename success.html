@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>✦ 결제 확인 중 — 제우스 오라클</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Noto Serif KR', serif;
+    background: radial-gradient(ellipse at top, #1a0f0a 0%, #000 70%);
+    color: #D4AF37;
+    min-height: 100vh;
+    display: flex; align-items: center; justify-content: center;
+    padding: 20px;
+  }
+  .card {
+    max-width: 420px; width: 100%;
+    background: rgba(0,0,0,0.6);
+    border: 1px solid rgba(212,175,55,0.35);
+    border-radius: 16px;
+    padding: 36px 28px;
+    text-align: center;
+    box-shadow: 0 8px 40px rgba(212,175,55,0.15);
+  }
+  h1 {
+    font-size: 1.2rem; margin-bottom: 14px;
+    letter-spacing: 0.08em; color: #D4AF37;
+  }
+  .subtitle {
+    font-size: 0.8rem; color: rgba(212,175,55,0.55);
+    letter-spacing: 0.2em; margin-bottom: 28px;
+  }
+  .status-box {
+    padding: 24px 16px;
+    background: rgba(212,175,55,0.05);
+    border: 1px solid rgba(212,175,55,0.2);
+    border-radius: 12px;
+    min-height: 140px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .spinner {
+    width: 42px; height: 42px;
+    border: 3px solid rgba(212,175,55,0.2);
+    border-top-color: #D4AF37;
+    border-radius: 50%;
+    animation: spin 0.9s linear infinite;
+    margin: 0 auto 16px;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .status-msg {
+    font-size: 0.95rem; color: rgba(255,255,255,0.88);
+    line-height: 1.6;
+  }
+  .btn-primary {
+    display: inline-block;
+    margin-top: 20px;
+    padding: 14px 36px;
+    background: linear-gradient(135deg, #D4AF37, #F1C40F);
+    color: #000;
+    border: none; border-radius: 30px;
+    font-weight: 900; font-size: 1rem;
+    cursor: pointer;
+    box-shadow: 0 4px 15px rgba(212,175,55,0.4);
+    letter-spacing: 0.05em;
+    text-decoration: none;
+  }
+  .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 6px 20px rgba(212,175,55,0.55); }
+  .small-note {
+    margin-top: 14px;
+    font-size: 0.72rem; color: rgba(212,175,55,0.5);
+  }
+  .success-icon { font-size: 3rem; margin-bottom: 10px; }
+  .error-icon   { font-size: 3rem; margin-bottom: 10px; color: #ff6b6b; }
+</style>
+</head>
+<body>
+  <div class="card">
+    <h1>✦ 제우스 오라클 ✦</h1>
+    <div class="subtitle">PAYMENT CONFIRMATION</div>
+    <div id="status-container" class="status-box">
+      <div id="loading-state">
+        <div class="spinner"></div>
+        <div class="status-msg">결제를 확인하고 있습니다...</div>
+      </div>
+    </div>
+  </div>
+
+<script>
+(async () => {
+  const WORKER_URL = 'https://tarot-api.omegafund01.workers.dev';
+  const params = new URLSearchParams(window.location.search);
+  const paymentKey = params.get('paymentKey');
+  const orderId    = params.get('orderId');
+  const amount     = params.get('amount');
+
+  const statusContainer = document.getElementById('status-container');
+
+  // 홈 경로 계산 (GitHub Pages 하위 경로 대응)
+  const homePath = window.location.pathname.replace(/\/success\.html$/, '') + '/';
+  const homeUrl  = window.location.origin + homePath + '?paid=ok';
+
+  // 파라미터 검증
+  if (!paymentKey || !orderId || !amount) {
+    statusContainer.innerHTML = `
+      <div>
+        <div class="error-icon">⚠️</div>
+        <div class="status-msg">결제 정보가 올바르지 않습니다.</div>
+        <a href="${window.location.origin + homePath}" class="btn-primary" style="margin-top:20px;">처음으로</a>
+      </div>`;
+    return;
+  }
+
+  // Worker 검증 요청
+  try {
+    const res = await fetch(WORKER_URL + '/verify-toss', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ paymentKey, orderId, amount })
+    });
+    const data = await res.json();
+
+    if (data && data.success && data.token) {
+      // ✅ 검증 성공 — 토큰 저장 + 홈으로 자동 복귀
+      localStorage.setItem('oracleSessionToken', data.token);
+
+      const planLabel = data.plan === 'month' ? '무제한 이용권 (30일)' : '1일 이용권 (24시간)';
+      statusContainer.innerHTML = `
+        <div>
+          <div class="success-icon">✅</div>
+          <div class="status-msg">
+            <strong>결제가 완료되었습니다</strong><br>
+            <span style="font-size:0.85rem; color:rgba(212,175,55,0.85);">${planLabel}</span>
+          </div>
+          <div class="small-note">잠시 후 점사 결과로 자동 이동합니다...</div>
+        </div>`;
+
+      // 2초 후 홈으로 복귀 (pendingOracle 복원은 index에서 자동 수행)
+      setTimeout(() => {
+        window.location.href = homeUrl;
+      }, 2000);
+    } else {
+      // ❌ 검증 실패
+      statusContainer.innerHTML = `
+        <div>
+          <div class="error-icon">❌</div>
+          <div class="status-msg">
+            <strong>결제 검증에 실패했습니다</strong><br>
+            <span style="font-size:0.78rem; color:rgba(255,255,255,0.6);">
+              ${data?.error || '알 수 없는 오류'}
+            </span>
+          </div>
+          <a href="${window.location.origin + homePath}" class="btn-primary" style="margin-top:20px;">처음으로</a>
+          <div class="small-note">결제되었으나 검증 실패 시 고객센터로 문의해주세요.</div>
+        </div>`;
+    }
+  } catch(e) {
+    statusContainer.innerHTML = `
+      <div>
+        <div class="error-icon">⚠️</div>
+        <div class="status-msg">
+          <strong>네트워크 오류</strong><br>
+          <span style="font-size:0.78rem; color:rgba(255,255,255,0.6);">${e.message}</span>
+        </div>
+        <a href="${window.location.origin + homePath}" class="btn-primary" style="margin-top:20px;">처음으로</a>
+      </div>`;
+  }
+})();
+</script>
+</body>
+</html>

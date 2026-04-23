@@ -268,6 +268,96 @@
             border-top: 1px solid rgba(212,175,55,0.15);
             padding-top: 12px;
         }
+
+        /* ── 상황 선택 UI */
+        .situation-bar {
+            width: 100%;
+            margin: 14px 0 8px;
+        }
+        .situation-label {
+            font-size: 0.72rem;
+            color: rgba(212,175,55,0.6);
+            letter-spacing: 0.15em;
+            text-align: center;
+            margin-bottom: 8px;
+            display: block;
+        }
+        .situation-tabs {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 7px;
+            justify-content: center;
+        }
+        .sit-btn {
+            background: rgba(212,175,55,0.08);
+            border: 1px solid rgba(212,175,55,0.3);
+            color: rgba(212,175,55,0.75);
+            border-radius: 20px;
+            padding: 5px 14px;
+            font-size: 0.78rem;
+            font-family: var(--font);
+            cursor: pointer;
+            transition: all 0.2s;
+            white-space: nowrap;
+        }
+        .sit-btn:active { transform: scale(0.96); }
+        .sit-btn.active {
+            background: rgba(212,175,55,0.25);
+            border-color: var(--gold);
+            color: var(--gold);
+            font-weight: bold;
+            box-shadow: 0 0 8px rgba(212,175,55,0.3);
+        }
+        /* [V19.2] 궁합 버튼 강조 스타일 — 핑크빛 그라디언트 + 은은한 펄스 */
+        .sit-btn-featured {
+            background: linear-gradient(135deg, rgba(255,105,180,0.22), rgba(212,175,55,0.15));
+            border: 1px solid rgba(255,105,180,0.55);
+            color: #ffb6d9;
+            font-weight: 700;
+            box-shadow: 0 0 6px rgba(255,105,180,0.25);
+            animation: featuredPulse 2.4s ease-in-out infinite;
+        }
+        .sit-btn-featured:hover {
+            background: linear-gradient(135deg, rgba(255,105,180,0.32), rgba(212,175,55,0.20));
+            border-color: #ff69b4;
+            color: #ffd1e8;
+        }
+        .sit-btn-featured.active {
+            background: linear-gradient(135deg, rgba(255,105,180,0.45), rgba(212,175,55,0.30));
+            border-color: #ff69b4;
+            color: #fff;
+            box-shadow: 0 0 12px rgba(255,105,180,0.55);
+        }
+        @keyframes featuredPulse {
+            0%,100% { box-shadow: 0 0 6px rgba(255,105,180,0.25); }
+            50%     { box-shadow: 0 0 14px rgba(255,105,180,0.55); }
+        }
+
+        /* ── 후킹 서사 배너 */
+        .hook-banner {
+            margin: 16px 0 0;
+            padding: 14px 16px;
+            background: linear-gradient(135deg, rgba(46,204,113,0.08), rgba(212,175,55,0.05));
+            border-left: 3px solid #2ecc71;
+            border-radius: 0 10px 10px 0;
+            font-size: 0.88rem;
+            line-height: 1.8;
+            color: rgba(255,255,255,0.92);
+            display: none;
+        }
+        .hook-banner .hook-lead {
+            color: #2ecc71;
+            font-weight: 900;
+            font-size: 0.92rem;
+            display: block;
+            margin-bottom: 4px;
+        }
+        .hook-banner .hook-reveal {
+            color: rgba(212,175,55,0.9);
+            font-size: 0.8rem;
+            margin-top: 6px;
+            display: block;
+        }
         #result-view {
             display: none;
             flex-direction: column;
@@ -629,7 +719,184 @@
             filter: drop-shadow(0 0 20px var(--gold));
         }
         .pay-confirm-btn:disabled { opacity: 0.8; cursor: wait; }
+
+        /* ════════════════════════════════════
+           ✦ [V18 Phase1] 78장 카드 뽑기 셔플 오버레이
+           - [V18.1] 카드 위치를 상단으로 이동, 힌트 에메랄드화
+        ════════════════════════════════════ */
+        .shuffle-overlay {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: radial-gradient(ellipse at center, #1a0f2e 0%, #000 85%);
+            z-index: 9000;
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-start;
+            padding: 24px 10px 16px 10px;
+            box-sizing: border-box;
+            overflow: hidden;
+        }
+        .shuffle-overlay.active { display: flex; }
+        .shuffle-title {
+            color: var(--gold);
+            font-size: 1.15rem;
+            font-weight: 900;
+            letter-spacing: 0.15em;
+            text-shadow: 0 0 12px rgba(212,175,55,0.5);
+            margin-bottom: 6px;
+            text-align: center;
+        }
+        /* [V18.1] 부제목 밝기 상향 — 금색 계열 대신 밝은 흰색 */
+        .shuffle-subtitle {
+            color: rgba(255,255,255,0.88);
+            font-size: 0.88rem;
+            font-weight: 500;
+            letter-spacing: 0.05em;
+            margin-bottom: 12px;
+            text-align: center;
+            text-shadow: 0 0 4px rgba(0,0,0,0.8);
+        }
+        /* [V18.1] 진행 도트 — 에메랄드 계열로 전환 */
+        .shuffle-progress {
+            color: #50C878;
+            font-size: 0.95rem;
+            font-weight: 700;
+            margin-bottom: 10px;
+            min-height: 1.3em;
+            text-align: center;
+            text-shadow: 0 0 8px rgba(80,200,120,0.45);
+        }
+        .shuffle-progress .dot-slot {
+            display: inline-block;
+            width: 16px; height: 16px;
+            margin: 0 5px;
+            border-radius: 50%;
+            border: 2px solid #50C878;
+            vertical-align: middle;
+            transition: all 0.3s;
+            box-shadow: 0 0 6px rgba(80,200,120,0.3);
+        }
+        .shuffle-progress .dot-slot.filled {
+            background: #2ecc71;
+            border-color: #FFFFFF;
+            box-shadow: 0 0 14px #2ecc71, 0 0 22px rgba(46,204,113,0.6);
+        }
+        /* [V18.1] 카드 덱 — 상단 배치로 변경 */
+        .deck-arch {
+            position: relative;
+            width: 100%;
+            max-width: 480px;
+            height: 56vh;
+            min-height: 360px;
+            margin: 0 auto 6px auto;
+            perspective: 1200px;
+        }
+        .deck-card {
+            position: absolute;
+            left: 50%;
+            /* [V18.1 핵심] bottom 고정 → top 고정으로 변경 
+               카드를 컨테이너 상단 쪽에 배치하여 중앙~상단이 꽉 차 보이게 함 */
+            top: 40px;
+            width: 46px;
+            height: 70px;
+            margin-left: -23px;
+            border-radius: 5px;
+            background-image: url('https://omegafund.github.io/oracle-tarot-pro/images/cards/back.jpg');
+            background-size: cover;
+            background-position: center;
+            border: 1px solid rgba(212,175,55,0.55);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.6), inset 0 0 4px rgba(212,175,55,0.25);
+            cursor: pointer;
+            /* [V18.1 핵심] transform-origin을 카드 아래쪽 260px 지점으로 설정
+               → 부채꼴 곡률이 완만해지면서 카드가 위로 올라가 중앙 공간을 채움 */
+            transform-origin: 50% 260px;
+            transition: transform 0.35s cubic-bezier(.2,.8,.4,1.4), box-shadow 0.25s, filter 0.25s;
+            will-change: transform;
+        }
+        .deck-card:hover, .deck-card:active {
+            filter: brightness(1.4) drop-shadow(0 0 10px #50C878);
+            z-index: 10;
+        }
+        .deck-card.picked {
+            pointer-events: none;
+            animation: cardFlyOut 0.7s forwards;
+            filter: brightness(1.6) drop-shadow(0 0 16px #2ecc71);
+            z-index: 100;
+        }
+        @keyframes cardFlyOut {
+            0%   { opacity: 1; }
+            60%  { opacity: 1; }
+            100% { transform: translate(0, -80vh) scale(0.6) rotate(0deg) !important; opacity: 0; }
+        }
+        /* 셔플 진입 애니메이션 — 카드 덱이 물결치며 펼쳐짐 */
+        .deck-card.shuffling {
+            animation: deckWave 2.2s ease-out forwards;
+        }
+        @keyframes deckWave {
+            0%   { transform: rotate(0deg) translate(0, 100px); opacity: 0; }
+            40%  { opacity: 0.9; }
+            100% { opacity: 1; } /* 최종 부채꼴 위치는 JS에서 inline style로 적용 */
+        }
+        .shuffle-actions {
+            margin-top: 10px;
+            display: flex;
+            gap: 14px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+        .shuffle-actions button {
+            padding: 10px 22px;
+            border-radius: 30px;
+            border: 1px solid rgba(212,175,55,0.5);
+            background: rgba(0,0,0,0.5);
+            color: var(--gold);
+            font-family: var(--font);
+            font-size: 0.88rem;
+            font-weight: 700;
+            letter-spacing: 0.05em;
+            cursor: pointer;
+            transition: all 0.25s;
+        }
+        .shuffle-actions button:hover {
+            background: rgba(212,175,55,0.15);
+            box-shadow: 0 0 10px rgba(212,175,55,0.4);
+        }
+        .shuffle-actions button.primary {
+            background: linear-gradient(135deg, #d4af37, #f1c40f);
+            color: #000;
+            border: none;
+            font-weight: 900;
+        }
+        /* [V18.1 핵심] 힌트 문장 — 에메랄드 그린으로 시인성 극대화 */
+        .shuffle-hint {
+            color: #50C878;
+            font-size: 1rem;
+            font-weight: 700;
+            font-style: normal;
+            margin-top: 6px;
+            margin-bottom: 2px;
+            text-align: center;
+            letter-spacing: 0.04em;
+            text-shadow: 0 0 10px rgba(80,200,120,0.55), 0 0 20px rgba(46,204,113,0.3);
+            animation: emeraldHintPulse 2.2s infinite ease-in-out;
+        }
+        .shuffle-hint .hl {
+            color: #FFFFFF;
+            font-weight: 900;
+            text-shadow: 0 0 8px #2ecc71, 0 0 14px rgba(46,204,113,0.7);
+            padding: 0 2px;
+        }
+        @keyframes emeraldHintPulse {
+            0%,100% { text-shadow: 0 0 10px rgba(80,200,120,0.55), 0 0 20px rgba(46,204,113,0.3); }
+            50%     { text-shadow: 0 0 16px rgba(80,200,120,0.85), 0 0 28px rgba(46,204,113,0.55); }
+        }
 </style>
+    <!-- [V19 Phase3] 결과창 이미지 캡처용 -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <!-- [V19 Phase6] Toss Payments SDK -->
+    <script src="https://js.tosspayments.com/v1"></script>
 </head>
 <body>
 <div id="app-container">
@@ -673,11 +940,77 @@
             <span class="sub-title">PRO · MASTERPIECE</span>
         </div>
 
+        <!-- [V19 Phase4] 오늘의 카드 + 최근 신탁 이력 -->
+        <div id="daily-history-bar" style="display:none; max-width:480px; margin:10px auto 18px; padding:0 14px;">
+            <!-- 오늘의 카드 -->
+            <div id="daily-card-wrap" style="
+                display:flex; align-items:center; gap:12px;
+                background:linear-gradient(135deg, rgba(212,175,55,0.08), rgba(80,200,120,0.04));
+                border:1px solid rgba(212,175,55,0.25);
+                border-radius:12px; padding:10px 12px; margin-bottom:10px;">
+                <img id="daily-card-img" src="" alt="오늘의 카드"
+                     style="width:48px; height:70px; object-fit:cover; border-radius:5px; border:1px solid var(--gold);"
+                     onerror="this.style.visibility='hidden'">
+                <div style="flex:1; min-width:0;">
+                    <div style="font-size:0.68rem; letter-spacing:0.1em; color:var(--gold); font-weight:900;">✦ 오늘의 카드</div>
+                    <div id="daily-card-name" style="font-size:0.92rem; color:#fff; font-weight:700; margin:2px 0;">-</div>
+                    <div id="daily-card-message" style="font-size:0.72rem; color:rgba(255,255,255,0.65); line-height:1.5;">-</div>
+                </div>
+            </div>
+            <!-- 최근 신탁 -->
+            <div id="history-list-wrap" style="display:none;">
+                <div style="font-size:0.68rem; letter-spacing:0.1em; color:rgba(212,175,55,0.75); font-weight:700; margin-bottom:6px;">
+                    📜 최근 신탁
+                </div>
+                <div id="history-list" style="display:flex; flex-direction:column; gap:6px;"></div>
+            </div>
+        </div>
+
         <div class="input-system-wrapper">
             <div class="beveled-border"></div>
             <div class="beveled-inner"></div>
             <textarea id="seed-input" class="gold-input" placeholder="마음의 질문을 깊게 새기소서
-(입력후 아래 신탁확인창을 누르세요)"></textarea>
+(입력후 아래 신탁확인창을 누르세요)" oninput="onQuestionInput(this.value)"></textarea>
+        </div>
+
+        <!-- [V18.2] 상황 선택 UI — 연애/주식/부동산 3도메인 자동 노출 -->
+        <div class="situation-bar" id="situation-bar" style="display:none;">
+            <span class="situation-label" id="situation-label">✦ 상황을 선택하면 더 정확한 신탁을 받을 수 있습니다 ✦</span>
+            <!-- 연애 세부 상황 (기존) — [V19.2] 맨 앞에 궁합 추가 -->
+            <div class="situation-tabs" id="situation-tabs-love" style="display:none;">
+                <button class="sit-btn sit-btn-featured" data-type="compatibility" onclick="setSituation(this,'compatibility','love')">💞 궁합</button>
+                <button class="sit-btn" data-type="thumb"    onclick="setSituation(this,'thumb','love')">💫 썸</button>
+                <button class="sit-btn" data-type="reunion"  onclick="setSituation(this,'reunion','love')">🔁 재회</button>
+                <button class="sit-btn" data-type="contact"  onclick="setSituation(this,'contact','love')">📱 연락</button>
+                <button class="sit-btn" data-type="mindread" onclick="setSituation(this,'mindread','love')">💭 속마음</button>
+                <button class="sit-btn" data-type="marriage" onclick="setSituation(this,'marriage','love')">💍 결혼</button>
+                <button class="sit-btn" data-type="breakup"  onclick="setSituation(this,'breakup','love')">💔 이별</button>
+                <button class="sit-btn" data-type="crush"    onclick="setSituation(this,'crush','love')">🌹 짝사랑</button>
+                <button class="sit-btn" data-type="general"  onclick="setSituation(this,'general','love')">✨ 일반 운세</button>
+            </div>
+            <!-- 주식/코인 세부 전략 -->
+            <div class="situation-tabs" id="situation-tabs-stock" style="display:none;">
+                <button class="sit-btn" data-type="short" onclick="setSituation(this,'short','stock')">📈 단타 분석</button>
+                <button class="sit-btn" data-type="swing" onclick="setSituation(this,'swing','stock')">📊 스윙 분석</button>
+                <button class="sit-btn" data-type="long"  onclick="setSituation(this,'long','stock')">🏦 중장기 투자</button>
+                <button class="sit-btn" data-type="pump"  onclick="setSituation(this,'pump','stock')">⚡ 급등 포착</button>
+                <button class="sit-btn" data-type="risk"  onclick="setSituation(this,'risk','stock')">🛡️ 리스크 체크</button>
+            </div>
+            <!-- 부동산 세부 전략 -->
+            <div class="situation-tabs" id="situation-tabs-realestate" style="display:none;">
+                <button class="sit-btn" data-type="buy"     onclick="setSituation(this,'buy','realestate')">🏠 매수 분석</button>
+                <button class="sit-btn" data-type="sell"    onclick="setSituation(this,'sell','realestate')">🏠 매도 분석</button>
+                <button class="sit-btn" data-type="timing"  onclick="setSituation(this,'timing','realestate')">📅 타이밍 분석</button>
+                <button class="sit-btn" data-type="price"   onclick="setSituation(this,'price','realestate')">💰 가격 전략</button>
+                <button class="sit-btn" data-type="risk_re" onclick="setSituation(this,'risk_re','realestate')">🛡️ 리스크 체크</button>
+            </div>
+        </div>
+
+        <!-- 후킹 배너 — 상황 선택 후 노출 -->
+        <div class="hook-banner" id="hook-banner">
+            <span class="hook-lead" id="hook-lead"></span>
+            <span id="hook-body"></span>
+            <span class="hook-reveal" id="hook-reveal"></span>
         </div>
 
         <div class="cards-stage">
@@ -734,6 +1067,26 @@
                 </div>
             </div>
             
+            <!-- [V19 Phase3] 공유 & 이미지 저장 버튼 — 결제 완료 후 노출 -->
+            <div id="share-actions" style="display:none; margin:20px auto 10px; gap:10px; flex-direction:column; max-width:320px;">
+                <button id="btn-save-image" onclick="saveResultAsImage()" style="
+                    background: linear-gradient(135deg, #2ecc71, #27ae60);
+                    color:#fff; padding:14px 20px; border-radius:12px;
+                    font-weight:900; font-size:1rem; border:none; cursor:pointer;
+                    box-shadow: 0 4px 15px rgba(46,204,113,0.35);
+                    letter-spacing:0.05em;">
+                    📷 이미지 저장
+                </button>
+                <button id="btn-share-result" onclick="shareResult()" style="
+                    background: rgba(212,175,55,0.15);
+                    color: var(--gold);
+                    padding:12px 20px; border-radius:12px;
+                    font-weight:700; font-size:0.9rem; border:1px solid var(--gold); cursor:pointer;
+                    letter-spacing:0.05em;">
+                    🔗 공유하기
+                </button>
+            </div>
+
             <button id="final-reset-btn" class="reset-btn" onclick="location.reload()" style="display: none; background: var(--gold); color: #000; padding: 12px 35px; border-radius: 30px; font-weight: 900; border: none; cursor: pointer; box-shadow: 0 4px 15px rgba(212,175,55,0.3);">
                 ✦ 새로운 신탁 구하기 ✦
             </button>
@@ -752,7 +1105,7 @@
 //    토스뱅크 기반 계좌이체 + 토스 딥링크 지원
 // ════════════════════════════════════
 const PAYMENT_CONFIG = {
-    amount:      2900,               // 입금 금액 (숫자)
+    amount:      3900,               // 기본 입금 금액 (1일 이용권)
     bank:        '토스뱅크',          // 입금 은행명
     account:     '100-000-000000',   // ← 실제 계좌번호로 교체
     holder:      '예금주명',           // ← 실제 예금주명으로 교체
@@ -760,16 +1113,66 @@ const PAYMENT_CONFIG = {
     productName: '제우스 프리미엄 신탁'  // 토스 송금 메모에 표시
 };
 
+// ══════════════════════════════════════════════════════════════════
+// [V19 Phase6] Toss Payments 설정 + 결제 플랜
+// ══════════════════════════════════════════════════════════════════
+const TOSS_CLIENT_KEY = 'test_ck_D5bZzMqlcwBa294XzYj34mOEE693'; // ★ 테스트 키 (공개 가능)
+const WORKER_BASE_URL = 'https://tarot-api.omegafund01.workers.dev';
+
+const PAYMENT_PLANS = {
+    day: {
+        id:     'day',
+        amount: 3900,
+        label:  '1일 이용권',
+        emoji:  '🔥',
+        desc:   '24시간 무제한 점사',
+        days:   1
+    },
+    month: {
+        id:     'month',
+        amount: 9900,
+        label:  '무제한 이용권',
+        emoji:  '💎',
+        desc:   '30일 무제한 점사 + 모든 미래 해석',
+        days:   30
+    }
+};
+
+// Toss SDK 인스턴스 (DOM 로드 후 초기화)
+let _tossPayments = null;
+function _getTossSDK() {
+    if (_tossPayments) return _tossPayments;
+    if (typeof TossPayments === 'undefined') return null;
+    _tossPayments = TossPayments(TOSS_CLIENT_KEY);
+    return _tossPayments;
+}
+
 // [삽입 위치: <script> 태그 시작 직후]
 
 // 1. 퀀트 엔진: 질문에서 티커 및 투자 성향 추출
 function parseQuestion(q) {
     const lowerQ = (q || "").toLowerCase();
-    const tickerMatch = q.match(/[A-Z]{2,5}/); 
+    const words   = (q || "").split(/\s+/);
+    const ticker  = words.find(w => (typeof KNOWN_TICKERS !== 'undefined') && KNOWN_TICKERS.includes(w.toUpperCase()))
+        || (q.includes("우리로") ? "우리로" : (q.includes("이브이") ? "EV첨단" : null));
+
+    // 부동산 매도/타이밍 감지 강화
+    const isSellRE   = /팔릴|팔아|팔까|매각|처분|양도|내놓|매물|팔리/.test(lowerQ);
+    const isBuyRE    = /살까|취득|분양|청약|입주|살려|사고/.test(lowerQ);
+    const isTimingRE = /언제|시기|타이밍|적기|시점/.test(lowerQ);
+
+    let intent = 'hold';
+    if (lowerQ.includes("매도") || isSellRE) intent = 'sell';
+    else if (lowerQ.includes("매수") || isBuyRE) intent = 'buy';
+    if (isTimingRE && isSellRE) intent = 'sell'; // "언제 팔릴까" → sell
+    if (isTimingRE && isBuyRE)  intent = 'buy';
+
     return {
-        ticker: tickerMatch ? tickerMatch[0] : (q.includes("crdc") ? "crdc" : (q.includes("이브이") ? "EV첨단" : null)),
-        intent: lowerQ.includes("매도") ? "sell" : lowerQ.includes("매수") ? "buy" : "hold",
-        timeframe: lowerQ.includes("단타") || lowerQ.includes("단기") ? "short" : lowerQ.includes("장기") ? "long" : "mid"
+        ticker,
+        intent,
+        isTiming:  isTimingRE,
+        timeframe: lowerQ.includes("단타") || lowerQ.includes("단기") ? "short"
+                 : lowerQ.includes("장기") ? "long" : "mid"
     };
 }
 
@@ -824,8 +1227,294 @@ const CARDS = Array.from({length: 78}, (_, i) => ({
 
 const BASE_URL = 'https://omegafund.github.io/oracle-tarot-pro/images/cards/';
 let selectedCards = [];
-let isPaidUser = false; 
-let cachedFullText = ""; // 👈 [이 줄을 추가하세요] 수신된 데이터를 저장하는 창고입니다.
+let isPaidUser    = false;
+let cachedFullText = "";
+let CURRENT_MODE  = 'life';
+let LOVE_SUBTYPE  = ''; // 연애 세부 상황: thumb/reunion/contact/mindread/marriage/breakup/crush/general
+
+// ── 후킹 배너 텍스트 DB
+const HOOK_DB = {
+    compatibility: {
+        lead: "두 사람의 에너지가 닿는 각도 — 그것이 운명의 척도입니다.",
+        body: "성격·감정·끌림·갈등 포인트까지, 카드는 두 영혼의 진짜 궁합을 읽어냅니다.",
+        reveal: "\"이 사람과 나, 정말 맞을까\" — 신탁이 직접 답합니다"
+    },
+    thumb: {
+        lead: "지금 이 사람은 당신을…",
+        body: "완전히 정하지 못한 채 바라보고 있습니다. 카드는 그 이유를 알고 있습니다.",
+        reveal: "하지만 결정적인 이유가 있습니다 — 신탁을 확인하세요"
+    },
+    reunion: {
+        lead: "이 사람은 아직 당신을 놓지 못했습니다.",
+        body: "재회의 문이 열릴 수 있는 시기가 있습니다. 카드가 그 타이밍을 말해줍니다.",
+        reveal: "하지만 중요한 사실은… 당신이 먼저 알아야 합니다"
+    },
+    contact: {
+        lead: "연락이 오기를 기다리고 있다면…",
+        body: "지금 이 순간 상대방의 마음속에 당신이 있는지, 카드가 솔직하게 답합니다.",
+        reveal: "\"지금 연락해야 할까\" 그 답이 여기 있습니다"
+    },
+    mindread: {
+        lead: "이 사람의 진짜 속마음은 무엇일까요?",
+        body: "말하지 않은 것, 숨기고 있는 것 — 타로는 거짓말을 하지 않습니다.",
+        reveal: "하지만 결정적인 이유가 있습니다 — 지금 확인하세요"
+    },
+    marriage: {
+        lead: "이 관계, 결혼으로 이어질 수 있을까요?",
+        body: "카드는 두 사람의 에너지가 향하는 방향을 읽습니다. 운명인지 아닌지.",
+        reveal: "\"이 사람이 맞는 사람인가\" — 신탁이 답합니다"
+    },
+    breakup: {
+        lead: "이별 후에도 인연은 끊어지지 않을 수 있습니다.",
+        body: "지금 이 에너지가 재결합을 향하는지, 아니면 놓아야 할 때인지 카드가 말합니다.",
+        reveal: "하지만 중요한 사실은… 당신이 먼저 봐야 합니다"
+    },
+    crush: {
+        lead: "이 사람은 당신을 어떻게 보고 있을까요?",
+        body: "짝사랑은 혼자만의 감정이 아닐 수 있습니다. 카드가 상대의 에너지를 읽습니다.",
+        reveal: "\"내 마음을 알고 있을까\" — 지금 확인하세요"
+    },
+    general: {
+        lead: "지금 당신의 운명은 어디로 흐르고 있을까요?",
+        body: "카드는 과거의 흔적에서 미래의 방향을 읽어냅니다.",
+        reveal: "오늘의 에너지가 말하는 것 — 신탁을 확인하세요"
+    }
+};
+
+// ── 연애 관련 키워드 감지
+const LOVE_KEYWORDS = ['좋아','사랑','연애','남친','여친','남자','여자','오빠','언니',
+    '재회','썸','연락','속마음','결혼','이별','헤어','짝사랑','고백','밀당',
+    '카톡','문자','보고싶','그리워','만날','만나'];
+
+// [V18.2] 3도메인 키워드 감지
+const LOVE_KEYWORDS_V2 = ['연애','사랑','남친','여친','애인','남자친구','여자친구','좋아',
+    '재회','썸','연락','속마음','결혼','이별','헤어','짝사랑','고백','밀당',
+    '카톡','문자','보고싶','그리워','만날','만나',
+    '궁합','커플','관계','어울리','찰떡','천생연분','인연'];
+const STOCK_KEYWORDS_V2 = ['주식','코인','비트코인','이더리움','매수','매도','투자',
+    '종목','코스피','코스닥','나스닥','etf','레버리지','수익','손절','목표가','주가','선물','옵션'];
+const RE_KEYWORDS_V2 = ['부동산','아파트','빌라','주택','오피스텔','상가','매매','전세','월세','분양','청약','임대','재건축','재개발','집을','집값'];
+
+// 서브타입 전역 (기존 LOVE_SUBTYPE 유지하고 주식/부동산 추가)
+let STOCK_SUBTYPE = '';
+let RE_SUBTYPE    = '';
+// 현재 어느 도메인 바가 열려있는지 추적 (꼬임 방지용 가드)
+let ACTIVE_DOMAIN_BAR = ''; // '' | 'love' | 'stock' | 'realestate'
+
+function onQuestionInput(val) {
+    const lower  = val.toLowerCase();
+    const bar    = document.getElementById('situation-bar');
+    const banner = document.getElementById('hook-banner');
+    const labelEl = document.getElementById('situation-label');
+    const loveTabs  = document.getElementById('situation-tabs-love');
+    const stockTabs = document.getElementById('situation-tabs-stock');
+    const reTabs    = document.getElementById('situation-tabs-realestate');
+
+    const hasLove  = LOVE_KEYWORDS_V2.some(k => lower.includes(k));
+    const hasStock = STOCK_KEYWORDS_V2.some(k => lower.includes(k));
+    const hasRE    = RE_KEYWORDS_V2.some(k => lower.includes(k));
+
+    // 우선순위: 부동산 > 주식 > 연애 (분류 엔진 classifyQuery와 일치)
+    const domain = hasRE ? 'realestate' : hasStock ? 'stock' : hasLove ? 'love' : '';
+
+    // 모든 탭 그룹 숨기기
+    loveTabs.style.display  = 'none';
+    stockTabs.style.display = 'none';
+    reTabs.style.display    = 'none';
+
+    if (!domain) {
+        bar.style.display = 'none';
+        banner.style.display = 'none';
+        LOVE_SUBTYPE = ''; STOCK_SUBTYPE = ''; RE_SUBTYPE = '';
+        ACTIVE_DOMAIN_BAR = '';
+        document.querySelectorAll('.sit-btn').forEach(b => b.classList.remove('active'));
+        return;
+    }
+
+    // 도메인 바뀌면 이전 선택 리셋
+    if (ACTIVE_DOMAIN_BAR !== domain) {
+        LOVE_SUBTYPE = ''; STOCK_SUBTYPE = ''; RE_SUBTYPE = '';
+        banner.style.display = 'none';
+        document.querySelectorAll('.sit-btn').forEach(b => b.classList.remove('active'));
+    }
+    ACTIVE_DOMAIN_BAR = domain;
+
+    // 바 노출 + 해당 도메인 탭만 표시 + 라벨 문구 도메인화
+    bar.style.display = 'block';
+    if (domain === 'love') {
+        loveTabs.style.display = 'flex';
+        if (labelEl) labelEl.textContent = '✦ 연애 상황을 선택하면 더 정확한 신탁을 받을 수 있습니다 ✦';
+    } else if (domain === 'stock') {
+        stockTabs.style.display = 'flex';
+        if (labelEl) labelEl.textContent = '✦ 투자 전략을 선택하면 더 정밀한 신탁을 받을 수 있습니다 ✦';
+    } else if (domain === 'realestate') {
+        reTabs.style.display = 'flex';
+        if (labelEl) labelEl.textContent = '✦ 부동산 전략을 선택하면 더 정밀한 신탁을 받을 수 있습니다 ✦';
+    }
+}
+
+function setSituation(btn, type, domain) {
+    // 도메인별 서브타입 저장 — 방호벽: 연애 서브타입과 주식/부동산 서브타입을 분리 관리
+    if (domain === 'love') {
+        LOVE_SUBTYPE  = type;
+        STOCK_SUBTYPE = ''; RE_SUBTYPE = '';
+    } else if (domain === 'stock') {
+        STOCK_SUBTYPE = type;
+        LOVE_SUBTYPE = ''; RE_SUBTYPE = '';
+    } else if (domain === 'realestate') {
+        RE_SUBTYPE    = type;
+        LOVE_SUBTYPE = ''; STOCK_SUBTYPE = '';
+    }
+    // 활성 버튼 표시 (모든 탭에서)
+    document.querySelectorAll('.sit-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+
+    // 후킹 배너는 연애 도메인일 때만 (기존 HOOK_DB)
+    const banner = document.getElementById('hook-banner');
+    if (domain === 'love') {
+        const h = (typeof HOOK_DB !== 'undefined') ? HOOK_DB[type] : null;
+        if (h) {
+            document.getElementById('hook-lead').textContent   = h.lead;
+            document.getElementById('hook-body').textContent   = h.body;
+            document.getElementById('hook-reveal').textContent = h.reveal;
+            banner.style.display = 'block';
+        } else if (banner) {
+            banner.style.display = 'none';
+        }
+    } else {
+        // 주식/부동산은 후킹 배너 숨김 (방호벽)
+        if (banner) banner.style.display = 'none';
+    }
+}
+
+// ── 페이지 로드 시 결제 상태 복원
+// 토큰이 있으면 Worker에 검증 요청 → 유효 시 isPaidUser = true
+(async () => {
+    const token = localStorage.getItem('oracleSessionToken') || '';
+    if (!token) return;
+    try {
+        const res = await fetch('https://tarot-api.omegafund01.workers.dev/verify-payment', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ paymentKey: token })
+        });
+        const data = await res.json();
+        if (data?.ok) {
+            isPaidUser = true;
+            console.log('✅ 결제 상태 복원 완료');
+        } else {
+            // 만료된 토큰 제거
+            localStorage.removeItem('oracleSessionToken');
+        }
+    } catch(e) {
+        console.warn('결제 상태 복원 실패 (네트워크):', e.message);
+    }
+})();
+
+// ══════════════════════════════════════════════════════════════════
+// [V19 Phase6] 결제 완료 후 돌아왔을 때 pendingOracle 복원
+//   success.html → "?paid=ok" 파라미터로 홈으로 리다이렉트
+//   → localStorage.pendingOracle 읽어서 결과창 자동 재표시 (30분 이내)
+// ══════════════════════════════════════════════════════════════════
+(async () => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('paid') !== 'ok') return;
+
+    // URL에서 ?paid=ok 제거 (새로고침 시 중복 복원 방지)
+    history.replaceState({}, '', window.location.pathname);
+
+    try {
+        const raw = localStorage.getItem('pendingOracle');
+        if (!raw) return;
+        const pending = JSON.parse(raw);
+        if (!pending || !pending.savedAt) return;
+
+        // 30분 만료 체크
+        const ageMs = Date.now() - pending.savedAt;
+        if (ageMs > 30 * 60 * 1000) {
+            localStorage.removeItem('pendingOracle');
+            alert('결제 세션이 만료되었습니다. 다시 점사를 진행해주세요.');
+            return;
+        }
+
+        // 점사 상태 전역 변수 복원
+        if (pending.selectedCards && pending.selectedCards.length === 3) {
+            selectedCards = pending.selectedCards;
+        }
+        if (pending.cachedFullText) cachedFullText = pending.cachedFullText;
+        window._serverMetrics = pending.serverMetrics || null;
+        window._reversedFlags = pending.reversedFlags || [];
+        CURRENT_MODE  = pending.queryMode  || 'life';
+        LOVE_SUBTYPE  = pending.loveSubType  || '';
+        STOCK_SUBTYPE = pending.stockSubType || '';
+        RE_SUBTYPE    = pending.reSubType    || '';
+
+        // 질문 복원
+        const qInput = document.getElementById('seed-input');
+        if (qInput && pending.question) qInput.value = pending.question;
+
+        // 결제 완료 플래그 확정
+        isPaidUser = true;
+
+        // 결과창으로 즉시 전환 (홈뷰 숨기고 결과뷰 노출)
+        console.log('✅ 점사 상태 복원 중...');
+        setTimeout(() => {
+            try {
+                // 홈뷰 숨기고 result-view 노출
+                document.getElementById('home-view').style.display = 'none';
+                const positions = ['과 거','현 재','미 래'];
+                const revFlags = window._reversedFlags || [false,false,false];
+                const container = document.getElementById('result-cards-container');
+                if (container && selectedCards.length === 3) {
+                    container.innerHTML = selectedCards.map((card, i) => `
+                        <div style="flex:1;max-width:100px;display:flex;flex-direction:column;align-items:center;">
+                            <div class="result-card-item">
+                                <img src="${BASE_URL}${card.file}" alt="${card.name}"
+                                     style="${revFlags[i] ? 'transform: rotate(180deg);' : ''}"
+                                     onerror="this.onerror=null;this.src='${BASE_URL}back.jpg'">
+                                <div class="result-card-label">${card.name}${revFlags[i] ? ' ⟲' : ''}</div>
+                            </div>
+                            <div class="result-position-label">${positions[i]}</div>
+                        </div>`).join('');
+                }
+                const rv = document.getElementById('result-view');
+                if (rv) {
+                    rv.style.display = 'flex';
+                    rv.style.opacity = '1';
+                }
+
+                // 결과 텍스트 복원
+                const contentEl = document.getElementById('oracle-content');
+                if (contentEl && cachedFullText) {
+                    const isFinance = (CURRENT_MODE !== 'life');
+                    const seedInput = qInput?.value || '';
+                    const investData = isFinance ? buildInvestmentData(selectedCards, seedInput) : null;
+                    contentEl.innerHTML = renderText(cachedFullText, selectedCards, investData, true, isFinance);
+
+                    // 로딩/대기문구 숨김 + 공유/저장 + 새 신탁 버튼 노출
+                    const loadingEl   = document.getElementById('ai-loading-text');
+                    const progressWrap = document.getElementById('oracle-progress-wrap');
+                    const holdingMsg  = document.getElementById('holding-message');
+                    const finalBtn    = document.getElementById('final-reset-btn');
+                    const shareActions = document.getElementById('share-actions');
+                    if (loadingEl)   loadingEl.style.display   = 'none';
+                    if (progressWrap) progressWrap.style.display = 'none';
+                    if (holdingMsg)  holdingMsg.style.display  = 'none';
+                    if (finalBtn)   { finalBtn.style.display = 'inline-block'; finalBtn.style.marginTop = '25px'; }
+                    if (shareActions) shareActions.style.display = 'flex';
+                }
+
+                // 한 번만 복원 — 성공 후 삭제
+                localStorage.removeItem('pendingOracle');
+                console.log('✅ 점사 복원 완료');
+            } catch(e) {
+                console.warn('복원 중 오류:', e);
+            }
+        }, 200);
+    } catch(e) {
+        console.warn('pending oracle restore fail:', e);
+    }
+})();
 
 // ════════════════════════════════════
 //  홈 카드 0.5초마다 랜덤 교체
@@ -941,41 +1630,21 @@ function pickThreeCards(question) {
 }
 
 // ════════════════════════════════════
-//  ① 병렬실행: 메인 리추얼
-//  카드 애니메이션 시작과 동시에 API 호출
+//  ① [V18] 병렬실행: 메인 리추얼
+//  이전: 버튼 클릭 → 바로 3장 자동 뽑기
+//  변경: 버튼 클릭 → 셔플 오버레이 열기 → 유저가 3장 탭 → _runPostShuffleRitual
 // ════════════════════════════════════
 async function startRitual() {
     const question = document.getElementById('seed-input').value.trim();
     if (!question) { alert('질문을 입력해주세요.'); return; }
 
-    const btn = document.getElementById('ritual-btn');
-    btn.disabled = true;
-    btn.innerHTML = '신탁을 소환하는 중 <span class="orb-spin">🔮</span>';
+    // 질문에서 이름 추출 시도 — "홍길동입니다" "저는 김철수" 패턴
+    const nameMatch = question.match(/^([가-힣]{2,4})(입니다|이에요|예요|이야|야|님)/);
+    if (nameMatch) window._oracleUserName = nameMatch[1] + '님';
+    else window._oracleUserName = '유저님';
 
-    clearInterval(homeInterval);
-    selectedCards = pickThreeCards(question);
-
-    // ① 핵심: API 호출을 애니메이션과 동시에 시작
-    const streamPromise = startStreamFetch(question, selectedCards);
-
-    // 카드 플립 애니메이션 (API와 병렬 진행)
-    for (let i = 0; i < 3; i++) {
-        await flipCard(i, selectedCards[i]);
-        await delay(300);
-    }
-    await delay(800);
-
-    for (let i = 0; i < 3; i++) {
-        const slot = document.getElementById(`slot-${i}`);
-        const img  = document.getElementById(`card-img-${i}`);
-        if (slot) spawnGoldExplosion(slot);
-        if (img)  img.classList.add('card-fly');
-        await delay(200);
-    }
-    await delay(700);
-
-    // 결과창 열기 → 이미 진행 중인 스트림 결과를 꽂음
-    showResultView(question, streamPromise);
+    // 셔플 오버레이 열기 — 이후 유저가 3장 탭하면 _runPostShuffleRitual 자동 호출
+    openShuffleOverlay(question);
 }
 
 function delay(ms) { return new Promise(r => setTimeout(r, ms)); }
@@ -1092,13 +1761,15 @@ async function getTradingSignal(fullText) {
 function showResultView(question, streamPromise) {
     document.getElementById('home-view').style.display = 'none';
     const positions = ['과 거','현 재','미 래'];
+    const revFlags = window._reversedFlags || [false,false,false];
     document.getElementById('result-cards-container').innerHTML =
         selectedCards.map((card, i) => `
         <div style="flex:1;max-width:100px;display:flex;flex-direction:column;align-items:center;">
             <div class="result-card-item">
                 <img src="${BASE_URL}${card.file}" alt="${card.name}"
+                     style="${revFlags[i] ? 'transform: rotate(180deg);' : ''}"
                      onerror="this.onerror=null;this.src='${BASE_URL}back.jpg'">
-                <div class="result-card-label">${card.name}</div>
+                <div class="result-card-label">${card.name}${revFlags[i] ? ' ⟲' : ''}</div>
             </div>
             <div class="result-position-label">${positions[i]}</div>
         </div>`).join('');
@@ -1107,7 +1778,6 @@ function showResultView(question, streamPromise) {
     rv.style.display = 'flex';
     requestAnimationFrame(() => requestAnimationFrame(() => { rv.style.opacity = '1'; }));
 
-    // 이미 진행 중인 스트림을 화면에 연결
     renderStream(streamPromise, selectedCards);
 }
 
@@ -1119,29 +1789,47 @@ async function startStreamFetch(userQuestion, cards) {
     const cardPositions = cards.map((c, i) => `${['과거','현재','미래'][i]}: ${c.name}`).join(', ');
     const sessionToken  = localStorage.getItem('oracleSessionToken') || '';
 
-    // ── 질문 유형 4분류 + CURRENT_MODE 전역 설정
+    // [V19] 새 점사 시작 시 이전 서버 metrics 초기화 (잔여값 방지)
+    window._serverMetrics = null;
+    window._historySaved  = false; // [V19 Phase4] 이력 중복 저장 방지 리셋
+
+    // ── 질문 유형 4분류 + CURRENT_MODE 전역 설정 (Fallback — 서버가 metrics 안 주면 이 값 사용)
     window._queryType      = classifyQuery(userQuestion);
     window._isFinanceQuery = (window._queryType !== 'life');
     CURRENT_MODE           = window._queryType; // 단일 진실 소스
 
     const controller = new AbortController();
-    setTimeout(() => controller.abort(), 30000);
+    // abort는 fetch 연결 대기(최대 15초)에만 적용
+    // 스트림 수신 중에는 abort하지 않음 — BodyStreamBuffer aborted 방지
+    const connectTimer = setTimeout(() => controller.abort(), 60000);
 
-    return fetch('https://tarot-api.omegafund01.workers.dev', {
-        method: 'POST',
-        headers: {
-            'Content-Type':    'application/json',
-            'x-session-token': sessionToken
-        },
-        body: JSON.stringify({
-            prompt:        userQuestion,
-            cardNames:     cardNames,
-            cardPositions: cardPositions,
-            isReversed:    '없음',
-            userName:      (window._oracleUserName || '유저님')
-        }),
-        signal: controller.signal
-    });
+    try {
+        const response = await fetch('https://tarot-api.omegafund01.workers.dev', {
+            method: 'POST',
+            headers: {
+                'Content-Type':    'application/json',
+                'x-session-token': sessionToken
+            },
+            body: JSON.stringify({
+                prompt:        userQuestion,
+                cardNames:     cardNames,
+                cardPositions: cardPositions,
+                // [V19.1] 역방향 플래그 CSV 전송 (셔플 단계에서 결정된 값)
+                isReversed:    (window._reversedFlags || [false,false,false]).join(','),
+                userName:      (window._oracleUserName || '유저님'),
+                queryMode:     CURRENT_MODE,
+                loveSubType:   LOVE_SUBTYPE,
+                stockSubType:  STOCK_SUBTYPE,
+                reSubType:     RE_SUBTYPE
+            }),
+            signal: controller.signal
+        });
+        clearTimeout(connectTimer); // 연결 성공 → 타임아웃 해제
+        return response;
+    } catch(e) {
+        clearTimeout(connectTimer);
+        throw e;
+    }
 }
 // ════════════════════════════════════
 //  응답 수신 + 유료/무료 분기 렌더링
@@ -1210,10 +1898,27 @@ async function renderStream(fetchPromise, cards) {
                 if (jsonStr === '[DONE]') continue;
                 try {
                     const parsed = JSON.parse(jsonStr);
+
+                    // ── [V19 핵심] Worker가 첫 이벤트로 보내는 metrics 수신
+                    //    형식: {"_type":"metrics","data":{trend, action, risk, finalTimingText, ...}}
+                    //    이걸 전역에 저장해두면 buildInvestmentData가 서버 값을 우선 사용
+                    if (parsed && parsed._type === 'metrics' && parsed.data) {
+                        window._serverMetrics = parsed.data;
+                        // 서버가 queryType을 알려주므로 CURRENT_MODE도 서버 기준으로 갱신
+                        if (parsed.data.queryType) {
+                            CURRENT_MODE           = parsed.data.queryType;
+                            window._queryType      = parsed.data.queryType;
+                            window._isFinanceQuery = (parsed.data.queryType === 'stock' ||
+                                                     parsed.data.queryType === 'crypto' ||
+                                                     parsed.data.queryType === 'realestate');
+                        }
+                        continue; // metrics 이벤트는 텍스트 누적에서 제외
+                    }
+
                     const chunk  = parsed?.candidates?.[0]?.content?.parts?.[0]?.text || '';
                     if (!chunk) continue;
                     fullText += chunk;
-                    cachedFullText = fullText; // 👈 [이 줄을 추가하세요] 텍스트를 실시간으로 캐싱합니다.
+                    cachedFullText = fullText;
                     cursor.remove();
                     contentEl.innerHTML = renderText(fullText, cards, null, false);
                     contentEl.appendChild(cursor);
@@ -1222,48 +1927,68 @@ async function renderStream(fetchPromise, cards) {
         }
 
         // ── 스트리밍 완료
+        // ── 스트리밍 완료 후 커서 제거 ──
         cursor.remove();
 
-        // ── CURRENT_MODE가 단일 진실 소스 — 본문 키워드 오감지 방지
-        // CURRENT_MODE 단일 진실 소스 — life이면 본문 키워드 오감지 방지
+        // ══════════════════════════════════════════════════════════════════
+        // 🏛️ [V19.8] 제우스의 철권 통제: 결제 유도 및 엔진 통합본
+        // ══════════════════════════════════════════════════════════════════
         const isFinance = (CURRENT_MODE !== 'life');
-        const queryType = CURRENT_MODE;
+        const seedInput = document.getElementById('seed-input')?.value || "";
 
+        // 1️⃣ [심장 연결] 통합 엔진 buildInvestmentData 호출 (이름 수정됨)
         let investmentData = null;
         if (isFinance) {
-            // Yahoo 실시간 데이터 병렬 조회 (실패해도 카드 엔진으로 정상 작동)
-            const ticker = extractTicker(document.getElementById('seed-input')?.value || '', queryType);
-            const mktResult = await Promise.allSettled([
-                ticker ? fetchMarketData(ticker) : Promise.resolve(null)
-            ]);
-            const marketData = mktResult[0].status === 'fulfilled' ? mktResult[0].value : null;
-            const marketInterpret = interpretMarketData(marketData);
-            investmentData = generateInvestmentData(cards, fullText, queryType, marketInterpret);
+            investmentData = buildInvestmentData(cards, seedInput); 
         }
 
-        // [수정] isPaidUser || true → isPaidUser 단독 사용 (결제 우회 제거)
-        const isPaid = isPaidUser;
-        // [수정] isFinance를 renderText 5번째 인자로 명시 전달 → investBlock 분기 연결
-        contentEl.innerHTML = renderText(fullText, cards, investmentData, isPaid, isFinance);
+        // 2️⃣ [최종 렌더링] 결제 여부(isPaidUser)에 따라 미래와 지표 노출 결정
+        contentEl.innerHTML = renderText(fullText, cards, investmentData, isPaidUser, isFinance);
 
-        // UI 상태 전환: 에메랄드 대기 문구 삭제 → 황금 버튼 노출 (유료 완료 시)
+        // [V19 Phase4] 이력 저장 — 중복 저장 방지 플래그
+        if (!window._historySaved) {
+            const q = document.getElementById('seed-input')?.value || '';
+            saveToHistory(q, CURRENT_MODE, cards, window._serverMetrics || investmentData);
+            window._historySaved = true;
+        }
+
+        // 3️⃣ [UI 정밀 제어] 결제 전에는 절대 도망갈 수 없습니다
         const holdingMsg = document.getElementById('holding-message');
         const finalBtn   = document.getElementById('final-reset-btn');
 
-if (holdingMsg) holdingMsg.style.display = 'none'; // 대기 문구 제거
-if (finalBtn) {
-    finalBtn.style.display = 'inline-block'; // 황금 버튼 부활
-    finalBtn.style.marginTop = '25px';
-}
+        if (!isPaidUser) {
+            // ❌ 돈 안 낸 유저: [새 신탁 구하기] 버튼을 물리적으로 숨김
+            if (finalBtn) finalBtn.style.display = 'none';
+            
+            // 🟢 대신 결제를 유도하는 경건한 문구와 잠금 화면 유지
+            if (holdingMsg) {
+                holdingMsg.style.display = 'block';
+                holdingMsg.innerHTML = `
+                    <div style="color: #50C878; font-size: 1.1rem; font-weight: 900; animation: emerald-glow 2s infinite alternate;">
+                        제우스의 최종 신탁 수치가 도출되었습니다.<br>운명의 봉인을 해제하여 확인하십시오.
+                    </div>
+                `;
+            }
+        } else {
+            // ✅ 결제 완료 유저: 모든 봉인을 풀고 버튼을 노출함
+            if (finalBtn) {
+                finalBtn.style.display = 'inline-block';
+                finalBtn.style.marginTop = '25px';
+            }
+            if (holdingMsg) holdingMsg.style.display = 'none';
+            // [V19 Phase3] 공유/저장 버튼 노출
+            const shareActions = document.getElementById('share-actions');
+            if (shareActions) shareActions.style.display = 'flex';
+        }
 
-// 4. 유저의 시선을 결과물 하단(버튼)으로 인도
-contentEl.scrollIntoView({ behavior: 'smooth', block: 'end' });
+        // 4. 유저를 결과 하단으로 부드럽게 스크롤
+        contentEl.scrollIntoView({ behavior: 'smooth', block: 'end' });
 
-// 제우스의 인장 애니메이션
-setTimeout(() => {
-    const seal = document.getElementById('oracle-seal');
-    if (seal) seal.classList.add('stamped');
-}, 800);
+        // 제우스의 인장 애니메이션
+        setTimeout(() => {
+            const seal = document.getElementById('oracle-seal');
+            if (seal) seal.classList.add('stamped');
+        }, 800);
 
     } catch (error) {
         // 🚨 통신 장애 발생 시 긴급 복구 로직
@@ -1319,68 +2044,61 @@ function getNumerologyScore() {
     return num;
 }
 
-// ════════════════════════════════════
-// 🔥 카드 점수 계산 → decision 객체 반환
-// ════════════════════════════════════
-function calculateScore(cards) {
-    let score = 0;
-    cards.forEach(c => {
-        if (!c) return;
-        const name = c.name || "";
-        if (name.includes("Sun") || name.includes("태양")) score += 3;
-        if (name.includes("Ace of Pentacles") || name.includes("펜타클 에이스")) score += 2;
-        if (name.includes("Nine of Cups") || name.includes("컵9")) score += 2;
-        if (name.includes("Star") || name.includes("별")) score += 1;
-        if (name.includes("Wheel of Fortune")) score += 1;
-        if (name.includes("Devil") || name.includes("악마")) score -= 3;
-        if (name.includes("Tower") || name.includes("탑")) score -= 4;
-        if (name.includes("Ten of Swords")) score -= 3;
-        if (name.includes("Death") || name.includes("죽음")) score -= 2;
-        if (name.includes("Moon") || name.includes("달")) score -= 1;
-    });
-    return score;
+// ── 수비학 의미 사전
+const NUM_MEANING = {
+    1: "시작·창조 — 새로운 에너지의 출발점",
+    2: "균형·관계 — 조화와 파트너십의 에너지",
+    3: "성장·확장 — 창의와 표현의 에너지",
+    4: "안정·구조 — 기반을 다지는 에너지",
+    5: "변화·전환 — 자유와 변혁의 에너지",
+    6: "조화·책임 — 돌봄과 균형의 에너지",
+    7: "탐구·내면 — 직관과 성찰의 에너지",
+    8: "성과·물질 — 달성과 풍요의 에너지",
+    9: "완성·해방 — 마무리와 새 시작의 에너지"
+};
+
+// ── 카드 번호 추출 (수비학 계산용)
+function getCardNumber(cardName) {
+    const base = (cardName || '').split(' (')[0].trim();
+    // 메이저 아르카나 번호
+    const MAJOR_NUMS = {
+        "The Fool":0,"The Magician":1,"The High Priestess":2,"The Empress":3,
+        "The Emperor":4,"The Hierophant":5,"The Lovers":6,"The Chariot":7,
+        "Strength":8,"The Hermit":9,"Wheel of Fortune":10,"Justice":11,
+        "The Hanged Man":12,"Death":13,"Temperance":14,"The Devil":15,
+        "The Tower":16,"The Star":17,"The Moon":18,"The Sun":19,
+        "Judgement":20,"The World":21
+    };
+    if (MAJOR_NUMS[base] !== undefined) return MAJOR_NUMS[base];
+    // 마이너 아르카나 숫자 추출
+    const numMap = {"Ace":1,"Two":2,"Three":3,"Four":4,"Five":5,
+                    "Six":6,"Seven":7,"Eight":8,"Nine":9,"Ten":10,
+                    "Page":11,"Knight":12,"Queen":13,"King":14};
+    for (const [word, num] of Object.entries(numMap)) {
+        if (base.startsWith(word)) return num;
+    }
+    return 1;
 }
 
-function getDecision(score) {
-    const num = getNumerologyScore();
-    if (score >= 4) {
-        const trend   = "상승 흐름 우세 — 긍정 에너지 감지";
-        const action  = num === 7 || num === 9 ? "분할 매수 (⚠️ 타이밍 지연 — 신중)" : "분할 매수 진입 고려";
-        const timing  = "현재~단기 진입 적기";
-        const risk    = "낮음 — 단, 감정적 추격매수 금지";
-        return { label: "매수", trend, action, timing, risk };
-    } else if (score >= 1) {
-        const trend   = "방향성 불명확 — 관망 구간";
-        const action  = num === 1 || num === 3 ? "소량 분할 진입 (🔥 수비학 기회 신호)" : "현금 보유 유지";
-        const timing  = "돌파 확인 후 진입";
-        const risk    = "중간 — 변동성 주의";
-        return { label: "관망", trend, action, timing, risk };
-    } else {
-        const trend   = "하락 에너지 감지 — 리스크 구간";
-        const action  = "진입 금지 / 보유 시 손절 기준 재검토";
-        const timing  = "시장 안정 확인 전까지 대기";
-        const risk    = "높음 — 붕괴 가능성 주의";
-        return { label: "회피", trend, action, timing, risk };
+// ── 카드 + 요일 + 시간 기반 수비학 점수
+function calculateNumerology(cards, day, hour) {
+    const cardNums = cards.map(c => getCardNumber(c.name));
+    let cardSum = cardNums.reduce((a, b) => a + b, 0);
+    // 한 자리 수로 축약
+    while (cardSum > 9) {
+        cardSum = cardSum.toString().split('').reduce((a, b) => a + Number(b), 0);
     }
+    let cardValue = cardSum || 9;
+
+    const dayMap = { "월":1,"화":2,"수":3,"목":4,"금":5,"토":6,"일":7 };
+    const dayValue  = dayMap[day] || 1;
+    const timeValue = String(hour).split('').reduce((a, b) => a + Number(b), 0);
+
+    let final = (cardValue + dayValue + timeValue) % 9;
+    if (final === 0) final = 9;
+    return final;
 }
 
-// ════════════════════════════════════
-// 🔥 카드판단 + RSI신호 병합
-// ════════════════════════════════════
-function mergeDecision(cardDecision, rsiSignal) {
-    if (cardDecision === "회피") {
-        return "회피"; // 🔥 카드가 무조건 우선
-    }
-    if (cardDecision === "관망") {
-        if (rsiSignal === "매수") return "관망 (신중)";
-        return "관망";
-    }
-    if (cardDecision === "매수") {
-        if (rsiSignal === "관망") return "분할 매수";
-        return "매수";
-    }
-    return cardDecision;
-}
 // ════════════════════════════════════
 // 🔥 질문 유형 3분류 엔진
 // ════════════════════════════════════
@@ -1389,7 +2107,6 @@ function mergeDecision(cardDecision, rsiSignal) {
 //    life / stock / crypto / realestate
 //    CURRENT_MODE: 전역 모드 — 운세/투자 UI 분기의 단일 진실 소스
 // ════════════════════════════════════
-let CURRENT_MODE = 'life'; // 전역 모드 변수
 
 function classifyQuery(question) {
     const cryptoKeywords = [
@@ -1465,39 +2182,57 @@ function extractTicker(question, queryType) {
 // }
 
 async function fetchMarketData(symbol) {
+    if (!symbol) return null;
     try {
-        // Worker 프록시를 통해 Yahoo Finance 우회 (CORS 해결)
         const workerUrl = `https://tarot-api.omegafund01.workers.dev/yahoo?symbol=${encodeURIComponent(symbol)}`;
-        const res  = await fetch(workerUrl, { signal: AbortSignal.timeout(5000) });
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const data = await res.json();
-        const result = data?.chart?.result?.[0];
-        if (!result) return null;
+        const res = await fetch(workerUrl, { signal: AbortSignal.timeout(6000) });
+        if (!res.ok) throw new Error(`Worker HTTP ${res.status}`);
+        const marketData = await res.json();
 
-        const closes  = result.indicators.quote[0].close;
-        const highs   = result.indicators.quote[0].high;
-        const lows    = result.indicators.quote[0].low;
-        const volumes = result.indicators.quote[0].volume;
+        // ── 디버그 로그 (운영 시 제거 가능)
+        console.log("marketData:", marketData);
+        console.log("chart:", marketData?.chart);
+        console.log("result:", marketData?.chart?.result);
+        console.log("indicators:", marketData?.chart?.result?.[0]?.indicators);
 
-        // 최신값 (null 제거)
-        const validCloses = closes.filter(v => v !== null);
-        const lastClose   = validCloses[validCloses.length - 1];
-        const prevClose   = validCloses[validCloses.length - 2];
-        const changeRate  = ((lastClose - prevClose) / prevClose * 100).toFixed(2);
+        // ── 안전 코드 — null 접근 방어
+        const result = marketData?.chart?.result?.[0];
+        if (!result) {
+            console.log("❌ Yahoo 데이터 없음 — 카드 엔진만으로 작동");
+            return null;
+        }
 
-        // RSI(14) 계산
-        const rsi = calcRSI(validCloses, 14);
-        // 이동평균 5일·20일
-        const ma5  = average(validCloses.slice(-5));
-        const ma20 = average(validCloses.slice(-20));
-        // 거래량 평균 대비 (최근 5일 평균 vs 20일 평균)
-        const validVols = volumes.filter(v => v !== null);
-        const volRatio  = (average(validVols.slice(-5)) / average(validVols.slice(-20))).toFixed(2);
+        const closes = result?.indicators?.quote?.[0]?.close;
+        if (!closes || closes.length === 0) {
+            console.log("❌ close 데이터 없음");
+            return null;
+        }
+
+        // null 제거
+        const prices = closes.filter(v => v !== null);
+        if (prices.length < 2) {
+            console.log("❌ 유효 데이터 부족 (최소 2개 필요)");
+            return null;
+        }
+        console.log("✅ 정상 prices:", prices.length + "개");
+
+        const volumes   = result?.indicators?.quote?.[0]?.volume || [];
+        const lastClose = prices[prices.length - 1];
+        const prevClose = prices[prices.length - 2];
+        const changeRate = ((lastClose - prevClose) / prevClose * 100).toFixed(2);
+
+        const rsi      = calcRSI(prices, 14);
+        const ma5      = average(prices.slice(-5));
+        const ma20     = average(prices.slice(-20));
+        const validVols = volumes.filter(v => v !== null && v > 0);
+        const volRatio  = validVols.length >= 10
+            ? (average(validVols.slice(-5)) / average(validVols.slice(-20))).toFixed(2)
+            : "1.00";
 
         return { lastClose, changeRate, rsi, ma5, ma20, volRatio, symbol };
     } catch(e) {
         console.warn('Yahoo 데이터 조회 실패:', e.message);
-        return null; // 실패 시 카드 엔진만으로 작동
+        return null; // 실패 시 카드 엔진만으로 정상 작동
     }
 }
 
@@ -1577,48 +2312,206 @@ function analyzeAISentiment(text) {
 // ════════════════════════════════════
 // 🔥 카드 상태 맵 (31종 — 미등록 카드는 기본값 처리)
 // ════════════════════════════════════
-const CARD_STATE_MAP = {
-    "The Fool":          { risk: 4, power: 2  },
-    "The Magician":      { risk: 2, power: 7  },
-    "The High Priestess":{ risk: 5, power: 1  },
-    "The Empress":       { risk: 2, power: 6  },
-    "The Emperor":       { risk: 2, power: 6  },
-    "The Hierophant":    { risk: 3, power: 4  },
-    "The Lovers":        { risk: 3, power: 5  },
-    "The Chariot":       { risk: 3, power: 7  },
-    "Strength":          { risk: 3, power: 6  },
-    "The Hermit":        { risk: 4, power: 2  },
-    "Wheel of Fortune":  { risk: 4, power: 5  },
-    "Justice":           { risk: 3, power: 4  },
-    "The Hanged Man":    { risk: 5, power: -1 },
-    "Death":             { risk: 6, power: -2 },
-    "Temperance":        { risk: 2, power: 5  },
-    "The Devil":         { risk: 8, power: -4 },
-    "The Tower":         { risk: 9, power: -5 },
-    "The Star":          { risk: 2, power: 7  },
-    "The Moon":          { risk: 7, power: -3 },
-    "The Sun":           { risk: 1, power: 9  },
-    "Judgement":         { risk: 3, power: 6  },
-    "The World":         { risk: 1, power: 9  },
-    "Ace of Wands":      { risk: 3, power: 7  },
-    "Seven of Wands":    { risk: 5, power: 3  },
-    "Ten of Wands":      { risk: 5, power: -1 },
-    "Ace of Cups":       { risk: 2, power: 6  },
-    "Nine of Cups":      { risk: 2, power: 7  },
-    "Five of Swords":    { risk: 7, power: -4 },
-    "Seven of Swords":   { risk: 6, power: -3 },
-    "Ten of Swords":     { risk: 8, power: -5 },
-    "Ace of Pentacles":  { risk: 2, power: 6  },
-    "Five of Pentacles": { risk: 8, power: -5 },
-    "Nine of Pentacles": { risk: 2, power: 6  },
-    "Ten of Pentacles":  { risk: 2, power: 7  },
-    "Five of Wands":     { risk: 6, power: -1 }
+// ════════════════════════════════════
+// 🔥 CARD_DB — 78장 완전 통합 데이터베이스
+//    score(점수) / risk(위험도) / power(추세 에너지) / critical(위험 카드)
+//    기존 CARD_STATE_MAP + calculateScore + analyzeCardsAdvanced 3개를 단일 소스로 통합
+// ════════════════════════════════════
+const CARD_DB = {
+    // ── 메이저 아르카나 (22장)
+    "The Fool":           { score:  0, risk: 2, power:  1 },
+    "The Magician":       { score:  2, risk: 2, power:  2 },
+    "The High Priestess": { score:  1, risk: 2, power:  0 },
+    "The Empress":        { score:  2, risk: 1, power:  1 },
+    "The Emperor":        { score:  2, risk: 1, power:  1 },
+    "The Hierophant":     { score:  1, risk: 1, power:  0 },
+    "The Lovers":         { score:  2, risk: 2, power:  1 },
+    "The Chariot":        { score:  3, risk: 2, power:  2 },
+    "Strength":           { score:  2, risk: 1, power:  1 },
+    "The Hermit":         { score:  0, risk: 2, power: -1 },
+    "Wheel of Fortune":   { score:  2, risk: 3, power:  2 },
+    "Justice":            { score:  1, risk: 1, power:  0 },
+    "The Hanged Man":     { score: -1, risk: 2, power: -1 },
+    "Death":              { score: -2, risk: 3, power:  1 },
+    "Temperance":         { score:  1, risk: 1, power:  0 },
+    "The Devil":          { score: -3, risk: 4, power:  1 },
+    "The Tower":          { score: -5, risk: 5, power: -2, critical: true },
+    "The Star":           { score:  3, risk: 1, power:  1 },
+    "The Moon":           { score: -2, risk: 3, power: -1 },
+    "The Sun":            { score:  4, risk: 1, power:  2 },
+    "Judgement":          { score:  2, risk: 2, power:  1 },
+    "The World":          { score:  4, risk: 1, power:  2 },
+    // ── 컵 (14장)
+    "Ace of Cups":    { score:  2, risk: 1, power:  1 },
+    "Two of Cups":    { score:  2, risk: 1, power:  1 },
+    "Three of Cups":  { score:  2, risk: 1, power:  1 },
+    "Four of Cups":   { score: -1, risk: 2, power: -1 },
+    "Five of Cups":   { score: -2, risk: 3, power: -1 },
+    "Six of Cups":    { score:  1, risk: 1, power:  0 },
+    "Seven of Cups":  { score: -2, risk: 3, power: -1 },
+    "Eight of Cups":  { score: -1, risk: 2, power: -1 },
+    "Nine of Cups":   { score:  3, risk: 1, power:  1 },
+    "Ten of Cups":    { score:  4, risk: 1, power:  2 },
+    "Page of Cups":   { score:  1, risk: 1, power:  0 },
+    "Knight of Cups": { score:  1, risk: 2, power:  1 },
+    "Queen of Cups":  { score:  2, risk: 1, power:  1 },
+    "King of Cups":   { score:  2, risk: 1, power:  1 },
+    // ── 펜타클 (14장)
+    "Ace of Pentacles":    { score:  3, risk: 1, power:  2 },
+    "Two of Pentacles":    { score:  0, risk: 2, power:  0 },
+    "Three of Pentacles":  { score:  2, risk: 1, power:  1 },
+    "Four of Pentacles":   { score:  0, risk: 2, power: -1 },
+    "Five of Pentacles":   { score: -3, risk: 4, power: -1 },
+    "Six of Pentacles":    { score:  2, risk: 1, power:  1 },
+    "Seven of Pentacles":  { score:  1, risk: 1, power:  0 },
+    "Eight of Pentacles":  { score:  2, risk: 1, power:  1 },
+    "Nine of Pentacles":   { score:  3, risk: 1, power:  1 },
+    "Ten of Pentacles":    { score:  4, risk: 1, power:  2 },
+    "Page of Pentacles":   { score:  1, risk: 1, power:  0 },
+    "Knight of Pentacles": { score:  1, risk: 1, power:  1 },
+    "Queen of Pentacles":  { score:  2, risk: 1, power:  1 },
+    "King of Pentacles":   { score:  3, risk: 1, power:  2 },
+    // ── 소드 (14장)
+    "Ace of Swords":    { score:  2, risk: 2, power:  2 },
+    "Two of Swords":    { score: -1, risk: 2, power: -1 },
+    "Three of Swords":  { score: -3, risk: 4, power: -1 },
+    "Four of Swords":   { score:  0, risk: 1, power: -1 },
+    "Five of Swords":   { score: -3, risk: 4, power: -2 },
+    "Six of Swords":    { score:  1, risk: 2, power:  0 },
+    "Seven of Swords":  { score: -2, risk: 3, power: -1 },
+    "Eight of Swords":  { score: -2, risk: 3, power: -2 },
+    "Nine of Swords":   { score: -3, risk: 4, power: -2 },
+    "Ten of Swords":    { score: -5, risk: 5, power: -2, critical: true },
+    "Page of Swords":   { score:  0, risk: 2, power:  0 },
+    "Knight of Swords": { score:  1, risk: 3, power:  2 },
+    "Queen of Swords":  { score:  0, risk: 2, power:  0 },
+    "King of Swords":   { score:  1, risk: 2, power:  1 },
+    // ── 완드 (14장)
+    "Ace of Wands":    { score:  3, risk: 2, power:  2 },
+    "Two of Wands":    { score:  1, risk: 2, power:  1 },
+    "Three of Wands":  { score:  2, risk: 1, power:  2 },
+    "Four of Wands":   { score:  3, risk: 1, power:  2 },
+    "Five of Wands":   { score: -1, risk: 3, power:  1 },
+    "Six of Wands":    { score:  3, risk: 1, power:  2 },
+    "Seven of Wands":  { score:  1, risk: 2, power:  1 },
+    "Eight of Wands":  { score:  3, risk: 2, power:  3 },
+    "Nine of Wands":   { score:  0, risk: 2, power:  1 },
+    "Ten of Wands":    { score: -2, risk: 3, power: -1 },
+    "Page of Wands":   { score:  1, risk: 2, power:  1 },
+    "Knight of Wands": { score:  2, risk: 3, power:  2 },
+    "Queen of Wands":  { score:  2, risk: 2, power:  1 },
+    "King of Wands":   { score:  3, risk: 2, power:  2 }
 };
-const DEFAULT_CARD = { risk: 4, power: 0 };
+// ==================================================================
+// 🔥 [V16.5] ZEUS 단일 통합 엔진 (Single Truth Engine)
+// ==================================================================
 
-// ════════════════════════════════════
-// 🔥 카드 조합 특수 메시지 (주식/코인 분기)
-// ════════════════════════════════════
+// 1️⃣ [분석] 카드 데이터 정밀 합산 및 리스크 추출
+function analyzeCardsZeus(cards, queryType = 'stock') {
+    let score = 0, totalRisk = 0, maxRisk = 0, power = 0;
+    let hasCritical = false;
+
+    cards.forEach(c => {
+        // 기존 getCardData 헬퍼를 사용하여 DB 참조 (괄호 제거 로직 포함)
+        const data = getCardData(c.name); 
+        if (!data) return;
+
+        score += data.score;
+        totalRisk += data.risk;
+        power += data.power;
+
+        if (data.risk > maxRisk) maxRisk = data.risk;
+        if (data.risk >= 4) hasCritical = true;
+    });
+
+    const avgRisk = totalRisk / (cards.length || 1);
+    return {
+        score,
+        avgRisk,
+        maxRisk,
+        power,
+        hasCritical,
+        isVolatile: avgRisk >= 3
+    };
+}
+
+// 2️⃣ [의사결정] 사용자 제안 로직 기반 최종 지표 산출
+function getFinalDecision(score, maxRisk, avgRisk, hasCritical, isVolatile, queryType, intent) {
+    let res = { 
+        trendLabel: "", decision: "", position: "0%", 
+        stop: "-", target: "-", riskLabel: "보통" 
+    };
+
+    const netScore = score;
+
+    // 🔥 강력 상승 (7점 이상)
+    if (netScore >= 7) {
+        res = { trendLabel: "강력 상승 추진력", decision: "적극 분할 매수", position: queryType === 'crypto' ? "20~30%" : "30~50%", stop: queryType === 'crypto' ? "-8%" : "-5%", target: "+15~20%", riskLabel: "낮음" };
+    }
+    // 🔥 상승 구간 (3점 이상)
+    else if (netScore >= 3) {
+        res.trendLabel = isVolatile ? "변동성 동반 상승" : "상승 전환 구간";
+        res.decision   = "분할 매수"; res.position = "10~20%"; res.stop = "-5%"; res.target = "+8~12%"; res.riskLabel = "보통";
+    }
+    // 🔥 약 상승 (1점 이상)
+    else if (netScore >= 1) {
+        res = { trendLabel: "상승 시도 중", decision: "소량 진입", position: "10~20%", stop: "-4%", target: "+6~10%", riskLabel: "보통" };
+    }
+    // 🔥 중립
+    else if (netScore >= -1) {
+        res = { trendLabel: "관망 구간", decision: "대기", position: "0%", stop: "-", target: "-", riskLabel: "보통" };
+    }
+    // 🔥 하락
+    else {
+        res = { trendLabel: "하락 우세", decision: intent === 'buy' ? "진입 금지" : "매도 고려", position: "0%", stop: "-", target: "-", riskLabel: "높음" };
+    }
+
+    return res;
+}
+
+// 🔥 [V18.5] 중앙 통합 제어 엔진 (이것으로 기존 generateInvestmentData를 덮어쓰세요)
+
+function getUnifiedTiming(score, power, type, intent) {
+    const now = new Date();
+    const month = now.getMonth() + 1; // 현재 4월 기준
+    
+    if (type === 'realestate' && intent === 'sell') {
+        const start = month; 
+        // ❌ 기존: (month + 3) % 12 -> 4월+3=7월 (정상) / 그러나 10월+3=1월 (역전 발생)
+        // ✅ 수정: 현재 월부터 최소 2개월~최대 4개월 뒤로 설정
+        const endMin = (month + 2) > 12 ? (month + 2) - 12 : (month + 2);
+        const endMax = (month + 4) > 12 ? (month + 4) - 12 : (month + 4);
+        
+        return `매물 등록: ${start}월 중순 내 즉시 등록 · 계약 완료 목표: ${endMin}월~${endMax}월 사이`;
+    }
+    return score >= 3 ? "현재 구간 진입 적기" : "시장 안정 후 진입";
+}
+
+// [비활성화됨 V17] 이 첫 번째 buildInvestmentData 정의는 아래쪽의 두 번째 정의에 의해 덮어써지므로
+// 실제로는 호출되지 않습니다. 실제 사용되는 로직은 아래 완성판(주식/부동산 상세 데이터 포함)으로 통합되었습니다.
+function _buildInvestmentData_legacy_disabled(cards, question) {
+    return null;
+}
+
+// ── CARD_DB 조회 헬퍼 — 괄호 제거 후 매칭, 미등록 카드 안전 처리
+function getCardData(cardName) {
+    const base = (cardName || '').split(' (')[0].trim();
+    return CARD_DB[base] || { score: 0, risk: 2, power: 0 }; // 미등록 = 중립
+}
+
+// ── 하위 호환 래퍼 — CARD_DB 기반으로 위임
+//    기존 CARD_STATE_MAP / calcCardPower 를 참조하던 곳들이 그대로 작동
+const CARD_STATE_MAP = Object.fromEntries(
+    Object.entries(CARD_DB).map(([k, v]) => [k, { risk: v.risk, power: v.power }])
+);
+const DEFAULT_CARD = { risk: 2, power: 0 };
+
+function calcCardPower(cards) {
+    return cards.reduce((sum, c) => {
+        const d = getCardData(c?.name || '');
+        return sum + d.power;
+    }, 0);
+}
 function getComboNote(cardData, queryType) {
     const has = name => cardData.some(d => d.name.includes(name));
     if (has("Ten of Swords") && has("Seven of Wands"))
@@ -1766,135 +2659,376 @@ function getLuckyTiming(cards, qRaw) {
 //    단일 netScore → 추세·행동·비중·손절·목표 전부 파생
 //    임계값을 실제 카드 점수 분포에 맞게 조정 (대부분 -8 ~ +12 범위)
 // ════════════════════════════════════
-function getFinalDecision(netScore, maxRisk, avgRisk, hasCritical,
-                          isVolatile, queryType, intent) {
+// ══════════════════════════════════════════════════════════════════
+// 🔥 [V17] ZEUS 단일 통합 의사결정 엔진 (인텔리전스 업데이트)
+// ──────────────────────────────────────────────────────────────────
+// - 특징: netScore와 Power를 결합하여 상단 서사와의 싱크로율 100% 달성
+// - 로직: 에너지가 부족하면 점수가 높아도 보수적 지표 산출 (충돌 방지)
+// ══════════════════════════════════════════════════════════════════
+function getFinalDecision(netScore, maxRisk, avgRisk, hasCritical, isVolatile, queryType, intent, power) {
+    let res = { decision: "", trendLabel: "", position: "0%", stop: "-", target: "-", riskLabel: "보통", canEnter: false, score: netScore };
 
-    // ── ① 레버리지·세력 감지 (최우선 차단)
-    if (isVolatile) {
-        return {
-            decision: "🚫 진입 금지 (고변동/레버리지)",
-            trendLabel: "변동성 극단",
-            position: "0%",
-            stop: "-", target: "-", riskLabel: "극고위험",
-            canEnter: false, score: netScore
-        };
+    // ── ① 최우선 차단 로직 (변동성 및 고위험 카드) ──
+    if (isVolatile && queryType !== 'life') {
+        res.decision = "🚫 진입 금지 (고변동/위험)";
+        res.trendLabel = "변동성 극단 주의";
+        res.riskLabel = "극고위험";
+        return res;
     }
 
-    // ── ② 카드 위험도 최우선 거부 (Tower·Devil·Ten of Swords 등 포함 시)
     if (maxRisk >= 8 || avgRisk >= 6.5) {
-        return {
-            decision: intent === 'sell' ? "즉시 청산 검토" : "🚫 진입 금지 (고위험 카드)",
-            trendLabel: "하락 위험 구간",
-            position: "0%",
-            stop: intent === 'sell' ? "즉시" : "-",
-            target: "-", riskLabel: "극고위험",
-            canEnter: false, score: netScore
-        };
+        res.decision = intent === 'sell' ? "즉시 청산 검토" : "🚫 진입 금지 (위험 카드)";
+        res.trendLabel = "하락 위험 구간";
+        res.riskLabel = "극고위험";
+        return res;
     }
 
-    // ── ③ 통합 점수 기반 결정
-    //    실제 netScore 분포: 카드 power(-15~+27) + sentiment(-3~+5 수준)
-    //    현실적 도달 범위: 대부분 -8 ~ +12 → 임계값을 이에 맞춤
-    let decision, trendLabel, position, stop, target, riskLabel, canEnter;
+    // ── ② 통합 점수 및 에너지(Power) 기반 결정 ──
+    // 🔥 [핵심] netScore가 높아도 power가 낮으면 상단 서사와 맞추기 위해 지표를 톤다운함
 
+    // 1. 강력 상승 구간 (7점 이상)
     if (netScore >= 7) {
-        // 좋은 카드 3장 + 긍정 AI 응답 → 강력 상승
-        trendLabel = "강력 상승 추진력";
-        decision   = queryType === 'crypto' ? "분할 매수 (자산 20~30%)" : "적극 분할 매수";
-        position   = queryType === 'crypto' ? "20~30%" : "30~50%";
-        stop       = queryType === 'crypto' ? "-8%" : "-5%";
-        target     = queryType === 'crypto' ? "+15~20%" : "+10~15%";
-        riskLabel  = "낮음"; canEnter = true;
+        if (power < 3) {
+            res.trendLabel = "상승 전환 시도 (에너지 비축)";
+            res.decision   = "분할 매수 (보수적)";
+            res.position   = "10~20%";
+            res.riskLabel  = "보통";
+        } else {
+            res.trendLabel = "강력 상승 추진력";
+            res.decision   = queryType === 'crypto' ? "분할 매수 (자산 20~30%)" : "적극 분할 매수";
+            res.position   = queryType === 'crypto' ? "20~30%" : "30~50%";
+            res.riskLabel  = "낮음";
+        }
+        res.stop = queryType === 'crypto' ? "-8%" : "-5%";
+        res.target = "+15~20%";
+        res.canEnter = true;
 
-    } else if (netScore >= 3) {
-        // 긍정 카드 우세
-        trendLabel = "상승 우세";
-        decision   = "분할 매수";
-        position   = queryType === 'crypto' ? "10~20%" : "20~30%";
-        stop       = "-5%"; target = "+8~12%";
-        riskLabel  = "보통"; canEnter = true;
+    } 
+    // 2. 상승 우세 구간 (3점 이상)
+    else if (netScore >= 3) {
+        if (power < 2) {
+            res.trendLabel = "상승 전환 구간 (신중 분석)";
+            res.decision   = "분할 매수 고려 (소량)";
+            res.position   = "5~10%";
+        } else {
+            res.trendLabel = "상승 우세";
+            res.decision   = "분할 매수";
+            res.position   = queryType === 'crypto' ? "10~20%" : "20~30%";
+        }
+        res.stop = "-5%";
+        res.target = "+8~12%";
+        res.riskLabel = "보통";
+        res.canEnter = true;
 
-    } else if (netScore >= 1) {
-        // 약한 긍정 — 조건부 소량
-        trendLabel = "상승 시도 중";
-        decision   = "조건부 소량 진입";
-        position   = queryType === 'crypto' ? "5~10%" : "10~20%";
-        stop       = "-4%"; target = "+6~10%";
-        riskLabel  = "보통"; canEnter = true;
+    } 
+    // 3. 약한 상승 (1점 이상)
+    else if (netScore >= 1) {
+        res.trendLabel = "상승 시도 중";
+        res.decision   = "조건부 소량 진입";
+        res.position   = "5~10%";
+        res.stop = "-4%";
+        res.target = "+6~10%";
+        res.riskLabel = "보통";
+        res.canEnter = true;
 
-    } else if (netScore >= -1) {
-        // 중립 구간
-        trendLabel = "중립 — 관망 구간";
-        decision   = "관망 (방향성 대기)";
-        position   = "0%";
-        stop       = "-"; target = "-";
-        riskLabel  = "보통"; canEnter = false;
-
-    } else if (netScore >= -4) {
-        // 약한 하락
-        trendLabel = "하락 압력 우세";
-        decision   = intent === 'sell' ? "분할 매도" : "신규 진입 금지";
-        position   = "0%";
-        stop       = "-"; target = "-";
-        riskLabel  = "높음"; canEnter = false;
-
-    } else {
-        // 강한 하락
-        trendLabel = "강한 하락 신호";
-        decision   = intent === 'sell' ? "즉시 매도 검토" : "🚫 진입 금지";
-        position   = "0%";
-        stop       = "-"; target = "-";
-        riskLabel  = "매우 높음"; canEnter = false;
+    } 
+    // 4. 중립 관망 (-1점 ~ 1점)
+    else if (netScore >= -1) {
+        res.trendLabel = "중립 — 관망 구간";
+        res.decision   = "관망 (방향성 대기)";
+        res.riskLabel  = "보통";
+    } 
+    // 5. 약한 하락 (-4점 ~ -1.1점)
+    else if (netScore >= -4) {
+        res.trendLabel = "하락 압력 우세";
+        res.decision   = intent === 'sell' ? "분할 매도" : "신규 진입 금지";
+        res.riskLabel  = "높음";
+    } 
+    // 6. 강한 하락 (그 외)
+    else {
+        res.trendLabel = "강한 하락 신호";
+        res.decision   = intent === 'sell' ? "즉시 매도 검토" : "🚫 진입 금지";
+        res.riskLabel  = "매우 높음";
     }
 
-    return { decision, trendLabel, position, stop, target, riskLabel, canEnter, score: netScore };
+    return res;
 }
 
 // ════════════════════════════════════
-// 🔥 V6.0 통합 투자 판단 엔진
-//    모든 출력이 단일 netScore에서 파생 — 모순 불가
+// 통합 투자 데이터 생성 래퍼
+// const result = getInvestData(cards) 단일 패턴으로 호출
+// queryType/intent는 내부에서 CURRENT_MODE/parseQuestion으로 자동 결정
 // ════════════════════════════════════
-function generateInvestmentData(cards, text, queryType = 'stock', marketInterpret = null) {
+function getInvestData(cards, text = '', marketInterpret = null) {
+    const queryType = CURRENT_MODE;
+    if (queryType === 'life') return null;
+    if (queryType === 'realestate') {
+        const ctx = parseQuestion(document.getElementById('seed-input')?.value || '');
+        return generateRealEstateOracle(cards, text, ctx.intent, ctx.isTiming);
+    }
+    return generateInvestmentData(cards, text, queryType, marketInterpret);
+}
+//    주식/코인 언어(비중/익절/손절) 완전 제거
+//    매도 타이밍 / 매수 타이밍 / 개발 타이밍 3가지로만 구성
+// ════════════════════════════════════
+function generateRealEstateOracle(cards, text, intent, isTiming) {
+    const qRaw = (document.getElementById('seed-input')?.value || '').toLowerCase();
+    const zeus  = analyzeCardsZeus(cards, 'realestate');
+
+    // 카드 에너지 기반 시드 (결정론적)
+    let seed = 0;
+    for (let i = 0; i < qRaw.length; i++) seed += qRaw.charCodeAt(i);
+    cards.forEach(c => { seed += c.id; });
+    const pick  = arr => arr[Math.abs(seed) % arr.length];
+    const pick2 = arr => arr[Math.abs(seed + 7) % arr.length];
+
+    const netScore   = zeus.score + zeus.power;
+    const monthNums  = [1,2,3,4,5,6,7,8,9,10,11,12];
+    const bestMonth  = monthNums[Math.abs(seed) % 12];
+    const bestMonth2 = monthNums[(Math.abs(seed) + 3) % 12];
+
+    const sellSeasons = ["3~4월 (봄 이사철 성수기)", "10~11월 (가을 이사철 성수기)", "6~7월 (여름 전 마지막 수요)"];
+    const buySeasons  = ["2~3월 (봄 이사철 직전)", "9~10월 (가을 이사철 직전)", "12~1월 (비수기 저점)"];
+
+    // ── 카드 에너지 → 부동산 언어로 변환
+    const energyLabel = netScore >= 5 ? "강한 상승 에너지 — 매도 적기"
+                      : netScore >= 2 ? "긍정 에너지 — 매도 유리한 흐름"
+                      : netScore >= 0 ? "중립 에너지 — 시장 관망 구간"
+                      : netScore >= -3 ? "하락 압력 — 매수자 우위 시장"
+                      : "강한 하락 에너지 — 매도 불리, 시간 필요";
+
+    // ── 거래 소요 예상 (카드 에너지 기반)
+    const weeksEst = netScore >= 4 ? "4~6주" : netScore >= 1 ? "6~10주" : "10~16주 이상";
+
+    // ── 호가 전략
+    const priceStrategy = netScore >= 4
+        ? "희망가 그대로 등록 — 수요 우위, 협상력 보유"
+        : netScore >= 1
+        ? "희망가 기준, 2~3% 조정 여지 확보"
+        : "시세 대비 3~5% 할인 등록 시 거래 가능성 상승";
+
+    // ── 매도 타이밍 신탁 (팔릴 시기 질문용)
+    if (intent === 'sell' || isTiming) {
+        const bestSeason = pick(sellSeasons);
+        const urgency    = netScore >= 3 ? "🟢 지금 바로 매물 등록이 최적 — 에너지가 정점에 있습니다"
+                         : netScore >= 0 ? "🟡 준비 후 이번 시즌 내 등록 권장"
+                         : "🔴 현재 에너지 약세 — 다음 성수기 준비 시작";
+        const keyCardName = cards[2]?.name?.split(' (')[0] || '미래 카드';
+        const worstCardName = (() => {
+            let w = null, m = -1;
+            cards.forEach(c => {
+                const b = c.name.split(' (')[0];
+                const dd = CARD_DB[b] || { risk: 0 };
+                if (dd.risk > m) { m = dd.risk; w = b; }
+            });
+            return w || keyCardName;
+        })();
+        const interpretSell =
+            netScore >= 5 ? `현재 부동산 에너지는 매도자 우위의 정점 구간에 있습니다.\n${keyCardName}의 기운은 호가를 견고하게 유지해도 거래가 성사될 가능성을 시사합니다.\n지금 시즌을 놓치지 않는 결단이 가장 유리합니다.`
+          : netScore >= 2 ? `흐름은 매도에 우호적이지만 폭발적 상승 에너지까지는 아닙니다.\n${keyCardName}의 기운은 약간의 호가 유연성이 거래 속도를 크게 바꿀 수 있음을 암시합니다.\n시장 반응을 살피며 조건을 조율하는 전략이 유효합니다.`
+          : netScore >= 0 ? `시장은 방향성을 탐색하는 관망 구간에 놓여 있습니다.\n${keyCardName}의 에너지는 무리한 호가보다 '적정가·빠른 거래'에 무게를 두라 조언합니다.\n등록 후 반응을 확인하며 조건을 유연하게 운용하십시오.`
+          : `에너지는 매수자 우위로 기울어 있습니다.\n${worstCardName}의 기운은 호가 집착이 장기 미거래로 이어질 수 있음을 경고합니다.\n현실적인 호가 조정 또는 다음 성수기를 기다리는 전략이 가장 안정적입니다.`;
+        return {
+            type: 'realestate_sell',
+            // [V19.1] 접두어 제거 — 렌더러가 라벨 담당
+            timingLabel: `매도 타이밍: ${bestSeason}`,
+            timing2:     `계약 완료 목표: ${bestMonth}월~${bestMonth2}월`,
+            strategy:    `매물 전략: ${priceStrategy}`,
+            period:      `거래 소요 예상: 카드 에너지 기준 ${weeksEst} 내 계약 가능성`,
+            urgency,
+            energy:      energyLabel,
+            caution:     netScore < 0 ? `⚠️ 주의: 현재 매수자 우위 시장 — 호가 조정이 거래 성사의 핵심` : null,
+            trend:       (netScore >= 3 ? '매도자 우위' : netScore >= 0 ? '균형' : '매수자 우위'),
+            action:      (netScore >= 3 ? '적극 등록, 호가 고수' : netScore >= 0 ? '등록 후 반응 관찰' : '호가 조정 후 등록'),
+            risk:        (zeus.maxRisk >= 4 ? '급격한 시장 변화 가능성 — 계약 조건 꼼꼼히' : '비수기 미거래 장기화 가능성'),
+            finalOracle: interpretSell
+        };
+    }
+
+    // ── 매수 타이밍 신탁
+    const keyCardNameBuy = cards[2]?.name?.split(' (')[0] || '미래 카드';
+    const worstCardNameBuy = (() => {
+        let w = null, m = -1;
+        cards.forEach(c => {
+            const b = c.name.split(' (')[0];
+            const dd = CARD_DB[b] || { risk: 0 };
+            if (dd.risk > m) { m = dd.risk; w = b; }
+        });
+        return w || keyCardNameBuy;
+    })();
+    const interpretBuy =
+        netScore >= 5 ? `부동산 에너지는 취득에 유리한 정점 구간에 있습니다.\n${keyCardNameBuy}의 기운은 결단과 선점이 장기적 성과로 이어질 가능성을 시사합니다.\n이사철 전 집중 임장과 계약 준비가 핵심입니다.`
+      : netScore >= 2 ? `에너지는 완만한 긍정 구간입니다.\n${keyCardNameBuy}의 기운은 '정상 매물'보다 '급매·조건 우위 매물'에서 기회가 나타남을 암시합니다.\n신중한 탐색과 조건 협상이 본 구간의 유효 전략입니다.`
+      : netScore >= 0 ? `흐름은 방향성을 탐색하는 관망 구간입니다.\n${keyCardNameBuy}의 에너지는 서두른 취득이 후회로 이어질 수 있음을 알립니다.\n자금 여력을 유지하며 명확한 신호를 기다리십시오.`
+      : `에너지는 진입을 강하게 경계하는 구간입니다.\n${worstCardNameBuy}의 기운은 무리한 취득이 금리·규제·평가 리스크와 맞물릴 수 있음을 경고합니다.\n지금은 진입을 보류하고 다음 조정을 기다리는 편이 안정적입니다.`;
+
+    return {
+        type: 'realestate_buy',
+        timingLabel: `매수 타이밍: ${pick(buySeasons)}`,
+        timing2:     `계약 검토 목표: ${bestMonth}월 전후`,
+        strategy:    `접근 전략: ${netScore >= 3 ? '적극 탐색, 급매 외 정상 매물도 검토' : netScore >= 0 ? '급매 위주 탐색' : '진입 자제 — 추가 조정 가능성'}`,
+        period:      `보유 전략: 카드 에너지 기준 최소 ${netScore >= 3 ? '1~2년' : '2~3년'} 중장기 보유 권장`,
+        urgency:     netScore >= 3 ? "🟢 현재 진입 에너지 긍정 — 봄 이사철 전 선점 유리"
+                   : netScore >= 0 ? "🟡 신중한 탐색 구간 — 급매 물건 위주"
+                   : "🔴 진입 자제 — 추가 조정 후 재판단",
+        energy:      energyLabel,
+        caution:     netScore < 0 ? `⚠️ 주의: 하락 에너지 감지 — 무리한 취득 금지` : null,
+        trend:       (netScore >= 3 ? '상승 에너지' : netScore >= 0 ? '중립' : '하락 압력'),
+        action:      (netScore >= 3 ? '이사철 전 적극 탐색' : netScore >= 0 ? '관망 후 급매 포착' : '진입 보류'),
+        risk:        (zeus.maxRisk >= 4 ? '금리·규제 변수 — 자금 계획 보수적으로' : '입지 리스크 — 임장 필수'),
+        finalOracle: interpretBuy
+    };
+}
+// ════════════════════════════════════════════════════════════════
+// [V19] 서버 metrics → 클라이언트 렌더러 입력 형태로 매핑
+//   - Worker는 순수 데이터 필드(trend, action 등)만 보냄
+//   - 클라이언트 렌더러는 "📈 추세: XXX" 같은 접두어 포함 문자열을 기대
+//   - 이 헬퍼가 접두어 붙이는 역할 + 필드명 정규화
+// ════════════════════════════════════════════════════════════════
+function _mapServerMetricsToInvestData(sm, cards) {
+    const qType = sm.queryType;
+
+    // ── 부동산 분기 — [V19.1] 접두어 제거 (렌더러가 "📈 시장 흐름:" 라벨 담당)
+    if (qType === 'realestate') {
+        return {
+            type: sm.type || ('realestate_' + (sm.intent || 'buy')),
+            trend:       sm.trend     || '-',
+            action:      sm.action    || '-',
+            risk:        sm.riskLevel || '-',
+            timingLabel: sm.finalTimingText || '-',
+            timing2:     sm.timing2   || '',
+            strategy:    sm.strategy  || '',
+            period:      sm.period    || '',
+            urgency:     sm.urgency   || '',
+            energy:      sm.energyLabel || '',
+            caution:     sm.caution   || null,
+            finalOracle: sm.finalOracle || '',
+            cardNarrative: sm.cardNarrative || [],
+            _server: sm
+        };
+    }
+
+    // ── 주식/코인 분기 — [V19.1] 접두어 제거
+    if (qType === 'stock' || qType === 'crypto') {
+        return {
+            type: qType,
+            trend:       sm.trend     || '-',
+            action:      sm.action    || '-',
+            risk:        sm.riskLevel || '-',
+            timingLabel: sm.finalTimingText || '-',
+            period:      sm.entryStrategy ? `진입: ${sm.entryStrategy} / 청산: ${sm.exitStrategy || '-'}` : '-',
+            score:       sm.totalScore ?? 0,
+            power:       0,
+            cardNarrative: sm.cardNarrative || [],
+            flowSummary:   sm.flowSummary   || '',
+            riskChecks:    sm.riskChecks    || [],
+            scenarios:     sm.scenarios     || null,
+            roadmap:       sm.roadmap       || [],
+            position:      sm.position      || null, // [V19.2] 실전형 포지션 블록
+            marketInterpret: sm.marketInterpret || null,
+            finalOracle:   sm.finalOracle   || '',
+            _server: sm
+        };
+    }
+
+    return null;
+}
+
+
+function buildInvestmentData(cards, question) {
     if (!cards || cards.length < 3) return null;
 
-    const qRaw      = (document.getElementById('seed-input')?.value || "").toLowerCase();
-    const ctx       = parseQuestion(qRaw);
-    const sentiment = analyzeAISentiment(text);
-    const isLeverage = /레버리지|3x|2x|etf|crdc|이브이/.test(qRaw);
+    // ══════════════════════════════════════════════════════════════
+    // [V19 핵심] Worker의 metrics가 도착했으면 그것을 우선 사용
+    //   서버에서 trend/action/risk/timingLabel/finalOracle 등을 모두 계산했으므로
+    //   클라이언트는 단순히 렌더링에 맞게 구조만 맞춰 반환한다.
+    //   서버 metrics 없을 때만(네트워크 장애 등) 아래 fallback 로직 동작.
+    // ══════════════════════════════════════════════════════════════
+    const sm = window._serverMetrics;
+    if (sm && sm.queryType) {
+        return _mapServerMetricsToInvestData(sm, cards);
+    }
 
-    // ── 카드 데이터 파싱
-    const cardData = cards.map(c => {
-        const name = c.name.split(' (')[0];
-        return { name, ...(CARD_STATE_MAP[name] || DEFAULT_CARD) };
-    });
-    const totalPower  = cardData.reduce((a, c) => a + c.power, 0);
-    const totalRisk   = cardData.reduce((a, c) => a + c.risk,  0);
-    const avgRisk     = totalRisk / cardData.length;
-    const maxRisk     = Math.max(...cardData.map(d => d.risk));
-    const hasCritical = cardData.some(d => d.risk >= 8);
+    const qRaw = (question || "").toLowerCase();
+    const ctx = parseQuestion(qRaw);
+    const queryType = CURRENT_MODE; 
+    
+    if (queryType === 'realestate') {
+        return generateRealEstateOracle(cards, qRaw, ctx.intent, ctx.isTiming);
+    }
 
-    // ── 단일 순에너지 점수 (코인은 sentiment 가중 2.5배, 주식 1.5배)
-    const sentWeight = queryType === 'crypto' ? 2.5 : 1.5;
-    const adjPower   = hasCritical ? totalPower * (queryType === 'crypto' ? 0.6 : 0.7) : totalPower;
-    const netScore   = adjPower + (sentiment.net * sentWeight);
+    const zeus = analyzeCardsZeus(cards, queryType);
+    const adjPower = zeus.hasCritical ? zeus.power * 0.7 : zeus.power;
+    const netScore = adjPower + zeus.score; 
 
-    // ── 통합 의사결정 (시그니처 맞춤: totalRisk·hasNoVol 제거)
-    const d = getFinalDecision(
-        netScore, maxRisk, avgRisk, hasCritical,
-        isLeverage, queryType, ctx.intent
-    );
+    let trend, action, riskLabel, period;
 
-    // ── 비중 → 숫자
-    const posNum = d.canEnter ? parseInt(d.position) || 0 : 0;
+    // 사용자 제안: 중앙 집중형 점수 모델
+    if (netScore >= 7) {
+        trend = "강력 상승";
+        action = (queryType === 'realestate' && ctx.intent === 'sell') ? "즉시 매물 등록" : "적극 매수";
+        riskLabel = "낮음";
+        period = "단기~중기 추진 구간";
+    } else if (netScore >= 3) {
+        trend = "상승 우세";
+        action = (queryType === 'realestate' && ctx.intent === 'sell') ? "분할 매도/등록" : "분할 매수";
+        riskLabel = "보통";
+        period = "완만한 흐름 구간";
+    } else if (netScore >= 0) {
+        trend = "중립";
+        action = "관망 및 대기";
+        riskLabel = "보통";
+        period = "방향성 탐색 구간";
+    } else {
+        trend = "하락 우세";
+        action = (queryType === 'realestate' && ctx.intent === 'sell') ? "보류 후 시장 확인" : "매수 금지";
+        riskLabel = "높음";
+        period = "리스크 관리 구간";
+    }
 
-    // ── 카드 기반 타이밍
-    const timingLine = !d.canEnter
-        ? `📅 타이밍: ${d.trendLabel === "중립 — 관망 구간" ? "방향성 확인 후 재진입" : "시장 안정 후 재판단"}`
+    // ── 🔥 [V17 핵심 수정] 여기서 조기 return을 제거하고
+    //    아래의 cardNarrative / riskChecks / scenarios / roadmap 상세 조립을
+    //    모두 실행한 후, 함수 맨 끝에서 단일 통합 객체를 반환합니다.
+
+    // ── 타이밍 라인 (부동산은 별도 getUnifiedTiming, 주식/코인은 카드 기반 엔진 사용)
+    const timingLine = (queryType === 'realestate')
+        ? getUnifiedTiming(netScore, zeus.power, queryType, ctx.intent)
         : getCardBasedTiming(cards, queryType, ctx.intent, qRaw);
 
-    // ── 손절·목표
-    const stopLine   = d.stop   !== '-' ? `🛑 손절 기준선: 진입가 대비 ${d.stop} 이탈 시 재검토` : `🛑 손절 기준선: 해당 없음 (진입 불가)`;
-    const targetLine = d.target !== '-' ? `🎯 목표 에너지 구간: ${d.target} 도달 시 분할 익절 고려` : `🎯 목표 구간: 해당 없음 (진입 불가)`;
+    // ── 포지션(권장 비중) 숫자 — 중앙 점수 모델 기반
+    const posNum =
+        netScore >= 7 ? (queryType === 'crypto' ? 25 : 30) :
+        netScore >= 3 ? (queryType === 'crypto' ? 15 : 20) :
+        netScore >= 0 ? 0 : 0;
+
+    // ── 손절/목표 구간 — 질문유형별 변동성 반영
+    const stopPct   = (queryType === 'crypto') ? '-8%' : '-5%';
+    const targetStr =
+        netScore >= 7 ? '+10~15%' :
+        netScore >= 3 ? '+6~10%'  :
+        netScore >= 0 ? '+3~6%'   : '-';
+
+    // ── 진입 가능 여부
+    const canEnter  = netScore >= 3;
+
+    // ── 레버리지/고변동 자산 감지
+    const q         = (question || '').toLowerCase();
+    const isLeverage =
+        q.includes('레버리지') || q.includes('etf') || q.includes('etn') ||
+        q.includes('3x') || q.includes('2x') || q.includes('crdc');
+
+    // ── Yahoo 실시간 데이터 자리 (필요 시 외부 주입, 기본 null)
+    const marketInterpret = null;
+
+    // ── 로드맵/시나리오에서 사용할 의사결정 축 객체
+    const d = {
+        canEnter,
+        target: targetStr,
+        stop:   canEnter ? stopPct : '-',
+        trendLabel: trend,
+        decision:   action,
+        riskLabel
+    };
 
     // ① 카드 3장 서사
     const CARD_INVEST_MEANING = {
@@ -1936,7 +3070,14 @@ function generateInvestmentData(cards, text, queryType = 'stock', marketInterpre
         const m = CARD_INVEST_MEANING[base] || {flow:"에너지 탐색 중", signal:"방향성 주시"};
         return `${posLabels[i]}(${card.name}): ${m.flow} — ${m.signal}`;
     });
-    const powers = cardData.map(c => c.power);
+
+    // [수정] cardData → CARD_DB 기반으로 직접 구성 (undefined 오류 해결)
+    const cardDataArr = cards.map(c => {
+        const base = c.name.split(' (')[0];
+        const d    = CARD_DB[base] || { score: 0, risk: 2, power: 0 };
+        return { name: base, ...d };
+    });
+    const powers = cardDataArr.map(c => c.power);
     const flowSummary = powers[2] > powers[0]
         ? "과거 → 미래 에너지 상승 흐름 (진입 에너지 강화 중)"
         : powers[2] < powers[0]
@@ -1944,11 +3085,11 @@ function generateInvestmentData(cards, text, queryType = 'stock', marketInterpre
         : "에너지 균형 흐름 (방향성 확인 후 대응)";
 
     // ② 카드별 리스크 체크
-    const riskChecks = cardData.map(c => {
-        if (c.risk >= 8)                  return `🔴 ${c.name}: 붕괴·급락 에너지 — 강한 리스크 신호`;
-        if (c.risk >= 6)                  return `🟠 ${c.name}: 변동성 확대 에너지 — 손절 기준 필수`;
-        if (c.risk <= 2 && c.power >= 6)  return `🟢 ${c.name}: 안정적 상승 에너지 — 긍정 신호`;
-        if (c.power <= -3)                return `🟠 ${c.name}: 하락 압력 에너지 — 추가 진입 자제`;
+    const riskChecks = cardDataArr.map(c => {
+        if (c.risk >= 5)                  return `🔴 ${c.name}: 붕괴·급락 에너지 — 강한 리스크 신호`;
+        if (c.risk >= 4)                  return `🟠 ${c.name}: 변동성 확대 에너지 — 손절 기준 필수`;
+        if (c.risk <= 1 && c.power >= 2)  return `🟢 ${c.name}: 안정적 상승 에너지 — 긍정 신호`;
+        if (c.power <= -2)                return `🟠 ${c.name}: 하락 압력 에너지 — 추가 진입 자제`;
         return `⚪ ${c.name}: 중립 에너지 — 흐름 관찰`;
     });
 
@@ -2001,65 +3142,181 @@ function generateInvestmentData(cards, text, queryType = 'stock', marketInterpre
         ];
     })() : null;
 
+    // ── [V17 수정] finalOracle은 수치/타이밍 재언급을 금지하고
+    //    카드 에너지 기반의 해석·조언 텍스트만 담습니다.
+    //    수치(추세/행동/리스크/타이밍/전략)는 상단 UI 블록에서 단 1번만 노출됩니다.
+    const keyCard = cards[2]?.name?.split(' (')[0] || cards[1]?.name?.split(' (')[0] || '미래 카드';
+    const strongestRiskCard = (() => {
+        let worst = null, wMax = -1;
+        cards.forEach(c => {
+            const base = c.name.split(' (')[0];
+            const dd = CARD_DB[base] || { risk: 0, power: 0 };
+            if (dd.risk > wMax) { wMax = dd.risk; worst = base; }
+        });
+        return worst || keyCard;
+    })();
+
+    // ── 질문유형별 해석 문구 (수치/비중/손절/목표 언급 금지)
+    const interpretByType = {
+        realestate: {
+            strong:  `현재 부동산 에너지는 뚜렷한 상승 흐름에 있습니다.\n${keyCard}의 기운은 매도자 우위 시장과 견고한 수요를 시사합니다.\n지금은 결단과 실행이 가장 유리한 구간입니다.`,
+            mid:     `흐름은 완만한 긍정 구간에 머물러 있습니다.\n${keyCard}의 에너지는 조건부 진전 가능성을 보여주며, 무리한 호가보다 유연한 협상이 관건입니다.\n시장 반응을 살피며 단계적으로 움직이는 전략이 권장됩니다.`,
+            neutral: `에너지는 뚜렷한 방향성 없이 관망 구간에 놓여 있습니다.\n${keyCard}의 기운은 성급한 결정을 경계하게 합니다.\n시장의 다음 신호를 기다린 후 움직이는 편이 안전합니다.`,
+            weak:    `현재 흐름은 강한 하락 압력에 노출되어 있습니다.\n특히 ${strongestRiskCard}의 에너지는 무리한 취득·고집스러운 호가가 손실로 이어질 수 있음을 경고합니다.\n지금은 보류와 재판단이 가장 안정적인 선택입니다.`
+        },
+        stock: {
+            strong:  `현재 흐름은 강한 상승 에너지에 올라타 있는 구간입니다.\n${keyCard}의 기운은 모멘텀이 유효하게 작동하고 있음을 시사합니다.\n분할 접근과 원칙적 대응이 수익을 지키는 핵심입니다.`,
+            mid:     `흐름은 완만한 긍정 구간이지만 돌파 에너지는 아직 제한적입니다.\n${keyCard}의 에너지는 추세 확인 후 진입이 유리함을 암시합니다.\n인내와 단계적 대응이 본 구간의 미덕입니다.`,
+            neutral: `에너지는 방향성을 탐색하는 중립 구간에 있습니다.\n${keyCard}의 기운은 지금이 신중한 관찰의 시기임을 알립니다.\n뚜렷한 신호가 나타날 때까지 포지션을 가볍게 유지하십시오.`,
+            weak:    `현재 흐름은 감정적 진입을 강하게 억제해야 하는 구간입니다.\n특히 ${strongestRiskCard}의 에너지는 손실 집착과 왜곡된 판단을 유발할 수 있습니다.\n지금은 관망 후 재진입 전략이 가장 안정적입니다.`
+        },
+        crypto: {
+            strong:  `암호자산의 변동성 에너지가 상승 방향으로 정렬된 구간입니다.\n${keyCard}의 기운은 단기 모멘텀을 뒷받침하나, 변동성 자체는 여전히 큽니다.\n기민한 대응과 원칙이 수익을 결정짓습니다.`,
+            mid:     `에너지는 미묘한 균형 구간에 있으며 양방향 모두 열려 있습니다.\n${keyCard}의 기운은 급격한 확신을 경계하게 합니다.\n소량·분할로만 접근하고 신호 확인을 우선하십시오.`,
+            neutral: `방향성이 불명확한 관망 구간입니다.\n${keyCard}의 에너지는 지금이 시장을 관찰할 시기임을 가리킵니다.\n포지션을 가볍게 유지하고 다음 신호를 기다리십시오.`,
+            weak:    `현재 흐름은 공포와 변동성이 지배하는 구간입니다.\n${strongestRiskCard}의 에너지는 패닉 진입·평단 물타기를 강하게 경계시킵니다.\n지금은 보호가 최우선이며, 저점 확인 전까지 관망이 가장 안정적입니다.`
+        }
+    };
+
+    const regimeKey =
+        netScore >= 7 ? 'strong' :
+        netScore >= 3 ? 'mid'    :
+        netScore >= 0 ? 'neutral': 'weak';
+    const interpretLang = interpretByType[queryType] || interpretByType.stock;
+    const interpretText = interpretLang[regimeKey];
+
     return {
-        trend:  `📈 추세: ${d.trendLabel}`,
-        action: `🧭 행동: ${d.decision}`,
-        risk:   `🛡️ 리스크: ${d.riskLabel}`,
+        type: (queryType === 'realestate') ? `realestate_${ctx.intent}` : queryType,
+        // [V19.1] 접두어 제거 — 렌더러가 라벨 담당
+        trend:  d.trendLabel,
+        action: d.decision,
+        risk:   d.riskLabel,
+        // 상세 섹션 (renderText에서 시각화)
         cardNarrative, flowSummary, riskChecks, scenarios, roadmap,
-        marketInterpret, // Yahoo 실시간 데이터 (null이면 섹션 미표시)
-        finalOracle: [
-            `💰 권장 비중: ${posNum}% ${d.canEnter ? '(분할 접근)' : '(진입 불가 — 관망)'}`,
-            stopLine, targetLine, timingLine,
-            isLeverage ? `⚠️ [경고] 고변동 자산: 설정 비중 엄수` : ''
-        ].filter(Boolean).join('<br>')
+        marketInterpret,
+        timingLabel: timingLine,
+        period,
+        score: netScore,
+        power: zeus.power,
+        // [V19.2] 클라이언트 fallback에서도 position 블록 생성
+        //         Worker metrics가 없을 때 주식 렌더러가 비어보이는 걸 방지
+        position: {
+            weight:    !d.canEnter ? "0% (진입 금지 구간)" :
+                       netScore >= 7 ? "40~50% (강한 확신 구간)" :
+                       netScore >= 3 ? "20~30% (분할 진입)" : "10~20% (탐색 구간)",
+            stopLoss:  !d.canEnter ? "진입 금지 — 해당 없음" :
+                       (d.stop && d.stop !== '-' ? `${d.stop} 이탈 시 즉시 손절` : "-3~5% 이탈 시 즉시 손절"),
+            target:    !d.canEnter ? "설정 보류 (추세 확정 후 재설정)" :
+                       (d.target && d.target !== '-' ? `${d.target} 구간` : "+5~10% 구간")
+        },
+        finalOracle: interpretText + (isLeverage ? `\n\n⚠️ 고변동성 자산(레버리지·특수종목)은 해석된 방향이 그대로 실현되지 않을 수 있습니다. 변동성 자체를 리스크로 간주하십시오.` : '')
     };
 }
 // ════════════════════════════════════
 // 🔮 운세 전용 영성 지표 4종 생성
-//    워커 지시: 운세 질문 시 투자 언어 대신 영성적 언어로 치환
-//    추세/행동/타이밍/리스크 → 감정·운명·수비학 언어
+//    [V19] Worker의 metrics(connector: love/life)가 있으면 그것을 우선 사용
+//    없을 때만 클라이언트 자체 계산 (fallback)
 // ════════════════════════════════════
-function buildFortuneIndicators(cards, qRaw) {
+function buildFortuneIndicators(cards, qRaw, loveSubType = '') {
+    // ── [V19] 서버 metrics 우선 사용
+    const sm = window._serverMetrics;
+    if (sm && (sm.queryType === 'love' || sm.queryType === 'life')) {
+        return {
+            trend:  sm.trend           || '-',
+            action: sm.action          || '-',
+            timing: sm.finalTimingText || '-',
+            risk:   sm.riskLevel       || '-',
+            _server: sm
+        };
+    }
+
     const totalPower = calcCardPower(cards);
     let seed = 0;
     for (let i = 0; i < qRaw.length; i++) seed += qRaw.charCodeAt(i);
     cards.forEach(c => { seed += c.id; });
-    const pick = arr => arr[Math.abs(seed) % arr.length];
+    const pick  = arr => arr[Math.abs(seed) % arr.length];
     const pick2 = arr => arr[Math.abs(seed + totalPower + 5) % arr.length];
 
-    // 📈 흐름 (추세) — 카드 power 기반 감정 흐름
-    const trends = totalPower >= 7
+    // 수비학 복합 점수
+    const now     = new Date();
+    const numScore = getNumerologyScore();
+    const DAYS_KR  = ["일","월","화","수","목","금","토"];
+    const todayKR  = DAYS_KR[now.getDay()];
+    const compNum  = calculateNumerology(cards, todayKR, now.getHours());
+    const numMeaning = NUM_MEANING[compNum] || "에너지 탐색 중";
+
+    // ── 연애 세부 상황별 특화 언어
+    const LOVE_LANG = {
+        thumb: {
+            trends:  ["감정의 고조기","설레임이 무르익는 시기","관계가 깊어지는 흐름","마음이 기울어지는 구간"],
+            actions: ["자연스러운 만남을 늘리세요","솔직한 감정 표현이 유리합니다","한 발 더 다가가세요","여유 있게 기다리세요"],
+            risks:   ["과한 기대로 인한 실망","조급함이 관계를 망칠 수 있습니다","오해의 소지 주의","감정 과잉 경계"]
+        },
+        reunion: {
+            trends:  ["재회 에너지가 감지됩니다","인연의 실이 다시 이어지려 합니다","과거의 감정이 깨어나는 시기","운명의 재편 구간"],
+            actions: ["먼저 연락하는 것을 고려하세요","진심을 담은 한 마디가 열쇠입니다","서두르지 말고 자연스럽게","상대의 신호를 먼저 확인하세요"],
+            risks:   ["과거의 상처가 반복될 수 있습니다","집착보다 성장한 모습을 보이세요","외부 개입 주의","에너지 소모 경계"]
+        },
+        contact: {
+            trends:  ["연락의 문이 열릴 에너지","상대방 마음속에 당신이 있습니다","소통의 흐름이 활성화되는 시기","연결 에너지 상승 중"],
+            actions: ["지금 이 타이밍에 연락하세요","짧고 자연스러운 메시지가 효과적","직접적 감정 표현보다 일상 공유","기다림보다 능동적 소통"],
+            risks:   ["읽씹 가능성 — 감정 준비가 필요합니다","기대와 현실의 간격 주의","단발성 연락보다 지속적 관계 구축"]
+        },
+        mindread: {
+            trends:  ["상대의 진심이 드러나는 흐름","숨겨진 감정이 표면으로 오는 시기","마음의 방향이 결정되는 구간","에너지의 진실이 밝혀집니다"],
+            actions: ["판단보다 관찰을 먼저 하세요","상대의 행동 패턴에 집중하세요","직접 물어보는 것도 방법입니다","감정보다 사실을 보세요"],
+            risks:   ["확증 편향 주의 — 보고 싶은 것만 보지 마세요","오해 없이 소통하는 것이 중요","감정 과잉으로 에너지 소모"]
+        },
+        marriage: {
+            trends:  ["결합 에너지가 감지됩니다","두 사람의 흐름이 같은 방향을 향합니다","인생의 중요한 결정점","운명적 연결의 에너지"],
+            actions: ["진지한 대화를 시작할 때입니다","서로의 미래를 솔직하게 나누세요","작은 약속들을 쌓아가세요","가족과의 관계도 살피세요"],
+            risks:   ["성급한 결정보다 충분한 대화","현실적 조건도 함께 봐야 합니다","외부 압박보다 내 마음이 기준"]
+        },
+        breakup: {
+            trends:  ["이별 후 에너지가 전환되는 시기","새로운 시작의 씨앗이 심어집니다","감정 정리가 이루어지는 흐름","치유와 성장의 구간"],
+            actions: ["지금은 스스로를 돌볼 때입니다","감정을 억누르지 말고 흘려보내세요","새로운 만남에 마음을 열어두세요","과거보다 지금의 나에게 집중"],
+            risks:   ["섣부른 재연락은 상처를 키울 수 있습니다","자기 비하 금물","외부 개입 경계"]
+        },
+        crush: {
+            trends:  ["설레임의 에너지가 살아있습니다","상대도 당신을 의식하고 있습니다","감정이 싹트는 초기 에너지","인연의 가능성이 열려있는 시기"],
+            actions: ["자연스러운 접점을 늘리세요","진심 어린 관심 표현이 효과적","공통 관심사로 대화를 열어보세요","먼저 친구가 되어보세요"],
+            risks:   ["혼자 앞서가지 마세요","거절에 대한 준비도 필요합니다","상대의 신호를 오독할 수 있어요"]
+        }
+    };
+
+    const lang = LOVE_LANG[loveSubType];
+
+    // 📈 흐름
+    const generalTrends = totalPower >= 7
         ? ["감정의 고조기","기운의 정점","운명의 상승기","관계의 확장기"]
         : totalPower >= 3
         ? ["기운의 반등","새로운 흐름의 시작","전환의 기운","희망의 싹틈"]
         : totalPower >= 0
         ? ["운명의 정체기","내면 성찰의 시기","균형을 찾는 구간","고요한 흐름"]
         : ["에너지 소진기","내면의 갈등기","재정비의 시간","어둠 속 빛을 찾는 시기"];
-    const trend = pick(trends);
+    const trend = lang ? pick(lang.trends) : pick(generalTrends);
 
-    // 🧭 행동 — 카드 조합 기반
-    const actions = totalPower >= 5
+    // 🧭 행동
+    const generalActions = totalPower >= 5
         ? ["적극적 소통","과감한 결단","새로운 시도","주도적 행보","감정 표현 확대"]
         : totalPower >= 1
         ? ["유연한 수용","신중한 관찰","기회 포착 준비","주변과의 조화"]
         : ["내면 성찰","에너지 충전","무리한 행동 자제","현재에 집중"];
-    const action = pick(actions);
+    const action = lang ? pick(lang.actions) : pick(generalActions);
 
-    // ⚡ 타이밍 — 수비학·달력·자연 기반 (워커 지시: "금요일 밤", "보름달", "새벽 2시" 등)
-    const now = new Date();
-    const numScore = getNumerologyScore();
+    // ⚡ 타이밍
     const moonTimings = ["보름달이 뜨는 날 밤","초승달이 뜨는 새벽","그믐 전날 저녁"];
     const dayTimings  = ["금요일 저녁 7시 이후","수요일 오전 10시","토요일 새벽 2시","화요일 정오"];
     const timingBase  = pick(totalPower >= 3 ? dayTimings : moonTimings);
-    const timing = `${timingBase} (수비학 ${numScore}번 에너지 — ${numScore >= 7 ? '강한 행동 에너지' : numScore >= 4 ? '균형의 에너지' : '내면 집중 에너지'})`;
+    const timing = `${timingBase} (수비학 ${compNum}번 — ${numMeaning.split(' — ')[0]})`;
 
-    // 🛡️ 주의 (리스크)
-    const risks = totalPower >= 5
+    // 🛡️ 주의
+    const generalRisks = totalPower >= 5
         ? ["과도한 기대로 인한 실망","감정 과잉으로 인한 에너지 소모","무리한 진전 시도"]
         : totalPower >= 0
         ? ["오해의 소지","외부 개입으로 인한 혼선","방향성 부재"]
         : ["에너지 소모 경계","감정적 판단 주의","외부 영향에 흔들림 경계","자기 비하 금물"];
-    const risk = pick2(risks);
+    const risk = lang ? pick(lang.risks) : pick2(generalRisks);
 
     return { trend, action, timing, risk };
 }
@@ -2070,8 +3327,17 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
         .replace(/\[합산 과정:[^\]]*\]/g, '')
         .replace(/제우스의?\s*(운명|최종)신탁/g, '')
         .replace(/ZEUS\s*(DESTINY|FINAL)\s*ORACLE/g, '')
-        // 본문 시작의 "과거/현재/미래" 카테고리명을 칼같이 도려냄
-        .replace(/^(과거|현재|미래)\s*(\n|[:：]|\s)*/gm, '') 
+        .replace(/^(과거|현재|미래)\s*(\n|[:：]|\s)*/gm, '')
+        // 2번: 워커가 삽입한 투자 지표 4줄 중복 제거
+        // "추세: 상승 행동: 분할 매수 타이밍: ... 리스크: ..." 패턴
+        .replace(/추세:\s*[^\n]+\n행동:\s*[^\n]+\n타이밍:\s*[^\n]+\n리스크:\s*[^\n]+/g, '')
+        .replace(/(추세|행동|타이밍|리스크):\s*(강한\s*(상승|하락)|상승|하락|중립|분할\s*매수|즉시\s*회피|비중\s*축소|관망|보통|높음|낮음)[^\n]*/g, '')
+        // 3번: 역사적 연도 언급 제거 (19XX년대, 20XX년 이전 언급)
+        // "1970년대", "1990년대", "베트남 전쟁" 등 과거 역사 문장 제거
+        .replace(/1[0-9]{3}년대?[^.。]*[.。]/g, '')
+        .replace(/[가-힣\s]+(전쟁|공황|혁명|분단|쿠데타)[^.。]*[.。]/g, '')
+        // 과거 연도 수치 비교 문장 제거 ("2010년 당시", "2015년에는" 등)
+        .replace(/(20[0-1][0-9]|19[0-9]{2})년\s*(당시|초|중반|말|에는|의)[^.。]*[.。]/g, '')
         .trim();
 
     const splitIndex = cleanText.search(/[📈🧭⚡🛡️]/);
@@ -2127,99 +3393,296 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
             }
         }
 
-        // ── 최종신탁: 투자질문이면 투자 데이터 포함, 운세질문이면 순수 오라클 텍스트만
-        // [수정] window._isFinanceQuery → isFinanceQuery 파라미터 사용 (분기 연결 복구)
-        const investBlock = (isFinanceQuery && investData) ? (() => {
-            const ac = investData.action.includes("매수") ? "#2ecc71"
-                     : investData.action.includes("매도") ? "#e67e22"
-                     : investData.action.includes("금지") ? "#e74c3c" : "#f1c40f";
+        // ══════════════════════════════════════════════════════
+        // [V18.2] 도메인 전용 렌더러 — 주식 / 부동산 / (연애는 별도 경로)
+        //         방호벽: 각 블록은 자기 타입만 처리, 타입 불일치 시 빈 문자열 반환
+        // ══════════════════════════════════════════════════════
 
-            // ① 카드 서사 섹션
-            const narrativeHTML = investData.cardNarrative ? `
-                <div style="margin-bottom:14px; padding-bottom:12px; border-bottom:1px solid rgba(212,175,55,0.15);">
-                    <div style="color:var(--gold);font-size:0.8rem;font-weight:900;letter-spacing:0.1em;margin-bottom:8px;">🃏 카드 에너지 → 투자 맥락</div>
-                    ${investData.cardNarrative.map(line => `<div style="font-size:0.82rem;color:rgba(255,255,255,0.85);line-height:1.7;margin-bottom:3px;">• ${line}</div>`).join('')}
-                    <div style="margin-top:6px;font-size:0.8rem;color:rgba(212,175,55,0.8);font-style:italic;">↳ ${investData.flowSummary}</div>
+        // ── 🔒 방호벽: 주식/코인 전용 렌더러 [V19.2 실전형]
+        function _renderStockBlock(d) {
+            const isStock = d && (d.type === 'stock' || d.type === 'crypto');
+            if (!isStock) return '';
+            const title = d.type === 'crypto' ? "🪙 코인 실전 투자 신탁" : "📈 주식 실전 투자 신탁";
+            const finalOracleHTML = (d.finalOracle || '').toString().replace(/\n/g, '<br>');
+
+            // 카드 에너지 → 투자 맥락
+            const narrativeHTML = (d.cardNarrative && d.cardNarrative.length) ? `
+                <div style="margin-bottom:14px; padding-bottom:12px; border-bottom:1px solid rgba(212,175,55,0.18);">
+                    <div style="color:var(--gold); font-size:0.82rem; font-weight:900; letter-spacing:0.1em; margin-bottom:8px;">🃏 카드 에너지 → 투자 맥락</div>
+                    ${d.cardNarrative.map(line => `<div style="font-size:0.85rem; color:rgba(255,255,255,0.88); line-height:1.75; margin-bottom:4px;">• ${line}</div>`).join('')}
+                    ${d.flowSummary ? `<div style="margin-top:8px; font-size:0.82rem; color:rgba(212,175,55,0.85); font-style:italic;">↳ ${d.flowSummary}</div>` : ''}
                 </div>` : '';
 
-            // ② 리스크 체크 섹션
-            const riskHTML = investData.riskChecks ? `
-                <div style="margin-bottom:14px; padding-bottom:12px; border-bottom:1px solid rgba(212,175,55,0.15);">
-                    <div style="color:var(--gold);font-size:0.8rem;font-weight:900;letter-spacing:0.1em;margin-bottom:8px;">⚠️ 카드별 리스크 점검</div>
-                    ${investData.riskChecks.map(line => `<div style="font-size:0.82rem;color:rgba(255,255,255,0.85);line-height:1.7;margin-bottom:3px;">${line}</div>`).join('')}
+            // 리스크 점검 (간결)
+            const riskHTML = (d.riskChecks && d.riskChecks.length) ? `
+                <div style="margin-bottom:14px; padding-bottom:12px; border-bottom:1px solid rgba(212,175,55,0.18);">
+                    <div style="color:var(--gold); font-size:0.82rem; font-weight:900; letter-spacing:0.1em; margin-bottom:8px;">⚠️ 리스크 점검</div>
+                    ${d.riskChecks.map(line => `<div style="font-size:0.85rem; color:rgba(255,255,255,0.88); line-height:1.75; margin-bottom:4px;">${line}</div>`).join('')}
                 </div>` : '';
 
-            // ③ 시나리오 섹션
-            const scenarioHTML = investData.scenarios ? `
-                <div style="margin-bottom:14px; padding-bottom:12px; border-bottom:1px solid rgba(212,175,55,0.15);">
-                    <div style="color:var(--gold);font-size:0.8rem;font-weight:900;letter-spacing:0.1em;margin-bottom:8px;">📊 3가지 에너지 시나리오</div>
-                    <div style="font-size:0.82rem;line-height:1.8;">
-                        <div style="margin-bottom:3px;">${investData.scenarios.bull}</div>
-                        <div style="margin-bottom:3px;">${investData.scenarios.base}</div>
-                        <div>${investData.scenarios.bear}</div>
+            // [V19.2 실전형] 포지션 전략 — 3줄 깔끔 블록 (권장 비중 / 손절 / 목표)
+            const pos = d.position || {};
+            const positionHTML = `
+                <div style="margin-bottom:14px; padding-bottom:12px; border-bottom:1px solid rgba(212,175,55,0.18);">
+                    <div style="color:var(--gold); font-size:0.82rem; font-weight:900; letter-spacing:0.1em; margin-bottom:8px;">📊 포지션 전략</div>
+                    <div style="font-size:0.9rem; color:rgba(255,255,255,0.92); line-height:1.85;">
+                        <div>💰 권장 비중: <b>${pos.weight || '-'}</b></div>
+                        <div>🛑 손절 기준: ${pos.stopLoss || '-'}</div>
+                        <div>🎯 목표 구간: ${pos.target || '-'}</div>
                     </div>
-                </div>` : '';
+                </div>`;
 
-            // ④ 포지션 로드맵 섹션
-            const roadmapHTML = investData.roadmap ? `
-                <div style="margin-bottom:14px; padding-bottom:12px; border-bottom:1px solid rgba(212,175,55,0.15);">
-                    <div style="color:var(--gold);font-size:0.8rem;font-weight:900;letter-spacing:0.1em;margin-bottom:8px;">📋 포지션 관리 로드맵</div>
-                    ${investData.roadmap.map((line, i) => `<div style="font-size:0.82rem;color:rgba(255,255,255,0.85);line-height:1.7;margin-bottom:3px;">${i+1}. ${line}</div>`).join('')}
-                </div>` : '';
+            // 대응 타이밍
+            const timingHTML = `
+                <div style="margin-bottom:14px; padding-bottom:12px; border-bottom:1px solid rgba(212,175,55,0.18);">
+                    <div style="color:var(--gold); font-size:0.82rem; font-weight:900; letter-spacing:0.1em; margin-bottom:8px;">📅 대응 타이밍</div>
+                    <div style="font-size:0.88rem; color:rgba(255,255,255,0.9); line-height:1.8; white-space:pre-line;">${d.timingLabel || '-'}</div>
+                </div>`;
 
-            // ⑤ Yahoo 실시간 시장 데이터 섹션 (데이터 있을 때만)
-            const yahooHTML = investData.marketInterpret ? `
-                <div style="margin-bottom:14px; padding-bottom:12px; border-bottom:1px solid rgba(212,175,55,0.15);">
-                    <div style="color:var(--gold);font-size:0.8rem;font-weight:900;letter-spacing:0.1em;margin-bottom:8px;">📡 실시간 시장 신호 <span style="font-size:0.7rem;color:rgba(212,175,55,0.5);font-weight:400;">(Yahoo Finance)</span></div>
-                    ${investData.marketInterpret.signals.map(s => `<div style="font-size:0.82rem;color:rgba(255,255,255,0.85);line-height:1.7;margin-bottom:3px;">${s}</div>`).join('')}
-                    <div style="margin-top:6px;padding:4px 10px;background:rgba(212,175,55,0.1);border-radius:4px;font-size:0.8rem;color:var(--gold);font-weight:bold;">종합: ${investData.marketInterpret.summary}</div>
-                </div>` : '';
+            // 행동은 위험이면 빨강
+            const actionColor = (d.action || '').includes('금지') || (d.action || '').includes('회피') ? '#ff5252'
+                              : (d.action || '').includes('강매수') ? '#2ecc71'
+                              : 'rgba(255,255,255,0.95)';
 
-            return `<div class="final-oracle" style="padding:18px;background:rgba(212,175,55,0.07);border:1px solid var(--gold);border-radius:12px;line-height:1.8;margin-top:16px;">
-                <h3 style="color:var(--gold);margin:0 0 14px 0;font-size:1.05rem;border-bottom:1px solid rgba(212,175,55,0.25);padding-bottom:8px;text-align:center;">📊 실전 투자 신탁</h3>
-
-                ${yahooHTML}
+            return `
+            <div class="final-oracle final-oracle-stock" style="padding:20px; background:rgba(212,175,55,0.08); border:1px solid var(--gold); border-radius:12px; margin-top:25px;">
+                <h3 style="color:var(--gold); text-align:center; margin:0 0 15px 0; font-size:1.1rem; border-bottom:1px solid rgba(212,175,55,0.35); padding-bottom:10px;">
+                    ${title}
+                </h3>
                 ${narrativeHTML}
                 ${riskHTML}
-                ${scenarioHTML}
-                ${roadmapHTML}
+                ${positionHTML}
+                ${timingHTML}
 
-                <div style="padding:12px;background:rgba(0,0,0,0.3);border-radius:8px;font-size:0.88rem;color:#eee;line-height:1.9;margin-bottom:12px;">
-                    ${investData.finalOracle}
+                <!-- 지표 요약 -->
+                <div style="display:flex; flex-direction:column; gap:8px; font-size:0.92rem; margin-bottom:12px;">
+                    <div><span style="color:var(--gold); font-weight:bold;">📈 추세:</span> <b>${d.trend || '-'}</b></div>
+                    <div><span style="color:var(--gold); font-weight:bold;">🧭 행동:</span> <b style="color:${actionColor}">${d.action || '-'}</b></div>
+                    <div><span style="color:var(--gold); font-weight:bold;">🛡️ 리스크:</span> ${d.risk || '-'}</div>
                 </div>
 
-                <div style="display:flex;flex-direction:column;gap:8px;font-size:0.9rem;margin-bottom:12px;">
-                    <div style="color:var(--gold);">${investData.trend}</div>
-                    <div style="color:${ac};font-weight:bold;">${investData.action}</div>
-                    <div style="font-weight:bold;">${investData.risk}</div>
+                <!-- 해석 텍스트 -->
+                <div style="margin-top:12px; padding:12px 14px; background:rgba(0,0,0,0.4); border-left:3px solid var(--gold); line-height:1.8; font-size:0.9rem; color:rgba(255,255,255,0.92);">
+                    ${finalOracleHTML}
                 </div>
-
-                <div style="margin-top:10px;padding:8px 12px;border-top:1px solid rgba(212,175,55,0.2);font-size:0.72rem;color:rgba(255,255,255,0.4);text-align:center;line-height:1.5;">
+                <div style="margin-top:14px; padding-top:10px; border-top:1px solid rgba(212,175,55,0.2); font-size:0.72rem; color:rgba(255,255,255,0.45); text-align:center;">
                     ※ 본 신탁은 타로 에너지 해석 기반 참고 정보이며, 실제 투자 판단의 근거로 사용할 수 없습니다.
                 </div>
             </div>`;
-        })() : '';
+        }
+
+        // ── 🔒 방호벽: 부동산 전용 렌더러 (투자 언어 금지, 간소화 버전)
+        function _renderRealEstateBlock(d) {
+            const isRE = d && d.type && d.type.startsWith('realestate');
+            if (!isRE) return '';
+            const isSell = d.type === 'realestate_sell';
+            // [V19.1] 서버가 보낸 subtitle로 동적 타이틀 (재개발/분양/재건축/전세/갭투자 등)
+            //         서버 subtitle 없으면 매도/매수 기본값
+            const serverSubtitle = d._server?.subtitle || (isSell ? '매도' : '매수');
+            const title = `🏠 부동산 ${serverSubtitle} 실전 신탁`;
+            const finalOracleHTML = (d.finalOracle || '').toString().replace(/\n/g, '<br>');
+
+            // [V19.1] cardNarrative (서버 제공) → 과거/현재/미래 라벨 없이 값만
+            //         서버 없으면 기본 구간 문구 사용
+            const narr = d.cardNarrative || [];
+            const pastText    = narr[0] || (isSell ? '수요·매물 형성 구간' : '탐색 초기 구간');
+            const currentText = narr[1] || '균형 구간 — 방향 탐색 중';
+            // [V19.2] 미래 문구를 trend 값에 맞춰 자연 변경 (사장님 정답 포맷)
+            const trendIsUp = /매도자 우위|상승|속도/.test(d.trend || '');
+            const trendIsDown = /매수자 우위|하락/.test(d.trend || '');
+            const futureText  = narr[2] || (
+                isSell
+                  ? (trendIsUp ? '매도자 우위 전환 가능성' : trendIsDown ? '거래 지연 가능성' : '방향성 탐색 지속')
+                  : (trendIsUp ? '진입 선점 기회 구간' : trendIsDown ? '추가 조정 가능성' : '탐색 지속')
+            );
+            const flowSummary = trendIsUp ? '상승 전환 흐름'
+                              : trendIsDown ? '하락 압력 구간'
+                              : '방향 탐색 중';
+
+            return `
+            <div class="final-oracle final-oracle-realestate" style="padding:20px; background:rgba(212,175,55,0.08); border:1px solid var(--gold); border-radius:12px; margin-top:25px;">
+                <h3 style="color:var(--gold); text-align:center; margin:0 0 15px 0; font-size:1.1rem; border-bottom:1px solid rgba(212,175,55,0.35); padding-bottom:10px;">
+                    ${title}
+                </h3>
+
+                <!-- 🃏 시장 흐름 -->
+                <div style="margin-bottom:14px; padding-bottom:12px; border-bottom:1px solid rgba(212,175,55,0.18);">
+                    <div style="color:var(--gold); font-size:0.82rem; font-weight:900; letter-spacing:0.1em; margin-bottom:8px;">🃏 시장 흐름</div>
+                    <div style="font-size:0.85rem; color:rgba(255,255,255,0.88); line-height:1.8;">
+                        <div>• 과거: ${pastText.replace(/^과거[\(:]?\s*[^)]*\)?:\s*/, '')}</div>
+                        <div>• 현재: ${currentText.replace(/^현재[\(:]?\s*[^)]*\)?:\s*/, '')}</div>
+                        <div>• 미래: ${futureText.replace(/^미래[\(:]?\s*[^)]*\)?:\s*/, '')}</div>
+                    </div>
+                    <div style="margin-top:6px; font-size:0.8rem; color:rgba(212,175,55,0.85); font-style:italic;">↳ ${flowSummary}</div>
+                </div>
+
+                <!-- 📊 매매 전략 -->
+                <div style="margin-bottom:14px; padding-bottom:12px; border-bottom:1px solid rgba(212,175,55,0.18);">
+                    <div style="color:var(--gold); font-size:0.82rem; font-weight:900; letter-spacing:0.1em; margin-bottom:8px;">📊 매매 전략</div>
+                    <div style="font-size:0.85rem; color:rgba(255,255,255,0.88); line-height:1.8;">
+                        <div>→ ${d.strategy || (isSell ? '매물 등록 후 반응 확인' : '급매 위주 탐색')}</div>
+                        ${d.caution ? `<div style="color:#ff8080; margin-top:4px;">${d.caution}</div>` : ''}
+                    </div>
+                </div>
+
+                <!-- 📅 타이밍 -->
+                <div style="margin-bottom:14px; padding-bottom:12px; border-bottom:1px solid rgba(212,175,55,0.18);">
+                    <div style="color:var(--gold); font-size:0.82rem; font-weight:900; letter-spacing:0.1em; margin-bottom:8px;">📅 타이밍</div>
+                    <div style="font-size:0.85rem; color:rgba(255,255,255,0.88); line-height:1.8;">
+                        <div>→ ${d.timingLabel || '-'}</div>
+                        ${d.timing2 ? `<div style="margin-top:4px;">→ ${d.timing2}</div>` : ''}
+                        ${d.urgency ? `<div style="margin-top:6px; padding:6px 10px; background:rgba(46,204,113,0.08); border-left:3px solid #2ecc71; border-radius:0 6px 6px 0;">${d.urgency}</div>` : ''}
+                    </div>
+                </div>
+
+                <!-- 지표 요약 -->
+                <div style="display:flex; flex-direction:column; gap:8px; font-size:0.92rem; margin-bottom:12px;">
+                    <div><span style="color:var(--gold); font-weight:bold;">📈 시장 흐름:</span> ${d.trend || '-'}</div>
+                    <div><span style="color:var(--gold); font-weight:bold;">🧭 행동:</span> <b>${d.action || '-'}</b></div>
+                    <div><span style="color:var(--gold); font-weight:bold;">🛡️ 리스크:</span> ${d.risk || '-'}</div>
+                    ${d.energy ? `<div style="color:rgba(212,175,55,0.8); font-style:italic; font-size:0.82rem;">✨ 카드 에너지: ${d.energy}</div>` : ''}
+                </div>
+
+                <!-- 해석 텍스트 -->
+                <div style="margin-top:12px; padding:12px 14px; background:rgba(0,0,0,0.4); border-left:3px solid var(--gold); line-height:1.8; font-size:0.9rem; color:rgba(255,255,255,0.92);">
+                    ${finalOracleHTML}
+                </div>
+
+                <div style="margin-top:14px; padding-top:10px; border-top:1px solid rgba(212,175,55,0.2); font-size:0.72rem; color:rgba(255,255,255,0.45); text-align:center;">
+                    ※ 본 신탁은 타로 에너지 해석 기반 참고 정보이며, 실제 부동산 거래 판단의 근거로 사용할 수 없습니다.
+                </div>
+            </div>`;
+        }
+
+        // ── 🔒 방호벽: 연애 전용 렌더러 (투자 언어 절대 금지)
+        //    연애는 isFinanceQuery=false 경로로 이미 렌더링되지만,
+        //    명시적 블록으로 분리하여 "주식/부동산 용어가 절대 섞이지 않도록" 방호
+        function _renderLoveBlock(cards, qRaw, loveSubType) {
+            const fi = buildFortuneIndicators(cards, qRaw, loveSubType);
+            const hookData = (typeof HOOK_DB !== 'undefined') && loveSubType ? HOOK_DB[loveSubType] : null;
+            const hookHTML = hookData ? `
+                <div style="margin-bottom:14px; padding:14px 16px; background:linear-gradient(135deg, rgba(46,204,113,0.08), rgba(212,175,55,0.05)); border-left:3px solid #2ecc71; border-radius:0 10px 10px 0; line-height:1.8;">
+                    <div style="color:#2ecc71; font-weight:900; font-size:0.95rem; margin-bottom:4px;">${hookData.lead}</div>
+                    <div style="color:rgba(255,255,255,0.88); font-size:0.88rem;">${hookData.body}</div>
+                    <div style="color:rgba(212,175,55,0.85); font-size:0.8rem; margin-top:6px; font-style:italic;">${hookData.reveal}</div>
+                </div>` : '';
+
+            return `
+            <div class="final-oracle final-oracle-love" style="padding:20px; background:rgba(46,204,113,0.06); border:1px solid rgba(46,204,113,0.5); border-radius:12px; margin-top:25px;">
+                <h3 style="color:#2ecc71; text-align:center; margin:0 0 15px 0; font-size:1.1rem; border-bottom:1px solid rgba(46,204,113,0.35); padding-bottom:10px;">
+                    💘 연애 흐름 신탁
+                </h3>
+
+                ${hookHTML}
+
+                <!-- 🃏 관계 흐름 -->
+                <div style="margin-bottom:14px; padding-bottom:12px; border-bottom:1px solid rgba(46,204,113,0.2);">
+                    <div style="color:#2ecc71; font-size:0.82rem; font-weight:900; letter-spacing:0.1em; margin-bottom:8px;">🃏 관계 흐름</div>
+                    <div style="font-size:0.85rem; color:rgba(255,255,255,0.88); line-height:1.8;">
+                        <div>• 과거: 감정의 시작 / 연결 형성</div>
+                        <div>• 현재: 거리감 또는 심리 탐색 구간</div>
+                        <div>• 미래: 관계 진전 또는 방향 결정</div>
+                    </div>
+                    <div style="margin-top:6px; font-size:0.8rem; color:rgba(46,204,113,0.85); font-style:italic;">↳ 감정 흐름 변화 구간</div>
+                </div>
+
+                <!-- 💭 상대 심리 -->
+                <div style="margin-bottom:14px; padding-bottom:12px; border-bottom:1px solid rgba(46,204,113,0.2);">
+                    <div style="color:#2ecc71; font-size:0.82rem; font-weight:900; letter-spacing:0.1em; margin-bottom:8px;">💭 상대 심리</div>
+                    <div style="font-size:0.85rem; color:rgba(255,255,255,0.88); line-height:1.8;">
+                        <div>→ 현재 상대는 감정 조율 중</div>
+                        <div>→ 확신과 망설임이 공존하는 구간</div>
+                    </div>
+                </div>
+
+                <!-- 📱 행동 가이드 -->
+                <div style="margin-bottom:14px; padding-bottom:12px; border-bottom:1px solid rgba(46,204,113,0.2);">
+                    <div style="color:#2ecc71; font-size:0.82rem; font-weight:900; letter-spacing:0.1em; margin-bottom:8px;">📱 행동 가이드</div>
+                    <div style="font-size:0.85rem; color:rgba(255,255,255,0.88); line-height:1.8;">
+                        <div>→ ${fi.action || '가벼운 접촉 시도'}</div>
+                        <div>→ ⚡ 타이밍: ${fi.timing || '-'}</div>
+                    </div>
+                </div>
+
+                <!-- 지표 요약 (투자 용어 아님 — 관계 언어로만) -->
+                <div style="display:flex; flex-direction:column; gap:8px; font-size:0.92rem;">
+                    <div><span style="color:#2ecc71; font-weight:bold;">📈 관계 흐름:</span> ${fi.trend || '-'}</div>
+                    <div><span style="color:#2ecc71; font-weight:bold;">🧭 행동:</span> <b>${fi.action || '-'}</b></div>
+                    <div><span style="color:#2ecc71; font-weight:bold;">🛡️ 리스크:</span> ${fi.risk || '-'}</div>
+                </div>
+
+                <div style="margin-top:14px; padding-top:10px; border-top:1px solid rgba(46,204,113,0.25); font-size:0.72rem; color:rgba(255,255,255,0.45); text-align:center;">
+                    ※ 본 신탁은 타로 에너지 해석 기반 참고 정보입니다.
+                </div>
+            </div>`;
+        }
+
+        // ── 🚪 라우터: 질문 유형에 따라 단 하나의 블록만 선택적으로 렌더링
+        //    (꼬임 방지: 여러 분기가 동시에 실행될 수 없음)
+        const investBlock = (() => {
+            if (!isFinanceQuery || !investData) return '';
+            // 우선순위 1: 부동산
+            if (investData.type && investData.type.startsWith('realestate')) {
+                return _renderRealEstateBlock(investData);
+            }
+            // 우선순위 2: 주식/코인
+            if (investData.type === 'stock' || investData.type === 'crypto') {
+                return _renderStockBlock(investData);
+            }
+            // 그 외 (life 등)은 여기서 렌더링 안 함 — 아래 운세 경로가 처리
+            return '';
+        })();
 
         const oracleHTML = `
     <div class="final-reading" style="margin-top: 24px;">
         <div class="zenith-title-block" style="margin-bottom: 12px; border-bottom: 2px solid rgba(39,174,96,0.5); padding-bottom: 6px;">
-            ${!isFinanceQuery ? `
-            <span class="zenith-title-main" style="color: #2ecc71; font-size: 1.2rem; font-weight: 900; display: block;">제우스의 최종 운세 신탁</span>
-            <div class="zenith-title-sub" style="color: rgba(46,204,113,0.85); font-size: 0.85rem; font-weight: 800; letter-spacing: 0.2em;">ZEUS FORTUNE ORACLE</div>
-            ` : `
-            <span class="zenith-title-main" style="color: #2ecc71; font-size: 1.2rem; font-weight: 900; display: block;">제우스의 최종 투자 신탁</span>
-            <div class="zenith-title-sub" style="color: rgba(46,204,113,0.85); font-size: 0.85rem; font-weight: 800; letter-spacing: 0.2em;">ZEUS INVESTMENT ORACLE</div>
-            `}
+            ${(() => {
+                // [V18.2] 3도메인 타이틀 분기
+                if (isFinanceQuery && investData && investData.type && investData.type.startsWith('realestate')) {
+                    return `
+                    <span class="zenith-title-main" style="color:#2ecc71; font-size:1.2rem; font-weight:900; display:block;">제우스의 최종 부동산 신탁</span>
+                    <div class="zenith-title-sub" style="color:rgba(46,204,113,0.85); font-size:0.85rem; font-weight:800; letter-spacing:0.2em;">ZEUS REAL ESTATE ORACLE</div>`;
+                }
+                if (isFinanceQuery) {
+                    return `
+                    <span class="zenith-title-main" style="color:#2ecc71; font-size:1.2rem; font-weight:900; display:block;">제우스의 최종 투자 신탁</span>
+                    <div class="zenith-title-sub" style="color:rgba(46,204,113,0.85); font-size:0.85rem; font-weight:800; letter-spacing:0.2em;">ZEUS INVESTMENT ORACLE</div>`;
+                }
+                const qRawTitle = (document.getElementById('seed-input')?.value || '').toLowerCase();
+                const isLoveTitle = (typeof LOVE_KEYWORDS_V2 !== 'undefined') && LOVE_KEYWORDS_V2.some(k => qRawTitle.includes(k));
+                if (isLoveTitle) {
+                    return `
+                    <span class="zenith-title-main" style="color:#2ecc71; font-size:1.2rem; font-weight:900; display:block;">제우스의 최종 연애 신탁</span>
+                    <div class="zenith-title-sub" style="color:rgba(46,204,113,0.85); font-size:0.85rem; font-weight:800; letter-spacing:0.2em;">ZEUS LOVE ORACLE</div>`;
+                }
+                return `
+                <span class="zenith-title-main" style="color:#2ecc71; font-size:1.2rem; font-weight:900; display:block;">제우스의 최종 운세 신탁</span>
+                <div class="zenith-title-sub" style="color:rgba(46,204,113,0.85); font-size:0.85rem; font-weight:800; letter-spacing:0.2em;">ZEUS FORTUNE ORACLE</div>`;
+            })()}
         </div>
         <div style="line-height: 1.8; color: rgba(255,255,255,0.95); font-size: 0.96rem; margin-bottom: 20px;">${formatChunk(oracleContent)}</div>
         ${!isFinanceQuery ? (() => {
             const qRaw2 = (document.getElementById('seed-input')?.value || '').toLowerCase();
             const lucky = getLuckyTiming(cards, qRaw2);
-            const fi = buildFortuneIndicators(cards, qRaw2);
+            const fi    = buildFortuneIndicators(cards, qRaw2, LOVE_SUBTYPE);
+
+            // [V18.2 방호벽] 연애 키워드 감지 시에만 연애 전용 블록 렌더링
+            //                일반 운세는 기존 운세 에너지 지표 박스 유지
+            const isLoveQuery = (typeof LOVE_KEYWORDS_V2 !== 'undefined')
+                ? LOVE_KEYWORDS_V2.some(k => qRaw2.includes(k))
+                : false;
+
+            if (isLoveQuery) {
+                // 💘 연애 전용 블록 — 투자 용어 완전 배제
+                return _renderLoveBlock(cards, qRaw2, LOVE_SUBTYPE) + `
+                <div style="margin-top:14px; padding:14px 16px; background:rgba(212,175,55,0.07); border-left:3px solid var(--gold); border-radius:0 8px 8px 0; font-size:0.9rem; line-height:1.8; color:rgba(255,255,255,0.9);">${lucky}</div>`;
+            }
+
+            // ✨ 일반 운세: 기존 지표 박스 유지 (연애 용어 배제)
             return `
-                <div style="margin-top:14px; padding:14px 16px; background:rgba(212,175,55,0.07); border-left:3px solid var(--gold); border-radius:0 8px 8px 0; font-size:0.9rem; line-height:1.8; color:rgba(255,255,255,0.9); margin-bottom:14px;">${lucky}</div>
-                <div style="padding:14px 16px; background:rgba(46,204,113,0.05); border:1px solid rgba(46,204,113,0.2); border-radius:8px; font-size:0.88rem; line-height:1.9;">
-                    <div style="color:#2ecc71; font-size:0.78rem; font-weight:900; letter-spacing:0.1em; margin-bottom:10px;">✦ 운세 에너지 지표</div>
+                <div style="margin-top:14px;padding:14px 16px;background:rgba(212,175,55,0.07);border-left:3px solid var(--gold);border-radius:0 8px 8px 0;font-size:0.9rem;line-height:1.8;color:rgba(255,255,255,0.9);margin-bottom:14px;">${lucky}</div>
+                <div style="padding:14px 16px;background:rgba(46,204,113,0.05);border:1px solid rgba(46,204,113,0.2);border-radius:8px;font-size:0.88rem;line-height:1.9;">
+                    <div style="color:#2ecc71;font-size:0.78rem;font-weight:900;letter-spacing:0.1em;margin-bottom:10px;">✦ 운세 에너지 지표</div>
                     <div style="margin-bottom:4px;">📈 흐름: <span style="color:rgba(255,255,255,0.9);">${fi.trend}</span></div>
                     <div style="margin-bottom:4px;">🧭 행동: <span style="color:rgba(255,255,255,0.9);">${fi.action}</span></div>
                     <div style="margin-bottom:4px;">⚡ 타이밍: <span style="color:rgba(255,255,255,0.9);">${fi.timing}</span></div>
@@ -2291,6 +3754,257 @@ function expandCard(img) {
     overlay.onclick = () => overlay.remove();
     document.body.appendChild(overlay);
 }
+
+// ════════════════════════════════════════════════════════════════
+// [V19 Phase3] 공유 & 이미지 저장
+//   - 결과창 전체를 html2canvas로 캡처
+//   - 📷 이미지 저장: 사진첩 다운로드
+//   - 🔗 공유하기: Web Share API (모바일 공유시트) / PC는 링크 복사
+// ════════════════════════════════════════════════════════════════
+const SHARE_URL = 'https://omegafund.github.io/oracle-tarot-pro/';
+
+async function _captureResultAsBlob() {
+    if (typeof html2canvas === 'undefined') {
+        alert('이미지 생성 도구 로드 중입니다. 잠시 후 다시 시도해주세요.');
+        return null;
+    }
+    const target = document.getElementById('result-view');
+    if (!target) return null;
+
+    // 워터마크 요소 임시 삽입 (캡처 후 제거)
+    const watermark = document.createElement('div');
+    watermark.id = 'zeus-watermark';
+    watermark.style.cssText = `
+        text-align:center; padding:16px 10px 10px; margin-top:12px;
+        border-top:1px solid rgba(212,175,55,0.25);
+        color:rgba(212,175,55,0.65); font-size:0.72rem; letter-spacing:0.08em;
+        font-family: serif;`;
+    watermark.innerHTML = `
+        ✦ 제우스 오라클 타로 ✦<br>
+        <span style="color:rgba(255,255,255,0.45); font-size:0.68rem;">
+            omegafund.github.io/oracle-tarot-pro
+        </span>`;
+    target.appendChild(watermark);
+
+    try {
+        const canvas = await html2canvas(target, {
+            backgroundColor: '#0a0a0f',
+            scale: 2, // 고해상도
+            logging: false,
+            useCORS: true,
+            allowTaint: false
+        });
+        return await new Promise(resolve => canvas.toBlob(resolve, 'image/png', 0.95));
+    } catch (e) {
+        console.warn('이미지 생성 실패:', e);
+        return null;
+    } finally {
+        // 워터마크 제거
+        if (watermark.parentElement) watermark.remove();
+    }
+}
+
+async function saveResultAsImage() {
+    const btn = document.getElementById('btn-save-image');
+    if (btn) { btn.disabled = true; btn.textContent = '⏳ 이미지 생성 중...'; }
+    try {
+        const blob = await _captureResultAsBlob();
+        if (!blob) throw new Error('이미지 생성 실패');
+
+        const dateStr = new Date().toISOString().slice(0,10).replace(/-/g,'');
+        const fileName = `zeus-oracle-${dateStr}.png`;
+
+        // 다운로드 트리거
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url; a.download = fileName;
+        document.body.appendChild(a); a.click(); a.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 5000);
+
+        if (btn) { btn.textContent = '✅ 저장 완료'; setTimeout(() => { btn.disabled = false; btn.textContent = '📷 이미지 저장'; }, 2000); }
+    } catch (e) {
+        alert('이미지 저장에 실패했습니다: ' + e.message);
+        if (btn) { btn.disabled = false; btn.textContent = '📷 이미지 저장'; }
+    }
+}
+
+async function shareResult() {
+    const btn = document.getElementById('btn-share-result');
+    if (btn) { btn.disabled = true; btn.textContent = '⏳ 준비 중...'; }
+    const resetBtn = () => { if (btn) { btn.disabled = false; btn.textContent = '🔗 공유하기'; } };
+
+    const question = (document.getElementById('seed-input')?.value || '').slice(0, 40);
+    const shareText = `🔮 제우스 오라클 타로 — ${question ? '"' + question + '"의 신탁' : '나의 신탁'}\n\n${SHARE_URL}`;
+
+    try {
+        // 1) navigator.share 지원 + 파일 공유 지원 → 이미지 첨부 공유
+        if (navigator.canShare) {
+            const blob = await _captureResultAsBlob();
+            if (blob) {
+                const file = new File([blob], 'zeus-oracle.png', { type: 'image/png' });
+                if (navigator.canShare({ files: [file] })) {
+                    await navigator.share({
+                        files: [file],
+                        title: '제우스 오라클 타로 신탁',
+                        text: shareText
+                    });
+                    resetBtn();
+                    return;
+                }
+            }
+        }
+
+        // 2) 파일 공유 불가 → 텍스트/링크만 공유
+        if (navigator.share) {
+            await navigator.share({
+                title: '제우스 오라클 타로 신탁',
+                text: shareText,
+                url: SHARE_URL
+            });
+            resetBtn();
+            return;
+        }
+
+        // 3) PC 등 Share API 미지원 → 클립보드 복사
+        await navigator.clipboard.writeText(shareText);
+        if (btn) { btn.textContent = '✅ 링크 복사됨'; setTimeout(resetBtn, 2000); }
+    } catch (e) {
+        // 사용자가 공유 취소한 경우 등은 무시
+        if (e.name !== 'AbortError') {
+            alert('공유에 실패했습니다. 이미지 저장 후 수동으로 공유해주세요.');
+        }
+        resetBtn();
+    }
+}
+
+// ════════════════════════════════════════════════════════════════
+// [V19 Phase4] 오늘의 카드 + 이력 관리 (localStorage만 사용)
+// ════════════════════════════════════════════════════════════════
+const DAILY_CARD_KEY   = 'zeusDailyCardV1';    // { date:"2025-xx-xx", cardIndex:N }
+const HISTORY_KEY      = 'zeusHistoryV1';      // [{ date, question, queryType, trend, cards }]
+const HISTORY_MAX      = 3;
+
+// 오늘 날짜 (YYYY-MM-DD)
+function _todayStr() {
+    const d = new Date();
+    return d.getFullYear() + '-' +
+           String(d.getMonth()+1).padStart(2,'0') + '-' +
+           String(d.getDate()).padStart(2,'0');
+}
+
+// 오늘의 카드 1장 결정 — 같은 날 = 같은 카드 (localStorage 캐시)
+function _getOrSetDailyCard() {
+    try {
+        const saved = localStorage.getItem(DAILY_CARD_KEY);
+        if (saved) {
+            const obj = JSON.parse(saved);
+            if (obj && obj.date === _todayStr() && typeof obj.cardIndex === 'number') {
+                return obj.cardIndex;
+            }
+        }
+    } catch(_) {}
+    // 새로 생성: 날짜 시드 기반 결정론
+    const today = _todayStr();
+    let seed = 0;
+    for (let i = 0; i < today.length; i++) seed += today.charCodeAt(i);
+    const cardIndex = Math.abs(seed * 31 + 7) % CARDS.length;
+    try {
+        localStorage.setItem(DAILY_CARD_KEY, JSON.stringify({ date: today, cardIndex }));
+    } catch(_) {}
+    return cardIndex;
+}
+
+// 오늘의 카드별 메시지 (일반적 영성 문구)
+const DAILY_CARD_MESSAGES = [
+    "오늘 작은 결단이 큰 흐름을 만듭니다.",
+    "내면의 목소리에 귀 기울일 때입니다.",
+    "기다림이 필요한 순간 — 조급함을 내려놓으세요.",
+    "새로운 문이 열리는 기운이 감지됩니다.",
+    "관계에 주의를 기울일 때입니다.",
+    "안정을 유지하면 기회가 찾아옵니다.",
+    "변화를 두려워하지 마세요.",
+    "오늘은 자기 자신에게 관대해져도 됩니다."
+];
+
+function _dailyMessageFor(cardIndex) {
+    return DAILY_CARD_MESSAGES[cardIndex % DAILY_CARD_MESSAGES.length];
+}
+
+// 홈 진입 시 오늘의 카드 + 이력 렌더링
+function renderDailyAndHistory() {
+    const bar = document.getElementById('daily-history-bar');
+    if (!bar) return;
+
+    // 1) 오늘의 카드
+    try {
+        const idx = _getOrSetDailyCard();
+        const card = CARDS[idx];
+        if (card) {
+            const img = document.getElementById('daily-card-img');
+            const name = document.getElementById('daily-card-name');
+            const msg  = document.getElementById('daily-card-message');
+            if (img) img.src = `${BASE_URL}${card.file}`;
+            if (name) name.textContent = card.name;
+            if (msg)  msg.textContent  = _dailyMessageFor(idx);
+        }
+    } catch(e) { console.warn('daily card render fail:', e); }
+
+    // 2) 최근 이력
+    try {
+        const raw = localStorage.getItem(HISTORY_KEY);
+        const list = raw ? JSON.parse(raw) : [];
+        const listWrap = document.getElementById('history-list-wrap');
+        const listEl   = document.getElementById('history-list');
+        if (list.length > 0 && listEl && listWrap) {
+            listWrap.style.display = 'block';
+            listEl.innerHTML = list.slice(0, HISTORY_MAX).map(h => {
+                const emoji = h.queryType === 'stock' || h.queryType === 'crypto' ? '📈'
+                            : h.queryType === 'realestate' ? '🏠'
+                            : h.queryType === 'love' ? '💘' : '✨';
+                const trendTxt = h.trend || '-';
+                const dateTxt  = h.date ? h.date.slice(5).replace('-','/') : '';
+                const qShort   = (h.question || '').slice(0, 20);
+                return `
+                <div style="display:flex; align-items:center; gap:8px;
+                            background:rgba(0,0,0,0.35); border:1px solid rgba(212,175,55,0.15);
+                            border-radius:8px; padding:6px 10px; font-size:0.76rem;">
+                    <div style="color:var(--gold); font-weight:700; min-width:36px;">${dateTxt}</div>
+                    <div style="flex:1; color:rgba(255,255,255,0.85); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
+                        ${emoji} ${qShort}${qShort.length>=20?'…':''}
+                    </div>
+                    <div style="color:rgba(212,175,55,0.8); font-size:0.7rem; white-space:nowrap;">${trendTxt}</div>
+                </div>`;
+            }).join('');
+        }
+    } catch(e) { console.warn('history render fail:', e); }
+
+    bar.style.display = 'block';
+}
+
+// 이력에 신탁 하나 추가 — 결과창이 뜰 때마다 호출
+function saveToHistory(question, queryType, cards, metrics) {
+    try {
+        const entry = {
+            date: _todayStr(),
+            question: (question || '').slice(0, 60),
+            queryType: queryType || 'life',
+            trend: metrics?.trend || metrics?.finalTimingText || '',
+            cards: (cards || []).map(c => c.name).slice(0, 3)
+        };
+        let list = [];
+        try { list = JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]'); } catch(_){}
+        list.unshift(entry);
+        if (list.length > 20) list = list.slice(0, 20); // 최대 20개 보관
+        localStorage.setItem(HISTORY_KEY, JSON.stringify(list));
+    } catch(e) { console.warn('history save fail:', e); }
+}
+
+// 홈 진입 시점에 자동 실행
+document.addEventListener('DOMContentLoaded', () => {
+    setTimeout(renderDailyAndHistory, 100);
+});
+
+
 // ════════════════════════════════════
 // 결제 모달 & 유료 전환
 // ════════════════════════════════════
@@ -2299,12 +4013,37 @@ function expandCard(img) {
 // ════════════════════════════════════
 function showPayModal() {
     const cfg = PAYMENT_CONFIG;
-    const amountFmt = cfg.amount.toLocaleString('ko-KR');
 
-    // 토스 딥링크: tossId가 설정된 경우에만 버튼 표시
+    // [V19 Phase6] Toss 카드결제 버튼 2개 (1일권 / 무제한)
+    const tossCardHTML = `
+        <div style="margin-bottom:14px;">
+            <button class="pay-plan-btn" onclick="startTossPayment('day')" style="
+                display:block; width:100%; margin-bottom:8px; padding:14px 12px;
+                background: linear-gradient(135deg, #0064ff, #0050cc);
+                color:#fff; border:none; border-radius:10px;
+                font-size:0.95rem; font-weight:900; cursor:pointer;
+                box-shadow: 0 4px 12px rgba(0,100,255,0.3);
+                text-align:left; display:flex; justify-content:space-between; align-items:center;">
+                <span>🔥 1일 이용권 <span style="font-size:0.72rem; font-weight:400; opacity:0.85;">· 24시간 무제한</span></span>
+                <span style="font-weight:900;">₩3,900</span>
+            </button>
+            <button class="pay-plan-btn" onclick="startTossPayment('month')" style="
+                display:block; width:100%; padding:14px 12px;
+                background: linear-gradient(135deg, #D4AF37, #F1C40F);
+                color:#000; border:none; border-radius:10px;
+                font-size:0.95rem; font-weight:900; cursor:pointer;
+                box-shadow: 0 4px 12px rgba(212,175,55,0.4);
+                text-align:left; display:flex; justify-content:space-between; align-items:center;">
+                <span>💎 무제한 이용권 <span style="font-size:0.72rem; font-weight:400; opacity:0.75;">· 30일 무제한</span></span>
+                <span style="font-weight:900;">₩9,900</span>
+            </button>
+        </div>`;
+
+    // 기존 계좌이체 섹션 (폴백 — 카드 결제 실패 시 대안)
+    const amountFmt = cfg.amount.toLocaleString('ko-KR');
     const tossBtn = cfg.tossId ? `
         <a href="supertoss://send?amount=${cfg.amount}&bank=${encodeURIComponent(cfg.bank)}&accountNo=${cfg.account.replace(/-/g,'')}&origin=qr"
-           style="display:block;margin-bottom:10px;padding:13px 0;background:#0064ff;color:#fff;border-radius:50px;font-weight:900;font-size:1rem;text-align:center;text-decoration:none;letter-spacing:0.03em;">
+           style="display:block;margin-bottom:10px;padding:11px 0;background:#0064ff;color:#fff;border-radius:50px;font-weight:900;font-size:0.88rem;text-align:center;text-decoration:none;letter-spacing:0.03em;">
             💙 토스로 바로 송금하기
         </a>` : '';
 
@@ -2314,29 +4053,99 @@ function showPayModal() {
     overlay.innerHTML = `
         <div class="pay-modal">
             <h3>✦ 프리미엄 신탁 ✦</h3>
-            <p>미래 카드 해석과 제우스의 신탁 전체를<br>확인하실 수 있습니다.</p>
+            <p>미래 흐름 + 최종 신탁이 잠겨 있습니다</p>
 
-            <div class="pay-account">
-                <div><strong>입금 금액</strong>: ₩${amountFmt}</div>
-                <div><strong>입금 은행</strong>: ${cfg.bank}</div>
-                <div><strong>계좌번호</strong>: ${cfg.account}</div>
-                <div><strong>예금주</strong>: ${cfg.holder}</div>
-                <div style="margin-top:6px;font-size:0.78rem;color:rgba(212,175,55,0.5);">송금 메모: ${cfg.productName}</div>
-            </div>
+            ${tossCardHTML}
 
-            ${tossBtn}
+            <!-- 계좌이체 폴백 (접힌 상태) -->
+            <details style="margin-top:8px;">
+                <summary style="cursor:pointer; color:rgba(212,175,55,0.6); font-size:0.78rem; text-align:center; padding:8px 0;">
+                    ▼ 계좌이체로 결제 (카드 결제 불가 시)
+                </summary>
+                <div style="margin-top:10px;">
+                    <div class="pay-account">
+                        <div><strong>입금 금액</strong>: ₩${amountFmt}</div>
+                        <div><strong>입금 은행</strong>: ${cfg.bank}</div>
+                        <div><strong>계좌번호</strong>: ${cfg.account}</div>
+                        <div><strong>예금주</strong>: ${cfg.holder}</div>
+                        <div style="margin-top:6px;font-size:0.78rem;color:rgba(212,175,55,0.5);">송금 메모: ${cfg.productName}</div>
+                    </div>
+                    ${tossBtn}
+                    <p style="font-size:0.76rem;color:rgba(212,175,55,0.6);margin:12px 0 8px;">
+                        입금 확인 후 아래 버튼을 눌러주세요.
+                    </p>
+                    <button class="pay-confirm-btn" onclick="confirmPayment()">
+                        ✅ 입금 완료 — 전체 보기
+                    </button>
+                </div>
+            </details>
 
-            <p style="font-size:0.78rem;color:rgba(212,175,55,0.6);margin-bottom:16px;">
-                입금 확인 후 아래 버튼을 눌러주세요.
-            </p>
-            <button class="pay-confirm-btn" onclick="confirmPayment()">
-                ✅ 입금 완료 — 전체 보기
-            </button>
             <button class="pay-close-btn" onclick="closePayModal()">
                 닫기
             </button>
         </div>`;
     document.body.appendChild(overlay);
+}
+
+// ══════════════════════════════════════════════════════════════════
+// [V19 Phase6] Toss 결제 시작
+//   1. 현재 점사 상태를 localStorage에 저장 (결제 후 복원용)
+//   2. orderId 생성 (plan 정보 포함)
+//   3. Toss SDK requestPayment 호출 → successUrl로 리다이렉트
+// ══════════════════════════════════════════════════════════════════
+function startTossPayment(planKey) {
+    const plan = PAYMENT_PLANS[planKey];
+    if (!plan) {
+        alert('잘못된 결제 플랜입니다.');
+        return;
+    }
+
+    const toss = _getTossSDK();
+    if (!toss) {
+        alert('결제 모듈 로드 중입니다. 잠시 후 다시 시도해주세요.');
+        return;
+    }
+
+    // 1. 현재 점사 상태 저장 (결제 후 복원) — 30분 유효
+    try {
+        const pendingOracle = {
+            savedAt:        Date.now(),
+            question:       document.getElementById('seed-input')?.value || '',
+            cachedFullText: (typeof cachedFullText !== 'undefined') ? cachedFullText : '',
+            selectedCards:  (typeof selectedCards !== 'undefined') ? selectedCards : [],
+            serverMetrics:  window._serverMetrics || null,
+            reversedFlags:  window._reversedFlags || [],
+            queryMode:      (typeof CURRENT_MODE !== 'undefined') ? CURRENT_MODE : 'life',
+            loveSubType:    (typeof LOVE_SUBTYPE !== 'undefined') ? LOVE_SUBTYPE : '',
+            stockSubType:   (typeof STOCK_SUBTYPE !== 'undefined') ? STOCK_SUBTYPE : '',
+            reSubType:      (typeof RE_SUBTYPE !== 'undefined') ? RE_SUBTYPE : ''
+        };
+        localStorage.setItem('pendingOracle', JSON.stringify(pendingOracle));
+    } catch(e) {
+        console.warn('pending oracle save fail:', e);
+    }
+
+    // 2. orderId 생성 — "zeus_{plan}_{timestamp}_{random}" 형식
+    //    Worker에서 parsing하여 금액과 플랜 검증에 사용
+    const rand = Math.random().toString(36).slice(2, 10);
+    const orderId = `zeus_${planKey}_${Date.now()}_${rand}`;
+
+    // 3. Toss 결제 요청
+    //    successUrl: GitHub Pages repo 경로 정확히 지정 (404 방지)
+    const baseUrl = window.location.origin + window.location.pathname.replace(/\/[^/]*$/, '');
+    toss.requestPayment('카드', {
+        amount:       plan.amount,
+        orderId:      orderId,
+        orderName:    `제우스 오라클 ${plan.label}`,
+        customerName: window._oracleUserName || '유저',
+        successUrl:   baseUrl + '/success.html',
+        failUrl:      baseUrl + '/fail.html'
+    }).catch(err => {
+        // 사용자가 카드 결제 창을 닫았을 때 등
+        if (err.code !== 'USER_CANCEL') {
+            alert('결제 요청에 실패했습니다: ' + (err.message || err.code));
+        }
+    });
 }
 
 function closePayModal() {
@@ -2347,11 +4156,13 @@ function closePayModal() {
 async function confirmPayment() {
     const btn = document.querySelector('.pay-confirm-btn');
     const modal = document.querySelector('.pay-modal');
+    
     if (btn) { 
         btn.disabled = true; 
-        btn.innerHTML = "🔓 봉인 해제 중..."; 
+        btn.innerHTML = "🔓 봉인이 해제되었습니다..."; 
     }
 
+    // 1️⃣ 결제 상태 즉시 확정
     isPaidUser = true; 
     localStorage.setItem('oracleSessionToken', 'PAID_' + Date.now());
 
@@ -2361,31 +4172,256 @@ async function confirmPayment() {
         if (title) title.innerText = "🔓 봉인 해제 완료";
     }
 
+    // 2️⃣ 1.2초 후 모달을 닫고 화면을 '강제로' 다시 그립니다.
     setTimeout(() => {
         closePayModal();
         const contentEl = document.getElementById('oracle-content');
         
         if (contentEl && cachedFullText) {
-            // CURRENT_MODE가 단일 진실 소스 — 결제 후 재렌더링도 동일 모드 유지
             const isFinance = (CURRENT_MODE !== 'life');
-            const queryType = CURRENT_MODE;
+            const seedInput = document.getElementById('seed-input')?.value || "";
 
-            // 투자 데이터 생성 (투자 질문일 때만)
-            const investData = isFinance ? generateInvestmentData(selectedCards, cachedFullText, queryType) : null;
-            
-            // 유료 모드로 전체 화면 재렌더링
+            // 🔥 [중요] 통합 엔진 buildInvestmentData를 사용하여 데이터를 새로 뽑습니다.
+            const investData = isFinance ? buildInvestmentData(selectedCards, seedInput) : null;
+
+            // 🔥 [핵심] isPaidUser가 true이므로 이제 renderText는 잠금 화면을 내보내지 않습니다.
             contentEl.innerHTML = renderText(cachedFullText, selectedCards, investData, true, isFinance);
 
-            // 4. 🔥 [통합 제어] 대기 문구 삭제 및 황금 버튼 노출
+            // 3️⃣ UI 요소 최종 정리: 대기 문구 숨기고, 새 신탁 버튼 노출
             const holdingMsg = document.getElementById('holding-message');
-            const finalBtn = document.getElementById('final-reset-btn');
-            if (holdingMsg) holdingMsg.style.display = 'none';
-            if (finalBtn) finalBtn.style.display = 'inline-block';
+            const finalBtn   = document.getElementById('final-reset-btn');
             
+            if (holdingMsg) holdingMsg.style.display = 'none';
+            if (finalBtn) {
+                finalBtn.style.display = 'inline-block';
+                finalBtn.style.marginTop = '25px';
+            }
+            // [V19 Phase3] 공유/저장 버튼 노출
+            const shareActions = document.getElementById('share-actions');
+            if (shareActions) shareActions.style.display = 'flex';
+            
+            // 4️⃣ 유저를 결과 하단으로 부드럽게 이동
             contentEl.scrollIntoView({ behavior: 'smooth', block: 'end' });
         }
     }, 1200);
 }
+
+// ════════════════════════════════════════════════════════════════
+// ✦ [V18 Phase1] 78장 카드 뽑기 시스템 (부채꼴 + 날짜시드)
+// ════════════════════════════════════════════════════════════════
+
+let SHUFFLE_STATE = {
+    question: '',
+    deckOrder: [],       // 섞인 78장 순서 (CARDS 배열의 인덱스)
+    pickedIndexes: [],   // 유저가 탭한 덱 위치 (0~77)
+    isActive: false
+};
+
+// ── 날짜 기반 시드 생성 (질문 + 오늘 날짜 + 유저이름)
+function _makeDailySeed(question) {
+    const today = new Date();
+    const dateKey = `${today.getFullYear()}${String(today.getMonth()+1).padStart(2,'0')}${String(today.getDate()).padStart(2,'0')}`;
+    const userKey = window._oracleUserName || '';
+    const raw = (question || '') + '|' + dateKey + '|' + userKey;
+    let hash = 5381;
+    for (let i = 0; i < raw.length; i++) {
+        hash = ((hash << 5) - hash) + raw.charCodeAt(i);
+        hash |= 0;
+    }
+    return Math.abs(hash);
+}
+
+// ── 시드 기반 결정론적 섞기 (Fisher-Yates)
+function _shuffleDeckBySeed(seed) {
+    let s = seed;
+    const rand = () => {
+        s = (s * 1664525 + 1013904223) & 0xffffffff;
+        return (s >>> 0) / 0xffffffff;
+    };
+    const arr = [...Array(CARDS.length).keys()];
+    for (let i = arr.length - 1; i > 0; i--) {
+        const j = Math.floor(rand() * (i + 1));
+        [arr[i], arr[j]] = [arr[j], arr[i]];
+    }
+    return arr;
+}
+
+// ── 부채꼴 레이아웃 계산: 78장을 반원에 배치
+function _layoutDeckArch() {
+    const archEl = document.getElementById('deck-arch');
+    if (!archEl) return;
+    const total     = CARDS.length;          // 78
+    const archSpan  = 160;                    // 부채꼴 전체 각도(도) — 아치 폭
+    const startAng  = -archSpan / 2;          // -80도
+    const endAng    =  archSpan / 2;          //  +80도
+    const stepAng   = (endAng - startAng) / (total - 1);
+
+    archEl.innerHTML = ''; // 초기화
+
+    for (let i = 0; i < total; i++) {
+        const cardEl = document.createElement('div');
+        cardEl.className = 'deck-card shuffling';
+        cardEl.setAttribute('data-deck-pos', i);
+        const angle = startAng + stepAng * i;
+        // transform-origin이 50% 380px이므로, rotate만으로도 부채꼴이 형성됨
+        cardEl.style.transform = `rotate(${angle}deg)`;
+        cardEl.style.animationDelay = (i * 0.012) + 's';
+        cardEl.addEventListener('click', () => _onDeckCardClick(i, cardEl, angle));
+        archEl.appendChild(cardEl);
+    }
+}
+
+// ── 유저가 카드 한 장 탭했을 때
+function _onDeckCardClick(deckPos, cardEl, angle) {
+    if (!SHUFFLE_STATE.isActive) return;
+    // 이미 선택된 카드는 무시
+    if (SHUFFLE_STATE.pickedIndexes.includes(deckPos)) return;
+    // 이미 3장 선택 완료면 무시
+    if (SHUFFLE_STATE.pickedIndexes.length >= 3) return;
+
+    SHUFFLE_STATE.pickedIndexes.push(deckPos);
+    const pickCount = SHUFFLE_STATE.pickedIndexes.length;
+
+    // 도트 채우기
+    const dotEl = document.getElementById('dot-' + (pickCount - 1));
+    if (dotEl) dotEl.classList.add('filled');
+
+    // 카드 날아가는 애니메이션
+    cardEl.classList.add('picked');
+
+    // 힌트 업데이트 — [V18.1] 에메랄드 배경 위 흰색 하이라이트
+    const hintEl = document.getElementById('shuffle-hint');
+    if (hintEl) {
+        if (pickCount === 1)      hintEl.innerHTML = '<span class="hl">현재</span>의 카드를 선택하소서…';
+        else if (pickCount === 2) hintEl.innerHTML = '<span class="hl">미래</span>의 카드를 선택하소서…';
+        else                      hintEl.innerHTML = '✦ <span class="hl">3장의 카드</span>가 정해졌습니다 ✦';
+    }
+
+    // 3장 다 선택 → 결과 플로우로 진행
+    if (pickCount === 3) {
+        setTimeout(() => _onAllThreePicked(), 900);
+    }
+}
+
+// ── 3장 선택 완료 후 결과창으로 이동
+function _onAllThreePicked() {
+    // 유저가 탭한 덱 위치 3개 → CARDS 배열에서 실제 카드 가져오기
+    const finalCards = SHUFFLE_STATE.pickedIndexes.map(
+        pos => CARDS[ SHUFFLE_STATE.deckOrder[pos] ]
+    );
+
+    // [V19.1 Phase2] 역방향 결정론적 산정 (질문+날짜+카드 시드 기반)
+    //   확률 ~30% — 유저가 탭한 덱 위치와 결합하여 카드마다 다르게 결정
+    const baseSeed = _makeDailySeed(SHUFFLE_STATE.question);
+    const reversedFlags = SHUFFLE_STATE.pickedIndexes.map((pos, i) => {
+        const s = (baseSeed + pos * 31 + i * 97) >>> 0;
+        return (s % 100) < 30; // 30% 확률
+    });
+    window._reversedFlags = reversedFlags; // startStreamFetch에서 사용
+
+    selectedCards = finalCards;
+
+    const overlay = document.getElementById('shuffle-overlay');
+    if (overlay) overlay.classList.remove('active');
+    SHUFFLE_STATE.isActive = false;
+
+    _runPostShuffleRitual(SHUFFLE_STATE.question);
+}
+
+// ── 기존 startRitual의 "카드 플립 + API 병렬" 로직을 여기서 실행
+async function _runPostShuffleRitual(question) {
+    const btn = document.getElementById('ritual-btn');
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '신탁을 소환하는 중 <span class="orb-spin">🔮</span>';
+    }
+    clearInterval(homeInterval);
+
+    // API 호출은 카드 플립과 병렬 시작
+    const streamPromise = startStreamFetch(question, selectedCards);
+
+    for (let i = 0; i < 3; i++) {
+        await flipCard(i, selectedCards[i]);
+        await delay(300);
+    }
+    await delay(800);
+    for (let i = 0; i < 3; i++) {
+        const slot = document.getElementById(`slot-${i}`);
+        const img  = document.getElementById(`card-img-${i}`);
+        if (slot) spawnGoldExplosion(slot);
+        if (img)  img.classList.add('card-fly');
+        await delay(200);
+    }
+    await delay(700);
+
+    showResultView(question, streamPromise);
+}
+
+// ── 셔플 오버레이 열기 (startRitual에서 호출)
+function openShuffleOverlay(question) {
+    SHUFFLE_STATE.question = question;
+    SHUFFLE_STATE.pickedIndexes = [];
+    SHUFFLE_STATE.deckOrder = _shuffleDeckBySeed(_makeDailySeed(question));
+    SHUFFLE_STATE.isActive = true;
+
+    // 도트 초기화
+    for (let i = 0; i < 3; i++) {
+        const dotEl = document.getElementById('dot-' + i);
+        if (dotEl) dotEl.classList.remove('filled');
+    }
+    const hintEl = document.getElementById('shuffle-hint');
+    if (hintEl) hintEl.innerHTML = '<span class="hl">과거</span>의 카드를 선택하소서…';
+
+    _layoutDeckArch();
+
+    const overlay = document.getElementById('shuffle-overlay');
+    if (overlay) overlay.classList.add('active');
+}
+
+// ── 다시 섞기 (덱 순서 재생성)
+function reshuffleDeck() {
+    if (!SHUFFLE_STATE.isActive) return;
+    // 시드에 셔플 카운트 추가하여 다른 순서 생성
+    const baseSeed = _makeDailySeed(SHUFFLE_STATE.question);
+    const reshuffleCount = (SHUFFLE_STATE._reshuffleCount || 0) + 1;
+    SHUFFLE_STATE._reshuffleCount = reshuffleCount;
+    SHUFFLE_STATE.deckOrder = _shuffleDeckBySeed(baseSeed + reshuffleCount * 31337);
+    SHUFFLE_STATE.pickedIndexes = [];
+    for (let i = 0; i < 3; i++) {
+        const dotEl = document.getElementById('dot-' + i);
+        if (dotEl) dotEl.classList.remove('filled');
+    }
+    const hintEl = document.getElementById('shuffle-hint');
+    if (hintEl) hintEl.innerHTML = '<span class="hl">과거</span>의 카드를 선택하소서…';
+    _layoutDeckArch();
+}
+
+// ── 셔플 취소 (오버레이 닫고 홈으로)
+function cancelShuffle() {
+    SHUFFLE_STATE.isActive = false;
+    const overlay = document.getElementById('shuffle-overlay');
+    if (overlay) overlay.classList.remove('active');
+    const btn = document.getElementById('ritual-btn');
+    if (btn) {
+        btn.disabled = false;
+        btn.innerHTML = '운명의 3대 신탁 확인';
+    }
+}
 </script>
+<div class="shuffle-overlay" id="shuffle-overlay">
+    <div class="shuffle-title">✦ 운명의 카드를 뽑으소서 ✦</div>
+    <div class="shuffle-subtitle">마음을 가라앉히고 카드 3장을 차례로 선택하세요</div>
+    <div class="shuffle-progress" id="shuffle-progress">
+        <span class="dot-slot" id="dot-0"></span>
+        <span class="dot-slot" id="dot-1"></span>
+        <span class="dot-slot" id="dot-2"></span>
+    </div>
+    <div class="deck-arch" id="deck-arch"></div>
+    <div class="shuffle-hint" id="shuffle-hint">과거의 카드를 선택하소서…</div>
+    <div class="shuffle-actions">
+        <button type="button" onclick="reshuffleDeck()">🔄 다시 섞기</button>
+        <button type="button" onclick="cancelShuffle()">✕ 닫기</button>
+    </div>
+</div>
 </body>
 </html>

@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>✦ 결제 실패 — 제우스 오라클</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Noto Serif KR', serif;
+    background: radial-gradient(ellipse at top, #1a0f0a 0%, #000 70%);
+    color: #D4AF37;
+    min-height: 100vh;
+    display: flex; align-items: center; justify-content: center;
+    padding: 20px;
+  }
+  .card {
+    max-width: 420px; width: 100%;
+    background: rgba(0,0,0,0.6);
+    border: 1px solid rgba(255,107,107,0.35);
+    border-radius: 16px;
+    padding: 36px 28px;
+    text-align: center;
+    box-shadow: 0 8px 40px rgba(255,107,107,0.15);
+  }
+  h1 {
+    font-size: 1.2rem; margin-bottom: 14px;
+    letter-spacing: 0.08em; color: #D4AF37;
+  }
+  .subtitle {
+    font-size: 0.8rem; color: rgba(212,175,55,0.55);
+    letter-spacing: 0.2em; margin-bottom: 28px;
+  }
+  .error-icon { font-size: 3.2rem; margin-bottom: 14px; }
+  .status-msg {
+    font-size: 0.95rem; color: rgba(255,255,255,0.88);
+    line-height: 1.6; margin-bottom: 8px;
+  }
+  .error-detail {
+    margin: 16px 0;
+    padding: 12px 14px;
+    background: rgba(255,107,107,0.08);
+    border-left: 3px solid #ff6b6b;
+    border-radius: 0 8px 8px 0;
+    text-align: left;
+    font-size: 0.78rem;
+    color: rgba(255,255,255,0.75);
+    line-height: 1.6;
+  }
+  .btn-primary {
+    display: inline-block;
+    margin-top: 14px; margin-right: 6px;
+    padding: 12px 24px;
+    background: linear-gradient(135deg, #D4AF37, #F1C40F);
+    color: #000;
+    border: none; border-radius: 30px;
+    font-weight: 900; font-size: 0.92rem;
+    cursor: pointer;
+    box-shadow: 0 4px 15px rgba(212,175,55,0.35);
+    text-decoration: none;
+  }
+  .btn-secondary {
+    display: inline-block;
+    margin-top: 14px;
+    padding: 12px 24px;
+    background: rgba(255,255,255,0.08);
+    color: rgba(255,255,255,0.8);
+    border: 1px solid rgba(255,255,255,0.2);
+    border-radius: 30px;
+    font-weight: 700; font-size: 0.92rem;
+    cursor: pointer;
+    text-decoration: none;
+  }
+  .small-note {
+    margin-top: 18px;
+    font-size: 0.7rem; color: rgba(212,175,55,0.45);
+    line-height: 1.7;
+  }
+</style>
+</head>
+<body>
+  <div class="card">
+    <h1>✦ 제우스 오라클 ✦</h1>
+    <div class="subtitle">PAYMENT FAILED</div>
+
+    <div class="error-icon">⚠️</div>
+    <div class="status-msg">
+      <strong>결제가 완료되지 않았습니다</strong><br>
+      <span style="font-size:0.82rem; color:rgba(255,255,255,0.6);">
+        결제를 다시 시도해주세요.
+      </span>
+    </div>
+
+    <div class="error-detail" id="error-detail" style="display:none;"></div>
+
+    <a href="#" class="btn-primary" id="retry-btn">🔄 다시 결제</a>
+    <a href="#" class="btn-secondary" id="home-btn">처음으로</a>
+
+    <div class="small-note">
+      결제 내역이 의심되면 고객센터로 문의해주세요.<br>
+      (결제되었으나 이 페이지가 나타난 경우 실제 결제는 진행되지 않은 상태입니다.)
+    </div>
+  </div>
+
+<script>
+(function() {
+  const params = new URLSearchParams(window.location.search);
+  const code    = params.get('code');
+  const message = params.get('message');
+
+  // 홈 경로 계산 (GitHub Pages 하위 경로 대응)
+  const homePath = window.location.pathname.replace(/\/fail\.html$/, '') + '/';
+  const homeUrl  = window.location.origin + homePath;
+
+  // 에러 상세 표시
+  if (code || message) {
+    const detailEl = document.getElementById('error-detail');
+    detailEl.style.display = 'block';
+    const codeMap = {
+      'USER_CANCEL': '사용자가 결제를 취소했습니다.',
+      'INVALID_CARD_COMPANY': '유효하지 않은 카드사입니다.',
+      'PAY_PROCESS_CANCELED': '결제가 취소되었습니다.',
+      'PAY_PROCESS_ABORTED': '결제가 중단되었습니다.'
+    };
+    const friendlyMsg = codeMap[code] || message || '알 수 없는 오류';
+    detailEl.innerHTML = `
+      <div><strong>사유:</strong> ${friendlyMsg}</div>
+      ${code ? `<div style="margin-top:4px; font-size:0.7rem; color:rgba(255,255,255,0.5);">오류 코드: ${code}</div>` : ''}
+    `;
+  }
+
+  document.getElementById('retry-btn').href = homeUrl;
+  document.getElementById('home-btn').href  = homeUrl;
+})();
+</script>
+</body>
+</html>
