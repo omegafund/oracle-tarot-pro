@@ -620,8 +620,31 @@ function buildRealEstateMetrics({ totalScore, riskScore, cleanCards, intent, pro
     { label: "9~10월 (가을 이사철 직전)", startMonth: 9, endMonth: 10 },
     { label: "12~1월 (비수기 저점)", startMonth: 12, endMonth: 1 }
   ];
-  const sellSeasonObj = sellSeasonList[Math.abs(seed) % sellSeasonList.length];
-  const buySeasonObj  = buySeasonList[Math.abs(seed) % buySeasonList.length];
+
+  // [V2.5 수정] 현재 시점 기준 "가장 가까운 미래 시즌" 선택 (과거 시즌 안내 버그 방지)
+  //   예: 4월 25일 질문 시 "3~4월" 대신 "6~7월" 또는 "10~11월" 선택
+  //   endMonth가 현재 월보다 같거나 이후인 시즌만 후보로
+  const now = new Date();
+  const currentMonth = now.getMonth() + 1; // 1~12
+
+  function pickFutureSeason(list) {
+    // 각 시즌의 "유효성" 판단: endMonth >= currentMonth
+    // (endMonth < currentMonth면 올해는 이미 지남 → 내년 것이므로 우선순위 낮춤)
+    const validNow = list.filter(s => {
+      if (s.startMonth <= s.endMonth) {
+        return s.endMonth >= currentMonth; // 일반 시즌
+      } else {
+        // 12~1월 같은 연말연초 시즌: 12월 이후면 올해 유효
+        return currentMonth >= s.startMonth || currentMonth <= s.endMonth;
+      }
+    });
+    // 올해 유효한 시즌이 하나도 없으면 (드문 케이스) 내년 첫 시즌
+    const candidates = validNow.length > 0 ? validNow : list;
+    // 카드 에너지(seed)로 결정론적 선택
+    return candidates[Math.abs(seed) % candidates.length];
+  }
+  const sellSeasonObj = pickFutureSeason(sellSeasonList);
+  const buySeasonObj  = pickFutureSeason(buySeasonList);
 
   const trend_base = netScore >= 6 ? "매도자 우세 흐름 (상승 에너지 강화 중)"
               : netScore >= 2 ? "매도자 우세 흐름 (완만한 회복)"
