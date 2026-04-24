@@ -892,6 +892,35 @@
             0%,100% { text-shadow: 0 0 10px rgba(80,200,120,0.55), 0 0 20px rgba(46,204,113,0.3); }
             50%     { text-shadow: 0 0 16px rgba(80,200,120,0.85), 0 0 28px rgba(46,204,113,0.55); }
         }
+
+        /* [V19.3] 카드 선택 파티클 이펙트 */
+        @keyframes pickGlowAnim {
+            0%   { opacity: 0;   transform: translate(-50%, -50%) scale(0.6); }
+            30%  { opacity: 1;   transform: translate(-50%, -50%) scale(1.15); }
+            100% { opacity: 0;   transform: translate(-50%, -50%) scale(1.6); }
+        }
+        @keyframes pickDust {
+            0% {
+                opacity: 1;
+                transform: translate(0, 0) scale(1);
+            }
+            60% { opacity: 1; }
+            100% {
+                opacity: 0;
+                transform: translate(var(--dx), var(--dy)) scale(0.3);
+            }
+        }
+        @keyframes pickStar {
+            0% {
+                opacity: 0;
+                transform: translate(0, 0) scale(0.4) rotate(0deg);
+            }
+            25% { opacity: 1; }
+            100% {
+                opacity: 0;
+                transform: translate(var(--dx), var(--dy)) scale(1.5) rotate(180deg);
+            }
+        }
 </style>
     <!-- [V19 Phase3] 결과창 이미지 캡처용 -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
@@ -1116,7 +1145,7 @@ const PAYMENT_CONFIG = {
 // ══════════════════════════════════════════════════════════════════
 // [V19 Phase6] Toss Payments 설정 + 결제 플랜
 // ══════════════════════════════════════════════════════════════════
-const TOSS_CLIENT_KEY = 'test_ck_D5bZzMqlcwBa294XzYj34mOEE693'; // ★ 테스트 키 (공개 가능)
+const TOSS_CLIENT_KEY = 'test_ck_DLJOpm5Qrld55o27nMJ0rPNdxbWn'; // ★ 테스트 키 (공개 가능)
 const WORKER_BASE_URL = 'https://tarot-api.omegafund01.workers.dev';
 
 const PAYMENT_PLANS = {
@@ -4286,6 +4315,9 @@ function _onDeckCardClick(deckPos, cardEl, angle) {
     const dotEl = document.getElementById('dot-' + (pickCount - 1));
     if (dotEl) dotEl.classList.add('filled');
 
+    // [V19.3] 카드 선택 시 금가루 + 별 파티클 이펙트
+    _spawnPickParticles(cardEl);
+
     // 카드 날아가는 애니메이션
     cardEl.classList.add('picked');
 
@@ -4300,6 +4332,82 @@ function _onDeckCardClick(deckPos, cardEl, angle) {
     // 3장 다 선택 → 결과 플로우로 진행
     if (pickCount === 3) {
         setTimeout(() => _onAllThreePicked(), 900);
+    }
+}
+
+// ══════════════════════════════════════════════════════════════════
+// [V19.3] 카드 선택 파티클 이펙트 — 금가루 + 별 + 글로우
+// ══════════════════════════════════════════════════════════════════
+function _spawnPickParticles(cardEl) {
+    if (!cardEl) return;
+    const rect = cardEl.getBoundingClientRect();
+    const cx = rect.left + rect.width / 2;
+    const cy = rect.top + rect.height / 2;
+
+    // 1) 글로우 펄스 — 카드 자체에 빛 번짐
+    const glow = document.createElement('div');
+    glow.className = 'pick-glow';
+    glow.style.cssText = `
+        position: fixed;
+        left: ${cx}px; top: ${cy}px;
+        width: ${Math.max(rect.width, 60)}px;
+        height: ${Math.max(rect.height, 90)}px;
+        transform: translate(-50%, -50%);
+        border-radius: 10px;
+        background: radial-gradient(ellipse, rgba(255,215,0,0.65) 0%, rgba(212,175,55,0.3) 40%, transparent 70%);
+        pointer-events: none;
+        z-index: 10002;
+        animation: pickGlowAnim 0.9s ease-out forwards;`;
+    document.body.appendChild(glow);
+    setTimeout(() => glow.remove(), 1000);
+
+    // 2) 금가루 파티클 24개 — 방사형으로 퍼짐
+    const particleCount = 24;
+    for (let i = 0; i < particleCount; i++) {
+        const p = document.createElement('div');
+        const angle = (Math.PI * 2 * i) / particleCount + (Math.random() - 0.5) * 0.3;
+        const dist = 80 + Math.random() * 70; // 80~150px
+        const size = 3 + Math.random() * 5;
+        const dx = Math.cos(angle) * dist;
+        const dy = Math.sin(angle) * dist;
+        const color = Math.random() < 0.35 ? '#FFF5C3' : (Math.random() < 0.5 ? '#FFD700' : '#D4AF37');
+        const duration = 0.7 + Math.random() * 0.5;
+        p.style.cssText = `
+            position: fixed;
+            left: ${cx}px; top: ${cy}px;
+            width: ${size}px; height: ${size}px;
+            background: ${color};
+            border-radius: 50%;
+            box-shadow: 0 0 ${size*1.5}px ${color};
+            pointer-events: none;
+            z-index: 10003;
+            --dx: ${dx}px; --dy: ${dy}px;
+            animation: pickDust ${duration}s cubic-bezier(0.2, 0.7, 0.4, 1) forwards;`;
+        document.body.appendChild(p);
+        setTimeout(() => p.remove(), duration * 1000 + 100);
+    }
+
+    // 3) 별 파티클 6개 — 더 크고 느리게
+    for (let i = 0; i < 6; i++) {
+        const star = document.createElement('div');
+        const angle = Math.random() * Math.PI * 2;
+        const dist = 50 + Math.random() * 80;
+        const dx = Math.cos(angle) * dist;
+        const dy = Math.sin(angle) * dist;
+        const duration = 1.0 + Math.random() * 0.4;
+        star.textContent = ['✦','✧','✨','⋆'][Math.floor(Math.random()*4)];
+        star.style.cssText = `
+            position: fixed;
+            left: ${cx}px; top: ${cy}px;
+            color: #FFD700;
+            font-size: ${14 + Math.random()*8}px;
+            text-shadow: 0 0 10px #FFD700, 0 0 20px rgba(255,215,0,0.6);
+            pointer-events: none;
+            z-index: 10004;
+            --dx: ${dx}px; --dy: ${dy}px;
+            animation: pickStar ${duration}s cubic-bezier(0.1, 0.8, 0.3, 1) forwards;`;
+        document.body.appendChild(star);
+        setTimeout(() => star.remove(), duration * 1000 + 100);
     }
 }
 
@@ -4420,7 +4528,6 @@ function cancelShuffle() {
     <div class="shuffle-hint" id="shuffle-hint">과거의 카드를 선택하소서…</div>
     <div class="shuffle-actions">
         <button type="button" onclick="reshuffleDeck()">🔄 다시 섞기</button>
-        <button type="button" onclick="cancelShuffle()">✕ 닫기</button>
     </div>
 </div>
 </body>
