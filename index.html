@@ -417,21 +417,52 @@
             width: 100%;
             position: relative;
         }
-        /* 로딩 & 진행바 */
+        /* [V19.4] 로딩 & 진행바 — 에메랄드 기반 차분한 대기 연출 */
         #ai-loading-text {
-            color: var(--gold);
+            color: #50C878;               /* 황금 → 에메랄드 (심리적 안정) */
             text-align: center;
-            padding: 15px 0 8px;
-            font-size: 0.95rem;
+            padding: 10px 0 6px;
+            font-size: 0.88rem;           /* 0.95 → 0.88 약간 축소 */
+            font-weight: 600;
             letter-spacing: 0.05em;
-            min-height: 2em;
+            min-height: 1.6em;            /* 2em → 1.6em 컴팩트화 */
+            text-shadow: 0 0 8px rgba(80,200,120,0.3);
+        }
+        /* [V19.4] 대기시간 영성 가이드 — 남용 방지 + 몰입 유도 */
+        #oracle-wisdom-note {
+            display: none;
+            text-align: center;
+            padding: 10px 16px;
+            margin: 8px auto 14px;
+            max-width: 380px;
+            background: linear-gradient(135deg, rgba(80,200,120,0.06), rgba(46,204,113,0.03));
+            border: 1px solid rgba(80,200,120,0.25);
+            border-left: 3px solid rgba(80,200,120,0.6);
+            border-radius: 8px;
+            font-size: 0.78rem;
+            color: rgba(200,240,220,0.88);
+            line-height: 1.7;
+            font-weight: 500;
+            letter-spacing: 0.02em;
+            font-style: italic;
+            animation: wisdomFade 0.8s ease-in;
+        }
+        #oracle-wisdom-note .wisdom-icon {
+            font-size: 0.9rem;
+            color: #50C878;
+            margin-right: 4px;
+        }
+        @keyframes wisdomFade {
+            from { opacity: 0; transform: translateY(4px); }
+            to { opacity: 1; transform: translateY(0); }
         }
         #oracle-progress-wrap {
             width: 100%;
-            background: rgba(212,175,55,0.15);
+            max-width: 280px;             /* 전체폭 → 280px로 축소 */
+            margin: 0 auto 12px;
+            background: rgba(80,200,120,0.15);
             border-radius: 50px;
-            height: 6px;
-            margin: 0 0 15px;
+            height: 4px;                  /* 6px → 4px 얇게 */
             overflow: hidden;
             display: none;
         }
@@ -439,8 +470,8 @@
             height: 100%;
             width: 0%;
             border-radius: 50px;
-            background: linear-gradient(90deg, #8C6212, #D4AF37, #FFF5C3);
-            box-shadow: 0 0 8px rgba(212,175,55,0.7);
+            background: linear-gradient(90deg, #2ecc71, #50C878, #A8E4C2);
+            box-shadow: 0 0 8px rgba(80,200,120,0.6);
             transition: width 0.5s ease;
         }
         #oracle-content { color: #eee; font-size: 0.95rem; }
@@ -976,26 +1007,33 @@
             <span class="sub-title">PRO · MASTERPIECE</span>
         </div>
 
-        <!-- [V19 Phase4] 오늘의 카드 + 최근 신탁 이력 -->
-        <div id="daily-history-bar" style="display:none; max-width:480px; margin:10px auto 18px; padding:0 14px;">
-            <!-- 오늘의 카드 -->
+        <!-- [V19 Phase4] 오늘의 카드 + 최근 신탁 이력 — [V19.3] 중앙정렬 강화 -->
+        <div id="daily-history-bar" style="display:none; max-width:480px; margin:10px auto 18px; padding:0 14px; text-align:center;">
+            <!-- 오늘의 카드 — 중앙정렬 세로 레이아웃 -->
             <div id="daily-card-wrap" style="
-                display:flex; align-items:center; gap:12px;
-                background:linear-gradient(135deg, rgba(212,175,55,0.08), rgba(80,200,120,0.04));
-                border:1px solid rgba(212,175,55,0.25);
-                border-radius:12px; padding:10px 12px; margin-bottom:10px;">
-                <img id="daily-card-img" src="" alt="오늘의 카드"
-                     style="width:48px; height:70px; object-fit:cover; border-radius:5px; border:1px solid var(--gold);"
-                     onerror="this.style.visibility='hidden'">
-                <div style="flex:1; min-width:0;">
-                    <div style="font-size:0.68rem; letter-spacing:0.1em; color:var(--gold); font-weight:900;">✦ 오늘의 카드</div>
-                    <div id="daily-card-name" style="font-size:0.92rem; color:#fff; font-weight:700; margin:2px 0;">-</div>
-                    <div id="daily-card-message" style="font-size:0.72rem; color:rgba(255,255,255,0.65); line-height:1.5;">-</div>
+                display:flex;
+                flex-direction:column;
+                align-items:center;
+                gap:8px;
+                background:linear-gradient(135deg, rgba(212,175,55,0.1), rgba(80,200,120,0.05));
+                border:1px solid rgba(212,175,55,0.35);
+                border-radius:14px;
+                padding:14px 16px;
+                margin:0 auto 10px;
+                max-width:360px;
+                box-shadow: 0 2px 12px rgba(212,175,55,0.08);">
+                <div style="font-size:0.7rem; letter-spacing:0.15em; color:var(--gold); font-weight:900; text-align:center;">
+                    ✦ 오늘의 카드 ✦
                 </div>
+                <img id="daily-card-img" src="" alt="오늘의 카드"
+                     style="width:56px; height:82px; object-fit:cover; border-radius:6px; border:1px solid var(--gold); box-shadow: 0 0 10px rgba(212,175,55,0.3);"
+                     onerror="this.style.visibility='hidden'">
+                <div id="daily-card-name" style="font-size:0.95rem; color:#fff; font-weight:800; text-align:center;">-</div>
+                <div id="daily-card-message" style="font-size:0.76rem; color:rgba(255,255,255,0.78); line-height:1.6; text-align:center; font-style:italic;">-</div>
             </div>
-            <!-- 최근 신탁 -->
-            <div id="history-list-wrap" style="display:none;">
-                <div style="font-size:0.68rem; letter-spacing:0.1em; color:rgba(212,175,55,0.75); font-weight:700; margin-bottom:6px;">
+            <!-- 최근 신탁 — 중앙정렬 -->
+            <div id="history-list-wrap" style="display:none; max-width:440px; margin:0 auto;">
+                <div style="font-size:0.72rem; letter-spacing:0.1em; color:#D4AF37; font-weight:700; margin-bottom:8px; text-align:center;">
                     📜 최근 신탁
                 </div>
                 <div id="history-list" style="display:flex; flex-direction:column; gap:6px;"></div>
@@ -1090,7 +1128,9 @@
             <div id="oracle-progress-wrap">
                 <div id="oracle-progress-bar"></div>
             </div>
-            <div id="oracle-content" style="min-height: 400px;"></div>
+            <!-- [V19.4] 대기 시간 영성 가이드 — 몰입 + 남용 방지 -->
+            <div id="oracle-wisdom-note"></div>
+            <div id="oracle-content"></div>
         </div>
 
         <div id="dynamic-action-area" style="margin-top: 30px; text-align: center; min-height: 100px;">
@@ -1534,8 +1574,10 @@ function setSituation(btn, type, domain) {
                     const holdingMsg  = document.getElementById('holding-message');
                     const finalBtn    = document.getElementById('final-reset-btn');
                     const shareActions = document.getElementById('share-actions');
+                    const wisdomEl    = document.getElementById('oracle-wisdom-note');
                     if (loadingEl)   loadingEl.style.display   = 'none';
                     if (progressWrap) progressWrap.style.display = 'none';
+                    if (wisdomEl)   wisdomEl.style.display   = 'none';
                     if (holdingMsg)  holdingMsg.style.display  = 'none';
                     if (finalBtn)   { finalBtn.style.display = 'inline-block'; finalBtn.style.marginTop = '25px'; }
                     if (shareActions) shareActions.style.display = 'flex';
@@ -1879,19 +1921,36 @@ async function renderStream(fetchPromise, cards) {
     const contentEl    = document.getElementById('oracle-content');
     const progressWrap = document.getElementById('oracle-progress-wrap');
     const progressBar  = document.getElementById('oracle-progress-bar');
+    const wisdomEl     = document.getElementById('oracle-wisdom-note');
 
     loadingEl.style.display    = 'block';
     progressWrap.style.display = 'block';
+    if (wisdomEl) wisdomEl.style.display = 'block';
     contentEl.innerHTML        = '';
 
     const loadingMessages = [
-        '✨ 천상의 기운을 감지 중...',
-        '🔮 운명의 카드를 해독 중...',
-        '⚡ 2026년 데이터와 교신 중...',
-        '🌌 신탁의 언어로 번역 중...',
-        '📜 오라클이 응답을 준비 중...',
+        '✨ 천상의 기운을 감지하는 중...',
+        '🔮 운명의 카드를 해독하는 중...',
+        '🌌 신탁의 언어로 번역하는 중...',
+        '📜 오라클이 응답을 준비하는 중...',
         '✦ 거의 완성되었습니다...'
     ];
+
+    // [V19.4] 대기시간 영성 가이드 — 5가지 순환 (남용 방지 + 영성 몰입)
+    const WISDOM_NOTES = [
+        '<span class="wisdom-icon">✦</span> 동일한 질문을 반복해서 점치지 마소서. 첫 신탁이 가장 순수합니다.',
+        '<span class="wisdom-icon">✦</span> 마음을 가라앉히고, 유저님의 내면의 목소리에 귀 기울이소서.',
+        '<span class="wisdom-icon">✦</span> 자주 치면 카드의 기운이 흐려집니다. 하루 하나의 질문이 가장 정확합니다.',
+        '<span class="wisdom-icon">✦</span> 카드는 참고일 뿐, 결정은 유저님의 지혜로 하소서.',
+        '<span class="wisdom-icon">✦</span> 급한 마음을 내려놓으면, 신탁의 진의가 드러납니다.'
+    ];
+
+    // 결정론적 wisdom 선택 (질문+카드 기반 — 같은 점사 = 같은 경구)
+    const seedInput = (document.getElementById('seed-input')?.value || '') + (cards || []).map(c => c.name).join('');
+    let wSeed = 0;
+    for (let i = 0; i < seedInput.length; i++) wSeed += seedInput.charCodeAt(i);
+    const wIdx = Math.abs(wSeed) % WISDOM_NOTES.length;
+    if (wisdomEl) wisdomEl.innerHTML = WISDOM_NOTES[wIdx];
 
     let msgIdx = 0, progressVal = 5;
     loadingEl.textContent = loadingMessages[0];
@@ -1914,6 +1973,7 @@ async function renderStream(fetchPromise, cards) {
 
         loadingEl.style.display    = 'none';
         progressWrap.style.display = 'none';
+        if (wisdomEl) wisdomEl.style.display = 'none';  // [V19.4] 스트리밍 시작 시 wisdom도 숨김
         progressBar.style.width    = '100%';
 
         const cursor = document.createElement('span');
@@ -2037,6 +2097,7 @@ async function renderStream(fetchPromise, cards) {
         clearInterval(loadingTimer);
         loadingEl.style.display    = 'none';
         progressWrap.style.display = 'none';
+        if (wisdomEl) wisdomEl.style.display = 'none';
         contentEl.innerHTML = `
             <div style="color:#ff6b6b;padding:20px;border:1px solid #ff6b6b;border-radius:10px;">
                 <strong>⚠️ 신탁 연결 실패</strong><br><br>
@@ -3474,8 +3535,31 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
                     </div>
                 </div>`;
 
-            // 대응 타이밍
-            const timingHTML = `
+            // [V19.4] 대응 타이밍 — 매수/매도 분리 + 시각 강화 (핵심 가치 강조)
+            const entryTime = d._server?.entryTimingText || '-';
+            const exitTime  = d._server?.exitTimingText  || '-';
+            const hasEntryExit = entryTime !== '-' && exitTime !== '-';
+
+            const timingHTML = hasEntryExit ? `
+                <div style="margin-bottom:16px; padding: 14px 16px;
+                            background: linear-gradient(135deg, rgba(46,204,113,0.10), rgba(212,175,55,0.06));
+                            border: 1px solid rgba(212,175,55,0.5);
+                            border-radius: 10px;
+                            box-shadow: 0 0 12px rgba(212,175,55,0.12);">
+                    <div style="color:var(--gold); font-size:0.84rem; font-weight:900; letter-spacing:0.1em; margin-bottom:10px; text-align:center;">
+                        ⚡ 실전 매매 타이밍 ⚡
+                    </div>
+                    <div style="display:flex; flex-direction:column; gap:10px;">
+                        <div style="padding:10px 12px; background:rgba(46,204,113,0.12); border-left:4px solid #2ecc71; border-radius:4px;">
+                            <div style="font-size:0.75rem; color:#2ecc71; font-weight:900; letter-spacing:0.08em; margin-bottom:3px;">📈 매수 타이밍</div>
+                            <div style="font-size:0.92rem; color:#fff; font-weight:700; line-height:1.5;">${entryTime}</div>
+                        </div>
+                        <div style="padding:10px 12px; background:rgba(255,82,82,0.12); border-left:4px solid #ff5252; border-radius:4px;">
+                            <div style="font-size:0.75rem; color:#ff8080; font-weight:900; letter-spacing:0.08em; margin-bottom:3px;">📉 매도 타이밍</div>
+                            <div style="font-size:0.92rem; color:#fff; font-weight:700; line-height:1.5;">${exitTime}</div>
+                        </div>
+                    </div>
+                </div>` : `
                 <div style="margin-bottom:14px; padding-bottom:12px; border-bottom:1px solid rgba(212,175,55,0.18);">
                     <div style="color:var(--gold); font-size:0.82rem; font-weight:900; letter-spacing:0.1em; margin-bottom:8px;">📅 대응 타이밍</div>
                     <div style="font-size:0.88rem; color:rgba(255,255,255,0.9); line-height:1.8; white-space:pre-line;">${d.timingLabel || '-'}</div>
@@ -3593,13 +3677,26 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
                     </div>
                 </div>
 
-                <!-- 📅 타이밍 -->
-                <div style="margin-bottom:14px; padding-bottom:12px; border-bottom:1px solid rgba(212,175,55,0.18);">
-                    <div style="color:var(--gold); font-size:0.82rem; font-weight:900; letter-spacing:0.1em; margin-bottom:8px;">📅 타이밍</div>
-                    <div style="font-size:0.85rem; color:rgba(255,255,255,0.88); line-height:1.8;">
-                        <div>→ ${d.timingLabel || '-'}</div>
+                <!-- 📅 타이밍 (시즌 + 일일 수비학) -->
+                <div style="margin-bottom:16px; padding: 14px 16px;
+                            background: linear-gradient(135deg, rgba(46,204,113,0.08), rgba(212,175,55,0.06));
+                            border: 1px solid rgba(212,175,55,0.4);
+                            border-radius: 10px;">
+                    <div style="color:var(--gold); font-size:0.84rem; font-weight:900; letter-spacing:0.1em; margin-bottom:10px; text-align:center;">
+                        ⚡ 실전 타이밍 ⚡
+                    </div>
+                    <div style="font-size:0.9rem; color:#fff; line-height:1.9; font-weight:600;">
+                        <div>→ <b>${d.timingLabel || '-'}</b></div>
                         ${d.timing2 ? `<div style="margin-top:4px;">→ ${d.timing2}</div>` : ''}
-                        ${d.urgency ? `<div style="margin-top:6px; padding:6px 10px; background:rgba(46,204,113,0.08); border-left:3px solid #2ecc71; border-radius:0 6px 6px 0;">${d.urgency}</div>` : ''}
+                        ${d._server?.dailyActionTiming ? `
+                        <div style="margin-top:8px; padding:8px 10px;
+                                    background:rgba(212,175,55,0.12);
+                                    border-left:3px solid var(--gold); border-radius:0 6px 6px 0;
+                                    font-size:0.88rem;">
+                            <span style="color:var(--gold); font-weight:900;">🎯 방문/상담 적기:</span><br>
+                            ${d._server.dailyActionTiming}
+                        </div>` : ''}
+                        ${d.urgency ? `<div style="margin-top:8px; padding:8px 10px; background:rgba(46,204,113,0.1); border-left:3px solid #2ecc71; border-radius:0 6px 6px 0;">${d.urgency}</div>` : ''}
                     </div>
                 </div>
 
