@@ -1007,29 +1007,31 @@
             <span class="sub-title">PRO · MASTERPIECE</span>
         </div>
 
-        <!-- [V19 Phase4] 오늘의 카드 + 최근 신탁 이력 — [V19.3] 중앙정렬 강화 -->
+        <!-- [V19 Phase4] 오늘의 카드 + 최근 신탁 이력 — [V19.4] 공백 제거 -->
         <div id="daily-history-bar" style="display:none; max-width:480px; margin:10px auto 18px; padding:0 14px; text-align:center;">
             <!-- 오늘의 카드 — 중앙정렬 세로 레이아웃 -->
             <div id="daily-card-wrap" style="
                 display:flex;
                 flex-direction:column;
                 align-items:center;
-                gap:8px;
+                gap:6px;
                 background:linear-gradient(135deg, rgba(212,175,55,0.1), rgba(80,200,120,0.05));
                 border:1px solid rgba(212,175,55,0.35);
                 border-radius:14px;
-                padding:14px 16px;
+                padding:12px 14px;
                 margin:0 auto 10px;
-                max-width:360px;
+                max-width:340px;
                 box-shadow: 0 2px 12px rgba(212,175,55,0.08);">
-                <div style="font-size:0.7rem; letter-spacing:0.15em; color:var(--gold); font-weight:900; text-align:center;">
+                <div style="font-size:0.7rem; letter-spacing:0.15em; color:var(--gold); font-weight:900; text-align:center; line-height:1;">
                     ✦ 오늘의 카드 ✦
                 </div>
-                <img id="daily-card-img" src="" alt="오늘의 카드"
-                     style="width:56px; height:82px; object-fit:cover; border-radius:6px; border:1px solid var(--gold); box-shadow: 0 0 10px rgba(212,175,55,0.3);"
-                     onerror="this.style.visibility='hidden'">
-                <div id="daily-card-name" style="font-size:0.95rem; color:#fff; font-weight:800; text-align:center;">-</div>
-                <div id="daily-card-message" style="font-size:0.76rem; color:rgba(255,255,255,0.78); line-height:1.6; text-align:center; font-style:italic;">-</div>
+                <!-- [V19.4] img 기본 숨김 (display:none) → JS에서 src 성공 시에만 표시 -->
+                <img id="daily-card-img" alt=""
+                     style="display:none; width:52px; height:76px; object-fit:cover; border-radius:5px; border:1px solid var(--gold); box-shadow: 0 0 8px rgba(212,175,55,0.3); margin:0;"
+                     onload="this.style.display='block'"
+                     onerror="this.style.display='none'">
+                <div id="daily-card-name" style="font-size:0.92rem; color:#fff; font-weight:800; text-align:center; line-height:1.2; margin:0;">-</div>
+                <div id="daily-card-message" style="font-size:0.74rem; color:rgba(255,255,255,0.78); line-height:1.5; text-align:center; font-style:italic; margin:0;">-</div>
             </div>
             <!-- 최근 신탁 — 중앙정렬 -->
             <div id="history-list-wrap" style="display:none; max-width:440px; margin:0 auto;">
