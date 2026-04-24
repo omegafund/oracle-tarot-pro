@@ -1090,7 +1090,7 @@
             <div id="oracle-progress-wrap">
                 <div id="oracle-progress-bar"></div>
             </div>
-            <div id="oracle-content"></div>
+            <div id="oracle-content" style="min-height: 400px;"></div>
         </div>
 
         <div id="dynamic-action-area" style="margin-top: 30px; text-align: center; min-height: 100px;">
@@ -3521,8 +3521,20 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
                 <div style="margin-top:12px; padding:12px 14px; background:rgba(0,0,0,0.4); border-left:3px solid var(--gold); line-height:1.8; font-size:0.9rem; color:rgba(255,255,255,0.92);">
                     ${finalOracleHTML}
                 </div>
-                <div style="margin-top:14px; padding-top:10px; border-top:1px solid rgba(212,175,55,0.35); font-size:0.76rem; color:rgba(255,255,255,0.75); text-align:center; font-weight:500;">
-                    ※ 본 신탁은 타로 에너지 해석 기반 참고 정보이며, 실제 투자 판단의 근거로 사용할 수 없습니다.
+                <!-- [V19.3] 법적 면책 강화 — AI 환각 방지 고지 -->
+                <div style="margin-top:14px; padding:10px 12px;
+                            background: rgba(255,165,0,0.06);
+                            border: 1px solid rgba(255,165,0,0.3);
+                            border-left: 3px solid rgba(255,165,0,0.7);
+                            border-radius: 6px;
+                            font-size:0.74rem; color:rgba(255,255,255,0.82); line-height:1.6;">
+                    ⚠️ <b>중요 고지</b>: 본 신탁은 타로 카드 에너지에 기반한 <b>유저님의 투자 심리 분석</b>이며,
+                    특정 종목의 실제 재무 상태·경영 현황·미래 성과를 의미하지 않습니다.
+                    AI 서술은 영성적 해석이며 실제 기업 상황과 <b>무관</b>합니다.
+                    투자 판단은 반드시 객관적 재무 정보와 전문가 상담을 통해 이루어져야 합니다.
+                </div>
+                <div style="margin-top:10px; padding-top:8px; font-size:0.72rem; color:rgba(255,255,255,0.6); text-align:center;">
+                    본 신탁은 참고용 콘텐츠입니다.
                 </div>
             </div>`;
         }
@@ -3618,8 +3630,19 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
                     ${finalOracleHTML}
                 </div>
 
-                <div style="margin-top:14px; padding-top:10px; border-top:1px solid rgba(212,175,55,0.35); font-size:0.76rem; color:rgba(255,255,255,0.75); text-align:center; font-weight:500;">
-                    ※ 본 신탁은 타로 에너지 해석 기반 참고 정보이며, 실제 부동산 거래 판단의 근거로 사용할 수 없습니다.
+                <!-- [V19.3] 법적 면책 강화 -->
+                <div style="margin-top:14px; padding:10px 12px;
+                            background: rgba(255,165,0,0.06);
+                            border: 1px solid rgba(255,165,0,0.3);
+                            border-left: 3px solid rgba(255,165,0,0.7);
+                            border-radius: 6px;
+                            font-size:0.74rem; color:rgba(255,255,255,0.82); line-height:1.6;">
+                    ⚠️ <b>중요 고지</b>: 본 신탁은 타로 카드 에너지에 기반한 <b>유저님의 부동산 심리 분석</b>이며,
+                    특정 지역·매물의 실제 시세·거래 현황을 의미하지 않습니다.
+                    실제 거래 판단은 반드시 공인중개사 및 시장 조사를 통해 이루어져야 합니다.
+                </div>
+                <div style="margin-top:10px; padding-top:8px; font-size:0.72rem; color:rgba(255,255,255,0.6); text-align:center;">
+                    본 신탁은 참고용 콘텐츠입니다.
                 </div>
             </div>`;
         }
@@ -4098,32 +4121,72 @@ document.addEventListener('DOMContentLoaded', () => {
 function showPayModal() {
     const cfg = PAYMENT_CONFIG;
 
-    // [V19 Phase6] Toss 카드결제 버튼 2개 (1일권 / 무제한)
+    // [V19.3] 도메인별 동적 PRO 혜택 — 질문 맥락에 맞춤
+    let proBullets = [];
+    if (CURRENT_MODE === 'stock' || CURRENT_MODE === 'crypto') {
+        proBullets = [
+            '정확한 진입/청산 타이밍',
+            '리스크 시나리오 분석',
+            '포지션 전략 (비중·손절·목표)'
+        ];
+    } else if (CURRENT_MODE === 'realestate') {
+        proBullets = [
+            '시장 흐름 전환 시점',
+            '호가 조정 전략',
+            '거래 성사 시점 예측'
+        ];
+    } else if (CURRENT_MODE === 'love') {
+        proBullets = [
+            '상대의 실제 반응 시점',
+            '관계 변화 흐름 분석',
+            '선택별 결과 시나리오'
+        ];
+    } else {
+        // 일반 운세 / 미분류 기본값
+        proBullets = [
+            '정확한 타이밍 분석',
+            '핵심 행동 시나리오',
+            '리스크 경고 + 기회 포착'
+        ];
+    }
+
+    // [V19.3] 1일권 + 30일권 Toss 카드결제 버튼 — 사장님 원안 카피 반영
     const tossCardHTML = `
-        <div style="margin-bottom:14px;">
+        <div style="margin-bottom:14px; display:flex; flex-direction:column; gap:10px;">
+            <!-- 🔥 1일 이용권 -->
             <button class="pay-plan-btn" onclick="startTossPayment('day')" style="
-                display:block; width:100%; margin-bottom:8px; padding:14px 12px;
+                display:block; width:100%; padding:16px 14px;
                 background: linear-gradient(135deg, #0064ff, #0050cc);
-                color:#fff; border:none; border-radius:10px;
-                font-size:0.95rem; font-weight:900; cursor:pointer;
-                box-shadow: 0 4px 12px rgba(0,100,255,0.3);
-                text-align:left; display:flex; justify-content:space-between; align-items:center;">
-                <span>🔥 1일 이용권 <span style="font-size:0.72rem; font-weight:400; opacity:0.85;">· 24시간 무제한</span></span>
-                <span style="font-weight:900;">₩3,900</span>
+                color:#fff; border:none; border-radius:12px;
+                cursor:pointer; text-align:left;
+                box-shadow: 0 4px 14px rgba(0,100,255,0.35);">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+                    <span style="font-size:1rem; font-weight:900;">🔥 1일 이용권</span>
+                    <span style="font-size:1.1rem; font-weight:900;">₩3,900</span>
+                </div>
+                <div style="font-size:0.72rem; opacity:0.95; font-weight:500; line-height:1.5;">
+                    24시간 한정 · "오늘 흐름을 놓치면 결과가 달라질 수 있습니다"
+                </div>
             </button>
+
+            <!-- 💎 30일 무제한 이용권 -->
             <button class="pay-plan-btn" onclick="startTossPayment('month')" style="
-                display:block; width:100%; padding:14px 12px;
+                display:block; width:100%; padding:16px 14px;
                 background: linear-gradient(135deg, #D4AF37, #F1C40F);
-                color:#000; border:none; border-radius:10px;
-                font-size:0.95rem; font-weight:900; cursor:pointer;
-                box-shadow: 0 4px 12px rgba(212,175,55,0.4);
-                text-align:left; display:flex; justify-content:space-between; align-items:center;">
-                <span>💎 무제한 이용권 <span style="font-size:0.72rem; font-weight:400; opacity:0.75;">· 30일 무제한</span></span>
-                <span style="font-weight:900;">₩9,900</span>
+                color:#000; border:none; border-radius:12px;
+                cursor:pointer; text-align:left;
+                box-shadow: 0 4px 14px rgba(212,175,55,0.45);">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+                    <span style="font-size:1rem; font-weight:900;">💎 30일 무제한 이용권</span>
+                    <span style="font-size:1.1rem; font-weight:900;">₩9,900</span>
+                </div>
+                <div style="font-size:0.72rem; opacity:0.85; font-weight:600; line-height:1.5;">
+                    "반복되는 선택 패턴을 완전히 분석합니다"
+                </div>
             </button>
         </div>`;
 
-    // 기존 계좌이체 섹션 (폴백 — 카드 결제 실패 시 대안)
+    // 기존 계좌이체 섹션 (폴백 — 접힌 상태)
     const amountFmt = cfg.amount.toLocaleString('ko-KR');
     const tossBtn = cfg.tossId ? `
         <a href="supertoss://send?amount=${cfg.amount}&bank=${encodeURIComponent(cfg.bank)}&accountNo=${cfg.account.replace(/-/g,'')}&origin=qr"
@@ -4136,14 +4199,38 @@ function showPayModal() {
     overlay.id = 'payModalOverlay';
     overlay.innerHTML = `
         <div class="pay-modal">
-            <h3>✦ 프리미엄 신탁 ✦</h3>
-            <p>미래 흐름 + 최종 신탁이 잠겨 있습니다</p>
+            <h3 style="margin-bottom:6px;">✦ 프리미엄 신탁 ✦</h3>
+            <p style="font-size:0.84rem; color:#FF8080; font-weight:600; margin:4px 0 14px;">
+                ⏰ 오늘의 미래 흐름은 24시간 후 사라집니다
+            </p>
+
+            <!-- 🔮 PRO 전용 영역 (도메인 맞춤) -->
+            <div style="padding:14px 16px; margin-bottom:16px;
+                        background: linear-gradient(135deg, rgba(212,175,55,0.12), rgba(212,175,55,0.04));
+                        border: 1px solid rgba(212,175,55,0.4);
+                        border-radius: 10px;">
+                <div style="font-size:0.82rem; font-weight:900; color:#D4AF37; margin-bottom:8px; letter-spacing:0.08em; text-align:center;">
+                    🔮 PRO 전용 영역
+                </div>
+                <div style="display:flex; flex-direction:column; gap:6px;">
+                    ${proBullets.map(b => `
+                    <div style="display:flex; align-items:center; gap:8px; font-size:0.88rem; color:rgba(255,255,255,0.92); font-weight:500;">
+                        <span style="color:#2ecc71; font-weight:900;">✔</span>
+                        <span>${b}</span>
+                    </div>`).join('')}
+                </div>
+            </div>
 
             ${tossCardHTML}
 
+            <!-- 결제 수단 안내 -->
+            <div style="font-size:0.7rem; color:rgba(212,175,55,0.55); text-align:center; margin:8px 0;">
+                ▼ 계좌이체 / 카드 결제 지원
+            </div>
+
             <!-- 계좌이체 폴백 (접힌 상태) -->
-            <details style="margin-top:8px;">
-                <summary style="cursor:pointer; color:rgba(212,175,55,0.6); font-size:0.78rem; text-align:center; padding:8px 0;">
+            <details style="margin-top:4px;">
+                <summary style="cursor:pointer; color:rgba(212,175,55,0.6); font-size:0.76rem; text-align:center; padding:6px 0;">
                     ▼ 계좌이체로 결제 (카드 결제 불가 시)
                 </summary>
                 <div style="margin-top:10px;">
