@@ -261,12 +261,14 @@
         }
         .disclaimer-text {
             margin-top: 28px;
-            font-size: 0.72rem;
-            color: rgba(212,175,55,0.75);
+            font-size: 0.76rem;                 /* 0.72 → 0.76 살짝 키움 */
+            color: rgba(212,175,55,0.95);       /* [V19.3] 0.75 → 0.95 (진하게) */
             line-height: 1.6;
             letter-spacing: 0.03em;
-            border-top: 1px solid rgba(212,175,55,0.15);
+            font-weight: 500;                   /* [V19.3] 기본 weight 추가 */
+            border-top: 1px solid rgba(212,175,55,0.25);
             padding-top: 12px;
+            text-align: center;
         }
 
         /* ── 상황 선택 UI */
@@ -275,12 +277,14 @@
             margin: 14px 0 8px;
         }
         .situation-label {
-            font-size: 0.72rem;
-            color: rgba(212,175,55,0.6);
-            letter-spacing: 0.15em;
+            font-size: 0.76rem;
+            color: #D4AF37;                     /* [V19.3] 0.6 → 100% 황금색 */
+            font-weight: 600;                   /* 글자 굵기 추가 */
+            letter-spacing: 0.12em;
             text-align: center;
             margin-bottom: 8px;
             display: block;
+            text-shadow: 0 0 4px rgba(0,0,0,0.5);
         }
         .situation-tabs {
             display: flex;
@@ -289,32 +293,35 @@
             justify-content: center;
         }
         .sit-btn {
-            background: rgba(212,175,55,0.08);
-            border: 1px solid rgba(212,175,55,0.3);
-            color: rgba(212,175,55,0.75);
+            background: rgba(212,175,55,0.12);
+            border: 1px solid rgba(212,175,55,0.5);
+            color: #E8C657;                     /* [V19.3] 0.75 → 진한 황금색으로 시인성 강화 */
             border-radius: 20px;
-            padding: 5px 14px;
-            font-size: 0.78rem;
+            padding: 6px 14px;
+            font-size: 0.82rem;                 /* 0.78 → 0.82 크기 살짝 키움 */
+            font-weight: 600;                   /* [V19.3] 글자 굵기 추가 */
             font-family: var(--font);
             cursor: pointer;
             transition: all 0.2s;
             white-space: nowrap;
+            text-shadow: 0 0 6px rgba(0,0,0,0.4); /* [V19.3] 배경 위에서 도드라지게 */
         }
         .sit-btn:active { transform: scale(0.96); }
         .sit-btn.active {
-            background: rgba(212,175,55,0.25);
+            background: rgba(212,175,55,0.32);
             border-color: var(--gold);
-            color: var(--gold);
-            font-weight: bold;
-            box-shadow: 0 0 8px rgba(212,175,55,0.3);
+            color: #FFF1B8;                     /* [V19.3] 더 밝게 */
+            font-weight: 800;
+            box-shadow: 0 0 10px rgba(212,175,55,0.45);
         }
         /* [V19.2] 궁합 버튼 강조 스타일 — 핑크빛 그라디언트 + 은은한 펄스 */
         .sit-btn-featured {
-            background: linear-gradient(135deg, rgba(255,105,180,0.22), rgba(212,175,55,0.15));
-            border: 1px solid rgba(255,105,180,0.55);
-            color: #ffb6d9;
-            font-weight: 700;
-            box-shadow: 0 0 6px rgba(255,105,180,0.25);
+            background: linear-gradient(135deg, rgba(255,105,180,0.28), rgba(212,175,55,0.18));
+            border: 1px solid rgba(255,105,180,0.65);
+            color: #FFC6DE;                     /* [V19.3] 더 선명하게 */
+            font-weight: 800;                   /* 700 → 800 */
+            text-shadow: 0 0 6px rgba(0,0,0,0.5);
+            box-shadow: 0 0 6px rgba(255,105,180,0.3);
             animation: featuredPulse 2.4s ease-in-out infinite;
         }
         .sit-btn-featured:hover {
@@ -1515,7 +1522,8 @@ function setSituation(btn, type, domain) {
                 // 결과 텍스트 복원
                 const contentEl = document.getElementById('oracle-content');
                 if (contentEl && cachedFullText) {
-                    const isFinance = (CURRENT_MODE !== 'life');
+                    // [V19.3 버그수정] 연애는 finance 아님
+                    const isFinance = (CURRENT_MODE === 'stock' || CURRENT_MODE === 'crypto' || CURRENT_MODE === 'realestate');
                     const seedInput = qInput?.value || '';
                     const investData = isFinance ? buildInvestmentData(selectedCards, seedInput) : null;
                     contentEl.innerHTML = renderText(cachedFullText, selectedCards, investData, true, isFinance);
@@ -1824,7 +1832,10 @@ async function startStreamFetch(userQuestion, cards) {
 
     // ── 질문 유형 4분류 + CURRENT_MODE 전역 설정 (Fallback — 서버가 metrics 안 주면 이 값 사용)
     window._queryType      = classifyQuery(userQuestion);
-    window._isFinanceQuery = (window._queryType !== 'life');
+    // [V19.3 버그수정] isFinance는 주식/코인/부동산만 — 연애는 제외
+    window._isFinanceQuery = (window._queryType === 'stock' ||
+                             window._queryType === 'crypto' ||
+                             window._queryType === 'realestate');
     CURRENT_MODE           = window._queryType; // 단일 진실 소스
 
     const controller = new AbortController();
@@ -1962,7 +1973,9 @@ async function renderStream(fetchPromise, cards) {
         // ══════════════════════════════════════════════════════════════════
         // 🏛️ [V19.8] 제우스의 철권 통제: 결제 유도 및 엔진 통합본
         // ══════════════════════════════════════════════════════════════════
-        const isFinance = (CURRENT_MODE !== 'life');
+        // [V19.3 버그수정] isFinance는 "투자성 점사"만 의미 (주식/코인/부동산)
+        //                  연애(love)는 finance가 아니라 별도 운세 경로
+        const isFinance = (CURRENT_MODE === 'stock' || CURRENT_MODE === 'crypto' || CURRENT_MODE === 'realestate');
         const seedInput = document.getElementById('seed-input')?.value || "";
 
         // 1️⃣ [심장 연결] 통합 엔진 buildInvestmentData 호출 (이름 수정됨)
@@ -3483,18 +3496,32 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
                 ${positionHTML}
                 ${timingHTML}
 
-                <!-- 지표 요약 -->
+                <!-- 지표 요약 (추세/행동만) -->
                 <div style="display:flex; flex-direction:column; gap:8px; font-size:0.92rem; margin-bottom:12px;">
                     <div><span style="color:var(--gold); font-weight:bold;">📈 추세:</span> <b>${d.trend || '-'}</b></div>
                     <div><span style="color:var(--gold); font-weight:bold;">🧭 행동:</span> <b style="color:${actionColor}">${d.action || '-'}</b></div>
-                    <div><span style="color:var(--gold); font-weight:bold;">🛡️ 리스크:</span> ${d.risk || '-'}</div>
+                </div>
+
+                <!-- [V19.3] 리스크 전용 경고 박스 — 시각적 분리 -->
+                <div style="margin-bottom:14px; padding:12px 14px;
+                            background: linear-gradient(135deg, rgba(255,82,82,0.12), rgba(255,165,0,0.06));
+                            border: 1px solid rgba(255,82,82,0.45);
+                            border-left: 4px solid #FF5252;
+                            border-radius: 8px;
+                            box-shadow: inset 0 0 12px rgba(255,82,82,0.08);">
+                    <div style="color:#FF8080; font-size:0.78rem; font-weight:900; letter-spacing:0.1em; margin-bottom:4px;">
+                        🛡️ 리스크 경고
+                    </div>
+                    <div style="color:rgba(255,255,255,0.95); font-size:0.92rem; font-weight:600; line-height:1.6;">
+                        ${d.risk || '-'}
+                    </div>
                 </div>
 
                 <!-- 해석 텍스트 -->
                 <div style="margin-top:12px; padding:12px 14px; background:rgba(0,0,0,0.4); border-left:3px solid var(--gold); line-height:1.8; font-size:0.9rem; color:rgba(255,255,255,0.92);">
                     ${finalOracleHTML}
                 </div>
-                <div style="margin-top:14px; padding-top:10px; border-top:1px solid rgba(212,175,55,0.2); font-size:0.72rem; color:rgba(255,255,255,0.45); text-align:center;">
+                <div style="margin-top:14px; padding-top:10px; border-top:1px solid rgba(212,175,55,0.35); font-size:0.76rem; color:rgba(255,255,255,0.75); text-align:center; font-weight:500;">
                     ※ 본 신탁은 타로 에너지 해석 기반 참고 정보이며, 실제 투자 판단의 근거로 사용할 수 없습니다.
                 </div>
             </div>`;
@@ -3564,12 +3591,26 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
                     </div>
                 </div>
 
-                <!-- 지표 요약 -->
+                <!-- 지표 요약 (시장 흐름 / 행동만) -->
                 <div style="display:flex; flex-direction:column; gap:8px; font-size:0.92rem; margin-bottom:12px;">
                     <div><span style="color:var(--gold); font-weight:bold;">📈 시장 흐름:</span> ${d.trend || '-'}</div>
                     <div><span style="color:var(--gold); font-weight:bold;">🧭 행동:</span> <b>${d.action || '-'}</b></div>
-                    <div><span style="color:var(--gold); font-weight:bold;">🛡️ 리스크:</span> ${d.risk || '-'}</div>
-                    ${d.energy ? `<div style="color:rgba(212,175,55,0.8); font-style:italic; font-size:0.82rem;">✨ 카드 에너지: ${d.energy}</div>` : ''}
+                    ${d.energy ? `<div style="color:rgba(212,175,55,0.85); font-style:italic; font-size:0.82rem;">✨ 카드 에너지: ${d.energy}</div>` : ''}
+                </div>
+
+                <!-- [V19.3] 리스크 전용 경고 박스 — 시각적 분리 -->
+                <div style="margin-bottom:14px; padding:12px 14px;
+                            background: linear-gradient(135deg, rgba(255,82,82,0.12), rgba(255,165,0,0.06));
+                            border: 1px solid rgba(255,82,82,0.45);
+                            border-left: 4px solid #FF5252;
+                            border-radius: 8px;
+                            box-shadow: inset 0 0 12px rgba(255,82,82,0.08);">
+                    <div style="color:#FF8080; font-size:0.78rem; font-weight:900; letter-spacing:0.1em; margin-bottom:4px;">
+                        🛡️ 리스크 경고
+                    </div>
+                    <div style="color:rgba(255,255,255,0.95); font-size:0.92rem; font-weight:600; line-height:1.6;">
+                        ${d.risk || '-'}
+                    </div>
                 </div>
 
                 <!-- 해석 텍스트 -->
@@ -3577,7 +3618,7 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
                     ${finalOracleHTML}
                 </div>
 
-                <div style="margin-top:14px; padding-top:10px; border-top:1px solid rgba(212,175,55,0.2); font-size:0.72rem; color:rgba(255,255,255,0.45); text-align:center;">
+                <div style="margin-top:14px; padding-top:10px; border-top:1px solid rgba(212,175,55,0.35); font-size:0.76rem; color:rgba(255,255,255,0.75); text-align:center; font-weight:500;">
                     ※ 본 신탁은 타로 에너지 해석 기반 참고 정보이며, 실제 부동산 거래 판단의 근거로 사용할 수 없습니다.
                 </div>
             </div>`;
@@ -3634,13 +3675,27 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
                 </div>
 
                 <!-- 지표 요약 (투자 용어 아님 — 관계 언어로만) -->
-                <div style="display:flex; flex-direction:column; gap:8px; font-size:0.92rem;">
+                <div style="display:flex; flex-direction:column; gap:8px; font-size:0.92rem; margin-bottom:12px;">
                     <div><span style="color:#2ecc71; font-weight:bold;">📈 관계 흐름:</span> ${fi.trend || '-'}</div>
                     <div><span style="color:#2ecc71; font-weight:bold;">🧭 행동:</span> <b>${fi.action || '-'}</b></div>
-                    <div><span style="color:#2ecc71; font-weight:bold;">🛡️ 리스크:</span> ${fi.risk || '-'}</div>
                 </div>
 
-                <div style="margin-top:14px; padding-top:10px; border-top:1px solid rgba(46,204,113,0.25); font-size:0.72rem; color:rgba(255,255,255,0.45); text-align:center;">
+                <!-- [V19.3] 연애 리스크 전용 경고 박스 — 에메랄드 톤 유지하되 주의 색 추가 -->
+                <div style="margin-bottom:14px; padding:12px 14px;
+                            background: linear-gradient(135deg, rgba(255,140,100,0.12), rgba(46,204,113,0.05));
+                            border: 1px solid rgba(255,140,100,0.45);
+                            border-left: 4px solid #FF8C64;
+                            border-radius: 8px;
+                            box-shadow: inset 0 0 12px rgba(255,140,100,0.08);">
+                    <div style="color:#FFB090; font-size:0.78rem; font-weight:900; letter-spacing:0.1em; margin-bottom:4px;">
+                        🛡️ 관계 리스크
+                    </div>
+                    <div style="color:rgba(255,255,255,0.95); font-size:0.92rem; font-weight:600; line-height:1.6;">
+                        ${fi.risk || '-'}
+                    </div>
+                </div>
+
+                <div style="margin-top:14px; padding-top:10px; border-top:1px solid rgba(46,204,113,0.4); font-size:0.76rem; color:rgba(255,255,255,0.75); text-align:center; font-weight:500;">
                     ※ 본 신탁은 타로 에너지 해석 기반 참고 정보입니다.
                 </div>
             </div>`;
@@ -4207,7 +4262,8 @@ async function confirmPayment() {
         const contentEl = document.getElementById('oracle-content');
         
         if (contentEl && cachedFullText) {
-            const isFinance = (CURRENT_MODE !== 'life');
+            // [V19.3 버그수정] 연애는 finance 아님
+            const isFinance = (CURRENT_MODE === 'stock' || CURRENT_MODE === 'crypto' || CURRENT_MODE === 'realestate');
             const seedInput = document.getElementById('seed-input')?.value || "";
 
             // 🔥 [중요] 통합 엔진 buildInvestmentData를 사용하여 데이터를 새로 뽑습니다.

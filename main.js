@@ -435,11 +435,11 @@ function buildRealEstateMetrics({ totalScore, riskScore, cleanCards, intent, pro
   const sellSeasonObj = sellSeasonList[Math.abs(seed) % sellSeasonList.length];
   const buySeasonObj  = buySeasonList[Math.abs(seed) % buySeasonList.length];
 
-  const trend_base = netScore >= 6 ? "매도자 우위 (강한 상승 에너지)"
-              : netScore >= 2 ? "매도자 우위 (완만한 상승)"
-              : netScore >= -1 ? "균형 시장 (방향성 탐색)"
-              : netScore >= -5 ? "매수자 우위 (하락 압력)"
-              : "매수자 우위 (강한 하락 에너지)";
+  const trend_base = netScore >= 6 ? "매도자 우세 흐름 (상승 에너지 강화 중)"
+              : netScore >= 2 ? "매도자 우세 흐름 (완만한 회복)"
+              : netScore >= -1 ? "균형 구간 (방향 탐색 중)"
+              : netScore >= -5 ? "매수자 우세 흐름 (조정 압력)"
+              : "매수자 우세 흐름 (하락 에너지 지속)";
 
   // ── [V2.1 부동산 카드별 강화] 미래 카드가 특수 에너지면 trend/action 덮어쓰기
   //    사장님 요구: Eight of Wands 같은 '속도/돌파' 카드면 자동 강화
@@ -451,24 +451,24 @@ function buildRealEstateMetrics({ totalScore, riskScore, cleanCards, intent, pro
   if (netScore >= 2) {
     // 긍정 구간에서만 강화 적용 (하락 구간에는 강화 X)
     if (futureCard === "Eight of Wands") {
-      trend = "매도자 우위 (속도 상승 — 빠른 거래 성사)";
-      action_override = intent === 'sell' ? "즉시 등록 — 지금이 분초 단위 적기" : "즉시 계약 검토";
+      trend = "매도자 우세 흐름 (속도 상승 — 빠른 거래 가능성)";
+      action_override = intent === 'sell' ? "즉시 등록 — 타이밍 집중" : "계약 검토 서두름";
       subtitle_override = "속도 구간";
     } else if (futureCard === "The Chariot") {
-      trend = "매도자 우위 (돌파 에너지)";
+      trend = "매도자 우세 흐름 (돌파 에너지)";
       action_override = intent === 'sell' ? "적극 등록, 호가 고수 + 빠른 협상" : "적극 탐색";
     } else if (futureCard === "The Sun" || futureCard === "The World") {
-      trend = "매도자 우위 (완성 에너지)";
+      trend = "매도자 우세 흐름 (완성 에너지)";
       action_override = intent === 'sell' ? "희망가 등록, 신뢰 유지" : "장기 가치 매물 선점";
     } else if (futureCard === "Wheel of Fortune") {
-      trend = "매도자 우위 (추세 전환점)";
+      trend = "균형 구간 (추세 전환점 — 방향 주시)";
       action_override = intent === 'sell' ? "시즌 내 등록" : "타이밍 주시";
       subtitle_override = "전환 구간";
     }
   } else if (netScore <= -5 && futureCard === "The Tower") {
-    trend = "매수자 우위 (급락 경고)";
-    action_override = intent === 'sell' ? "매도 보류 — 반등 대기" : "진입 절대 금지";
-    subtitle_override = "급락 경고 구간";
+    trend = "매수자 우세 흐름 (급조정 신호)";
+    action_override = intent === 'sell' ? "매도 보류 — 반등 대기" : "진입 보류 권장";
+    subtitle_override = "조정 경고 구간";
   }
 
   // ── [V2.1] 소제목(도메인 서브타입) — AI가 선택 가능한 동적 서브타이틀
@@ -482,11 +482,11 @@ function buildRealEstateMetrics({ totalScore, riskScore, cleanCards, intent, pro
     else if (pRaw.includes("갭투자")) subtitle_override = "갭투자";
   }
 
-  const energyLabel = netScore >= 5 ? "강한 상승 에너지 — 매도 적기"
-                    : netScore >= 2 ? "긍정 에너지 — 매도 유리한 흐름"
-                    : netScore >= 0 ? "중립 에너지 — 시장 관망 구간"
-                    : netScore >= -3 ? "하락 압력 — 매수자 우위 시장"
-                    : "강한 하락 에너지 — 매도 불리, 시간 필요";
+  const energyLabel = netScore >= 5 ? "상승 에너지 강화 — 매도 유리한 시점"
+                    : netScore >= 2 ? "긍정 흐름 — 매도 조건 양호"
+                    : netScore >= 0 ? "중립 흐름 — 방향성 탐색 구간"
+                    : netScore >= -3 ? "조정 압력 — 매수자 우세 흐름"
+                    : "하락 에너지 지속 — 매도 시간 필요";
 
   const weeksEst = netScore >= 4 ? "4~6주" : netScore >= 1 ? "6~10주" : "10~16주 이상";
   const priceStrategy = netScore >= 4 ? "희망가 그대로 등록 — 수요 우위, 협상력 보유"
@@ -525,7 +525,7 @@ function buildRealEstateMetrics({ totalScore, riskScore, cleanCards, intent, pro
     urgency     = netScore >= 3 ? "🟢 지금 바로 매물 등록이 최적 — 에너지가 정점에 있습니다"
                 : netScore >= 0 ? "🟡 준비 후 이번 시즌 내 등록 권장"
                 : "🔴 현재 에너지 약세 — 다음 성수기 준비 시작";
-    caution     = netScore < 0 ? "⚠️ 주의: 현재 매수자 우위 시장 — 호가 조정이 거래 성사의 핵심" : null;
+    caution     = netScore < 0 ? "⚠️ 주의: 현재 매수자 우세 흐름 — 호가 조정이 거래 성사의 핵심" : null;
   } else {
     // [V2.2] 매수도 동일 원칙: 시즌 + 주 단위
     timingLabel = `매수 적기: ${buySeasonObj.label}`;
@@ -539,10 +539,10 @@ function buildRealEstateMetrics({ totalScore, riskScore, cleanCards, intent, pro
   }
 
   const interpretSell =
-    netScore >= 5 ? `현재 부동산 에너지는 매도자 우위의 정점 구간에 있습니다. ${keyCard}의 기운은 호가를 견고하게 유지해도 거래가 성사될 가능성을 시사합니다. 지금 시즌을 놓치지 않는 결단이 가장 유리합니다.`
-  : netScore >= 2 ? `흐름은 매도에 우호적이지만 폭발적 상승 에너지까지는 아닙니다. ${keyCard}의 기운은 약간의 호가 유연성이 거래 속도를 크게 바꿀 수 있음을 암시합니다. 시장 반응을 살피며 조건을 조율하는 전략이 유효합니다.`
+    netScore >= 5 ? `현재 부동산 에너지는 매도자 우세 흐름이 뚜렷한 구간입니다. ${keyCard}의 기운은 호가를 견고하게 유지해도 거래 성사 가능성이 높음을 시사합니다. 지금 시즌을 놓치지 않는 결단이 유리할 수 있습니다.`
+  : netScore >= 2 ? `흐름은 매도에 우호적이지만 폭발적 에너지까지는 아닙니다. ${keyCard}의 기운은 약간의 호가 유연성이 거래 속도를 바꿀 수 있음을 암시합니다. 시장 반응을 살피며 조건을 조율하는 전략이 유효합니다.`
   : netScore >= 0 ? `시장은 방향성을 탐색하는 관망 구간에 놓여 있습니다. ${keyCard}의 에너지는 무리한 호가보다 '적정가·빠른 거래'에 무게를 두라 조언합니다. 등록 후 반응을 확인하며 조건을 유연하게 운용하십시오.`
-  : `에너지는 매수자 우위로 기울어 있습니다. ${worstCard}의 기운은 호가 집착이 장기 미거래로 이어질 수 있음을 경고합니다. 현실적인 호가 조정 또는 다음 성수기를 기다리는 전략이 가장 안정적입니다.`;
+  : `에너지는 매수자 우세 흐름으로 기울어 있습니다. ${worstCard}의 기운은 호가 집착이 장기 미거래로 이어질 수 있음을 경고합니다. 현실적인 호가 조정 또는 다음 성수기를 기다리는 전략이 안정적입니다.`;
 
   const interpretBuy =
     netScore >= 5 ? `부동산 에너지는 취득에 유리한 정점 구간에 있습니다. ${keyCard}의 기운은 결단과 선점이 장기적 성과로 이어질 가능성을 시사합니다. 이사철 전 집중 임장과 계약 준비가 핵심입니다.`
@@ -1002,6 +1002,18 @@ ${synergyNote}
 ${compatNote}
 ※ 본 질문은 연애/관계 관련이다. 주식/부동산 용어(매수/매도/손절/호가/매물 등) 사용 절대 금지.
    감정·관계·소통 언어로만 서술하라.
+
+[인연 예측 금지 규칙 — 반드시 준수]
+- "곧 좋은 사람이 나타난다", "새로운 인연이 온다", "멋진 상대를 만날 것이다" 같은
+  **미래 인연 등장 예언** 절대 금지.
+- "며칠 안에", "이번 달에" 같은 **구체적 만남 시점 예언** 절대 금지.
+- 운명적 만남·기적적 재회 같은 **비현실적 낙관** 금지.
+- 대신 아래 관점으로 서술하라:
+  · 관계 패턴의 변화 (과거 패턴 → 현재 상태 → 앞으로의 변화)
+  · 유저님 내면의 준비 상태 (감정·심리·자기 인식)
+  · 관계에서 유저님이 가져야 할 태도 (소통·기다림·거리 조절)
+  · 구조적 변화 (관계 재편, 기준 재정립, 감정 정리)
+- 결론은 "관계 재편" 중심. "새 인연 발생" 중심 절대 금지.
 `;
         }
 
@@ -1091,7 +1103,9 @@ ${financeInject}
             safetySettings: [
               { category: "HARM_CATEGORY_HARASSMENT",        threshold: "BLOCK_NONE" },
               { category: "HARM_CATEGORY_HATE_SPEECH",       threshold: "BLOCK_NONE" },
-              { category: "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold: "BLOCK_MEDIUM_AND_ABOVE" },
+              // [V2.3] 연애 점사 질문이 차단되는 문제 해결 — BLOCK_MEDIUM → BLOCK_ONLY_HIGH
+              //        타로 앱 특성상 "연애/관계" 질문이 필수이므로 필터 완화
+              { category: "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold: "BLOCK_ONLY_HIGH" },
               { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_NONE" }
             ]
           })
