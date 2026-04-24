@@ -1130,9 +1130,21 @@ export default {
 
         let metrics;
         if (queryType === "realestate") {
-          const intent = reSubType === "sell" ? "sell"
-                       : reSubType === "buy"  ? "buy"
-                       : detectRealEstateIntent(prompt);
+          // [V2.5 수정] 질문 텍스트가 명시적으로 매도/매수를 말하면 버튼보다 질문 우선
+          //             유저가 "매도 분석" 버튼 눌렀어도 "삼성전자 사야할까"라고 물으면 buy로
+          //             유저가 "매수 분석" 버튼 눌렀어도 "팔까요"라고 물으면 sell로
+          const promptIntent = detectRealEstateIntent(prompt);
+          let intent;
+          if (promptIntent === "sell" || promptIntent === "buy") {
+            // 질문에 명시적 단어(매도/매수/팔아/살까) 있으면 그것 우선
+            intent = promptIntent;
+          } else if (reSubType === "sell") {
+            intent = "sell";
+          } else if (reSubType === "buy") {
+            intent = "buy";
+          } else {
+            intent = "hold";
+          }
           metrics = buildRealEstateMetrics({ totalScore, riskScore, cleanCards, intent, prompt });
         }
         else if (queryType === "stock" || queryType === "crypto") {
