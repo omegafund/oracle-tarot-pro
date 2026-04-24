@@ -237,8 +237,8 @@ function classifyByKeywords(prompt) {
 async function classifyByLLM(prompt, apiKey) {
   if (!apiKey || !prompt) return null;
   try {
-    // [V2.5] gemini-2.5-flash → gemini-2.0-flash (무료 한도 20회 → 1500회)
-    const classifierUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+    // [V2.5] gemini-2.5-flash 유지 — Tier 1 키 사용 시 충분한 한도
+    const classifierUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
     const res = await fetch(classifierUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -1111,9 +1111,8 @@ export default {
         const isPaid   = await verifyToken(rawToken, env.TOKEN_SECRET);
 
         // [절대 수정 금지]
-        // [V2.5] gemini-2.5-flash → gemini-2.0-flash (무료 한도 1500회/일)
-        //        유료 전환 시 원하면 gemini-2.5-flash로 복원 가능
-        const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:streamGenerateContent?alt=sse&key=${env.GEMINI_API_KEY}`;
+        // [V2.5] gemini-2.5-flash 사용 — Tier 1 키로 일 10,000회 무료 한도 내 사용
+        const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:streamGenerateContent?alt=sse&key=${env.GEMINI_API_KEY}`;
 
         const txt = (prompt || "").toLowerCase();
         const leverageKeywords = ["레버리지","3배","2배","인버스"];
