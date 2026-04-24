@@ -3752,6 +3752,68 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
         function _renderLoveBlock(cards, qRaw, loveSubType) {
             const fi = buildFortuneIndicators(cards, qRaw, loveSubType);
             const hookData = (typeof HOOK_DB !== 'undefined') && loveSubType ? HOOK_DB[loveSubType] : null;
+
+            // [V19.5] 카드 기반 서술 DB — 과거/현재/미래 각 카드별 구체화
+            const LOVE_CARD_FLOW = {
+                "The Fool":{past:"감정 미숙 / 시작점", cur:"망설임 속 탐색", fut:"새로운 흐름 형성"},
+                "The Magician":{past:"의지·시도", cur:"주도권 구축", fut:"결단의 순간"},
+                "The High Priestess":{past:"직관·거리감", cur:"내면 침잠 중", fut:"진실 드러남"},
+                "The Empress":{past:"풍요·돌봄", cur:"감정 성숙 구간", fut:"깊은 결합"},
+                "The Emperor":{past:"통제·거리", cur:"구조 정리 중", fut:"관계 기준 확정"},
+                "The Lovers":{past:"강한 끌림", cur:"선택의 기로", fut:"결합 또는 정리"},
+                "The Chariot":{past:"추진·돌진", cur:"방향 정하는 중", fut:"돌파 또는 전환"},
+                "The Hermit":{past:"고립·후회", cur:"내면 관찰", fut:"깨달음의 재시작"},
+                "Wheel of Fortune":{past:"급변", cur:"전환점 진입", fut:"흐름 역전"},
+                "Death":{past:"종결·상실", cur:"재정비 구간", fut:"완전한 전환"},
+                "The Tower":{past:"충격·갈등", cur:"무너짐 속 재평가", fut:"새 기반 형성"},
+                "The Star":{past:"희망·기대", cur:"치유 구간", fut:"회복 + 새 인연 가능성"},
+                "The Moon":{past:"오해·혼란", cur:"불분명한 심리", fut:"안개 걷힘"},
+                "The Sun":{past:"명확·기쁨", cur:"긍정 교류", fut:"결실·공개화"},
+                "The World":{past:"완성", cur:"정점 구간", fut:"새로운 장 시작"},
+                "Page of Swords":{past:"소통 미스 / 감정 전달 부족", cur:"경계 태세 / 감정 탐색", fut:"주도권 이동 (당신 쪽으로)"},
+                "Knight of Swords":{past:"성급한 진입", cur:"말로 인한 충돌", fut:"냉정한 정리"},
+                "Queen of Swords":{past:"차가운 거리", cur:"경계 유지 중", fut:"판단 확정"},
+                "King of Swords":{past:"규정·조건", cur:"감정보다 논리", fut:"명확한 결론"},
+                "Nine of Wands":{past:"반복된 상처", cur:"방어 상태 / 거리 유지", fut:"주도권 이동 (당신 쪽으로)"},
+                "Ten of Wands":{past:"과부하·번아웃", cur:"부담 가득한 상태", fut:"짐 내려놓음"},
+                "Knight of Wands":{past:"열정적 돌진", cur:"추진 중", fut:"모멘텀 정점"},
+                "King of Wands":{past:"주도적 리드", cur:"열정 정점", fut:"강한 확신의 진행"},
+                "Ace of Cups":{past:"감정 시작", cur:"새로운 흐름", fut:"깊은 교류"},
+                "Two of Cups":{past:"연결 형성", cur:"상호 교류", fut:"결속 강화"},
+                "Three of Cups":{past:"공유·기쁨", cur:"관계 즐거움", fut:"확장·축하"},
+                "Four of Cups":{past:"권태·무관심", cur:"감정 정체", fut:"전환 또는 정리"},
+                "Five of Cups":{past:"실망·후회", cur:"상실의 고통", fut:"남은 기회 재평가"},
+                "Six of Cups":{past:"추억·향수", cur:"과거 연결", fut:"재회 또는 청산"},
+                "Seven of Cups":{past:"환상·기대", cur:"선택지 과잉", fut:"현실 직면"},
+                "Eight of Cups":{past:"떠남·이탈", cur:"정리 중", fut:"새 길 찾기"},
+                "Nine of Cups":{past:"자기 만족", cur:"감정 충만", fut:"관계 행복"},
+                "Ten of Cups":{past:"안정적 결합", cur:"깊은 유대", fut:"공동체적 완성"},
+                "Knight of Cups":{past:"낭만적 제안", cur:"유혹 단계", fut:"진심 검증"},
+                "Queen of Cups":{past:"섬세한 공감", cur:"감정 깊이", fut:"상호 이해"},
+                "King of Cups":{past:"감정 통제", cur:"평정 유지", fut:"안정적 결합"},
+                "Three of Swords":{past:"상처·이별", cur:"고통 수용", fut:"치유 시작"},
+                "Eight of Swords":{past:"속박 느낌", cur:"갇힌 감정", fut:"해방의 기회"},
+                "Nine of Swords":{past:"불안·악몽", cur:"걱정 과잉", fut:"현실 확인"},
+                "Ten of Swords":{past:"바닥·종말", cur:"최저점", fut:"완전한 새 시작"},
+                "Five of Pentacles":{past:"결핍·외로움", cur:"소외감 느낌", fut:"도움의 손길"},
+                "Ten of Pentacles":{past:"안정된 기반", cur:"가족적 결속", fut:"장기적 미래"}
+            };
+
+            const cardFlow = cards.map((c, i) => {
+                const base = c.name.split(' (')[0];
+                const m = LOVE_CARD_FLOW[base] || {past:"감정 형성 단계", cur:"흐름 탐색", fut:"새로운 방향"};
+                return i === 0 ? m.past : i === 1 ? m.cur : m.fut;
+            });
+
+            // [V19.5] 서사형 관계 흐름 (과거→현재→미래 방향 반영)
+            const pastIsNeg   = /상처|충격|미스|실망|이별|속박|바닥|종말|고립|결핍/.test(cardFlow[0]);
+            const curIsDef    = /방어|거리|경계|방관|정체|회피/.test(cardFlow[1]);
+            const futIsPos    = /주도권|회복|치유|해방|확장|결속|새|시작/.test(cardFlow[2]);
+            const flowArrow = (pastIsNeg && curIsDef && futIsPos) ? "감정 회복 → 관계 주도권 전환 구간"
+                            : (curIsDef && futIsPos)              ? "방어 → 주도적 흐름 전환 구간"
+                            : pastIsNeg                            ? "회복 흐름 진입 구간"
+                            : "감정 흐름 변화 구간";
+
             const hookHTML = hookData ? `
                 <div style="margin-bottom:14px; padding:14px 16px; background:linear-gradient(135deg, rgba(46,204,113,0.08), rgba(212,175,55,0.05)); border-left:3px solid #2ecc71; border-radius:0 10px 10px 0; line-height:1.8;">
                     <div style="color:#2ecc71; font-weight:900; font-size:0.95rem; margin-bottom:4px;">${hookData.lead}</div>
@@ -3767,53 +3829,80 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
 
                 ${hookHTML}
 
-                <!-- 🃏 관계 흐름 -->
+                <!-- [V19.5] 🃏 관계 흐름 — 카드별 구체화 -->
                 <div style="margin-bottom:14px; padding-bottom:12px; border-bottom:1px solid rgba(46,204,113,0.2);">
                     <div style="color:#2ecc71; font-size:0.82rem; font-weight:900; letter-spacing:0.1em; margin-bottom:8px;">🃏 관계 흐름</div>
-                    <div style="font-size:0.85rem; color:rgba(255,255,255,0.88); line-height:1.8;">
-                        <div>• 과거: 감정의 시작 / 연결 형성</div>
-                        <div>• 현재: 거리감 또는 심리 탐색 구간</div>
-                        <div>• 미래: 관계 진전 또는 방향 결정</div>
+                    <div style="font-size:0.88rem; color:rgba(255,255,255,0.92); line-height:1.8;">
+                        <div>• <b style="color:rgba(46,204,113,0.9);">과거</b>: ${cardFlow[0]}</div>
+                        <div>• <b style="color:rgba(46,204,113,0.9);">현재</b>: ${cardFlow[1]}</div>
+                        <div>• <b style="color:rgba(46,204,113,0.9);">미래</b>: ${cardFlow[2]}</div>
                     </div>
-                    <div style="margin-top:6px; font-size:0.8rem; color:rgba(46,204,113,0.85); font-style:italic;">↳ 감정 흐름 변화 구간</div>
+                    <div style="margin-top:8px; font-size:0.82rem; color:rgba(46,204,113,0.85); font-style:italic; font-weight:600;">↳ ${flowArrow}</div>
                 </div>
 
-                <!-- 💭 상대 심리 -->
+                <!-- [V19.5] 💭 상대 심리 — 차별화 핵심 (3단계 구조) -->
                 <div style="margin-bottom:14px; padding-bottom:12px; border-bottom:1px solid rgba(46,204,113,0.2);">
                     <div style="color:#2ecc71; font-size:0.82rem; font-weight:900; letter-spacing:0.1em; margin-bottom:8px;">💭 상대 심리</div>
                     <div style="font-size:0.85rem; color:rgba(255,255,255,0.88); line-height:1.8;">
-                        <div>→ 현재 상대는 감정 조율 중</div>
-                        <div>→ 확신과 망설임이 공존하는 구간</div>
+                        <div>→ <b>호감은 있음</b> (명확)</div>
+                        <div>→ 하지만 "지금 시작해도 되나" <b>계산 중</b></div>
+                        <div>→ 당신 반응을 보고 <b>결정하려는 상태</b></div>
+                    </div>
+                    <div style="margin-top:8px; padding:8px 12px; background:rgba(212,175,55,0.1); border-left:3px solid #D4AF37; border-radius:0 6px 6px 0; font-size:0.88rem; color:#FFE08A; font-weight:700;">
+                        👉 핵심: <b>"상대는 먼저 안 움직입니다"</b>
                     </div>
                 </div>
 
-                <!-- 📱 행동 가이드 -->
+                <!-- [V19.5] 📱 행동 가이드 — 실전형 (구체 예시) -->
                 <div style="margin-bottom:14px; padding-bottom:12px; border-bottom:1px solid rgba(46,204,113,0.2);">
                     <div style="color:#2ecc71; font-size:0.82rem; font-weight:900; letter-spacing:0.1em; margin-bottom:8px;">📱 행동 가이드</div>
                     <div style="font-size:0.85rem; color:rgba(255,255,255,0.88); line-height:1.8;">
-                        <div>→ ${fi.action || '가벼운 접촉 시도'}</div>
-                        <div>→ ⚡ 타이밍: ${fi.timing || '-'}</div>
+                        <div>→ 먼저 길게 말하지 말 것</div>
+                        <div>→ <b style="color:#FFE08A;">"짧고 가벼운 신호 1회"</b>만 보내기</div>
+                        <div style="margin-top:6px; padding:8px 10px; background:rgba(0,0,0,0.25); border-radius:6px; font-size:0.82rem;">
+                            💡 예시:<br>
+                            &nbsp;&nbsp;• 안부 톡 1회<br>
+                            &nbsp;&nbsp;• 가벼운 농담<br>
+                            &nbsp;&nbsp;• 과거 연결 포인트 언급
+                        </div>
+                        <div style="margin-top:6px; color:#FF8C64; font-weight:600;">
+                            👉 이후: 반응 없으면 <b>추가 행동 금지</b>
+                        </div>
                     </div>
                 </div>
 
-                <!-- 지표 요약 (투자 용어 아님 — 관계 언어로만) -->
-                <div style="display:flex; flex-direction:column; gap:8px; font-size:0.92rem; margin-bottom:12px;">
-                    <div><span style="color:#2ecc71; font-weight:bold;">📈 관계 흐름:</span> ${fi.trend || '-'}</div>
-                    <div><span style="color:#2ecc71; font-weight:bold;">🧭 행동:</span> <b>${fi.action || '-'}</b></div>
+                <!-- [V19.5] ⚡ 타이밍 — 조건형 + 수비학 병기 -->
+                <div style="margin-bottom:14px; padding-bottom:12px; border-bottom:1px solid rgba(46,204,113,0.2);">
+                    <div style="color:#2ecc71; font-size:0.82rem; font-weight:900; letter-spacing:0.1em; margin-bottom:8px;">⚡ 진입 타이밍</div>
+                    <div style="font-size:0.85rem; color:rgba(255,255,255,0.92); line-height:1.8;">
+                        <div style="padding:8px 12px; background:rgba(46,204,113,0.1); border-left:3px solid #2ecc71; border-radius:0 6px 6px 0; margin-bottom:6px;">
+                            <b style="color:#2ecc71;">👉 상대 반응이 왔을 때 = 진입 타이밍</b>
+                        </div>
+                        <div style="font-size:0.8rem; color:rgba(255,255,255,0.7); margin-top:6px;">
+                            🌙 수비학적 기운이 강한 시점: <i>${fi.timing || '-'}</i>
+                        </div>
+                    </div>
                 </div>
 
-                <!-- [V19.3] 연애 리스크 전용 경고 박스 — 에메랄드 톤 유지하되 주의 색 추가 -->
+                <!-- [V19.5] 관계 흐름 + 행동 (가능성 표현) -->
+                <div style="display:flex; flex-direction:column; gap:8px; font-size:0.92rem; margin-bottom:12px;">
+                    <div><span style="color:#2ecc71; font-weight:bold;">📈 관계 흐름:</span> <b>${fi.trend || '-'}</b> <span style="font-size:0.78rem; color:rgba(46,204,113,0.7); font-style:italic;">(가능성 구간 · 확정 아님)</span></div>
+                    <div><span style="color:#2ecc71; font-weight:bold;">🧭 행동:</span> <b>먼저 밀지 말고 "반응 유도"</b></div>
+                </div>
+
+                <!-- [V19.5] 리스크 박스 — 행동 기반 구체화 -->
                 <div style="margin-bottom:14px; padding:12px 14px;
                             background: linear-gradient(135deg, rgba(255,140,100,0.12), rgba(46,204,113,0.05));
                             border: 1px solid rgba(255,140,100,0.45);
                             border-left: 4px solid #FF8C64;
                             border-radius: 8px;
                             box-shadow: inset 0 0 12px rgba(255,140,100,0.08);">
-                    <div style="color:#FFB090; font-size:0.78rem; font-weight:900; letter-spacing:0.1em; margin-bottom:4px;">
+                    <div style="color:#FFB090; font-size:0.78rem; font-weight:900; letter-spacing:0.1em; margin-bottom:6px;">
                         🛡️ 관계 리스크
                     </div>
-                    <div style="color:rgba(255,255,255,0.95); font-size:0.92rem; font-weight:600; line-height:1.6;">
-                        ${fi.risk || '-'}
+                    <div style="color:rgba(255,255,255,0.95); font-size:0.88rem; font-weight:500; line-height:1.7;">
+                        <div>👉 과도한 감정 표현 — 상대 부담 증가</div>
+                        <div>👉 답 없는 상태에서 추가 연락 — 주도권 상실</div>
                     </div>
                 </div>
 
