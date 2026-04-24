@@ -248,7 +248,7 @@ function calcCardScores(cardNames, reversedCSV, queryType) {
 // ══════════════════════════════════════════════════════════════════
 // 📈 주식/코인 메트릭
 // ══════════════════════════════════════════════════════════════════
-function buildStockMetrics({ totalScore, riskScore, cleanCards, isLeverage, queryType }) {
+function buildStockMetrics({ totalScore, riskScore, cleanCards, isLeverage, queryType, prompt }) {
   let trend = "중립";
   if      (totalScore >= 6)  trend = "강한 상승";
   else if (totalScore >= 2)  trend = "상승";
@@ -272,26 +272,98 @@ function buildStockMetrics({ totalScore, riskScore, cleanCards, isLeverage, quer
   else if (trend === "하락") { entryStrategy = "신규 진입 금지"; exitStrategy = "반등 시 비중 축소"; }
   else if (trend === "강한 하락") { entryStrategy = "절대 진입 금지"; exitStrategy = "즉시 손절 또는 전량 정리"; }
 
-  // 타이밍 (기존 로직 100% 유지)
-  const now      = new Date();
-  const dayOfWeek= now.getDay();
-  const DAYS     = ["일","월","화","수","목","금","토"];
-  const buyDayIdx = ((dayOfWeek + Math.abs(totalScore)) % 7 + 7) % 7;
-  let adjustedDayIdx = buyDayIdx;
-  if (adjustedDayIdx === 0) adjustedDayIdx = 1;
-  if (adjustedDayIdx === 6) adjustedDayIdx = 1;
-  const buyDayName = DAYS[adjustedDayIdx];
-  const buyHour    = (Math.abs(totalScore) * 3) % 24 || 10;
-  let finalTimingText = `${buyDayName}요일 ${buyHour}시`;
-  if (queryType === "stock") {
-    if (buyHour < 9) {
-      finalTimingText = `${buyDayName}요일 9시`;
-    } else if (buyHour >= 15) {
-      let nextDayIdx = adjustedDayIdx + 1;
-      if (nextDayIdx === 6) nextDayIdx = 1;
-      else if (nextDayIdx === 7) nextDayIdx = 1;
-      finalTimingText = `${DAYS[nextDayIdx]}요일 오전 9시`;
+  // ══════════════════════════════════════════════════════════════════
+  // 🎯 [V2.4] 완전 수비학 기반 타이밍 — 결정론적 (오늘 날짜 의존성 제거)
+  //   주식: 평일 + 장 시간(9~15시) 자동 제한
+  //   코인: 24/7 자유 (주말/새벽/심야 허용) + 특성 설명 자동 추가
+  //   매수/매도 타이밍 각각 분리 출력
+  // ══════════════════════════════════════════════════════════════════
+  const DAYS = ["일","월","화","수","목","금","토"];
+
+  // 수비학 시드: 카드 점수 + 질문 글자수 (오늘 날짜 사용 안 함 — 결정론)
+  let timingSeed = Math.abs(totalScore);
+  for (let i = 0; i < (prompt||'').length; i++) {
+    timingSeed += prompt.charCodeAt(i);
+  }
+  for (let i = 0; i < cleanCards.length; i++) {
+    for (let j = 0; j < cleanCards[i].length; j++) {
+      timingSeed += cleanCards[i].charCodeAt(j);
     }
+  }
+
+  // 매수/매도 시간 각각 별도 시드 생성 (같은 시간 방지)
+  const buySeed  = timingSeed;
+  const sellSeed = timingSeed * 7 + 13;
+
+  let buyDayIdx    = buySeed % 7;
+  let buyHour      = (buySeed * 7) % 24;
+  let buyMinute    = (buySeed * 13) % 60;
+  let sellDayIdx   = sellSeed % 7;
+  let sellHour     = (sellSeed * 7) % 24;
+  let sellMinute   = (sellSeed * 13) % 60;
+
+  let finalTimingText = "";
+  let entryTimingText = "";
+  let exitTimingText  = "";
+
+  if (queryType === "stock") {
+    // ──────────────────────────────────────────
+    // 주식: 평일만 + 9~15시 장 중 시간 (국내 주식 기준)
+    // ──────────────────────────────────────────
+    if (buyDayIdx === 0 || buyDayIdx === 6)   buyDayIdx  = 1 + (buySeed % 5);
+    if (sellDayIdx === 0 || sellDayIdx === 6) sellDayIdx = 1 + (sellSeed % 5);
+    if (buyHour < 9 || buyHour >= 15)   buyHour  = 9 + (buySeed % 6);   // 9~14시
+    if (sellHour < 9 || sellHour >= 15) sellHour = 9 + (sellSeed % 6);
+
+    // 5분 단위로 반올림 (더 현실적)
+    buyMinute  = Math.floor(buyMinute / 5) * 5;
+    sellMinute = Math.floor(sellMinute / 5) * 5;
+
+    const buyHourFmt  = buyHour < 12 ? `오전 ${buyHour}시` : (buyHour === 12 ? '오후 12시' : `오후 ${buyHour-12}시`);
+    const sellHourFmt = sellHour < 12 ? `오전 ${sellHour}시` : (sellHour === 12 ? '오후 12시' : `오후 ${sellHour-12}시`);
+
+    // 장 변곡 구간 설명 (시간대별 특성)
+    const buyHourDesc = buyHour === 9 ? '장 시작 직후' :
+                       buyHour <= 10 ? '오전 추세 안착 구간' :
+                       buyHour <= 12 ? '오전 반전 타이밍' :
+                       buyHour <= 13 ? '점심 후 방향 확인' :
+                       '장 마감 직전 변곡';
+    const sellHourDesc = sellHour === 9 ? '장 시작 갭 처리' :
+                        sellHour <= 10 ? '초반 급등 차익' :
+                        sellHour <= 12 ? '오전 고점 포착' :
+                        sellHour <= 13 ? '점심 직후 수익 실현' :
+                        '장 마감 청산';
+
+    entryTimingText = `${DAYS[buyDayIdx]}요일 ${buyHourFmt} ${buyMinute}분 (${buyHourDesc})`;
+    exitTimingText  = `${DAYS[sellDayIdx]}요일 ${sellHourFmt} ${sellMinute}분 (${sellHourDesc})`;
+    finalTimingText = `매수: ${entryTimingText} / 매도: ${exitTimingText}`;
+
+  } else if (queryType === "crypto") {
+    // ──────────────────────────────────────────
+    // 코인: 24/7 자유 (주말/새벽/심야 모두 허용)
+    //       변동성 특성 설명 자동 첨부
+    // ──────────────────────────────────────────
+    buyMinute  = Math.floor(buyMinute / 5) * 5;
+    sellMinute = Math.floor(sellMinute / 5) * 5;
+
+    // 시간대별 코인 특성
+    const cryptoHourDesc = (h) => {
+      if (h <= 3)  return '심야 저점 구간 (변동성 축소)';
+      if (h <= 6)  return '새벽 반전 타이밍';
+      if (h <= 9)  return '아시아 오전 돌파 구간';
+      if (h <= 12) return '아시아 정오 정점';
+      if (h <= 15) return '오후 조정 구간';
+      if (h <= 18) return '유럽 장 개시 모멘텀';
+      if (h <= 21) return '유럽-미국 교차 피크';
+      return '미국 장 심야 변동성 피크';
+    };
+
+    const buyHourFmt  = buyHour < 12 ? `오전 ${buyHour || 12}시` : (buyHour === 12 ? '오후 12시' : `오후 ${buyHour-12}시`);
+    const sellHourFmt = sellHour < 12 ? `오전 ${sellHour || 12}시` : (sellHour === 12 ? '오후 12시' : `오후 ${sellHour-12}시`);
+
+    entryTimingText = `${DAYS[buyDayIdx]}요일 ${buyHourFmt} ${buyMinute}분 (${cryptoHourDesc(buyHour)})`;
+    exitTimingText  = `${DAYS[sellDayIdx]}요일 ${sellHourFmt} ${sellMinute}분 (${cryptoHourDesc(sellHour)})`;
+    finalTimingText = `매수: ${entryTimingText} / 매도: ${exitTimingText}`;
   }
 
   const posLabels = ["과거","현재","미래"];
@@ -390,10 +462,11 @@ function buildStockMetrics({ totalScore, riskScore, cleanCards, isLeverage, quer
                `+${basePct}~${Math.min(12, upPct)}% 구간`
   };
 
-  // 타이밍 설명 강화
+  // [V2.4] 타이밍 설명 — entry/exit 분리 출력
+  //        isNoEntry 시에도 타이밍 자체는 남겨서 "회복 시점 기다림" 안내
   const timingDetail = isNoEntry
-    ? `${finalTimingText} — 진입 타이밍 아님 / 시장 안정 확인 구간`
-    : `${finalTimingText} — 장 변곡 기반 진입 구간`;
+    ? `${finalTimingText}  (⚠️ 현재는 진입 금지 — 위 시점 전후 재평가)`
+    : `${finalTimingText}`;
 
   return {
     queryType,
@@ -402,9 +475,12 @@ function buildStockMetrics({ totalScore, riskScore, cleanCards, isLeverage, quer
     riskLevel: finalRisk,
     entryStrategy, exitStrategy,
     finalTimingText: timingDetail,
+    // [V2.4] 매수/매도 타이밍 개별 필드 (렌더러에서 분리 표시용)
+    entryTimingText: entryTimingText || '-',
+    exitTimingText:  exitTimingText  || '-',
     totalScore, riskScore,
     cardNarrative, flowSummary, riskChecks, scenarios, roadmap,
-    position, // [V2.2] 실전형 포지션 블록
+    position,
     finalOracle,
     isLeverage
   };
@@ -515,6 +591,29 @@ function buildRealEstateMetrics({ totalScore, riskScore, cleanCards, intent, pro
                   : riskScore >= 4 ? "높음 (시장 변동성)"
                   : "보통 (입지 리스크)";
 
+  // [V2.4] 부동산 일일 수비학 타이밍 — 평일 + 9~18시 중개 사무소 영업 시간
+  const DAYS_RE = ["일","월","화","수","목","금","토"];
+  let reSeed = Math.abs(netScore);
+  for (let i = 0; i < (prompt||'').length; i++) reSeed += prompt.charCodeAt(i);
+  cleanCards.forEach(c => { for (let i = 0; i < c.length; i++) reSeed += c.charCodeAt(i); });
+
+  let reDayIdx = reSeed % 7;
+  let reHour   = (reSeed * 7) % 24;
+  let reMin    = Math.floor(((reSeed * 13) % 60) / 10) * 10;
+
+  // 평일 강제 (월~금만)
+  if (reDayIdx === 0 || reDayIdx === 6) reDayIdx = 1 + (reSeed % 5);
+  // 중개사무소 영업시간 (9~18시)
+  if (reHour < 9 || reHour >= 18) reHour = 9 + (reSeed % 9);
+
+  const reHourFmt = reHour < 12 ? `오전 ${reHour}시` : (reHour === 12 ? '오후 12시' : `오후 ${reHour-12}시`);
+  const reHourDesc = reHour <= 10 ? '오전 임장 집중 시간'
+                   : reHour <= 12 ? '오전 상담 최적'
+                   : reHour <= 14 ? '점심 후 매물 확인'
+                   : reHour <= 16 ? '오후 계약 상담 시간'
+                   : '마감 전 의사결정 시간';
+  const dailyActionTiming = `${DAYS_RE[reDayIdx]}요일 ${reHourFmt} ${reMin}분 (${reHourDesc})`;
+
   let timingLabel, timing2, strategy, period, urgency, caution;
   if (intent === "sell") {
     // [V2.2] 시즌 라벨 + 주 단위 계약 예상 (매도 적기보다 앞서지 않도록)
@@ -563,6 +662,8 @@ function buildRealEstateMetrics({ totalScore, riskScore, cleanCards, intent, pro
     urgency,
     caution,
     subtitle: subtitle_override || (intent === "sell" ? "매도" : "매수"),
+    // [V2.4] 일일 수비학 타이밍 — 평일 + 9~18시 중개 영업 시간
+    dailyActionTiming,
     totalScore, riskScore,
     cardNarrative,
     finalOracle: intent === "sell" ? interpretSell : interpretBuy
@@ -922,7 +1023,7 @@ export default {
           metrics = buildRealEstateMetrics({ totalScore, riskScore, cleanCards, intent, prompt });
         }
         else if (queryType === "stock" || queryType === "crypto") {
-          metrics = buildStockMetrics({ totalScore, riskScore, cleanCards, isLeverage, queryType });
+          metrics = buildStockMetrics({ totalScore, riskScore, cleanCards, isLeverage, queryType, prompt });
         }
         else if (queryType === "love") {
           metrics = buildLoveMetrics({ totalScore, cleanCards, prompt, loveSubType });
