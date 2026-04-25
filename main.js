@@ -375,7 +375,10 @@ function buildStockMetrics({ totalScore, riskScore, cleanCards, isLeverage, quer
   }
 
   // [V19.9] action을 매도/매수 intent별로 완전 분기
+  // [V19.11] trendNarrative 기반 보정 시 position도 함께 일치시킴 (모순 방지)
   let action = "관망";
+  let positionAdjust = null;  // 보정용
+
   if (stockIntent === "sell") {
     // ━━ 매도 의도일 때 (보유 중 → 언제 팔까?) ━━
     if      (trend === "강한 상승") action = "🚫 매도 보류 — 추세 정점까지 보유";
@@ -389,8 +392,13 @@ function buildStockMetrics({ totalScore, riskScore, cleanCards, isLeverage, quer
       action = "매도 보류 — 반등 후 익절 권장";
     } else if (trendNarrative.includes("하락 가속")) {
       action = "🚨 즉시 매도 — 추가 하락 방어";
+      positionAdjust = "urgent";
     } else if (trendNarrative.includes("모멘텀 약화")) {
       action = "분할 익절 — 일부 차익 실현";
+      positionAdjust = "moderate";
+    } else if (trendNarrative.includes("피로 누적")) {
+      action = "선제 익절 — 고점 근접 시 분할 매도";
+      positionAdjust = "moderate";
     }
   } else {
     // ━━ 매수 의도일 때 (기본값 — 언제 살까?) ━━
@@ -401,10 +409,17 @@ function buildStockMetrics({ totalScore, riskScore, cleanCards, isLeverage, quer
 
     if (trendNarrative.includes("반등 시도")) {
       action = "관망 후 조건부 분할 진입";
+      positionAdjust = "tentative";
     } else if (trendNarrative.includes("하락 가속")) {
       action = "🚫 진입 금지 — 방어 집중";
+      positionAdjust = "noEntry";
     } else if (trendNarrative.includes("모멘텀 약화")) {
-      action = "비중 축소 — 일부 차익 실현";
+      // [V19.11] 강한 상승 + 모멘텀 약화 → "조심스러운 매수" 로 통일
+      action = "신중한 분할 진입 — 비중 축소 권장";
+      positionAdjust = "cautious";
+    } else if (trendNarrative.includes("피로 누적")) {
+      action = "신규 진입 자제 — 조정 대기";
+      positionAdjust = "cautious";
     }
   }
 
@@ -633,13 +648,16 @@ function buildStockMetrics({ totalScore, riskScore, cleanCards, isLeverage, quer
   }
 
   // [V19.9] 포지션 전략 블록 — 매도/매수 intent별 완전 분기
-  const isNoEntry = finalAction.includes("금지") || finalAction.includes("회피");
+  // [V19.11] positionAdjust 반영 — action과 모순 방지
+  const isNoEntry = finalAction.includes("금지") || finalAction.includes("회피") || positionAdjust === "noEntry";
   let position;
   if (stockIntent === "sell") {
     // ━━ 매도 의도: 보유분의 익절·손절 기준 ━━
-    const isUrgent = finalAction.includes("즉시") || finalAction.includes("전량");
+    const isUrgent = finalAction.includes("즉시") || finalAction.includes("전량") || positionAdjust === "urgent";
+    const isModerate = positionAdjust === "moderate";
     position = {
       weight:    isUrgent       ? "🚨 전량 매도 (100%)" :
+                 isModerate     ? "30~50% 분할 익절 (모멘텀 약화 대응)" :
                  totalScore <= -2 ? "70~100% 매도 (대부분 정리)" :
                  totalScore >= 6  ? "10~20% 부분 익절 (코어 유지)" :
                  totalScore >= 2  ? "30~50% 분할 익절 (단계적)" :
@@ -648,18 +666,27 @@ function buildStockMetrics({ totalScore, riskScore, cleanCards, isLeverage, quer
                  totalScore >= 2 ? "보유분 -3% 추가 하락 시 즉시 매도" :
                  "현 시점에서 -2% 이탈 시 즉시 청산",
       target:    isUrgent       ? "손실 확대 차단 우선" :
+                 isModerate     ? `현재가 +${basePct}% 도달 시 추가 익절` :
                  totalScore >= 6 ? `현재가 +${upPct}% 구간 도달 시 추가 익절` :
                  totalScore >= 2 ? `현재가 +${basePct}~${Math.min(10, upPct-2)}% 구간 익절` :
                  "반등 시점 잡으면 즉시 매도"
     };
   } else {
     // ━━ 매수 의도 (기본): 신규 진입 비중·손절·목표 ━━
+    // [V19.11] positionAdjust 반영
+    const isCautious = positionAdjust === "cautious";
+    const isTentative = positionAdjust === "tentative";
     position = {
-      weight:    isNoEntry ? "0% (진입 금지 구간)" :
+      weight:    isNoEntry  ? "0% (진입 금지 구간)" :
+                 isCautious ? "10~20% (모멘텀 약화 — 신중 진입)" :
+                 isTentative ? "5~10% (조건 만족 시 시범 진입)" :
                  totalScore >= 6 ? "40~50% (강한 확신 구간)" :
                  totalScore >= 2 ? "20~30% (분할 진입)" : "10~20% (탐색 구간)",
-      stopLoss:  isNoEntry ? "진입 금지 — 해당 없음" : "-3~5% 이탈 시 즉시 손절",
+      stopLoss:  isNoEntry ? "진입 금지 — 해당 없음" :
+                 isCautious ? "-2~3% 이탈 시 즉시 손절 (타이트하게)" :
+                 "-3~5% 이탈 시 즉시 손절",
       target:    isNoEntry ? "설정 보류 (추세 확정 후 재설정)" :
+                 isCautious ? `+${basePct}~${Math.min(8, upPct-3)}% 구간 (보수적)` :
                  totalScore >= 6 ? `+${Math.min(15, basePct+5)}~${upPct}% 구간` :
                  `+${basePct}~${Math.min(12, upPct)}% 구간`
     };
@@ -784,11 +811,18 @@ function buildRealEstateMetrics({ totalScore, riskScore, cleanCards, intent, pro
     else if (pRaw.includes("갭투자")) subtitle_override = "갭투자";
   }
 
-  const energyLabel = netScore >= 5 ? "상승장 강화 — 매도 유리 / 매수 전 가격 확인 필수"
-                    : netScore >= 2 ? "완만 상승 — 매도 조건 양호 / 매수 신중 검토"
-                    : netScore >= 0 ? "중립 흐름 — 방향성 탐색 구간"
-                    : netScore >= -3 ? "하락 압력 — 매도 시 호가 조정 필요 / 매수 기회"
-                    : "하락장 지속 — 매도 시간 필요 / 매수 진입 적기";
+  // [V19.11] energyLabel은 intent별로 다른 메시지 (매도자 vs 매수자 관점 분리)
+  const energyLabel = intent === "sell"
+    ? (netScore >= 5 ? "상승장 강화 — 매도 적기, 호가 견고하게 유지"
+      : netScore >= 2 ? "완만 상승 — 매도 조건 양호"
+      : netScore >= 0 ? "중립 흐름 — 매도 시 시장 반응 살피며 조율"
+      : netScore >= -3 ? "하락 압력 — 매도 시 호가 조정 필수"
+      : "하락장 지속 — 매도 시간 필요, 다음 성수기 대기 권장")
+    : (netScore >= 5 ? "상승장 강화 — 매수 시 가격 검증 필수"
+      : netScore >= 2 ? "완만 상승 — 매수 신중 검토"
+      : netScore >= 0 ? "중립 흐름 — 매수 기회 탐색 구간"
+      : netScore >= -3 ? "하락 압력 — 매수자에게 유리한 구간"
+      : "하락장 지속 — 매수 진입 적기 (저점 매수 기회)");
 
   const weeksEst = netScore >= 4 ? "4~6주" : netScore >= 1 ? "6~10주" : "10~16주 이상";
   const priceStrategy = netScore >= 4 ? "희망가 그대로 등록 — 수요 우위, 협상력 보유"
@@ -1302,6 +1336,13 @@ export default {
             ? "유저님은 이미 해당 종목을 보유 중이며 매도 타이밍을 묻고 있다. 매도/익절/청산 관점으로만 서술하라. '매수하라'는 표현 절대 금지."
             : "유저님은 신규 매수를 고려 중이다. 매수/진입/타이밍 관점으로 서술하라.";
 
+          // [V19.11] 각 카드의 정확한 의미를 프롬프트에 직접 주입 (AI 환각 방지)
+          const cardMeaningGuide = cleanCards.map((c, i) => {
+            const m = CARD_MEANING[c] || { flow: "에너지 탐색 중", signal: "방향성 주시" };
+            const role = i === 0 ? "과거" : i === 1 ? "현재" : "미래";
+            return `- ${role}(${c}): "${m.flow}" — ${m.signal}`;
+          }).join("\n");
+
           financeInject = `
 [INVEST ENGINE ACTIVE]
 유저 의도: ${intentLabel}
@@ -1317,6 +1358,12 @@ ${reversedNote}
 ${synergyNote}
 진입 전략: ${metrics.entryStrategy}
 청산 전략: ${metrics.exitStrategy}
+
+🃏 [각 카드의 정확한 의미 — 반드시 이 의미만 사용하라]
+${cardMeaningGuide}
+※ 위 카드 의미를 반드시 따르고, 반대로 해석하지 마라.
+※ 예: The Hanged Man은 "정체·관점 전환"이지 "모멘텀 유효 작동"이 아님.
+※ 예: Five of Pentacles는 "수급 약화·심리 위축"이지 "긍정 신호"가 아님.
 
 🌟 [서술 핵심 규칙]
 카드는 유저님의 투자 심리와 시장 참여자의 집단 감정을 반영한다.
@@ -1336,6 +1383,15 @@ ${synergyNote}
 
 단, 특정 기업 자체의 실체(재무/매출/경영)는 서술하지 않는다.
 
+⚠️ [추세-행동 일관성 규칙]
+추세 판정과 권장 행동이 일치되도록 서술하라.
+예시:
+- "강한 상승 — 모멘텀 약화 주의" + "신중한 분할 진입"
+  → "상승 추세는 살아있으나 정점 근접. 신중한 분할 진입이 안전"
+  → 절대 "강한 상승이니 풀매수" 같은 모순 서술 금지
+- "단기 하락 → 반등 시도" + "관망 후 조건부 진입"
+  → "신호 확인 후 진입" 강조
+
 ※ 위 데이터를 반드시 '제우스의 신탁' 마지막에 아래 형식으로 출력하라. 절대 생략 금지.
 추세: ${metrics.trend}
 행동: ${metrics.action}
@@ -1343,6 +1399,13 @@ ${synergyNote}
 리스크: ${metrics.riskLevel}
 `;
         } else if (queryType === "realestate") {
+          // [V19.11] 부동산도 카드 의미 직접 주입 (AI 환각 방지)
+          const cardMeaningGuide = cleanCards.map((c, i) => {
+            const m = CARD_MEANING[c] || { flow: "에너지 탐색 중", signal: "방향성 주시" };
+            const role = i === 0 ? "과거" : i === 1 ? "현재" : "미래";
+            return `- ${role}(${c}): "${m.flow}" — ${m.signal}`;
+          }).join("\n");
+
           financeInject = `
 [REAL ESTATE ENGINE ACTIVE]
 카드 점수 합계: ${totalScore}
@@ -1352,6 +1415,17 @@ ${synergyNote}
 전략: ${metrics.strategy}
 ${reversedNote}
 ${synergyNote}
+
+🃏 [각 카드의 정확한 의미 — 반드시 이 의미만 사용하라]
+${cardMeaningGuide}
+※ 위 카드 의미를 반드시 따르고, 반대로 해석하지 마라.
+※ 예: Two of Swords는 "결정 보류·교착"이지 "호가 집착"이 아님.
+※ 예: Queen of Wands는 "자신감·장악력"이지 "혼란"이 아님.
+
+⚠️ [추세-카드 일관성 규칙]
+3장 카드 중 부정 카드가 1장 이하면 절대 "하락 압력 구간" 같은 부정 결론 금지.
+3장 모두 긍정이면 "상승 흐름", 혼합이면 "전환 흐름"으로 표현.
+
 ※ 본 질문은 부동산 관련이다. 주식/투자 용어(손절/익절/비중/3배 등) 사용 절대 금지.
    부동산 전용 언어(매물/호가/임장/이사철/성수기/분양/재건축)로만 서술하라.
 `;
