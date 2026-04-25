@@ -329,9 +329,10 @@ function calcCardScores(cardNames, reversedCSV, queryType) {
 // ══════════════════════════════════════════════════════════════════
 // 📈 주식/코인 메트릭
 // ══════════════════════════════════════════════════════════════════
-function buildStockMetrics({ totalScore, riskScore, cleanCards, isLeverage, queryType, prompt, intent }) {
+function buildStockMetrics({ totalScore, riskScore, cleanCards, isLeverage, queryType, prompt, intent, reversedFlags }) {
   // [V19.9] intent 기본값 매수 (대부분의 주식 점사는 매수)
   const stockIntent = intent || "buy";
+  const revFlags = reversedFlags || [false, false, false];
   let trend = "중립";
   if      (totalScore >= 6)  trend = "강한 상승";
   else if (totalScore >= 2)  trend = "상승";
@@ -565,21 +566,28 @@ function buildStockMetrics({ totalScore, riskScore, cleanCards, isLeverage, quer
   const posLabels = ["과거","현재","미래"];
   const cardNarrative = cleanCards.map((c, i) => {
     const m = cardMeaning(c);
+    const isRev = revFlags[i] === true;
+    if (isRev) {
+      // [V19.11] 역방향: "[역]" 표기 + 의미 반전 안내
+      return `${posLabels[i] || '?'}(${c} [역방향]): ${m.flow}의 정체·지연 — 본래 흐름이 가로막힌 상태`;
+    }
     return `${posLabels[i] || '?'}(${c}): ${m.flow} — ${m.signal}`;
   });
   const flowSummary = (() => {
-    const firstScore = CARD_SCORE[cleanCards[0]] ?? 0;
-    const lastScore  = CARD_SCORE[cleanCards[2]] ?? 0;
+    // 역방향 반영하여 실제 점수 계산
+    const firstScore = (CARD_SCORE[cleanCards[0]] ?? 0) * (revFlags[0] ? -1 : 1);
+    const lastScore  = (CARD_SCORE[cleanCards[2]] ?? 0) * (revFlags[2] ? -1 : 1);
     if (lastScore > firstScore) return "과거 → 미래 에너지 상승 흐름 (진입 에너지 강화 중)";
     if (lastScore < firstScore) return "과거 → 미래 에너지 하강 흐름 (에너지 소진 주의)";
     return "에너지 균형 흐름 (방향성 확인 후 대응)";
   })();
-  const riskChecks = cleanCards.map(c => {
-    const s = CARD_SCORE[c] ?? 0;
-    if (s <= -5) return `🔴 ${c}: 붕괴·급락 에너지 — 강한 리스크 신호`;
-    if (s <= -3) return `🟠 ${c}: 하락 압력 에너지 — 추가 진입 자제`;
+  const riskChecks = cleanCards.map((c, i) => {
+    const baseS = CARD_SCORE[c] ?? 0;
+    const s = revFlags[i] ? -baseS : baseS;
+    if (s <= -5) return `🔴 ${c}${revFlags[i] ? ' [역방향]' : ''}: 붕괴·급락 에너지 — 강한 리스크 신호`;
+    if (s <= -3) return `🟠 ${c}${revFlags[i] ? ' [역방향]' : ''}: 하락 압력 에너지 — 추가 진입 자제`;
     if (s >=  4) return `🟢 ${c}: 안정적 상승 에너지 — 긍정 신호`;
-    return `⚪ ${c}: 중립 에너지 — 흐름 관찰`;
+    return `⚪ ${c}${revFlags[i] ? ' [역방향]' : ''}: 중립 에너지 — 흐름 관찰`;
   });
 
   const upPct   = Math.max(5, Math.min(20, 5 + totalScore));
@@ -739,26 +747,29 @@ function buildRealEstateMetrics({ totalScore, riskScore, cleanCards, intent, pro
     { label: "12~1월 (비수기 저점)", startMonth: 12, endMonth: 1 }
   ];
 
-  // [V2.5 수정] 현재 시점 기준 "가장 가까운 미래 시즌" 선택 (과거 시즌 안내 버그 방지)
-  //   예: 4월 25일 질문 시 "3~4월" 대신 "6~7월" 또는 "10~11월" 선택
-  //   endMonth가 현재 월보다 같거나 이후인 시즌만 후보로
+  // [V2.5 수정 + V19.11 정밀화] 현재 시점 기준 "가장 가까운 미래 시즌" 선택
+  //   • 시즌 endMonth가 현재 월보다 빠르면 제외
+  //   • 시즌 endMonth == 현재 월이면, 일자가 20일 이상 지났으면 제외 (월 말 어색함 방지)
+  //   예: 4월 25일 질문 시 "3~4월"(4월 거의 끝) 제외 → "6~7월" 또는 "10~11월"
   const now = new Date();
   const currentMonth = now.getMonth() + 1; // 1~12
+  const currentDay   = now.getDate();      // 1~31
 
   function pickFutureSeason(list) {
-    // 각 시즌의 "유효성" 판단: endMonth >= currentMonth
-    // (endMonth < currentMonth면 올해는 이미 지남 → 내년 것이므로 우선순위 낮춤)
     const validNow = list.filter(s => {
       if (s.startMonth <= s.endMonth) {
-        return s.endMonth >= currentMonth; // 일반 시즌
+        // 일반 시즌
+        if (s.endMonth > currentMonth) return true;     // 미래 시즌
+        if (s.endMonth < currentMonth) return false;    // 과거 시즌
+        // 같은 월: 일자에 따라
+        return currentDay <= 20;                         // 20일 이전이면 아직 유효
       } else {
-        // 12~1월 같은 연말연초 시즌: 12월 이후면 올해 유효
+        // 12~1월 같은 연말연초 시즌
         return currentMonth >= s.startMonth || currentMonth <= s.endMonth;
       }
     });
-    // 올해 유효한 시즌이 하나도 없으면 (드문 케이스) 내년 첫 시즌
+    // 올해 유효한 시즌이 하나도 없으면 내년 첫 시즌
     const candidates = validNow.length > 0 ? validNow : list;
-    // 카드 에너지(seed)로 결정론적 선택
     return candidates[Math.abs(seed) % candidates.length];
   }
   const sellSeasonObj = pickFutureSeason(sellSeasonList);
@@ -987,7 +998,8 @@ function buildLoveMetrics({ totalScore, cleanCards, prompt, loveSubType }) {
   else if (netScore >= -5) riskLevel = "감정 과잉 경계";
   else                    riskLevel = "집착·반복 상처 주의";
 
-  const DAYS_FULL = ["일요일 밤","월요일 저녁","화요일 낮","수요일 새벽","목요일 저녁","금요일 밤","토요일 오후"];
+  // [V19.11] 요일만 표기 (시간대는 numTime에 이미 포함되므로 중복 제거)
+  const DAYS_FULL = ["일요일","월요일","화요일","수요일","목요일","금요일","토요일"];
   let seed = 0;
   for (let i = 0; i < (prompt||"").length; i++) seed += prompt.charCodeAt(i);
   cleanCards.forEach(c => { for (let i = 0; i < c.length; i++) seed += c.charCodeAt(i); });
@@ -1298,7 +1310,7 @@ export default {
         else if (queryType === "stock" || queryType === "crypto") {
           // [V19.9] 주식/코인 매도/매수 intent 자동 감지
           const stockIntent = detectStockIntent(prompt);
-          metrics = buildStockMetrics({ totalScore, riskScore, cleanCards, isLeverage, queryType, prompt, intent: stockIntent });
+          metrics = buildStockMetrics({ totalScore, riskScore, cleanCards, isLeverage, queryType, prompt, intent: stockIntent, reversedFlags });
           metrics.stockIntent = stockIntent;  // 클라이언트가 알 수 있도록
         }
         else if (queryType === "love") {
