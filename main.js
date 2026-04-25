@@ -646,11 +646,11 @@ function buildRealEstateMetrics({ totalScore, riskScore, cleanCards, intent, pro
   const sellSeasonObj = pickFutureSeason(sellSeasonList);
   const buySeasonObj  = pickFutureSeason(buySeasonList);
 
-  const trend_base = netScore >= 6 ? "매도자 우세 흐름 (상승 에너지 강화 중)"
-              : netScore >= 2 ? "매도자 우세 흐름 (완만한 회복)"
+  const trend_base = netScore >= 6 ? "강한 상승장 (매도자 유리 — 호가 공격적 유지 가능)"
+              : netScore >= 2 ? "완만한 상승장 (매도자 우호 — 정상 호가 유효)"
               : netScore >= -1 ? "균형 구간 (방향 탐색 중)"
-              : netScore >= -5 ? "매수자 우세 흐름 (조정 압력)"
-              : "매수자 우세 흐름 (하락 에너지 지속)";
+              : netScore >= -5 ? "완만한 하락장 (매수자 우세 — 호가 조정 필요)"
+              : "강한 하락장 (매수자 우위 — 적극 조정 또는 대기 권장)";
 
   // ── [V2.1 부동산 카드별 강화] 미래 카드가 특수 에너지면 trend/action 덮어쓰기
   //    사장님 요구: Eight of Wands 같은 '속도/돌파' 카드면 자동 강화
@@ -662,14 +662,14 @@ function buildRealEstateMetrics({ totalScore, riskScore, cleanCards, intent, pro
   if (netScore >= 2) {
     // 긍정 구간에서만 강화 적용 (하락 구간에는 강화 X)
     if (futureCard === "Eight of Wands") {
-      trend = "매도자 우세 흐름 (속도 상승 — 빠른 거래 가능성)";
-      action_override = intent === 'sell' ? "즉시 등록 — 타이밍 집중" : "계약 검토 서두름";
+      trend = "강한 상승장 (속도 가속 — 빠른 거래 가능성)";
+      action_override = intent === 'sell' ? "즉시 등록 — 타이밍 집중" : "즉시 계약 검토";
       subtitle_override = "속도 구간";
     } else if (futureCard === "The Chariot") {
-      trend = "매도자 우세 흐름 (돌파 에너지)";
+      trend = "강한 상승장 (돌파 에너지)";
       action_override = intent === 'sell' ? "적극 등록, 호가 고수 + 빠른 협상" : "적극 탐색";
     } else if (futureCard === "The Sun" || futureCard === "The World") {
-      trend = "매도자 우세 흐름 (완성 에너지)";
+      trend = "강한 상승장 (완성 에너지)";
       action_override = intent === 'sell' ? "희망가 등록, 신뢰 유지" : "장기 가치 매물 선점";
     } else if (futureCard === "Wheel of Fortune") {
       trend = "균형 구간 (추세 전환점 — 방향 주시)";
@@ -677,7 +677,7 @@ function buildRealEstateMetrics({ totalScore, riskScore, cleanCards, intent, pro
       subtitle_override = "전환 구간";
     }
   } else if (netScore <= -5 && futureCard === "The Tower") {
-    trend = "매수자 우세 흐름 (급조정 신호)";
+    trend = "강한 하락장 (급조정 신호)";
     action_override = intent === 'sell' ? "매도 보류 — 반등 대기" : "진입 보류 권장";
     subtitle_override = "조정 경고 구간";
   }
@@ -693,11 +693,11 @@ function buildRealEstateMetrics({ totalScore, riskScore, cleanCards, intent, pro
     else if (pRaw.includes("갭투자")) subtitle_override = "갭투자";
   }
 
-  const energyLabel = netScore >= 5 ? "상승 에너지 강화 — 매도 유리한 시점"
-                    : netScore >= 2 ? "긍정 흐름 — 매도 조건 양호"
+  const energyLabel = netScore >= 5 ? "상승장 강화 — 매도 유리 / 매수 전 가격 확인 필수"
+                    : netScore >= 2 ? "완만 상승 — 매도 조건 양호 / 매수 신중 검토"
                     : netScore >= 0 ? "중립 흐름 — 방향성 탐색 구간"
-                    : netScore >= -3 ? "조정 압력 — 매수자 우세 흐름"
-                    : "하락 에너지 지속 — 매도 시간 필요";
+                    : netScore >= -3 ? "하락 압력 — 매도 시 호가 조정 필요 / 매수 기회"
+                    : "하락장 지속 — 매도 시간 필요 / 매수 진입 적기";
 
   const weeksEst = netScore >= 4 ? "4~6주" : netScore >= 1 ? "6~10주" : "10~16주 이상";
   const priceStrategy = netScore >= 4 ? "희망가 그대로 등록 — 수요 우위, 협상력 보유"
@@ -759,30 +759,30 @@ function buildRealEstateMetrics({ totalScore, riskScore, cleanCards, intent, pro
     urgency     = netScore >= 3 ? "🟢 지금 바로 매물 등록이 최적 — 에너지가 정점에 있습니다"
                 : netScore >= 0 ? "🟡 준비 후 이번 시즌 내 등록 권장"
                 : "🔴 현재 에너지 약세 — 다음 성수기 준비 시작";
-    caution     = netScore < 0 ? "⚠️ 주의: 현재 매수자 우세 흐름 — 호가 조정이 거래 성사의 핵심" : null;
+    caution     = netScore < 0 ? "⚠️ 주의: 현재 하락 압력 감지 — 호가 조정이 거래 성사의 핵심" : null;
   } else {
     // [V2.2] 매수도 동일 원칙: 시즌 + 주 단위
     timingLabel = `매수 적기: ${buySeasonObj.label}`;
     timing2     = `진입 검토 기간: 카드 에너지 기준 ${weeksEst} 내 결정 권장`;
-    strategy    = `접근 전략: ${netScore >= 3 ? '적극 탐색, 급매 외 정상 매물도 검토' : netScore >= 0 ? '급매 위주 탐색' : '진입 자제 — 추가 조정 가능성'}`;
+    strategy    = `접근 전략: ${netScore >= 3 ? '적극 탐색, 정상 매물도 검토 가능' : netScore >= 0 ? '급매 위주 탐색' : '하락장 활용 — 급매 집중 탐색'}`;
     period      = `보유 전략: 카드 에너지 기준 최소 ${netScore >= 3 ? '1~2년' : '2~3년'} 중장기 보유 권장`;
-    urgency     = netScore >= 3 ? "🟢 현재 진입 에너지 긍정 — 봄 이사철 전 선점 유리"
+    urgency     = netScore >= 3 ? "🟢 상승장 진입 — 이사철 전 선점 유리"
                 : netScore >= 0 ? "🟡 신중한 탐색 구간 — 급매 물건 위주"
-                : "🔴 진입 자제 — 추가 조정 후 재판단";
-    caution     = netScore < 0 ? "⚠️ 주의: 하락 에너지 감지 — 무리한 취득 금지" : null;
+                : "🟢 하락장 — 매수자 유리한 구간 (저점 탐색 기회)";
+    caution     = netScore < -3 ? "⚠️ 주의: 하락 심화 — 추가 조정 가능성 있으므로 서두르지 말 것" : null;
   }
 
   const interpretSell =
-    netScore >= 5 ? `현재 부동산 에너지는 매도자 우세 흐름이 뚜렷한 구간입니다. ${keyCard}의 기운은 호가를 견고하게 유지해도 거래 성사 가능성이 높음을 시사합니다. 지금 시즌을 놓치지 않는 결단이 유리할 수 있습니다.`
-  : netScore >= 2 ? `흐름은 매도에 우호적이지만 폭발적 에너지까지는 아닙니다. ${keyCard}의 기운은 약간의 호가 유연성이 거래 속도를 바꿀 수 있음을 암시합니다. 시장 반응을 살피며 조건을 조율하는 전략이 유효합니다.`
-  : netScore >= 0 ? `시장은 방향성을 탐색하는 관망 구간에 놓여 있습니다. ${keyCard}의 에너지는 무리한 호가보다 '적정가·빠른 거래'에 무게를 두라 조언합니다. 등록 후 반응을 확인하며 조건을 유연하게 운용하십시오.`
-  : `에너지는 매수자 우세 흐름으로 기울어 있습니다. ${worstCard}의 기운은 호가 집착이 장기 미거래로 이어질 수 있음을 경고합니다. 현실적인 호가 조정 또는 다음 성수기를 기다리는 전략이 안정적입니다.`;
+    netScore >= 5 ? `현재 부동산 에너지는 강한 상승장 구간입니다. ${keyCard}의 기운은 호가를 견고하게 유지해도 거래 성사 가능성이 높음을 시사합니다. 지금 시즌을 놓치지 않는 결단이 유리할 수 있습니다.`
+  : netScore >= 2 ? `흐름은 완만한 상승장으로 매도에 우호적입니다. ${keyCard}의 기운은 약간의 호가 유연성이 거래 속도를 바꿀 수 있음을 암시합니다. 시장 반응을 살피며 조건을 조율하는 전략이 유효합니다.`
+  : netScore >= 0 ? `시장은 방향성을 탐색하는 균형 구간입니다. ${keyCard}의 에너지는 무리한 호가보다 '적정가·빠른 거래'에 무게를 두라 조언합니다. 등록 후 반응을 확인하며 조건을 유연하게 운용하십시오.`
+  : `에너지는 하락장으로 기울어 있습니다. ${worstCard}의 기운은 호가 집착이 장기 미거래로 이어질 수 있음을 경고합니다. 현실적인 호가 조정 또는 다음 성수기를 기다리는 전략이 안정적입니다.`;
 
   const interpretBuy =
-    netScore >= 5 ? `부동산 에너지는 취득에 유리한 정점 구간에 있습니다. ${keyCard}의 기운은 결단과 선점이 장기적 성과로 이어질 가능성을 시사합니다. 이사철 전 집중 임장과 계약 준비가 핵심입니다.`
-  : netScore >= 2 ? `에너지는 완만한 긍정 구간입니다. ${keyCard}의 기운은 '정상 매물'보다 '급매·조건 우위 매물'에서 기회가 나타남을 암시합니다. 신중한 탐색과 조건 협상이 본 구간의 유효 전략입니다.`
-  : netScore >= 0 ? `흐름은 방향성을 탐색하는 관망 구간입니다. ${keyCard}의 에너지는 서두른 취득이 후회로 이어질 수 있음을 알립니다. 자금 여력을 유지하며 명확한 신호를 기다리십시오.`
-  : `에너지는 진입을 강하게 경계하는 구간입니다. ${worstCard}의 기운은 무리한 취득이 금리·규제·평가 리스크와 맞물릴 수 있음을 경고합니다. 지금은 진입을 보류하고 다음 조정을 기다리는 편이 안정적입니다.`;
+    netScore >= 5 ? `부동산 에너지는 강한 상승장 구간에 있어 매수자에게는 신중함이 필요합니다. ${keyCard}의 기운은 정상 매물도 놓치지 말고 선점할 가치가 있음을 시사합니다. 이사철 전 집중 임장과 계약 준비가 핵심입니다.`
+  : netScore >= 2 ? `에너지는 완만한 상승 구간입니다. ${keyCard}의 기운은 '정상 매물'보다 '급매·조건 우위 매물'에서 기회가 나타남을 암시합니다. 신중한 탐색과 조건 협상이 본 구간의 유효 전략입니다.`
+  : netScore >= 0 ? `흐름은 방향성을 탐색하는 균형 구간입니다. ${keyCard}의 에너지는 서두른 취득이 후회로 이어질 수 있음을 알립니다. 자금 여력을 유지하며 명확한 신호를 기다리십시오.`
+  : `에너지는 하락장 구간으로 매수자에게 유리한 환경입니다. ${worstCard}의 기운은 추가 조정 가능성을 시사하므로 급하게 취득하기보다 저점에서 급매를 선별하는 전략이 유효합니다. 금리·규제 변수도 함께 점검하십시오.`;
 
   return {
     queryType: "realestate",
