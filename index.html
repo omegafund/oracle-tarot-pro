@@ -4659,14 +4659,14 @@ function _layoutDeckArch() {
         const half = Math.ceil(total / 2);  // 39장
 
         // 윗줄: 작은 부채꼴 (15% 확장)
-        const UPPER_SPAN   = 104;  // 90 → 104 (15% UP)
+        const UPPER_SPAN   = 110;  // 90 → 110 (15% UP)
         const UPPER_RADIUS = 140;  // 회전 반경 짧음
         const upperStartAng = -UPPER_SPAN / 2;
         const upperEndAng   =  UPPER_SPAN / 2;
         const upperStepAng  = (upperEndAng - upperStartAng) / (half - 1);
 
         // 아래줄: 큰 부채꼴 (20% 축소)
-        const LOWER_SPAN   = 112;  // 140 → 112 (20% DOWN)
+        const LOWER_SPAN   = 107;  // 140 → 107 (20% DOWN)
         const LOWER_RADIUS = 220;  // 회전 반경 김
         const lowerStartAng = -LOWER_SPAN / 2;
         const lowerEndAng   =  LOWER_SPAN / 2;
