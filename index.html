@@ -831,19 +831,22 @@
             margin: 0 auto 6px auto;
             perspective: 1200px;
         }
-        /* [V19.5] 모바일 — 768px 이하 (태블릿·큰 폰·폴더블 포함) */
-        @media (max-width: 768px) {
-            .deck-arch {
-                height: 42vh;
-                min-height: 280px;
-                max-width: 380px;
-            }
-            .deck-card-mobile {
-                width: 38px !important;
-                height: 58px !important;
-                margin-left: -19px !important;
-            }
-        }
+        /* [V19.5] 모바일 — 768px 이하 정밀 레이아웃 */
+@media (max-width: 768px) {
+    .deck-arch {
+        height: 50vh; /* 높이 소폭 확장 */
+        min-height: 320px;
+        max-width: 100%;
+        margin-top: 10px;
+    }
+    .deck-card-mobile {
+        width: 40px !important;
+        height: 62px !important;
+        margin-left: -20px !important;
+        /* 모바일에서는 기본 top을 제거하고 JS에서 개별 설정 */
+        top: 0 !important; 
+    }
+}
         .deck-card {
             position: absolute;
             left: 50%;
@@ -4619,59 +4622,61 @@ function _shuffleDeckBySeed(seed) {
     return arr;
 }
 
-// ── 부채꼴 레이아웃 계산 [V19.5] PC: 1줄 / 모바일: 2줄 부채꼴 자동 분기
+// ── 부채꼴 레이아웃 계산 [V19.6] 2줄 아치 분리 강화
 function _layoutDeckArch() {
     const archEl = document.getElementById('deck-arch');
     if (!archEl) return;
-    const total     = CARDS.length;          // 78
-    archEl.innerHTML = ''; // 초기화
+    const total = CARDS.length; // 78장
+    archEl.innerHTML = ''; 
 
-    // [V19.5] 화면 너비에 따라 1줄 vs 2줄 분기
-    //   기준 768px — 태블릿·큰 폰·폴더블폰까지 모두 모바일로 인식
-    //   480px만 했더니 큰 폰들이 PC 모드로 인식되는 문제 해결
     const isMobile = window.innerWidth <= 768;
-    console.log('[Deck Layout] window.innerWidth:', window.innerWidth, '| isMobile:', isMobile);
 
     if (!isMobile) {
-        // ━━━━━━━ PC 모드: 기존 1줄 부채꼴 ━━━━━━━
-        const archSpan  = 160;
-        const startAng  = -archSpan / 2;
-        const endAng    =  archSpan / 2;
-        const stepAng   = (endAng - startAng) / (total - 1);
+        // ━━━━━━━ PC 모드: 기존 1줄 ━━━━━━━
+        const archSpan = 160;
+        const startAng = -archSpan / 2;
+        const stepAng  = archSpan / (total - 1);
 
         for (let i = 0; i < total; i++) {
             const cardEl = document.createElement('div');
             cardEl.className = 'deck-card shuffling';
-            cardEl.setAttribute('data-deck-pos', i);
+            cardEl.style.top = '40px';
             const angle = startAng + stepAng * i;
             cardEl.style.transform = `rotate(${angle}deg)`;
-            cardEl.style.animationDelay = (i * 0.012) + 's';
+            cardEl.style.transformOrigin = '50% 260px';
+            cardEl.style.animationDelay = (i * 0.01) + 's';
             cardEl.addEventListener('click', () => _onDeckCardClick(i, cardEl, angle));
             archEl.appendChild(cardEl);
         }
     } else {
-        // ━━━━━━━ 모바일 모드: 2줄 부채꼴 (39장 × 2줄) ━━━━━━━
-        const half = Math.ceil(total / 2);  // 39장
-        const archSpanMobile = 130;          // 모바일은 좁아서 130도로 축소
-        const startAng = -archSpanMobile / 2;
-        const endAng   =  archSpanMobile / 2;
-        const stepAng  = (endAng - startAng) / (half - 1);
+        // ━━━━━━━ 모바일 모드: 2줄 입체 아치 (상단/하단 분리) ━━━━━━━
+        const half = 39; 
+        const archSpan = 140; 
+        const startAng = -archSpan / 2;
+        const stepAng  = archSpan / (half - 1);
 
         for (let i = 0; i < total; i++) {
             const cardEl = document.createElement('div');
             cardEl.className = 'deck-card shuffling deck-card-mobile';
-            cardEl.setAttribute('data-deck-pos', i);
-            // 0~38: 첫줄(아래쪽), 39~77: 둘째줄(위쪽 — origin 더 위쪽으로)
-            const isUpperRow = i >= half;
-            const idxInRow   = isUpperRow ? (i - half) : i;
+            
+            const isUpperRow = i < half; // 0~38장은 윗줄, 39~77장은 아랫줄
+            const idxInRow   = isUpperRow ? i : (i - half);
             const angle      = startAng + stepAng * idxInRow;
-            // 위쪽 줄은 transform-origin을 더 위로 설정 (170px) → 더 작은 반원
-            // 아래쪽 줄은 기본 (260px) → 더 큰 반원 (위에 겹침)
-            cardEl.style.transformOrigin = isUpperRow ? '50% 170px' : '50% 260px';
-            cardEl.style.transform       = `rotate(${angle}deg)`;
-            cardEl.style.animationDelay  = (i * 0.012) + 's';
-            // 위쪽 줄은 z-index 높여서 앞에 보이게
-            cardEl.style.zIndex          = isUpperRow ? '5' : '3';
+
+            if (isUpperRow) {
+                // 윗줄: 더 높게 배치, 회전 반경 작게
+                cardEl.style.top = '20px';
+                cardEl.style.transformOrigin = '50% 180px';
+                cardEl.style.zIndex = '10';
+            } else {
+                // 아랫줄: 더 낮게 배치, 회전 반경 크게 하여 윗줄 아래로 펼침
+                cardEl.style.top = '110px'; 
+                cardEl.style.transformOrigin = '50% 240px';
+                cardEl.style.zIndex = '5';
+            }
+
+            cardEl.style.transform = `rotate(${angle}deg)`;
+            cardEl.style.animationDelay = (i * 0.012) + 's';
             cardEl.addEventListener('click', () => _onDeckCardClick(i, cardEl, angle));
             archEl.appendChild(cardEl);
         }
