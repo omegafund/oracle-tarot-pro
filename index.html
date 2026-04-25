@@ -3446,17 +3446,21 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
         .replace(/\[합산 과정:[^\]]*\]/g, '')
         .replace(/제우스의?\s*(운명|최종)신탁/g, '')
         .replace(/ZEUS\s*(DESTINY|FINAL)\s*ORACLE/g, '')
-        .replace(/^(과거|현재|미래)\s*(\n|[:：]|\s)*/gm, '')
-        // 2번: 워커가 삽입한 투자 지표 4줄 중복 제거
-        // "추세: 상승 행동: 분할 매수 타이밍: ... 리스크: ..." 패턴
+        // [V19.9] 줄 시작 "과거/현재/미래" 단독 라벨만 제거 (뒷 단어 침범 방지)
+        //   허용: "과거\n", "과거:", "과거 \n"
+        //   차단: "과거\n\n**Strength**" 의 ** 까지 침범했던 버그
+        .replace(/^[ \t]*(과거|현재|미래)[ \t]*[:：]?[ \t]*$/gm, '')
+        // 워커가 삽입한 투자 지표 4줄 중복 제거
         .replace(/추세:\s*[^\n]+\n행동:\s*[^\n]+\n타이밍:\s*[^\n]+\n리스크:\s*[^\n]+/g, '')
         .replace(/(추세|행동|타이밍|리스크):\s*(강한\s*(상승|하락)|상승|하락|중립|분할\s*매수|즉시\s*회피|비중\s*축소|관망|보통|높음|낮음)[^\n]*/g, '')
-        // 3번: 역사적 연도 언급 제거 (19XX년대, 20XX년 이전 언급)
-        // "1970년대", "1990년대", "베트남 전쟁" 등 과거 역사 문장 제거
-        .replace(/1[0-9]{3}년대?[^.。]*[.。]/g, '')
-        .replace(/[가-힣\s]+(전쟁|공황|혁명|분단|쿠데타)[^.。]*[.。]/g, '')
-        // 과거 연도 수치 비교 문장 제거 ("2010년 당시", "2015년에는" 등)
-        .replace(/(20[0-1][0-9]|19[0-9]{2})년\s*(당시|초|중반|말|에는|의)[^.。]*[.。]/g, '')
+        // 역사적 연도 언급 제거 (한 줄 안에서만)
+        .replace(/1[0-9]{3}년대?[^.。\n]*[.。]/g, '')
+        // [V19.9] 한글 욕심꾸러기 매치 제거 — 단어 단위로만 매치
+        .replace(/(?:전쟁|공황|혁명|분단|쿠데타)[^.。\n]*[.。]/g, '')
+        // 과거 연도 수치 비교 문장 제거
+        .replace(/(20[0-1][0-9]|19[0-9]{2})년\s*(당시|초|중반|말|에는|의)[^.。\n]*[.。]/g, '')
+        // 빈 줄 정리
+        .replace(/\n{3,}/g, '\n\n')
         .trim();
 
     const splitIndex = cleanText.search(/[📈🧭⚡🛡️]/);
@@ -3517,61 +3521,97 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
         //         방호벽: 각 블록은 자기 타입만 처리, 타입 불일치 시 빈 문자열 반환
         // ══════════════════════════════════════════════════════
 
-        // ── 🔒 방호벽: 주식/코인 전용 렌더러 [V19.2 실전형]
+        // ── 🔒 방호벽: 주식/코인 전용 렌더러 [V19.10] 매도/매수 라벨 분기
         function _renderStockBlock(d) {
             const isStock = d && (d.type === 'stock' || d.type === 'crypto');
             if (!isStock) return '';
-            const title = d.type === 'crypto' ? "🪙 코인 실전 투자 신탁" : "📈 주식 실전 투자 신탁";
+
+            // [V19.10] 매도 의도 감지 — Worker가 보낸 stockIntent 우선, 없으면 action에서 추론
+            const isSell = (d._server?.stockIntent === 'sell')
+                        || /매도|익절|청산|손절|전량/.test(d.action || '');
+
+            // 도메인 + 의도별 타이틀
+            const baseTitle = d.type === 'crypto' ? "🪙 코인" : "📈 주식";
+            const intentTitle = isSell ? "실전 매도 신탁" : "실전 투자 신탁";
+            const title = `${baseTitle} ${intentTitle}`;
+
+            // 의도별 라벨 세트
+            const labels = isSell ? {
+                narrative: '🃏 카드 에너지 → 매도 맥락',
+                risk:      '⚠️ 보유 리스크 점검',
+                position:  '📊 매도 전략',
+                weight:    '💰 매도 비중',
+                stopLoss:  '🛑 손실 한도',
+                target:    '🎯 익절 구간',
+                timing:    '⚡ 실전 매도 타이밍 ⚡',
+                entry:     '📉 1차 매도 타이밍',
+                exit:      '🚨 최종 청산 타이밍',
+                entryColor: '#ff8080',
+                exitColor:  '#ff5252'
+            } : {
+                narrative: '🃏 카드 에너지 → 투자 맥락',
+                risk:      '⚠️ 리스크 점검',
+                position:  '📊 포지션 전략',
+                weight:    '💰 권장 비중',
+                stopLoss:  '🛑 손절 기준',
+                target:    '🎯 목표 구간',
+                timing:    '⚡ 실전 매매 타이밍 ⚡',
+                entry:     '📈 매수 타이밍',
+                exit:      '📉 매도 타이밍',
+                entryColor: '#2ecc71',
+                exitColor:  '#ff5252'
+            };
+
             const finalOracleHTML = (d.finalOracle || '').toString().replace(/\n/g, '<br>');
 
-            // 카드 에너지 → 투자 맥락
+            // 카드 에너지 → (투자/매도) 맥락
             const narrativeHTML = (d.cardNarrative && d.cardNarrative.length) ? `
                 <div style="margin-bottom:14px; padding-bottom:12px; border-bottom:1px solid rgba(212,175,55,0.18);">
-                    <div style="color:var(--gold); font-size:0.82rem; font-weight:900; letter-spacing:0.1em; margin-bottom:8px;">🃏 카드 에너지 → 투자 맥락</div>
+                    <div style="color:var(--gold); font-size:0.82rem; font-weight:900; letter-spacing:0.1em; margin-bottom:8px;">${labels.narrative}</div>
                     ${d.cardNarrative.map(line => `<div style="font-size:0.85rem; color:rgba(255,255,255,0.88); line-height:1.75; margin-bottom:4px;">• ${line}</div>`).join('')}
                     ${d.flowSummary ? `<div style="margin-top:8px; font-size:0.82rem; color:rgba(212,175,55,0.85); font-style:italic;">↳ ${d.flowSummary}</div>` : ''}
                 </div>` : '';
 
-            // 리스크 점검 (간결)
+            // 리스크 점검
             const riskHTML = (d.riskChecks && d.riskChecks.length) ? `
                 <div style="margin-bottom:14px; padding-bottom:12px; border-bottom:1px solid rgba(212,175,55,0.18);">
-                    <div style="color:var(--gold); font-size:0.82rem; font-weight:900; letter-spacing:0.1em; margin-bottom:8px;">⚠️ 리스크 점검</div>
+                    <div style="color:var(--gold); font-size:0.82rem; font-weight:900; letter-spacing:0.1em; margin-bottom:8px;">${labels.risk}</div>
                     ${d.riskChecks.map(line => `<div style="font-size:0.85rem; color:rgba(255,255,255,0.88); line-height:1.75; margin-bottom:4px;">${line}</div>`).join('')}
                 </div>` : '';
 
-            // [V19.2 실전형] 포지션 전략 — 3줄 깔끔 블록 (권장 비중 / 손절 / 목표)
+            // 포지션/매도 전략 — 3줄 블록
             const pos = d.position || {};
             const positionHTML = `
                 <div style="margin-bottom:14px; padding-bottom:12px; border-bottom:1px solid rgba(212,175,55,0.18);">
-                    <div style="color:var(--gold); font-size:0.82rem; font-weight:900; letter-spacing:0.1em; margin-bottom:8px;">📊 포지션 전략</div>
+                    <div style="color:var(--gold); font-size:0.82rem; font-weight:900; letter-spacing:0.1em; margin-bottom:8px;">${labels.position}</div>
                     <div style="font-size:0.9rem; color:rgba(255,255,255,0.92); line-height:1.85;">
-                        <div>💰 권장 비중: <b>${pos.weight || '-'}</b></div>
-                        <div>🛑 손절 기준: ${pos.stopLoss || '-'}</div>
-                        <div>🎯 목표 구간: ${pos.target || '-'}</div>
+                        <div>${labels.weight}: <b>${pos.weight || '-'}</b></div>
+                        <div>${labels.stopLoss}: ${pos.stopLoss || '-'}</div>
+                        <div>${labels.target}: ${pos.target || '-'}</div>
                     </div>
                 </div>`;
 
-            // [V19.4] 대응 타이밍 — 매수/매도 분리 + 시각 강화 (핵심 가치 강조)
+            // [V19.10] 매도 의도일 때 타이밍 라벨도 변경
             const entryTime = d._server?.entryTimingText || '-';
             const exitTime  = d._server?.exitTimingText  || '-';
             const hasEntryExit = entryTime !== '-' && exitTime !== '-';
 
             const timingHTML = hasEntryExit ? `
                 <div style="margin-bottom:16px; padding: 14px 16px;
-                            background: linear-gradient(135deg, rgba(46,204,113,0.10), rgba(212,175,55,0.06));
+                            background: linear-gradient(135deg, ${isSell ? 'rgba(255,140,100,0.10)' : 'rgba(46,204,113,0.10)'}, rgba(212,175,55,0.06));
                             border: 1px solid rgba(212,175,55,0.5);
                             border-radius: 10px;
                             box-shadow: 0 0 12px rgba(212,175,55,0.12);">
                     <div style="color:var(--gold); font-size:0.84rem; font-weight:900; letter-spacing:0.1em; margin-bottom:10px; text-align:center;">
-                        ⚡ 실전 매매 타이밍 ⚡
+                        ${labels.timing}
                     </div>
                     <div style="display:flex; flex-direction:column; gap:10px;">
-                        <div style="padding:10px 12px; background:rgba(46,204,113,0.12); border-left:4px solid #2ecc71; border-radius:4px;">
-                            <div style="font-size:0.75rem; color:#2ecc71; font-weight:900; letter-spacing:0.08em; margin-bottom:3px;">📈 매수 타이밍</div>
+                        <div style="padding:10px 12px; background:${isSell ? 'rgba(255,140,100,0.12)' : 'rgba(46,204,113,0.12)'}; border-left:4px solid ${labels.entryColor}; border-radius:4px;">
+                            <div style="font-size:0.75rem; color:${labels.entryColor}; font-weight:900; letter-spacing:0.08em; margin-bottom:3px;">${labels.entry}</div>
                             <div style="font-size:0.92rem; color:#fff; font-weight:700; line-height:1.5;">${entryTime}</div>
                         </div>
-                        <div style="padding:10px 12px; background:rgba(255,82,82,0.12); border-left:4px solid #ff5252; border-radius:4px;">
-                            <div style="font-size:0.75rem; color:#ff8080; font-weight:900; letter-spacing:0.08em; margin-bottom:3px;">📉 매도 타이밍</div>
+                        <div style="padding:10px 12px; background:rgba(255,82,82,0.12); border-left:4px solid ${labels.exitColor}; border-radius:4px;">
+                            <div style="font-size:0.75rem; color:${labels.exitColor}; font-weight:900; letter-spacing:0.08em; margin-bottom:3px;">${labels.exit}</div>
                             <div style="font-size:0.92rem; color:#fff; font-weight:700; line-height:1.5;">${exitTime}</div>
                         </div>
                     </div>
@@ -3581,10 +3621,14 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
                     <div style="font-size:0.88rem; color:rgba(255,255,255,0.9); line-height:1.8; white-space:pre-line;">${d.timingLabel || '-'}</div>
                 </div>`;
 
-            // 행동은 위험이면 빨강
-            const actionColor = (d.action || '').includes('금지') || (d.action || '').includes('회피') ? '#ff5252'
-                              : (d.action || '').includes('강매수') ? '#2ecc71'
-                              : 'rgba(255,255,255,0.95)';
+            // 행동 색상 — 매도/매수 의도별로 색상 의미가 반대
+            const actionColor = isSell
+                ? (d.action || '').includes('즉시') || (d.action || '').includes('전량') ? '#ff5252'
+                  : (d.action || '').includes('보류') ? '#2ecc71'
+                  : 'rgba(255,255,255,0.95)'
+                : (d.action || '').includes('금지') || (d.action || '').includes('회피') ? '#ff5252'
+                  : (d.action || '').includes('강매수') ? '#2ecc71'
+                  : 'rgba(255,255,255,0.95)';
 
             return `
             <div class="final-oracle final-oracle-stock" style="padding:20px; background:rgba(212,175,55,0.08); border:1px solid var(--gold); border-radius:12px; margin-top:25px;">
@@ -4659,14 +4703,14 @@ function _layoutDeckArch() {
         const half = Math.ceil(total / 2);  // 39장
 
         // 윗줄: 작은 부채꼴 (15% 확장)
-        const UPPER_SPAN   = 120;  // 90 → 120 (20% UP)
+        const UPPER_SPAN   = 104;  // 90 → 104 (15% UP)
         const UPPER_RADIUS = 140;  // 회전 반경 짧음
         const upperStartAng = -UPPER_SPAN / 2;
         const upperEndAng   =  UPPER_SPAN / 2;
         const upperStepAng  = (upperEndAng - upperStartAng) / (half - 1);
 
         // 아래줄: 큰 부채꼴 (20% 축소)
-        const LOWER_SPAN   = 100;  // 140 → 100 (25% DOWN)
+        const LOWER_SPAN   = 112;  // 140 → 112 (20% DOWN)
         const LOWER_RADIUS = 220;  // 회전 반경 김
         const lowerStartAng = -LOWER_SPAN / 2;
         const lowerEndAng   =  LOWER_SPAN / 2;
@@ -4674,7 +4718,7 @@ function _layoutDeckArch() {
 
         // 두 줄 위치 분리 (간격 20% 축소)
         const UPPER_TOP = 10;
-        const LOWER_TOP = 150;  // 200 → 150 (25% DOWN — 위·아래 거리 축소)
+        const LOWER_TOP = 160;  // 200 → 160 (20% DOWN — 위·아래 거리 축소)
 
         // 윗줄 컨테이너
         const upperRow = document.createElement('div');
