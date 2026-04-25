@@ -831,8 +831,8 @@
             margin: 0 auto 6px auto;
             perspective: 1200px;
         }
-        /* [V19.5] 모바일 — 2줄 부채꼴 위해 높이/폭 최적화 */
-        @media (max-width: 480px) {
+        /* [V19.5] 모바일 — 768px 이하 (태블릿·큰 폰·폴더블 포함) */
+        @media (max-width: 768px) {
             .deck-arch {
                 height: 42vh;
                 min-height: 280px;
@@ -4626,8 +4626,11 @@ function _layoutDeckArch() {
     const total     = CARDS.length;          // 78
     archEl.innerHTML = ''; // 초기화
 
-    // [V19.5] 화면 너비에 따라 1줄 vs 2줄 분기 (모바일 480px 이하면 2줄)
-    const isMobile = window.innerWidth <= 480;
+    // [V19.5] 화면 너비에 따라 1줄 vs 2줄 분기
+    //   기준 768px — 태블릿·큰 폰·폴더블폰까지 모두 모바일로 인식
+    //   480px만 했더니 큰 폰들이 PC 모드로 인식되는 문제 해결
+    const isMobile = window.innerWidth <= 768;
+    console.log('[Deck Layout] window.innerWidth:', window.innerWidth, '| isMobile:', isMobile);
 
     if (!isMobile) {
         // ━━━━━━━ PC 모드: 기존 1줄 부채꼴 ━━━━━━━
