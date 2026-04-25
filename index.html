@@ -831,82 +831,41 @@
             margin: 0 auto 6px auto;
             perspective: 1200px;
         }
-        /* [V19.5] 모바일 — 768px 이하 정밀 레이아웃 */
-@media (max-width: 768px) {
-
-    .deck-arch {
-
-        height: 42vh;
-
-        min-height: 280px;
-
-        max-width: 380px;
-
-    }
-
-    .deck-card-mobile {
-
-        width: 38px !important;
-
-        height: 58px !important;
-
-        margin-left: -19px !important;
-
-    }
-
-    /* ✅ [신규 추가] 모바일 곡률 보정 */
-    .deck-card {
-
-        bottom: 10px;
-
-        transform-origin: 50% 110px;
-
-    }
-
-}
+        /* [V19.6] 모바일 — 768px 이하 (태블릿·큰 폰·폴더블 포함) */
+        @media (max-width: 768px) {
+            .deck-arch {
+                height: 50vh;             /* 두 부채꼴 분리 공간 확보 */
+                min-height: 360px;
+                max-width: 380px;
+            }
+            .deck-card-mobile {
+                width: 36px !important;
+                height: 54px !important;
+                margin-left: -18px !important;
+            }
+        }
         .deck-card {
-
-    position: absolute;
-
-    left: 50%;
-
-    /* ❌ 기존 top 제거 → 보고: 위치 기준 변경 */
-    /* top: 40px; */
-
-    /* ✅ 하단 기준으로 변경 (핵심) */
-    bottom: 20px;
-
-    width: 46px;
-
-    height: 70px;
-
-    margin-left: -23px;
-
-    border-radius: 5px;
-
-    background-image: url('https://omegafund.github.io/oracle-tarot-pro/images/cards/back.jpg');
-
-    background-size: cover;
-
-    background-position: center;
-
-    border: 1px solid rgba(212,175,55,0.55);
-
-    box-shadow: 0 2px 8px rgba(0,0,0,0.6), inset 0 0 4px rgba(212,175,55,0.25);
-
-    cursor: pointer;
-
-    /* ❌ 기존 260px → 보고: 모바일에서 과도 */
-    /* transform-origin: 50% 260px; */
-
-    /* ✅ 곡률 정상화 */
-    transform-origin: 50% 140px;
-
-    transition: transform 0.35s cubic-bezier(.2,.8,.4,1.4), box-shadow 0.25s, filter 0.25s;
-
-    will-change: transform;
-
-}
+            position: absolute;
+            left: 50%;
+            /* [V18.1 핵심] bottom 고정 → top 고정으로 변경 
+               카드를 컨테이너 상단 쪽에 배치하여 중앙~상단이 꽉 차 보이게 함 */
+            top: 40px;
+            width: 46px;
+            height: 70px;
+            margin-left: -23px;
+            border-radius: 5px;
+            background-image: url('https://omegafund.github.io/oracle-tarot-pro/images/cards/back.jpg');
+            background-size: cover;
+            background-position: center;
+            border: 1px solid rgba(212,175,55,0.55);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.6), inset 0 0 4px rgba(212,175,55,0.25);
+            cursor: pointer;
+            /* [V18.1 핵심] transform-origin을 카드 아래쪽 260px 지점으로 설정
+               → 부채꼴 곡률이 완만해지면서 카드가 위로 올라가 중앙 공간을 채움 */
+            transform-origin: 50% 260px;
+            transition: transform 0.35s cubic-bezier(.2,.8,.4,1.4), box-shadow 0.25s, filter 0.25s;
+            will-change: transform;
+        }
         .deck-card:hover, .deck-card:active {
             filter: brightness(1.4) drop-shadow(0 0 10px #50C878);
             z-index: 10;
@@ -1996,7 +1955,7 @@ async function renderStream(fetchPromise, cards) {
     const WISDOM_NOTES = [
         '<span class="wisdom-icon">✦</span> 동일한 질문을 반복해서 점치지 마소서. 첫 신탁이 가장 순수합니다.',
         '<span class="wisdom-icon">✦</span> 마음을 가라앉히고, 유저님의 내면의 목소리에 귀 기울이소서.',
-        '<span class="wisdom-icon">✦</span> 자주 점치면 카드의 기운이 흐려집니다. 하루 하나의 질문이 가장 정확합니다.',
+        '<span class="wisdom-icon">✦</span> 자주 치면 카드의 기운이 흐려집니다. 하루 하나의 질문이 가장 정확합니다.',
         '<span class="wisdom-icon">✦</span> 카드는 참고일 뿐, 결정은 유저님의 지혜로 하소서.',
         '<span class="wisdom-icon">✦</span> 급한 마음을 내려놓으면, 신탁의 진의가 드러납니다.'
     ];
@@ -4660,61 +4619,74 @@ function _shuffleDeckBySeed(seed) {
     return arr;
 }
 
-// ── 부채꼴 레이아웃 계산 [V19.6] 2줄 아치 분리 강화
+// ── 부채꼴 레이아웃 계산 [V19.5] PC: 1줄 / 모바일: 2줄 부채꼴 자동 분기
 function _layoutDeckArch() {
     const archEl = document.getElementById('deck-arch');
     if (!archEl) return;
-    const total = CARDS.length; // 78장
-    archEl.innerHTML = ''; 
+    const total     = CARDS.length;          // 78
+    archEl.innerHTML = ''; // 초기화
 
+    // [V19.5] 화면 너비에 따라 1줄 vs 2줄 분기
+    //   기준 768px — 태블릿·큰 폰·폴더블폰까지 모두 모바일로 인식
+    //   480px만 했더니 큰 폰들이 PC 모드로 인식되는 문제 해결
     const isMobile = window.innerWidth <= 768;
+    console.log('[Deck Layout] window.innerWidth:', window.innerWidth, '| isMobile:', isMobile);
 
     if (!isMobile) {
-        // ━━━━━━━ PC 모드: 기존 1줄 ━━━━━━━
-        const archSpan = 160;
-        const startAng = -archSpan / 2;
-        const stepAng  = archSpan / (total - 1);
+        // ━━━━━━━ PC 모드: 기존 1줄 부채꼴 ━━━━━━━
+        const archSpan  = 160;
+        const startAng  = -archSpan / 2;
+        const endAng    =  archSpan / 2;
+        const stepAng   = (endAng - startAng) / (total - 1);
 
         for (let i = 0; i < total; i++) {
             const cardEl = document.createElement('div');
             cardEl.className = 'deck-card shuffling';
-            cardEl.style.top = '40px';
+            cardEl.setAttribute('data-deck-pos', i);
             const angle = startAng + stepAng * i;
             cardEl.style.transform = `rotate(${angle}deg)`;
-            cardEl.style.transformOrigin = '50% 260px';
-            cardEl.style.animationDelay = (i * 0.01) + 's';
+            cardEl.style.animationDelay = (i * 0.012) + 's';
             cardEl.addEventListener('click', () => _onDeckCardClick(i, cardEl, angle));
             archEl.appendChild(cardEl);
         }
     } else {
-        // ━━━━━━━ 모바일 모드: 2줄 입체 아치 (상단/하단 분리) ━━━━━━━
-        const half = 39; 
-        const archSpan = 140; 
-        const startAng = -archSpan / 2;
-        const stepAng  = archSpan / (half - 1);
+        // ━━━━━━━ 모바일 모드: 2줄 부채꼴 (39장 × 2줄) ━━━━━━━
+        // [V19.6] 두 부채꼴이 겹치지 않게 세로 분리 + 각자 독립적인 호 형태
+        //   윗줄(0~38): 화면 위쪽에 윗부채꼴 (호의 끝이 위로 향함)
+        //   아래줄(39~77): 화면 아래쪽에 아랫부채꼴 (호의 끝이 아래로 향함)
+        const half = Math.ceil(total / 2);  // 39장
+        const archSpanMobile = 110;          // 110도로 더 축소 (좁은 화면 fit)
+        const startAng = -archSpanMobile / 2;
+        const endAng   =  archSpanMobile / 2;
+        const stepAng  = (endAng - startAng) / (half - 1);
 
         for (let i = 0; i < total; i++) {
             const cardEl = document.createElement('div');
             cardEl.className = 'deck-card shuffling deck-card-mobile';
-            
-            const isUpperRow = i < half; // 0~38장은 윗줄, 39~77장은 아랫줄
+            cardEl.setAttribute('data-deck-pos', i);
+            // 0~38: 윗줄, 39~77: 아래줄
+            const isUpperRow = i < half;
             const idxInRow   = isUpperRow ? i : (i - half);
             const angle      = startAng + stepAng * idxInRow;
 
             if (isUpperRow) {
-                // 윗줄: 더 높게 배치, 회전 반경 작게
-                cardEl.style.top = '20px';
-                cardEl.style.transformOrigin = '50% 180px';
-                cardEl.style.zIndex = '10';
+                // ━ 윗줄: 화면 위쪽에 위치, 호가 위로 볼록 (transform-origin은 카드 아래)
+                //   카드 위치: 화면 상단에서 시작
+                //   transform-origin: 카드 아래쪽 → 호가 위로 볼록한 부채꼴
+                cardEl.style.top            = '20px';     // 위쪽
+                cardEl.style.transformOrigin = '50% 200px'; // 카드 아래 200px 점이 호의 중심
+                cardEl.style.transform       = `rotate(${angle}deg)`;
+                cardEl.style.zIndex          = '5';
             } else {
-                // 아랫줄: 더 낮게 배치, 회전 반경 크게 하여 윗줄 아래로 펼침
-                cardEl.style.top = '110px'; 
-                cardEl.style.transformOrigin = '50% 240px';
-                cardEl.style.zIndex = '5';
+                // ━ 아래줄: 화면 아래쪽에 위치, 호가 아래로 볼록 (transform-origin은 카드 위)
+                //   카드 위치: 화면 중앙쯤에서 시작
+                //   transform-origin: 카드 위쪽(음수) → 호가 아래로 볼록한 부채꼴
+                cardEl.style.top            = '180px';    // 아래쪽 (윗줄과 분리)
+                cardEl.style.transformOrigin = '50% -120px'; // 카드 위 -120px = 호가 아래로
+                cardEl.style.transform       = `rotate(${angle}deg)`;
+                cardEl.style.zIndex          = '3';
             }
-
-            cardEl.style.transform = `rotate(${angle}deg)`;
-            cardEl.style.animationDelay = (i * 0.012) + 's';
+            cardEl.style.animationDelay  = (i * 0.012) + 's';
             cardEl.addEventListener('click', () => _onDeckCardClick(i, cardEl, angle));
             archEl.appendChild(cardEl);
         }
