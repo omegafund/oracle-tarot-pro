@@ -833,42 +833,80 @@
         }
         /* [V19.5] 모바일 — 768px 이하 정밀 레이아웃 */
 @media (max-width: 768px) {
+
     .deck-arch {
-        height: 50vh; /* 높이 소폭 확장 */
-        min-height: 320px;
-        max-width: 100%;
-        margin-top: 10px;
+
+        height: 42vh;
+
+        min-height: 280px;
+
+        max-width: 380px;
+
     }
+
     .deck-card-mobile {
-        width: 40px !important;
-        height: 62px !important;
-        margin-left: -20px !important;
-        /* 모바일에서는 기본 top을 제거하고 JS에서 개별 설정 */
-        top: 0 !important; 
+
+        width: 38px !important;
+
+        height: 58px !important;
+
+        margin-left: -19px !important;
+
     }
+
+    /* ✅ [신규 추가] 모바일 곡률 보정 */
+    .deck-card {
+
+        bottom: 10px;
+
+        transform-origin: 50% 110px;
+
+    }
+
 }
         .deck-card {
-            position: absolute;
-            left: 50%;
-            /* [V18.1 핵심] bottom 고정 → top 고정으로 변경 
-               카드를 컨테이너 상단 쪽에 배치하여 중앙~상단이 꽉 차 보이게 함 */
-            top: 40px;
-            width: 46px;
-            height: 70px;
-            margin-left: -23px;
-            border-radius: 5px;
-            background-image: url('https://omegafund.github.io/oracle-tarot-pro/images/cards/back.jpg');
-            background-size: cover;
-            background-position: center;
-            border: 1px solid rgba(212,175,55,0.55);
-            box-shadow: 0 2px 8px rgba(0,0,0,0.6), inset 0 0 4px rgba(212,175,55,0.25);
-            cursor: pointer;
-            /* [V18.1 핵심] transform-origin을 카드 아래쪽 260px 지점으로 설정
-               → 부채꼴 곡률이 완만해지면서 카드가 위로 올라가 중앙 공간을 채움 */
-            transform-origin: 50% 260px;
-            transition: transform 0.35s cubic-bezier(.2,.8,.4,1.4), box-shadow 0.25s, filter 0.25s;
-            will-change: transform;
-        }
+
+    position: absolute;
+
+    left: 50%;
+
+    /* ❌ 기존 top 제거 → 보고: 위치 기준 변경 */
+    /* top: 40px; */
+
+    /* ✅ 하단 기준으로 변경 (핵심) */
+    bottom: 20px;
+
+    width: 46px;
+
+    height: 70px;
+
+    margin-left: -23px;
+
+    border-radius: 5px;
+
+    background-image: url('https://omegafund.github.io/oracle-tarot-pro/images/cards/back.jpg');
+
+    background-size: cover;
+
+    background-position: center;
+
+    border: 1px solid rgba(212,175,55,0.55);
+
+    box-shadow: 0 2px 8px rgba(0,0,0,0.6), inset 0 0 4px rgba(212,175,55,0.25);
+
+    cursor: pointer;
+
+    /* ❌ 기존 260px → 보고: 모바일에서 과도 */
+    /* transform-origin: 50% 260px; */
+
+    /* ✅ 곡률 정상화 */
+    transform-origin: 50% 140px;
+
+    transition: transform 0.35s cubic-bezier(.2,.8,.4,1.4), box-shadow 0.25s, filter 0.25s;
+
+    will-change: transform;
+
+}
         .deck-card:hover, .deck-card:active {
             filter: brightness(1.4) drop-shadow(0 0 10px #50C878);
             z-index: 10;
@@ -1958,7 +1996,7 @@ async function renderStream(fetchPromise, cards) {
     const WISDOM_NOTES = [
         '<span class="wisdom-icon">✦</span> 동일한 질문을 반복해서 점치지 마소서. 첫 신탁이 가장 순수합니다.',
         '<span class="wisdom-icon">✦</span> 마음을 가라앉히고, 유저님의 내면의 목소리에 귀 기울이소서.',
-        '<span class="wisdom-icon">✦</span> 자주 치면 카드의 기운이 흐려집니다. 하루 하나의 질문이 가장 정확합니다.',
+        '<span class="wisdom-icon">✦</span> 자주 점치면 카드의 기운이 흐려집니다. 하루 하나의 질문이 가장 정확합니다.',
         '<span class="wisdom-icon">✦</span> 카드는 참고일 뿐, 결정은 유저님의 지혜로 하소서.',
         '<span class="wisdom-icon">✦</span> 급한 마음을 내려놓으면, 신탁의 진의가 드러납니다.'
     ];
