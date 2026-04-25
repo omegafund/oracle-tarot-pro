@@ -281,6 +281,21 @@ function detectRealEstateIntent(prompt) {
   return "hold";
 }
 
+// [V19.9] 주식 매도/매수 intent 감지 — 점사 일관성 보장
+function detectStockIntent(prompt) {
+  const txt = (prompt || "").toLowerCase();
+  // 주식 매도 단어: 팔/매도/익절/처분/청산/손절/털기/정리/빠질
+  const isSell = /팔릴|팔아|팔까|팔지|매각|처분|매도|익절|청산|손절|털어|털기|정리|빠질|빼야|빼는|차익실현|수익실현/.test(txt);
+  // 주식 매수 단어: 사/매수/진입/들어가/추매
+  const isBuy  = /살까|살지|살건|매수|진입|들어갈|들어가|추매|추가매수|추가 매수|사고|매입/.test(txt);
+  const isTiming = /언제|시기|타이밍|적기|시점/.test(txt);
+  if (isTiming && isSell) return "sell";
+  if (isTiming && isBuy)  return "buy";
+  if (isSell) return "sell";
+  if (isBuy)  return "buy";
+  return "buy";  // 기본은 매수 (주식 점사는 매수가 더 흔함)
+}
+
 // ══════════════════════════════════════════════════════════════════
 // 🧮 카드 점수 계산 (역방향 지원 + 궁합 탐지)
 // ══════════════════════════════════════════════════════════════════
@@ -314,7 +329,9 @@ function calcCardScores(cardNames, reversedCSV, queryType) {
 // ══════════════════════════════════════════════════════════════════
 // 📈 주식/코인 메트릭
 // ══════════════════════════════════════════════════════════════════
-function buildStockMetrics({ totalScore, riskScore, cleanCards, isLeverage, queryType, prompt }) {
+function buildStockMetrics({ totalScore, riskScore, cleanCards, isLeverage, queryType, prompt, intent }) {
+  // [V19.9] intent 기본값 매수 (대부분의 주식 점사는 매수)
+  const stockIntent = intent || "buy";
   let trend = "중립";
   if      (totalScore >= 6)  trend = "강한 상승";
   else if (totalScore >= 2)  trend = "상승";
@@ -357,19 +374,38 @@ function buildStockMetrics({ totalScore, riskScore, cleanCards, isLeverage, quer
     trendNarrative = "상승 후 피로 누적 — 조정 가능성";
   }
 
+  // [V19.9] action을 매도/매수 intent별로 완전 분기
   let action = "관망";
-  if      (trend === "강한 상승") action = "강매수";
-  else if (trend === "상승")      action = "분할 매수";
-  else if (trend === "하락")      action = "비중 축소";
-  else if (trend === "강한 하락") action = "즉시 회피";
+  if (stockIntent === "sell") {
+    // ━━ 매도 의도일 때 (보유 중 → 언제 팔까?) ━━
+    if      (trend === "강한 상승") action = "🚫 매도 보류 — 추세 정점까지 보유";
+    else if (trend === "상승")      action = "분할 익절 — 단계적 차익실현";
+    else if (trend === "하락")      action = "🟢 즉시 매도 — 손실 확대 방지";
+    else if (trend === "강한 하락") action = "🚨 전량 매도 — 즉시 청산";
+    else                             action = "조건부 매도 — 추세 확인 후 분할";
 
-  // [V2.4] 서사형 추세일 때 행동도 조건부 명확화
-  if (trendNarrative.includes("반등 시도")) {
-    action = "관망 후 조건부 분할 진입";
-  } else if (trendNarrative.includes("하락 가속")) {
-    action = "🚫 진입 금지 — 방어 집중";
-  } else if (trendNarrative.includes("모멘텀 약화")) {
-    action = "비중 축소 — 일부 차익 실현";
+    // 서사형 보정
+    if (trendNarrative.includes("반등 시도")) {
+      action = "매도 보류 — 반등 후 익절 권장";
+    } else if (trendNarrative.includes("하락 가속")) {
+      action = "🚨 즉시 매도 — 추가 하락 방어";
+    } else if (trendNarrative.includes("모멘텀 약화")) {
+      action = "분할 익절 — 일부 차익 실현";
+    }
+  } else {
+    // ━━ 매수 의도일 때 (기본값 — 언제 살까?) ━━
+    if      (trend === "강한 상승") action = "강매수";
+    else if (trend === "상승")      action = "분할 매수";
+    else if (trend === "하락")      action = "비중 축소";
+    else if (trend === "강한 하락") action = "즉시 회피";
+
+    if (trendNarrative.includes("반등 시도")) {
+      action = "관망 후 조건부 분할 진입";
+    } else if (trendNarrative.includes("하락 가속")) {
+      action = "🚫 진입 금지 — 방어 집중";
+    } else if (trendNarrative.includes("모멘텀 약화")) {
+      action = "비중 축소 — 일부 차익 실현";
+    }
   }
 
   let riskLevel = "보통";
@@ -377,11 +413,23 @@ function buildStockMetrics({ totalScore, riskScore, cleanCards, isLeverage, quer
   else if (riskScore >= 4) riskLevel = "높음";
   if (isLeverage)          riskLevel = "매우 높음";
 
-  let entryStrategy = "관망 및 대기", exitStrategy = "추세 확인 후 대응";
-  if (trend === "강한 상승") { entryStrategy = "초기 진입 + 눌림목 추가매수"; exitStrategy = "목표가 도달 시 분할 매도"; }
-  else if (trend === "상승") { entryStrategy = "분할 진입 (2~3회)"; exitStrategy = "단기 고점 일부 차익실현"; }
-  else if (trend === "하락") { entryStrategy = "신규 진입 금지"; exitStrategy = "반등 시 비중 축소"; }
-  else if (trend === "강한 하락") { entryStrategy = "절대 진입 금지"; exitStrategy = "즉시 손절 또는 전량 정리"; }
+  // [V19.9] 전략도 intent별 분기
+  let entryStrategy, exitStrategy;
+  if (stockIntent === "sell") {
+    // ━━ 매도 의도: entry = 익절 시점, exit = 손절 한도 ━━
+    if (trend === "강한 상승") { entryStrategy = "추세 정점 추적 — 보유 유지"; exitStrategy = "목표가 도달 시 분할 익절"; }
+    else if (trend === "상승") { entryStrategy = "분할 익절 (2~3회)"; exitStrategy = "단계적 차익실현"; }
+    else if (trend === "하락") { entryStrategy = "🟢 즉시 매도 시작"; exitStrategy = "전량 청산 권장"; }
+    else if (trend === "강한 하락") { entryStrategy = "🚨 전량 즉시 매도"; exitStrategy = "손실 확대 차단"; }
+    else { entryStrategy = "조건부 분할 매도"; exitStrategy = "추세 확인 후 결정"; }
+  } else {
+    // ━━ 매수 의도 (기본) ━━
+    entryStrategy = "관망 및 대기"; exitStrategy = "추세 확인 후 대응";
+    if (trend === "강한 상승") { entryStrategy = "초기 진입 + 눌림목 추가매수"; exitStrategy = "목표가 도달 시 분할 매도"; }
+    else if (trend === "상승") { entryStrategy = "분할 진입 (2~3회)"; exitStrategy = "단기 고점 일부 차익실현"; }
+    else if (trend === "하락") { entryStrategy = "신규 진입 금지"; exitStrategy = "반등 시 비중 축소"; }
+    else if (trend === "강한 하락") { entryStrategy = "절대 진입 금지"; exitStrategy = "즉시 손절 또는 전량 정리"; }
+  }
 
   // ══════════════════════════════════════════════════════════════════
   // 🎯 [V2.4] 완전 수비학 기반 타이밍 — 결정론적 (오늘 날짜 의존성 제거)
@@ -429,6 +477,28 @@ function buildStockMetrics({ totalScore, riskScore, cleanCards, isLeverage, quer
     // 5분 단위로 반올림 (더 현실적)
     buyMinute  = Math.floor(buyMinute / 5) * 5;
     sellMinute = Math.floor(sellMinute / 5) * 5;
+
+    // [V19.9] 매도 타이밍은 반드시 매수 타이밍 이후로 보장 (논리 정합성)
+    //   - 같은 요일이면 매도 시간 > 매수 시간으로
+    //   - 매도가 매수보다 앞이면 다음 요일로 자동 이동
+    const buyDayValue  = buyDayIdx  * 10000 + buyHour  * 100 + buyMinute;
+    const sellDayValue = sellDayIdx * 10000 + sellHour * 100 + sellMinute;
+    if (sellDayValue <= buyDayValue) {
+      // 매도가 매수와 같거나 앞 → 매도를 매수 다음으로 이동
+      if (buyHour < 14) {
+        // 같은 날 오후로 이동 가능 (매수 1~3시간 후)
+        sellDayIdx = buyDayIdx;
+        sellHour = Math.min(14, buyHour + 1 + (sellSeed % 3));
+        sellMinute = (sellSeed * 7) % 60;
+        sellMinute = Math.floor(sellMinute / 5) * 5;
+      } else {
+        // 매수가 오후 늦게 → 다음 요일로 이동
+        sellDayIdx = buyDayIdx + 1;
+        if (sellDayIdx > 5) sellDayIdx = 1;  // 토요일 넘어가면 월요일
+        sellHour = 9 + (sellSeed % 6);
+        sellMinute = Math.floor(((sellSeed * 13) % 60) / 5) * 5;
+      }
+    }
 
     const buyHourFmt  = buyHour < 12 ? `오전 ${buyHour}시` : (buyHour === 12 ? '오후 12시' : `오후 ${buyHour-12}시`);
     const sellHourFmt = sellHour < 12 ? `오전 ${sellHour}시` : (sellHour === 12 ? '오후 12시' : `오후 ${sellHour-12}시`);
@@ -562,17 +632,38 @@ function buildStockMetrics({ totalScore, riskScore, cleanCards, isLeverage, quer
     finalRisk = "보통 (방향 미확정)";
   }
 
-  // 포지션 전략 블록 (3줄 깔끔 포맷)
+  // [V19.9] 포지션 전략 블록 — 매도/매수 intent별 완전 분기
   const isNoEntry = finalAction.includes("금지") || finalAction.includes("회피");
-  const position = {
-    weight:    isNoEntry ? "0% (진입 금지 구간)" :
-               totalScore >= 6 ? "40~50% (강한 확신 구간)" :
-               totalScore >= 2 ? "20~30% (분할 진입)" : "10~20% (탐색 구간)",
-    stopLoss:  isNoEntry ? "진입 금지 — 해당 없음" : "-3~5% 이탈 시 즉시 손절",
-    target:    isNoEntry ? "설정 보류 (추세 확정 후 재설정)" :
-               totalScore >= 6 ? `+${Math.min(15, basePct+5)}~${upPct}% 구간` :
-               `+${basePct}~${Math.min(12, upPct)}% 구간`
-  };
+  let position;
+  if (stockIntent === "sell") {
+    // ━━ 매도 의도: 보유분의 익절·손절 기준 ━━
+    const isUrgent = finalAction.includes("즉시") || finalAction.includes("전량");
+    position = {
+      weight:    isUrgent       ? "🚨 전량 매도 (100%)" :
+                 totalScore <= -2 ? "70~100% 매도 (대부분 정리)" :
+                 totalScore >= 6  ? "10~20% 부분 익절 (코어 유지)" :
+                 totalScore >= 2  ? "30~50% 분할 익절 (단계적)" :
+                 "50~70% 매도 (방어 모드)",
+      stopLoss:  isUrgent       ? "더 떨어지기 전 즉시 청산" :
+                 totalScore >= 2 ? "보유분 -3% 추가 하락 시 즉시 매도" :
+                 "현 시점에서 -2% 이탈 시 즉시 청산",
+      target:    isUrgent       ? "손실 확대 차단 우선" :
+                 totalScore >= 6 ? `현재가 +${upPct}% 구간 도달 시 추가 익절` :
+                 totalScore >= 2 ? `현재가 +${basePct}~${Math.min(10, upPct-2)}% 구간 익절` :
+                 "반등 시점 잡으면 즉시 매도"
+    };
+  } else {
+    // ━━ 매수 의도 (기본): 신규 진입 비중·손절·목표 ━━
+    position = {
+      weight:    isNoEntry ? "0% (진입 금지 구간)" :
+                 totalScore >= 6 ? "40~50% (강한 확신 구간)" :
+                 totalScore >= 2 ? "20~30% (분할 진입)" : "10~20% (탐색 구간)",
+      stopLoss:  isNoEntry ? "진입 금지 — 해당 없음" : "-3~5% 이탈 시 즉시 손절",
+      target:    isNoEntry ? "설정 보류 (추세 확정 후 재설정)" :
+                 totalScore >= 6 ? `+${Math.min(15, basePct+5)}~${upPct}% 구간` :
+                 `+${basePct}~${Math.min(12, upPct)}% 구간`
+    };
+  }
 
   // [V2.4] 타이밍 설명 — entry/exit 분리 출력
   //        isNoEntry 시에도 타이밍 자체는 남겨서 "회복 시점 기다림" 안내
@@ -1171,7 +1262,10 @@ export default {
           metrics = buildRealEstateMetrics({ totalScore, riskScore, cleanCards, intent, prompt });
         }
         else if (queryType === "stock" || queryType === "crypto") {
-          metrics = buildStockMetrics({ totalScore, riskScore, cleanCards, isLeverage, queryType, prompt });
+          // [V19.9] 주식/코인 매도/매수 intent 자동 감지
+          const stockIntent = detectStockIntent(prompt);
+          metrics = buildStockMetrics({ totalScore, riskScore, cleanCards, isLeverage, queryType, prompt, intent: stockIntent });
+          metrics.stockIntent = stockIntent;  // 클라이언트가 알 수 있도록
         }
         else if (queryType === "love") {
           metrics = buildLoveMetrics({ totalScore, cleanCards, prompt, loveSubType });
@@ -1202,8 +1296,17 @@ export default {
 
         let financeInject = "";
         if (isFinanceQuery) {
+          // [V19.9] 매도/매수 의도를 Gemini에게 명시 — 본문과 메트릭 일관성 보장
+          const intentLabel = metrics.stockIntent === "sell" ? "매도 (보유 자산 처분)" : "매수 (신규 진입)";
+          const intentDirective = metrics.stockIntent === "sell"
+            ? "유저님은 이미 해당 종목을 보유 중이며 매도 타이밍을 묻고 있다. 매도/익절/청산 관점으로만 서술하라. '매수하라'는 표현 절대 금지."
+            : "유저님은 신규 매수를 고려 중이다. 매수/진입/타이밍 관점으로 서술하라.";
+
           financeInject = `
 [INVEST ENGINE ACTIVE]
+유저 의도: ${intentLabel}
+${intentDirective}
+
 카드 점수 합계: ${totalScore}
 추세 판정: ${metrics.trend}
 권장 행동: ${metrics.action}
