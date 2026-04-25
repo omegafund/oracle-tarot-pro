@@ -831,6 +831,19 @@
             margin: 0 auto 6px auto;
             perspective: 1200px;
         }
+        /* [V19.5] 모바일 — 2줄 부채꼴 위해 높이/폭 최적화 */
+        @media (max-width: 480px) {
+            .deck-arch {
+                height: 42vh;
+                min-height: 280px;
+                max-width: 380px;
+            }
+            .deck-card-mobile {
+                width: 38px !important;
+                height: 58px !important;
+                margin-left: -19px !important;
+            }
+        }
         .deck-card {
             position: absolute;
             left: 50%;
@@ -2895,12 +2908,12 @@ function generateRealEstateOracle(cards, text, intent, isTiming) {
     const sellSeasons = ["3~4월 (봄 이사철 성수기)", "10~11월 (가을 이사철 성수기)", "6~7월 (여름 전 마지막 수요)"];
     const buySeasons  = ["2~3월 (봄 이사철 직전)", "9~10월 (가을 이사철 직전)", "12~1월 (비수기 저점)"];
 
-    // ── 카드 에너지 → 부동산 언어로 변환
-    const energyLabel = netScore >= 5 ? "강한 상승 에너지 — 매도 적기"
-                      : netScore >= 2 ? "긍정 에너지 — 매도 유리한 흐름"
-                      : netScore >= 0 ? "중립 에너지 — 시장 관망 구간"
-                      : netScore >= -3 ? "하락 압력 — 매수자 우위 시장"
-                      : "강한 하락 에너지 — 매도 불리, 시간 필요";
+    // ── 카드 에너지 → 부동산 언어로 변환 [V19.5 순화]
+    const energyLabel = netScore >= 5 ? "강한 상승장 — 매도 유리한 시점"
+                      : netScore >= 2 ? "완만한 상승장 — 매도 조건 양호"
+                      : netScore >= 0 ? "균형 구간 — 시장 관망 흐름"
+                      : netScore >= -3 ? "하락장 — 매도 시 호가 조정 필요"
+                      : "강한 하락장 — 매도 시간 필요";
 
     // ── 거래 소요 예상 (카드 에너지 기반)
     const weeksEst = netScore >= 4 ? "4~6주" : netScore >= 1 ? "6~10주" : "10~16주 이상";
@@ -4606,28 +4619,59 @@ function _shuffleDeckBySeed(seed) {
     return arr;
 }
 
-// ── 부채꼴 레이아웃 계산: 78장을 반원에 배치
+// ── 부채꼴 레이아웃 계산 [V19.5] PC: 1줄 / 모바일: 2줄 부채꼴 자동 분기
 function _layoutDeckArch() {
     const archEl = document.getElementById('deck-arch');
     if (!archEl) return;
     const total     = CARDS.length;          // 78
-    const archSpan  = 160;                    // 부채꼴 전체 각도(도) — 아치 폭
-    const startAng  = -archSpan / 2;          // -80도
-    const endAng    =  archSpan / 2;          //  +80도
-    const stepAng   = (endAng - startAng) / (total - 1);
-
     archEl.innerHTML = ''; // 초기화
 
-    for (let i = 0; i < total; i++) {
-        const cardEl = document.createElement('div');
-        cardEl.className = 'deck-card shuffling';
-        cardEl.setAttribute('data-deck-pos', i);
-        const angle = startAng + stepAng * i;
-        // transform-origin이 50% 380px이므로, rotate만으로도 부채꼴이 형성됨
-        cardEl.style.transform = `rotate(${angle}deg)`;
-        cardEl.style.animationDelay = (i * 0.012) + 's';
-        cardEl.addEventListener('click', () => _onDeckCardClick(i, cardEl, angle));
-        archEl.appendChild(cardEl);
+    // [V19.5] 화면 너비에 따라 1줄 vs 2줄 분기 (모바일 480px 이하면 2줄)
+    const isMobile = window.innerWidth <= 480;
+
+    if (!isMobile) {
+        // ━━━━━━━ PC 모드: 기존 1줄 부채꼴 ━━━━━━━
+        const archSpan  = 160;
+        const startAng  = -archSpan / 2;
+        const endAng    =  archSpan / 2;
+        const stepAng   = (endAng - startAng) / (total - 1);
+
+        for (let i = 0; i < total; i++) {
+            const cardEl = document.createElement('div');
+            cardEl.className = 'deck-card shuffling';
+            cardEl.setAttribute('data-deck-pos', i);
+            const angle = startAng + stepAng * i;
+            cardEl.style.transform = `rotate(${angle}deg)`;
+            cardEl.style.animationDelay = (i * 0.012) + 's';
+            cardEl.addEventListener('click', () => _onDeckCardClick(i, cardEl, angle));
+            archEl.appendChild(cardEl);
+        }
+    } else {
+        // ━━━━━━━ 모바일 모드: 2줄 부채꼴 (39장 × 2줄) ━━━━━━━
+        const half = Math.ceil(total / 2);  // 39장
+        const archSpanMobile = 130;          // 모바일은 좁아서 130도로 축소
+        const startAng = -archSpanMobile / 2;
+        const endAng   =  archSpanMobile / 2;
+        const stepAng  = (endAng - startAng) / (half - 1);
+
+        for (let i = 0; i < total; i++) {
+            const cardEl = document.createElement('div');
+            cardEl.className = 'deck-card shuffling deck-card-mobile';
+            cardEl.setAttribute('data-deck-pos', i);
+            // 0~38: 첫줄(아래쪽), 39~77: 둘째줄(위쪽 — origin 더 위쪽으로)
+            const isUpperRow = i >= half;
+            const idxInRow   = isUpperRow ? (i - half) : i;
+            const angle      = startAng + stepAng * idxInRow;
+            // 위쪽 줄은 transform-origin을 더 위로 설정 (170px) → 더 작은 반원
+            // 아래쪽 줄은 기본 (260px) → 더 큰 반원 (위에 겹침)
+            cardEl.style.transformOrigin = isUpperRow ? '50% 170px' : '50% 260px';
+            cardEl.style.transform       = `rotate(${angle}deg)`;
+            cardEl.style.animationDelay  = (i * 0.012) + 's';
+            // 위쪽 줄은 z-index 높여서 앞에 보이게
+            cardEl.style.zIndex          = isUpperRow ? '5' : '3';
+            cardEl.addEventListener('click', () => _onDeckCardClick(i, cardEl, angle));
+            archEl.appendChild(cardEl);
+        }
     }
 }
 
