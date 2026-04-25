@@ -831,13 +831,12 @@
             margin: 0 auto 6px auto;
             perspective: 1200px;
         }
-        /* [V19.8] 모바일 — 계단식 2줄 부채꼴 */
+        /* [V19.6] 모바일 — 768px 이하 (태블릿·큰 폰·폴더블 포함) */
         @media (max-width: 768px) {
             .deck-arch {
-                height: 65vh;
-                min-height: 510px;     /* 윗줄(180) + 간격 + 아래줄(280) + 여백 */
+                height: 50vh;             /* 두 부채꼴 분리 공간 확보 */
+                min-height: 360px;
                 max-width: 380px;
-                position: relative;
             }
             .deck-card-mobile {
                 width: 36px !important;
@@ -867,6 +866,17 @@
             transition: transform 0.35s cubic-bezier(.2,.8,.4,1.4), box-shadow 0.25s, filter 0.25s;
             will-change: transform;
         }
+        /* ▼▼▼ 여기부터 추가 ▼▼▼ */
+.deck-card.row-top {
+    top: 10px;
+    transform-origin: 50% 260px;
+}
+
+.deck-card.row-bottom {
+    top: 120px;
+    transform-origin: 50% 200px;
+}
+/* ▲▲▲ 여기까지 ▲▲▲ */
         .deck-card:hover, .deck-card:active {
             filter: brightness(1.4) drop-shadow(0 0 10px #50C878);
             z-index: 10;
@@ -4651,57 +4661,12 @@ function _layoutDeckArch() {
             archEl.appendChild(cardEl);
         }
     } else {
-        // ━━━━━━━ 모바일 모드: 계단식 2줄 부채꼴 [V19.8] ━━━━━━━
-        // 옵션 A: 윗줄 작은 부채꼴 + 아래줄 큰 부채꼴 (시각적 계단식 차별화)
-        // - 윗줄: 좁고 짧은 호 (각도 90도, 회전반경 140px)
-        // - 아래줄: 넓고 긴 호 (각도 140도, 회전반경 220px)
-        // - 두 부채꼴 모두 위로 볼록 (▽ 모양)
+        // ━━━━━━━ 모바일 모드: 2줄 부채꼴 (39장 × 2줄) ━━━━━━━
         const half = Math.ceil(total / 2);  // 39장
-
-        // 윗줄: 작은 부채꼴
-        const UPPER_SPAN   = 90;   // 90도 (좁음)
-        const UPPER_RADIUS = 140;  // 회전 반경 짧음
-        const upperStartAng = -UPPER_SPAN / 2;
-        const upperEndAng   =  UPPER_SPAN / 2;
-        const upperStepAng  = (upperEndAng - upperStartAng) / (half - 1);
-
-        // 아래줄: 큰 부채꼴
-        const LOWER_SPAN   = 140;  // 140도 (넓음)
-        const LOWER_RADIUS = 220;  // 회전 반경 김
-        const lowerStartAng = -LOWER_SPAN / 2;
-        const lowerEndAng   =  LOWER_SPAN / 2;
-        const lowerStepAng  = (lowerEndAng - lowerStartAng) / (half - 1);
-
-        // 두 줄 위치 분리
-        const UPPER_TOP = 10;   // 윗줄 시작 y
-        const LOWER_TOP = 200;  // 아래줄 시작 y (윗줄과 명확히 분리)
-
-        // 윗줄 컨테이너 (화면 상단)
-        const upperRow = document.createElement('div');
-        upperRow.className = 'deck-row deck-row-upper';
-        upperRow.style.cssText = `
-            position: absolute;
-            top: ${UPPER_TOP}px;
-            left: 0;
-            width: 100%;
-            height: 180px;
-            pointer-events: none;
-        `;
-
-        // 아래줄 컨테이너 (화면 하단)
-        const lowerRow = document.createElement('div');
-        lowerRow.className = 'deck-row deck-row-lower';
-        lowerRow.style.cssText = `
-            position: absolute;
-            top: ${LOWER_TOP}px;
-            left: 0;
-            width: 100%;
-            height: 280px;
-            pointer-events: none;
-        `;
-
-        archEl.appendChild(upperRow);
-        archEl.appendChild(lowerRow);
+        const archSpanMobile = 140;          
+        const startAng = -archSpanMobile / 2;
+        const endAng   =  archSpanMobile / 2;
+        const stepAng  = (endAng - startAng) / (half - 1);
 
         for (let i = 0; i < total; i++) {
             const cardEl = document.createElement('div');
@@ -4710,27 +4675,32 @@ function _layoutDeckArch() {
 
             const isUpperRow = i < half;
             const idxInRow   = isUpperRow ? i : (i - half);
-
-            // 부채꼴 크기 차별화
-            const angle = isUpperRow
-                ? upperStartAng + upperStepAng * idxInRow
-                : lowerStartAng + lowerStepAng * idxInRow;
-            const radius = isUpperRow ? UPPER_RADIUS : LOWER_RADIUS;
-
-            cardEl.style.position        = 'absolute';
-            cardEl.style.top             = '20px';
-            cardEl.style.left            = '50%';
-            cardEl.style.transformOrigin = `50% ${radius}px`;
-            cardEl.style.transform       = `rotate(${angle}deg)`;
-            cardEl.style.pointerEvents   = 'auto';
-            cardEl.style.animationDelay  = (i * 0.012) + 's';
-            cardEl.addEventListener('click', () => _onDeckCardClick(i, cardEl, angle));
+            const angle      = startAng + stepAng * idxInRow;
 
             if (isUpperRow) {
-                upperRow.appendChild(cardEl);
+                // 1. 위쪽 카드: 너비 15% 확대 (40px -> 46px) 및 중앙 정렬 보정
+                cardEl.style.width           = '46px';     
+                cardEl.style.marginLeft      = '-23px';    
+                cardEl.style.top             = '46px';     
+                cardEl.style.transformOrigin = '50% 200px'; 
+                cardEl.style.transform       = `rotate(${angle}deg)`;
+                cardEl.style.zIndex          = '5';
             } else {
-                lowerRow.appendChild(cardEl);
+                // 2. 아래쪽 카드: 위아래 간격 20% 축소 (140px -> 120px)
+                cardEl.style.top             = '120px';    
+                
+                // 3. 아래쪽 카드: 좌우 폭 18% 축소 (angle * 0.82)
+                const lowerAngle             = angle * 0.82; 
+
+                cardEl.style.transformOrigin = '50% -120px'; 
+                cardEl.style.transform       = `rotate(${lowerAngle}deg)`;
+                cardEl.style.zIndex          = '3';
             }
+            
+            cardEl.style.animationDelay  = (i * 0.012) + 's';
+            // 아래쪽 줄은 축소된 각도(lowerAngle)를 적용하여 클릭 로직 연결
+            cardEl.addEventListener('click', () => _onDeckCardClick(i, cardEl, isUpperRow ? angle : lowerAngle));
+            archEl.appendChild(cardEl);
         }
     }
 }
