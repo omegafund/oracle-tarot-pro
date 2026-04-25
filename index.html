@@ -831,11 +831,11 @@
             margin: 0 auto 6px auto;
             perspective: 1200px;
         }
-        /* [V19.8] 모바일 — 계단식 2줄 부채꼴 */
+        /* [V19.9] 모바일 — 계단식 2줄 부채꼴 (사장님 조정 반영) */
         @media (max-width: 768px) {
             .deck-arch {
-                height: 65vh;
-                min-height: 510px;     /* 윗줄(180) + 간격 + 아래줄(280) + 여백 */
+                height: 60vh;
+                min-height: 460px;     /* 윗줄(150) + 간격 축소 + 아래줄(280) + 여백 */
                 max-width: 380px;
                 position: relative;
             }
@@ -4651,32 +4651,32 @@ function _layoutDeckArch() {
             archEl.appendChild(cardEl);
         }
     } else {
-        // ━━━━━━━ 모바일 모드: 계단식 2줄 부채꼴 [V19.8] ━━━━━━━
-        // 옵션 A: 윗줄 작은 부채꼴 + 아래줄 큰 부채꼴 (시각적 계단식 차별화)
-        // - 윗줄: 좁고 짧은 호 (각도 90도, 회전반경 140px)
-        // - 아래줄: 넓고 긴 호 (각도 140도, 회전반경 220px)
-        // - 두 부채꼴 모두 위로 볼록 (▽ 모양)
+        // ━━━━━━━ 모바일 모드: 계단식 2줄 부채꼴 [V19.9] ━━━━━━━
+        // 사장님 조정 반영:
+        //   1. 윗줄 와이드 15% 확장: 90도 → 104도
+        //   2. 위·아래 간격 20% 축소: 200px → 160px
+        //   3. 아래줄 와이드 20% 축소: 140도 → 112도 (좌우 잘림 방지)
         const half = Math.ceil(total / 2);  // 39장
 
-        // 윗줄: 작은 부채꼴
-        const UPPER_SPAN   = 90;   // 90도 (좁음)
+        // 윗줄: 작은 부채꼴 (15% 확장)
+        const UPPER_SPAN   = 104;  // 90 → 104 (15% UP)
         const UPPER_RADIUS = 140;  // 회전 반경 짧음
         const upperStartAng = -UPPER_SPAN / 2;
         const upperEndAng   =  UPPER_SPAN / 2;
         const upperStepAng  = (upperEndAng - upperStartAng) / (half - 1);
 
-        // 아래줄: 큰 부채꼴
-        const LOWER_SPAN   = 140;  // 140도 (넓음)
+        // 아래줄: 큰 부채꼴 (20% 축소)
+        const LOWER_SPAN   = 112;  // 140 → 112 (20% DOWN)
         const LOWER_RADIUS = 220;  // 회전 반경 김
         const lowerStartAng = -LOWER_SPAN / 2;
         const lowerEndAng   =  LOWER_SPAN / 2;
         const lowerStepAng  = (lowerEndAng - lowerStartAng) / (half - 1);
 
-        // 두 줄 위치 분리
-        const UPPER_TOP = 10;   // 윗줄 시작 y
-        const LOWER_TOP = 200;  // 아래줄 시작 y (윗줄과 명확히 분리)
+        // 두 줄 위치 분리 (간격 20% 축소)
+        const UPPER_TOP = 10;
+        const LOWER_TOP = 160;  // 200 → 160 (20% DOWN — 위·아래 거리 축소)
 
-        // 윗줄 컨테이너 (화면 상단)
+        // 윗줄 컨테이너
         const upperRow = document.createElement('div');
         upperRow.className = 'deck-row deck-row-upper';
         upperRow.style.cssText = `
@@ -4684,11 +4684,11 @@ function _layoutDeckArch() {
             top: ${UPPER_TOP}px;
             left: 0;
             width: 100%;
-            height: 180px;
+            height: 150px;
             pointer-events: none;
         `;
 
-        // 아래줄 컨테이너 (화면 하단)
+        // 아래줄 컨테이너
         const lowerRow = document.createElement('div');
         lowerRow.className = 'deck-row deck-row-lower';
         lowerRow.style.cssText = `
@@ -4711,7 +4711,6 @@ function _layoutDeckArch() {
             const isUpperRow = i < half;
             const idxInRow   = isUpperRow ? i : (i - half);
 
-            // 부채꼴 크기 차별화
             const angle = isUpperRow
                 ? upperStartAng + upperStepAng * idxInRow
                 : lowerStartAng + lowerStepAng * idxInRow;
