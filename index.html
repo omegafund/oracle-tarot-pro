@@ -4740,7 +4740,7 @@ function _layoutDeckArch() {
 
         // 윗줄: 작은 부채꼴 (15% 확장)
         const UPPER_SPAN   = 104;  // 90 → 104 (15% UP)
-        const UPPER_RADIUS = 140;  // 회전 반경 짧음
+        const UPPER_RADIUS = 220;  // 회전 반경 짧음
         const upperStartAng = -UPPER_SPAN / 2;
         const upperEndAng   =  UPPER_SPAN / 2;
         const upperStepAng  = (upperEndAng - upperStartAng) / (half - 1);
@@ -4754,7 +4754,7 @@ function _layoutDeckArch() {
 
         // 두 줄 위치 분리 (간격 20% 축소)
         const UPPER_TOP = 10;
-        const LOWER_TOP = 160;  // 200 → 160 (20% DOWN — 위·아래 거리 축소)
+        const LOWER_TOP = 150;  // 200 → 150 (20% DOWN — 위·아래 거리 축소)
 
         // 윗줄 컨테이너
         const upperRow = document.createElement('div');
