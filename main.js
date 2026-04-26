@@ -422,6 +422,21 @@ function buildStockMetrics({ totalScore, riskScore, cleanCards, isLeverage, quer
       action = "신규 진입 자제 — 조정 대기";
       positionAdjust = "cautious";
     }
+
+    // [V20.0] 카드 시퀀스 패턴 — 역방향 카드나 현재 정체 시 자동 cautious
+    //   "단기 매수 (눌림 후 회복)" 케이스는 비중도 신중하게 조정
+    const _revCount = (revFlags || []).filter(x => x === true).length;
+    const _curScore = (CARD_SCORE[cleanCards[1]] ?? 0) * (revFlags[1] ? -1 : 1);
+    const _futScore = (CARD_SCORE[cleanCards[2]] ?? 0) * (revFlags[2] ? -1 : 1);
+    // 역방향 1+ 또는 현재 카드 정체(현재 ≤ 0) + 미래 회복(미래 > 0) 패턴
+    if (totalScore >= 2 && (_revCount >= 1 || (_curScore <= 0 && _futScore > 0))) {
+      if (!positionAdjust || positionAdjust === null) {
+        positionAdjust = "cautious";
+        if (!action.includes("신중") && !action.includes("재진입")) {
+          action = "신중한 분할 진입 — 단기 수익 실현 후 재진입 대기";
+        }
+      }
+    }
   }
 
   let riskLevel = "보통";
@@ -706,6 +721,165 @@ function buildStockMetrics({ totalScore, riskScore, cleanCards, isLeverage, quer
     ? `${finalTimingText}  (⚠️ 현재는 진입 금지 — 위 시점 전후 재평가)`
     : `${finalTimingText}`;
 
+  // ═══════════════════════════════════════════════════════════
+  // [V20.0] 5계층 구조 (Decision/Execution/Timing/Signal/Risk/Rule)
+  // ═══════════════════════════════════════════════════════════
+
+  // [V20.0-A] 카드 시퀀스 분석 — "직진 강매수"가 적절한지 검증
+  //   현재/미래 카드에 역방향이 있거나 부정 카드가 끼어있으면 "한 번 눌림 후 회복" 구조로 보정
+  const reversedCount = (revFlags || []).filter(x => x === true).length;
+  const currentCardScore = (CARD_SCORE[cleanCards[1]] ?? 0) * (revFlags[1] ? -1 : 1);
+  const futureCardScore  = (CARD_SCORE[cleanCards[2]] ?? 0) * (revFlags[2] ? -1 : 1);
+  const hasMidstreamObstacle = (currentCardScore <= 0 && futureCardScore > 0);   // 현재 정체 + 미래 회복 = 눌림 구조
+  const hasReversedSignal = reversedCount >= 1 && totalScore >= 2;               // 역방향 1+ 있는데 점수는 양수
+
+  // [V20.0-A] Decision 결정 — 카드 시퀀스 패턴별 분기
+  let decisionPosition, decisionStrategy;
+  if (stockIntent === "sell") {
+    if (totalScore >= 6 && !hasReversedSignal) {
+      decisionPosition = "보유 유지 (Hold & Watch)";
+      decisionStrategy = "추세 정점까지 보유 → 정점 신호 시 분할 익절";
+    } else if (totalScore >= 2) {
+      decisionPosition = "분할 익절 (Partial Exit)";
+      decisionStrategy = "단계적 차익실현 → 코어 일부 유지";
+    } else if (totalScore <= -3) {
+      decisionPosition = "전량 매도 (Full Exit)";
+      decisionStrategy = "추가 하락 차단 → 즉시 청산";
+    } else {
+      decisionPosition = "조건부 매도 (Conditional Exit)";
+      decisionStrategy = "반등 신호 시 매도 또는 일부 정리";
+    }
+  } else {
+    // 매수 의도 — 카드 패턴별 결정
+    if (totalScore >= 6 && !hasReversedSignal && !hasMidstreamObstacle) {
+      decisionPosition = "적극 매수 (Strong Buy)";
+      decisionStrategy = "초기 진입 + 눌림목 추가매수 → 목표가까지 보유";
+    } else if (hasMidstreamObstacle || hasReversedSignal) {
+      decisionPosition = "단기 매수 (Short-Term Buy)";
+      decisionStrategy = "초반 진입 → 빠른 수익 실현 → 재진입 대기";
+    } else if (totalScore >= 2) {
+      decisionPosition = "분할 매수 (Split Buy)";
+      decisionStrategy = "단계적 진입 → 추세 확인 후 비중 확대";
+    } else if (totalScore <= -3) {
+      decisionPosition = "관망 (Wait & See)";
+      decisionStrategy = "신규 진입 금지 → 추세 전환 신호 대기";
+    } else {
+      decisionPosition = "탐색 매수 (Exploratory)";
+      decisionStrategy = "소액 진입 → 신호 검증";
+    }
+  }
+
+  // [V20.0-B] 리스크 격상 — 카드 시퀀스 기반 자동 격상
+  let layerRiskLevel = finalRisk;
+  if (hasReversedSignal && layerRiskLevel === "보통") {
+    layerRiskLevel = "중~높음";  // 역방향 카드 있는데 양수면 격상
+  }
+  if (hasMidstreamObstacle && layerRiskLevel === "보통") {
+    layerRiskLevel = "중~높음";  // 현재 카드 약함 + 미래 회복 = 변동성 ↑
+  }
+  if (reversedCount >= 2) {
+    layerRiskLevel = layerRiskLevel === "매우 높음" ? "매우 높음" : "높음";
+  }
+
+  // [V20.0-C] 시간 구간 방식 — 점적 시간 → 구간 시간으로 변환
+  //   강한 상승: 진입 구간 多 / 관망 구간 적음
+  //   중립/약상승: 진입 구간 좁음 / 관망 구간 多
+  //   하락: 진입 구간 없음 / 관망 종일
+  let entryRanges = [];
+  let exitRanges = [];
+  let watchRanges = [];
+
+  if (queryType === "stock") {
+    // 국내 주식 기준 (장 시간 09:00~15:30)
+    if (totalScore >= 6 && !hasReversedSignal) {
+      // 강한 상승 — 진입 기회 많음
+      entryRanges = [
+        "오전 초반 안정 구간 (09:30 ~ 10:30)",
+        "오전 중반 (10:30 ~ 11:30)"
+      ];
+      exitRanges = [
+        "오전 후반 피크 (11:30 ~ 12:00)",
+        "오후 후반 청산 (14:30 ~ 15:20)"
+      ];
+      watchRanges = [
+        "장 초반 (09:00 ~ 09:30)",
+        "마감 동시호가 (15:20 ~ 15:30)"
+      ];
+    } else if (hasMidstreamObstacle || hasReversedSignal) {
+      // 눌림 후 회복 구조 — 신중한 진입
+      entryRanges = [
+        "오전 중반 안정 후 (10:30 ~ 11:30)"
+      ];
+      exitRanges = [
+        "오전 후반 피크 (11:30 ~ 12:00)",
+        "오후 마감 직전 (14:30 ~ 15:20)"
+      ];
+      watchRanges = [
+        "장 초반 (09:00 ~ 10:30)",
+        "점심 구간 (12:00 ~ 13:00)",
+        "마감 동시호가 (15:20 ~ 15:30)"
+      ];
+    } else if (totalScore >= 2) {
+      // 약 상승 — 좁은 진입
+      entryRanges = [
+        "오전 중반 (10:30 ~ 11:30)"
+      ];
+      exitRanges = [
+        "오후 후반 청산 (14:30 ~ 15:20)"
+      ];
+      watchRanges = [
+        "장 초반 (09:00 ~ 10:30)",
+        "오전 후반 (11:30 ~ 12:00)",
+        "점심 구간 (12:00 ~ 13:00)",
+        "마감 동시호가 (15:20 ~ 15:30)"
+      ];
+    } else {
+      // 하락 — 진입 금지
+      entryRanges = [];
+      exitRanges = stockIntent === "sell" ? [
+        "장 초반 갭 (09:00 ~ 10:00)",
+        "오후 마감 청산 (14:30 ~ 15:20)"
+      ] : [];
+      watchRanges = ["종일 관망 (추세 전환 신호 대기)"];
+    }
+  } else if (queryType === "crypto") {
+    // 코인 24/7
+    if (totalScore >= 6) {
+      entryRanges = ["새벽 안정기 (02:00 ~ 06:00)", "오전 활황기 (10:00 ~ 12:00)"];
+      exitRanges  = ["오후 피크 (14:00 ~ 16:00)", "심야 변동기 (22:00 ~ 24:00)"];
+      watchRanges = ["미국장 오픈 (22:30 ~ 23:30 KST)"];
+    } else {
+      entryRanges = ["새벽 안정기 (02:00 ~ 06:00)"];
+      exitRanges  = ["오후 피크 (14:00 ~ 16:00)"];
+      watchRanges = ["미국장 변동기 (22:00 ~ 02:00 KST)"];
+    }
+  }
+
+  // [V20.0-D] Critical Rules — 행동 지침 (3가지)
+  const criticalRules = stockIntent === "sell"
+    ? [
+        "수익 구간 진입 시 욕심 금지 — 분할 익절 원칙",
+        "반등만 보고 보유 유지 금지 — 추세 우선",
+        "단기 반등에 추가 매수 절대 금지"
+      ]
+    : [
+        "수익 구간 진입 시 욕심 금지 — 분할 매도 원칙",
+        "계획 없는 추가 매수 절대 금지",
+        "손절 기준 무조건 준수 — 감정적 보유 금지"
+      ];
+
+  // [V20.0-E] Risk 주의 포인트 (3가지)
+  const riskCautions = [];
+  if (hasReversedSignal) riskCautions.push("역방향 카드 신호 — 추세 지속성 약화 가능");
+  if (hasMidstreamObstacle) riskCautions.push("현재 카드 정체 신호 — 단기 변동성 ↑");
+  if (totalScore <= -3) riskCautions.push("하락 압력 — 급반등 후 재하락 패턴 주의");
+  if (reversedCount >= 2) riskCautions.push("다수 역방향 — 진입 시점 신중 판단 필요");
+  if (riskCautions.length < 3) {
+    riskCautions.push("고점 추격 금지");
+    riskCautions.push("수익 미실현 상태 장기 보유 금지");
+  }
+  const finalRiskCautions = riskCautions.slice(0, 3);
+
   return {
     queryType,
     trend: finalTrend,
@@ -713,14 +887,44 @@ function buildStockMetrics({ totalScore, riskScore, cleanCards, isLeverage, quer
     riskLevel: finalRisk,
     entryStrategy, exitStrategy,
     finalTimingText: timingDetail,
-    // [V2.4] 매수/매도 타이밍 개별 필드 (렌더러에서 분리 표시용)
     entryTimingText: entryTimingText || '-',
     exitTimingText:  exitTimingText  || '-',
     totalScore, riskScore,
     cardNarrative, flowSummary, riskChecks, scenarios, roadmap,
     position,
     finalOracle,
-    isLeverage
+    isLeverage,
+    // [V20.0] 5계층 데이터 (클라이언트 렌더러용)
+    layers: {
+      decision: {
+        position: decisionPosition,
+        strategy: decisionStrategy
+      },
+      execution: position,  // 기존 position 그대로 (weight/stopLoss/target)
+      timing: {
+        entryRanges,
+        exitRanges,
+        watchRanges
+      },
+      signal: {
+        past:    cardNarrative[0] || '-',
+        current: cardNarrative[1] || '-',
+        future:  cardNarrative[2] || '-',
+        summary: flowSummary,
+        verdict: hasMidstreamObstacle ? "초반 상승은 유효, 후반은 불안정" :
+                 hasReversedSignal ? "추세 유효, 단기 변동성 주의" :
+                 totalScore >= 6 ? "강한 상승 흐름 — 추세 추종 유효" :
+                 totalScore >= 2 ? "완만한 상승 — 분할 접근 유효" :
+                 totalScore <= -3 ? "하락 압력 — 진입 자제 권장" :
+                 "방향성 모색 구간 — 신호 확인 후 대응"
+      },
+      risk: {
+        level: layerRiskLevel,
+        volatility: hasReversedSignal || hasMidstreamObstacle ? "증가 가능성 있음" : (totalScore <= -3 ? "높음" : "보통"),
+        cautions: finalRiskCautions
+      },
+      rules: criticalRules
+    }
   };
 }
 
@@ -920,6 +1124,71 @@ function buildRealEstateMetrics({ totalScore, riskScore, cleanCards, intent, pro
   : netScore >= 0 ? `흐름은 방향성을 탐색하는 균형 구간입니다. ${keyCard}의 에너지는 서두른 취득이 후회로 이어질 수 있음을 알립니다. 자금 여력을 유지하며 명확한 신호를 기다리십시오.`
   : `에너지는 하락장 구간으로 매수자에게 유리한 환경입니다. ${worstCard}의 기운은 추가 조정 가능성을 시사하므로 급하게 취득하기보다 저점에서 급매를 선별하는 전략이 유효합니다. 금리·규제 변수도 함께 점검하십시오.`;
 
+  // ═══════════════════════════════════════════════════════════
+  // [V20.0] 부동산 5계층 구조
+  // ═══════════════════════════════════════════════════════════
+
+  // Decision Layer
+  let reDecisionPosition, reDecisionStrategy;
+  if (intent === "sell") {
+    if (netScore >= 5) {
+      reDecisionPosition = "적극 매도 (Strong Sell)";
+      reDecisionStrategy = "희망가 견고 유지 → 시즌 내 거래 성사";
+    } else if (netScore >= 0) {
+      reDecisionPosition = "조건부 매도 (Conditional Sell)";
+      reDecisionStrategy = "호가 2~3% 조정 여지 + 시즌 내 등록";
+    } else {
+      reDecisionPosition = "신중 매도 (Strategic Sell)";
+      reDecisionStrategy = "시세 대비 3~5% 할인 검토 또는 다음 성수기 대기";
+    }
+  } else {
+    if (netScore >= 5) {
+      reDecisionPosition = "적극 탐색 (Active Search)";
+      reDecisionStrategy = "정상 매물 검토 + 이사철 전 선점";
+    } else if (netScore >= 0) {
+      reDecisionPosition = "선별 탐색 (Selective)";
+      reDecisionStrategy = "급매·조건 우위 매물 위주 탐색";
+    } else {
+      reDecisionPosition = "관망 (Wait & See)";
+      reDecisionStrategy = "추가 조정 가능성 — 저점 급매만 선별";
+    }
+  }
+
+  // Timing Layer — 부동산 시간 구간
+  const reEntryRanges = intent === "sell"
+    ? ["오전 매물 접수 (09:30 ~ 11:30)", "오후 상담 집중 (14:00 ~ 16:00)"]
+    : ["오전 임장 골드타임 (09:30 ~ 11:30)", "오후 검토 (14:00 ~ 16:00)"];
+
+  const reExitRanges = intent === "sell"
+    ? ["계약 체결 적기 (오후 13:00 ~ 17:00 — 의사결정 시간)"]
+    : ["계약 협상 시간 (오후 14:00 ~ 17:00)"];
+
+  const reWatchRanges = ["점심 시간 (12:00 ~ 13:00)", "저녁 이후 (18:00 이후 — 불리)"];
+
+  // Risk 보정
+  let reLayerRiskLevel = riskLevel;
+  if (netScore <= -3 && reLayerRiskLevel === "보통") {
+    reLayerRiskLevel = "중~높음";
+  }
+
+  const reCriticalRules = intent === "sell"
+    ? [
+        "호가 집착 금지 — 시장 반응 우선 확인",
+        "급매 무리한 가격 인하 신중히 — 손해 최소화",
+        "공인중개사 의견 적극 수렴"
+      ]
+    : [
+        "충동 계약 절대 금지 — 시세 검증 필수",
+        "융자·세금 계산 사전 완료",
+        "현장 임장 최소 2회 이상 권장"
+      ];
+
+  const reCautions = [];
+  if (netScore <= -3) reCautions.push("하락 압력 — 추가 조정 가능성");
+  if (netScore <= 0) reCautions.push("거래 지연 — 인내 필요");
+  reCautions.push("실거래가·시세 변동 점검");
+  reCautions.push("규제·세금 변수 사전 확인");
+
   return {
     queryType: "realestate",
     intent,
@@ -937,7 +1206,42 @@ function buildRealEstateMetrics({ totalScore, riskScore, cleanCards, intent, pro
     dailyActionTiming,
     totalScore, riskScore,
     cardNarrative,
-    finalOracle: intent === "sell" ? interpretSell : interpretBuy
+    finalOracle: intent === "sell" ? interpretSell : interpretBuy,
+    // [V20.0] 5계층 데이터
+    layers: {
+      decision: {
+        position: reDecisionPosition,
+        strategy: reDecisionStrategy
+      },
+      execution: {
+        weight: intent === "sell" ? `호가 전략: ${priceStrategy}` : `매수 전략: ${strategy}`,
+        stopLoss: caution || "현 호가 유지 가능",
+        target: timing2 || "시즌 내 거래 가능"
+      },
+      timing: {
+        entryRanges: reEntryRanges,
+        exitRanges: reExitRanges,
+        watchRanges: reWatchRanges,
+        seasonal: timingLabel  // "매도 적기: 9~10월"
+      },
+      signal: {
+        past:    cardNarrative[0] || '-',
+        current: cardNarrative[1] || '-',
+        future:  cardNarrative[2] || '-',
+        summary: energyLabel,
+        verdict: netScore >= 5 ? "강한 상승 흐름 — 적극 행동 유효" :
+                 netScore >= 2 ? "완만한 상승 — 시즌 활용 권장" :
+                 netScore >= 0 ? "균형 흐름 — 신중 접근" :
+                 netScore <= -3 ? "하락 압력 — 행동 보류 검토" :
+                 "방향성 모색 — 시장 신호 확인"
+      },
+      risk: {
+        level: reLayerRiskLevel,
+        volatility: netScore <= -3 ? "높음" : netScore <= 0 ? "보통" : "낮음",
+        cautions: reCautions.slice(0, 3)
+      },
+      rules: reCriticalRules
+    }
   };
 }
 
@@ -1182,16 +1486,17 @@ export default {
         }
 
         // 1. orderId 파싱 → plan 추출 및 검증
-        const m = String(orderId).match(/^zeus_(day|month)_(\d+)_(.+)$/);
+        const m = String(orderId).match(/^zeus_(trial|day|month)_(\d+)_(.+)$/);
         if (!m) {
           return new Response(JSON.stringify({ success: false, error: "invalid orderId format" }), {
             headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" }
           });
         }
-        const plan = m[1]; // 'day' or 'month'
+        const plan = m[1]; // 'trial' | 'day' | 'month'
 
         // 2. 금액 검증 — 허용 금액 리스트 (클라이언트 조작 방지)
-        const PLAN_PRICES = { day: 3900, month: 9900 };
+        // [V20.0] 990원 체험권 추가
+        const PLAN_PRICES = { trial: 990, day: 3900, month: 9900 };
         const expectedAmount = PLAN_PRICES[plan];
         const paidAmount = Number(amount);
         if (paidAmount !== expectedAmount) {
@@ -1234,7 +1539,10 @@ export default {
         }
 
         // 4. 성공 → HMAC 토큰 발급
-        const durationMs = plan === 'month' ? (30 * 24 * 60 * 60 * 1000) : (24 * 60 * 60 * 1000);
+        // [V20.0] trial: 1시간 / day: 24시간 / month: 30일
+        const durationMs = plan === 'month' ? (30 * 24 * 60 * 60 * 1000)
+                         : plan === 'day'   ? (24 * 60 * 60 * 1000)
+                         :                    (60 * 60 * 1000);  // trial 1시간
         const expiry = Date.now() + durationMs;
         const userId = request.headers.get("cf-connecting-ip") || "toss-user";
         const payload = `paid|${userId}|${expiry}`;
@@ -1246,6 +1554,68 @@ export default {
           token: fullToken,
           plan,
           expiresAt: expiry
+        }), {
+          headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" }
+        });
+
+      } catch(e) {
+        return new Response(JSON.stringify({ success: false, error: e.message }), {
+          status: 500,
+          headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" }
+        });
+      }
+    }
+
+    // ══════════════════════════════════════════════════════════════
+    // [V20.0] /admin/grant — 사장님 수동 입금 처리용 권한 부여
+    // ══════════════════════════════════════════════════════════════
+    // 사용법:
+    //   POST /admin/grant
+    //   Headers: x-admin-pass: <ADMIN_PASSWORD>
+    //   Body: { plan: "month" | "day" | "trial", userId?: "string" }
+    //   Response: { success: true, token: "...", expiresAt: timestamp }
+    if (url.pathname === "/admin/grant" && request.method === "POST") {
+      try {
+        // 1. 관리자 비밀번호 검증
+        const adminPass = request.headers.get("x-admin-pass") || "";
+        const expectedPass = env.ADMIN_PASSWORD || "zeus2026admin";  // Cloudflare 환경변수로 변경 권장
+        if (adminPass !== expectedPass) {
+          return new Response(JSON.stringify({ success: false, error: "unauthorized" }), {
+            status: 401,
+            headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" }
+          });
+        }
+
+        // 2. 요청 파싱
+        const body = await request.json();
+        const { plan, userId } = body;
+        if (!["trial", "day", "month"].includes(plan)) {
+          return new Response(JSON.stringify({ success: false, error: "invalid plan (trial|day|month)" }), {
+            status: 400,
+            headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" }
+          });
+        }
+
+        // 3. 만료 시간 계산
+        const durationMs = plan === 'month' ? (30 * 24 * 60 * 60 * 1000)
+                         : plan === 'day'   ? (24 * 60 * 60 * 1000)
+                         :                    (60 * 60 * 1000);  // trial 1시간
+        const expiry = Date.now() + durationMs;
+
+        // 4. 토큰 발급
+        const finalUserId = userId || `admin-grant-${Date.now()}`;
+        const payload = `paid|${finalUserId}|${expiry}`;
+        const token = await signHmac(payload, env.TOKEN_SECRET || "default_secret");
+        const fullToken = `${payload}|${token}`;
+
+        return new Response(JSON.stringify({
+          success: true,
+          token: fullToken,
+          plan,
+          userId: finalUserId,
+          expiresAt: expiry,
+          expiresAtKST: new Date(expiry + 9 * 60 * 60 * 1000).toISOString().replace('T', ' ').slice(0, 19) + ' KST',
+          message: `${plan} 권한 부여 완료. 위 token을 유저에게 전달하세요.`
         }), {
           headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" }
         });
@@ -1355,11 +1725,17 @@ export default {
             return `- ${role}(${c}): "${m.flow}" — ${m.signal}`;
           }).join("\n");
 
+          // [V20.0] 종목명 추출 + 안전 언급 가이드
+          const subjectName = extractSubject(prompt, queryType);
+          const subjectDirective = subjectName
+            ? `\n🎯 [질문 대상 명시]\n유저님이 "${subjectName}"에 대해 질문하셨다.\n본문 시작 부분에 "${subjectName}에 대한 신탁은~" 또는 "${subjectName}에 관한 유저님의 진입 에너지는~" 같이 자연스럽게 인용하라.\n\n⚠️ 절대 금지 (법적 안전):\n- "${subjectName}이 좋은 회사다/오를 것이다" (가치 평가 금지)\n- "${subjectName}의 실적/매출/재무 분석" (회사 분석 금지)\n- "${subjectName} 강력 추천" (개별 종목 추천 금지)\n\n✅ 허용 (신뢰감 강화):\n- "${subjectName}에 대한 유저님의 카드 흐름은~" (질문 인용)\n- "${subjectName}을 향한 유저님의 진입 심리~" (심리 분석)\n- "${subjectName}에 대한 우주적 타이밍~" (영성적 표현)\n`
+            : '';
+
           financeInject = `
 [INVEST ENGINE ACTIVE]
 유저 의도: ${intentLabel}
 ${intentDirective}
-
+${subjectDirective}
 카드 점수 합계: ${totalScore}
 추세 판정: ${metrics.trend}
 권장 행동: ${metrics.action}
@@ -1418,8 +1794,15 @@ ${cardMeaningGuide}
             return `- ${role}(${c}): "${m.flow}" — ${m.signal}`;
           }).join("\n");
 
+          // [V20.0] 단지명/지역명 안전 언급
+          const reSubjectName = extractSubject(prompt, "realestate");
+          const reSubjectDirective = reSubjectName
+            ? `\n🎯 [질문 대상 명시]\n유저님이 "${reSubjectName}"에 대해 질문하셨다.\n본문 시작에 "${reSubjectName}에 대한 신탁은~" 같이 자연스럽게 인용하라.\n\n⚠️ 절대 금지:\n- "${reSubjectName} 시세 분석" (실거래가 분석 금지)\n- "${reSubjectName} 미래 가격" (가격 예측 금지)\n- "${reSubjectName} 추천/비추천" (추천 금지)\n\n✅ 허용:\n- "${reSubjectName}에 대한 유저님의 카드 흐름은~"\n- "${reSubjectName}을 향한 유저님의 매도/매수 심리~"\n`
+            : '';
+
           financeInject = `
 [REAL ESTATE ENGINE ACTIVE]
+${reSubjectDirective}
 카드 점수 합계: ${totalScore}
 시장 흐름: ${metrics.trend}
 행동: ${metrics.action}
@@ -1743,5 +2126,34 @@ function extractTicker(prompt) {
   if (p.includes("리플") || p.includes("xrp")) return "XRP-USD";
   const tickerMatch = prompt.match(/[A-Z]{2,5}/);
   if (tickerMatch) return tickerMatch[0];
+  return null;
+}
+
+// [V20.0] 질문에서 핵심 대상 추출 (종목명/단지명/사람명 등)
+//   주식: "삼성전자 매수 타이밍" → "삼성전자"
+//   부동산: "장미아파트 매도" → "장미아파트"
+//   목적: 본문에 안전하게 언급하여 신뢰감 강화 (개별 추천 아님)
+function extractSubject(prompt, queryType) {
+  if (!prompt) return null;
+  const p = prompt.replace(/[?,.\s]+$/g, '').trim();
+
+  // 주식/코인 — 종목명 추출 (한글 2자 이상 + 숫자 허용)
+  if (queryType === "stock" || queryType === "crypto") {
+    // 매수/매도/타이밍/언제 등 키워드 앞 단일 단어
+    const m = p.match(/^([가-힣A-Za-z0-9]{2,15})\s+(?:다음주|이번주|언제|매수|매도|살|팔|진입|타이밍|적기|좋은|시점|급등|급락|이번|지금)/);
+    if (m) return m[1].trim();
+    // fallback: 첫 단어
+    const first = p.split(/\s+/)[0];
+    if (first && first.length >= 2 && first.length <= 15) return first;
+  }
+
+  // 부동산 — 단지명/지역명 추출
+  if (queryType === "realestate") {
+    const m = p.match(/^([가-힣A-Za-z0-9\-]{2,20}(?:\s*(?:아파트|지구|단지|타워|마을|리|동|역))?)\s*(?:언제|매수|매도|살|팔|적기|타이밍|재개발|분양|입주|매각)/);
+    if (m) return m[1].trim();
+    const first = p.split(/\s+/).slice(0, 2).join(' ');
+    if (first && first.length >= 2 && first.length <= 25) return first;
+  }
+
   return null;
 }
