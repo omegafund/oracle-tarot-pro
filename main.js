@@ -1727,9 +1727,16 @@ export default {
 
           // [V20.0] 종목명 추출 + 안전 언급 가이드
           const subjectName = extractSubject(prompt, queryType);
-          const subjectDirective = subjectName
-            ? `\n🎯 [질문 대상 명시]\n유저님이 "${subjectName}"에 대해 질문하셨다.\n본문 시작 부분에 "${subjectName}에 대한 신탁은~" 또는 "${subjectName}에 관한 유저님의 진입 에너지는~" 같이 자연스럽게 인용하라.\n\n⚠️ 절대 금지 (법적 안전):\n- "${subjectName}이 좋은 회사다/오를 것이다" (가치 평가 금지)\n- "${subjectName}의 실적/매출/재무 분석" (회사 분석 금지)\n- "${subjectName} 강력 추천" (개별 종목 추천 금지)\n\n✅ 허용 (신뢰감 강화):\n- "${subjectName}에 대한 유저님의 카드 흐름은~" (질문 인용)\n- "${subjectName}을 향한 유저님의 진입 심리~" (심리 분석)\n- "${subjectName}에 대한 우주적 타이밍~" (영성적 표현)\n`
+
+          // [V20.2] 유저 지정 날짜 + 휴장일 검증
+          const userDate = extractUserDate(prompt);
+          const holidayDirective = (userDate && userDate.isStockHoliday)
+            ? `\n⚠️ [휴장일 인지 — 매우 중요]\n유저님이 지정하신 ${userDate.rawDate}은 "${userDate.holidayName}"으로 한국 주식시장 휴장일입니다.\n해당 일자에는 매수/매도가 불가능합니다.\n\n본문에 반드시 다음을 포함하라:\n1. ${userDate.rawDate}이 ${userDate.holidayName}로 휴장임을 알린다\n2. 직전 영업일(또는 직후 영업일) 진입을 권하라\n3. "휴장일 직전·직후 영업일이 카드 에너지 발현 시점"으로 해석하라\n\n예시 표현:\n  - "${userDate.rawDate}은 ${userDate.holidayName} 휴장일로 거래가 불가합니다. 카드 에너지는 직전 영업일에 집중됩니다."\n  - "지정하신 ${userDate.rawDate}은 시장이 잠드는 휴장일이므로, 우주적 타이밍은 그 전후로 분산됩니다."\n`
             : '';
+
+          const subjectDirective = subjectName
+            ? `\n🎯 [본문 시작 — 강제 규칙]\n"${subjectName}"이 본 점사의 대상이다. 본문의 첫 단어는 반드시 "${subjectName}"으로 시작하라.\n\n✅ 시작 예시 (이 패턴만 사용):\n  - "${subjectName}에 대한 유저님의 카드 흐름은~"\n  - "${subjectName}을(를) 향한 유저님의 진입 에너지는~"\n  - "${subjectName}의 ${metrics.stockIntent === 'sell' ? '매도' : '매수'} 흐름에 깃든 카드 에너지는~"\n  - "${subjectName} ${metrics.stockIntent === 'sell' ? '매도' : '매수'}에 관한 우주적 타이밍은~"\n\n❌ 절대 금지 — 다음 단어로 시작하면 안 됨:\n  - "내일", "오늘", "이번주", "다음주", "지금" 같은 시간 부사\n  - "5월 1일", "4/29" 같은 날짜\n  - "유저님의 진입 에너지" (종목명 없이 시작)\n  - "과거의~", "현재의~", "미래의~"\n\n⚠️ 절대 금지 (법적 안전):\n  - "${subjectName}이 좋은 회사다/오를 것이다" (가치 평가 금지)\n  - "${subjectName}의 실적/매출/재무 분석" (회사 분석 금지)\n  - "${subjectName} 강력 추천" (개별 종목 추천 금지)\n${holidayDirective}`
+            : holidayDirective;
 
           financeInject = `
 [INVEST ENGINE ACTIVE]
@@ -2131,28 +2138,136 @@ function extractTicker(prompt) {
 
 // [V20.0] 질문에서 핵심 대상 추출 (종목명/단지명/사람명 등)
 //   주식: "삼성전자 매수 타이밍" → "삼성전자"
+//        "내일 삼성전자 매수" → "삼성전자" (시간 부사 스킵)
 //   부동산: "장미아파트 매도" → "장미아파트"
 //   목적: 본문에 안전하게 언급하여 신뢰감 강화 (개별 추천 아님)
+// [V20.2] 유저가 질문에 명시한 날짜 추출 + 휴장일 검증
+//   "5/1 TSMC 매수" → { date: '5월 1일', isHoliday: true, holidayName: '근로자의 날 (주식 휴장)' }
+//   "12/25 비트코인" → { date: '12월 25일', isHoliday: true, holidayName: '크리스마스 (주식 휴장)' }
+//   "4/29 sk증권" → { date: '4월 29일', isHoliday: false }
+function extractUserDate(prompt) {
+  if (!prompt) return null;
+  const p = prompt.trim();
+
+  // 패턴 1: "4/29", "4-29", "4.29"
+  let m = p.match(/(\d{1,2})\s*[\/\-\.]\s*(\d{1,2})\s*(?:일)?/);
+  let month = null, day = null;
+  if (m) { month = parseInt(m[1]); day = parseInt(m[2]); }
+  // 패턴 2: "4월 29일", "4월29일"
+  if (!month) {
+    m = p.match(/(\d{1,2})\s*월\s*(\d{1,2})\s*일/);
+    if (m) { month = parseInt(m[1]); day = parseInt(m[2]); }
+  }
+
+  if (!month || !day || month < 1 || month > 12 || day < 1 || day > 31) return null;
+
+  // [V20.2] 한국 주식시장 휴장일 (고정 공휴일 + 알려진 임시 휴장)
+  //   주말은 별도 처리 (요일은 연도에 따라 다름)
+  const KOREA_STOCK_HOLIDAYS_FIXED = {
+    "1-1":   "신정",
+    "3-1":   "삼일절",
+    "5-1":   "근로자의 날 (노동절)",
+    "5-5":   "어린이날",
+    "6-6":   "현충일",
+    "8-15":  "광복절",
+    "10-3":  "개천절",
+    "10-9":  "한글날",
+    "12-25": "크리스마스",
+    "12-31": "연말 폐장일"
+  };
+  const key = `${month}-${day}`;
+  const holidayName = KOREA_STOCK_HOLIDAYS_FIXED[key] || null;
+
+  // 음력 공휴일은 연도별로 다름 → 일반 안내만
+  const isLunarHoliday = (month === 1 && day >= 28) || (month === 2 && day <= 12)  // 설 부근
+                       || (month === 9 && day >= 14) || (month === 10 && day <= 5);  // 추석 부근
+  const isWeekendish = false;  // 요일 검증은 클라이언트에서
+
+  return {
+    rawDate: `${month}월 ${day}일`,
+    month, day,
+    isStockHoliday: !!holidayName,
+    holidayName: holidayName || (isLunarHoliday ? "음력 공휴일 부근 (실제 날짜 확인 필요)" : null)
+  };
+}
+
 function extractSubject(prompt, queryType) {
   if (!prompt) return null;
-  const p = prompt.replace(/[?,.\s]+$/g, '').trim();
+  let p = prompt.replace(/[?,.\s]+$/g, '').trim();
 
-  // 주식/코인 — 종목명 추출 (한글 2자 이상 + 숫자 허용)
+  // [V20.2] 앞쪽 날짜·시간·공휴일 표현 제거 — 종목명이 첫 단어가 아닌 경우 처리
+  //   처리 케이스:
+  //     "내일 삼성전자 매수" → "삼성전자 매수"
+  //     "4/29 sk증권 매도" → "sk증권 매도"
+  //     "5/1 TSMC 매수" → "TSMC 매수"
+  //     "5/5 어린이날 카카오" → "카카오"
+  //     "5월 1일 노동절 SK하이닉스" → "SK하이닉스"
+  const TIME_ADV_PATTERNS = [
+    // 한글 시간 부사
+    /^(내일|오늘|모레|글피|어제|이번주|이번 주|다음주|다음 주|이번달|이번 달|다음달|다음 달|지금|요즘|현재|올해|내년|작년|당장|곧|이번|이번에|차후)\s+/,
+    /^(언제|혹시|만약|아무리|정말|진짜|과연|혹|아마)\s+/,
+    /^(내일|오늘)\s*(쯤|정도|경)\s*/,
+    // 요일
+    /^(월요일|화요일|수요일|목요일|금요일|토요일|일요일)\s+/,
+    /^(다음|이번)\s+(월|화|수|목|금|토|일)요일\s+/,
+    // 숫자 날짜 — "4/29", "11/30", "4-29", "4.29"
+    /^\d{1,2}\s*[\/\-\.]\s*\d{1,2}(?:일)?\s+/,
+    // 한글 날짜 — "4월", "12월" + 선택적 "29일"
+    /^\d{1,2}\s*월(\s*\d{1,2}\s*일)?\s+/,
+    // 일자만 — "29일"
+    /^\d{1,2}\s*일\s+/,
+    // "X일 후/뒤", "X시간 후"
+    /^\d+\s*(일|시간|주|개월|달)\s*(후|뒤|이내|만에|에)\s+/,
+    // 시각 표현 — "오전 10시", "오후 3시"
+    /^(오전|오후|아침|저녁|새벽|밤)\s*\d*\s*시?\s*/,
+    // 분기 표현 — "1분기", "상반기"
+    /^(1|2|3|4)\s*분기\s+/,
+    /^(상|하)\s*반기\s+/,
+    // [V20.2] 공휴일·기념일 — 날짜 옆에 자주 따라옴
+    /^(설날?|구정|추석|한가위|어린이날|어버이날|스승의날|크리스마스|성탄절|광복절|개천절|한글날|현충일|제헌절|삼일절|3\.1절|부처님오신날|석가탄신일|노동절|근로자의날|만우절|발렌타인데이?|화이트데이?|할로윈|핼러윈)\s+/
+  ];
+  for (let i = 0; i < 5; i++) {  // 최대 5번 반복 (날짜+공휴일+요일 중첩 대비)
+    let changed = false;
+    for (const pat of TIME_ADV_PATTERNS) {
+      const newP = p.replace(pat, '');
+      if (newP !== p && newP.length > 0) { p = newP; changed = true; break; }
+    }
+    if (!changed) break;
+  }
+
+  // [V20.2] 한국어 조사 제거 — "삼성전자를", "삼성전자가", "삼성전자에" 등
+  //   조사 패턴: 을/를/이/가/은/는/에/에서/로/으로/와/과/도/만/의
+  function stripJosa(word) {
+    if (!word) return word;
+    return word.replace(/(을|를|이|가|은|는|에서|에게|에|로|으로|와|과|도|만|의|랑|이랑|와의|과의)$/, '');
+  }
+
+  // 주식/코인 — 종목명 추출
   if (queryType === "stock" || queryType === "crypto") {
-    // 매수/매도/타이밍/언제 등 키워드 앞 단일 단어
-    const m = p.match(/^([가-힣A-Za-z0-9]{2,15})\s+(?:다음주|이번주|언제|매수|매도|살|팔|진입|타이밍|적기|좋은|시점|급등|급락|이번|지금)/);
-    if (m) return m[1].trim();
+    // [V20.2] 키워드 앞 단일 단어 — 조사도 같이 캡처되므로 후처리
+    //   허용: SK증권, K-삼성, 삼성전자, BTC 등
+    const m = p.match(/^([가-힣A-Za-z][가-힣A-Za-z0-9\-]{1,15})\s+(?:다음주|이번주|언제|매수|매도|매입|살|팔|진입|타이밍|적기|좋은|시점|급등|급락|이번|지금|단타|장투|들어갈|뽑|어떻|어떤|어떨|거래|재개|익절|손절|청산|정리|살려|적당)/);
+    if (m) return stripJosa(m[1].trim());
     // fallback: 첫 단어
     const first = p.split(/\s+/)[0];
-    if (first && first.length >= 2 && first.length <= 15) return first;
+    if (first && first.length >= 2 && first.length <= 15) {
+      // [V20.1] 첫 단어가 시간 부사·날짜·요일이면 다음 단어 시도
+      if (/^(내일|오늘|모레|어제|이번주|다음주|이번달|지금|요즘|현재|올해|내년|작년)$/.test(first)
+          || /^\d/.test(first)
+          || /^(월|화|수|목|금|토|일)요일$/.test(first)) {
+        const second = p.split(/\s+/)[1];
+        if (second && second.length >= 2 && second.length <= 15) return stripJosa(second);
+      }
+      return stripJosa(first);
+    }
   }
 
   // 부동산 — 단지명/지역명 추출
   if (queryType === "realestate") {
     const m = p.match(/^([가-힣A-Za-z0-9\-]{2,20}(?:\s*(?:아파트|지구|단지|타워|마을|리|동|역))?)\s*(?:언제|매수|매도|살|팔|적기|타이밍|재개발|분양|입주|매각)/);
-    if (m) return m[1].trim();
+    if (m) return stripJosa(m[1].trim());
     const first = p.split(/\s+/).slice(0, 2).join(' ');
-    if (first && first.length >= 2 && first.length <= 25) return first;
+    if (first && first.length >= 2 && first.length <= 25) return stripJosa(first);
   }
 
   return null;
