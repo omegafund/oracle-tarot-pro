@@ -690,16 +690,44 @@
             display: flex;
             align-items: center;
             justify-content: center;
+            /* [V20.1] 오버레이 자체 스크롤 — 모달이 화면보다 길어도 스크롤 가능 */
+            overflow-y: auto;
+            padding: 20px 0;
         }
         .pay-modal {
             background: linear-gradient(135deg, #1a1a2e, #16213e);
             border: 2px solid var(--gold);
             border-radius: 16px;
-            padding: 30px 24px;
-            max-width: 340px;
+            padding: 30px 24px 80px 24px; /* 하단 padding 확장 — sticky 닫기 버튼 자리 */
+            max-width: 360px;
             width: 90%;
             text-align: center;
             position: relative;
+            /* [V20.1] 모달 최대 높이 제한 + 내부 스크롤 */
+            max-height: calc(100vh - 40px);
+            overflow-y: auto;
+            margin: auto;
+        }
+        /* [V20.1] 닫기 버튼은 모달 하단에 sticky로 항상 보이게 */
+        .pay-modal .pay-close-btn {
+            position: sticky;
+            bottom: -10px;
+            margin-top: 16px;
+            background: linear-gradient(135deg, rgba(0,0,0,0.95), rgba(20,20,30,0.95));
+            backdrop-filter: blur(8px);
+            border: 2px solid rgba(255,255,255,0.3);
+            color: #fff;
+            padding: 12px 24px;
+            border-radius: 30px;
+            font-weight: 800;
+            font-size: 0.9rem;
+            cursor: pointer;
+            width: 100%;
+            box-shadow: 0 -2px 10px rgba(0,0,0,0.5);
+        }
+        .pay-modal .pay-close-btn:hover {
+            background: rgba(255,82,82,0.3);
+            border-color: #ff5252;
         }
         .pay-modal h3 {
             color: var(--gold);
@@ -4778,11 +4806,19 @@ function showPayModal() {
 
     // 기존 계좌이체 섹션 (폴백 — 접힌 상태)
     const amountFmt = cfg.amount.toLocaleString('ko-KR');
+    // [V20.1] 토스 송금 버튼 — 클릭 시 자동 confirmPayment 트리거 (백그라운드)
     const tossBtn = cfg.tossId ? `
         <a href="supertoss://send?amount=${cfg.amount}&bank=${encodeURIComponent(cfg.bank)}&accountNo=${cfg.account.replace(/-/g,'')}&origin=qr"
+           onclick="setTimeout(() => { document.getElementById('autoConfirmHint').style.display = 'block'; }, 1000);"
            style="display:block;margin-bottom:10px;padding:11px 0;background:#0064ff;color:#fff;border-radius:50px;font-weight:900;font-size:0.88rem;text-align:center;text-decoration:none;letter-spacing:0.03em;">
             💙 토스로 바로 송금하기
-        </a>` : '';
+        </a>
+        <div id="autoConfirmHint" style="display:none; margin-top:8px; padding:10px;
+                background:rgba(46,204,113,0.08); border:1px solid rgba(46,204,113,0.4);
+                border-radius:6px; font-size:0.78rem; color:rgba(255,255,255,0.92); text-align:center; line-height:1.5;">
+            ✦ 토스 앱에서 송금 완료 후<br>
+            아래 <b style="color:#7ad188;">[입금 완료 — 전체 보기]</b> 버튼을 눌러주세요
+        </div>` : '';
 
     const overlay = document.createElement('div');
     overlay.className = 'pay-modal-overlay';
@@ -5144,23 +5180,23 @@ function _layoutDeckArch() {
         //   3. 아래줄 와이드 20% 축소: 140도 → 112도 (좌우 잘림 방지)
         const half = Math.ceil(total / 2);  // 39장
 
-        // 윗줄: 작은 부채꼴 (15% 확장)
-        const UPPER_SPAN   = 104;  // 90 → 104 (15% UP)
-        const UPPER_RADIUS = 140;  // 회전 반경 짧음
+        // [V20.1] 윗줄: 와이드 +20%, 곡률 -15% (평평하게 = 반지름 +15%)
+        const UPPER_SPAN   = 125;  // 104 → 125 (20% UP)
+        const UPPER_RADIUS = 161;  // 140 → 161 (15% UP — 더 평평)
         const upperStartAng = -UPPER_SPAN / 2;
         const upperEndAng   =  UPPER_SPAN / 2;
         const upperStepAng  = (upperEndAng - upperStartAng) / (half - 1);
 
-        // 아래줄: 큰 부채꼴 (20% 축소)
-        const LOWER_SPAN   = 112;  // 140 → 112 (20% DOWN)
-        const LOWER_RADIUS = 220;  // 회전 반경 김
+        // [V20.1] 아래줄: 와이드 -20% (좌우 10%씩 축소)
+        const LOWER_SPAN   = 90;   // 112 → 90 (20% DOWN — 좌우 -10%씩)
+        const LOWER_RADIUS = 220;  // 회전 반경 김 (그대로)
         const lowerStartAng = -LOWER_SPAN / 2;
         const lowerEndAng   =  LOWER_SPAN / 2;
         const lowerStepAng  = (lowerEndAng - lowerStartAng) / (half - 1);
 
-        // 두 줄 위치 분리 (간격 20% 축소)
+        // [V20.1] 두 줄 위치 — 위·아래 간격 -15%
         const UPPER_TOP = 10;
-        const LOWER_TOP = 160;  // 200 → 160 (20% DOWN — 위·아래 거리 축소)
+        const LOWER_TOP = 136;  // 160 → 136 (15% DOWN — 위·아래 거리 더 축소)
 
         // 윗줄 컨테이너
         const upperRow = document.createElement('div');
