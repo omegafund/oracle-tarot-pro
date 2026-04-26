@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>제우스 오라클 — 관리자 페이지</title>https://github.com/omegafund/oracle-tarot-pro
+<style>
+:root { --gold:#D4AF37; --bg:#0a0a0a; }
+* { box-sizing: border-box; margin:0; padding:0; }
+body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+       background: linear-gradient(180deg, #0a0a0a 0%, #1a0e0e 100%);
+       color: #fff; min-height: 100vh; padding: 20px; }
+.container { max-width: 480px; margin: 0 auto; }
+h1 { color: var(--gold); font-size: 1.4rem; text-align: center; margin: 20px 0; letter-spacing: 0.05em; }
+.subtitle { color: rgba(255,255,255,0.6); text-align:center; margin-bottom: 24px; font-size: 0.85rem; }
+.card { background: rgba(255,255,255,0.04);
+        border: 1px solid rgba(212,175,55,0.3);
+        border-radius: 12px; padding: 20px; margin-bottom: 16px; }
+.card h2 { color: var(--gold); font-size: 1rem; margin-bottom: 14px; letter-spacing: 0.06em; }
+label { display: block; font-size: 0.85rem; color: rgba(255,255,255,0.85);
+        margin-bottom: 6px; font-weight: 600; }
+input, select { width: 100%; padding: 12px 14px;
+                background: rgba(0,0,0,0.4);
+                border: 1px solid rgba(212,175,55,0.4);
+                border-radius: 8px; color: #fff; font-size: 0.95rem;
+                margin-bottom: 14px; font-family: inherit; }
+input:focus, select:focus { outline: none; border-color: var(--gold); }
+button { width: 100%; padding: 14px; background: linear-gradient(135deg, #D4AF37, #B89730);
+         color: #000; border: none; border-radius: 8px;
+         font-size: 1rem; font-weight: 800; cursor: pointer;
+         letter-spacing: 0.05em; }
+button:hover { opacity: 0.92; }
+button:disabled { opacity: 0.5; cursor: not-allowed; }
+.result { margin-top: 16px; padding: 14px;
+          background: rgba(46,204,113,0.10);
+          border: 1px solid rgba(46,204,113,0.4);
+          border-radius: 8px; font-size: 0.85rem;
+          line-height: 1.7; word-break: break-all; }
+.result.error { background: rgba(255,82,82,0.10);
+                border-color: rgba(255,82,82,0.4); }
+.result code { background: rgba(0,0,0,0.5); padding: 4px 8px;
+               border-radius: 4px; font-size: 0.8rem; }
+.copy-btn { width: auto; padding: 8px 14px; font-size: 0.8rem;
+            background: rgba(212,175,55,0.2); color: var(--gold);
+            border: 1px solid rgba(212,175,55,0.4); margin-top: 10px; }
+.row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.guide { padding: 12px; background: rgba(52,152,219,0.08);
+         border-left: 3px solid #3498db; border-radius: 6px;
+         font-size: 0.78rem; line-height: 1.7; color: rgba(255,255,255,0.85); margin-bottom: 16px; }
+.tag { display: inline-block; padding: 2px 8px; background: rgba(212,175,55,0.2);
+       border-radius: 4px; font-size: 0.72rem; color: var(--gold); }
+</style>
+</head>
+<body>
+<div class="container">
+
+<h1>✦ 제우스 오라클 관리자 ✦</h1>
+<div class="subtitle">입금 확인 후 유저에게 권한 토큰 발급</div>
+
+<!-- 비밀번호 입력 -->
+<div class="card" id="loginCard">
+    <h2>🔒 관리자 로그인</h2>
+    <label>관리자 비밀번호</label>
+    <input type="password" id="adminPass" placeholder="관리자 비밀번호 입력" />
+    <button onclick="login()">로그인</button>
+</div>
+
+<!-- 권한 부여 (로그인 후) -->
+<div class="card" id="grantCard" style="display:none;">
+    <h2>📋 권한 부여</h2>
+    <div class="guide">
+        <b>사용 절차:</b><br>
+        1. 카카오뱅크/토스 입금 확인<br>
+        2. 입금 금액에 맞는 플랜 선택<br>
+        3. [권한 부여] 클릭 → 토큰 생성<br>
+        4. 토큰을 유저에게 전달 (카톡/문자)
+    </div>
+
+    <label>요금제 (입금 금액 확인)</label>
+    <select id="planSelect">
+        <option value="trial">🧪 990원 — 체험 (1시간)</option>
+        <option value="day" selected>🔥 3,900원 — 1일 이용권</option>
+        <option value="month">💎 9,900원 — 30일 이용권</option>
+    </select>
+
+    <label>유저 식별 정보 (선택)</label>
+    <input type="text" id="userIdInput" placeholder="예: 010-1234-5678 / 카카오ID / 입금자명" />
+
+    <button onclick="grantAccess()">🎫 권한 부여 (토큰 발급)</button>
+
+    <div id="result"></div>
+</div>
+
+<!-- 토큰 검증 도구 -->
+<div class="card" id="verifyCard" style="display:none;">
+    <h2>🔍 토큰 검증 (테스트용)</h2>
+    <label>발급된 토큰</label>
+    <input type="text" id="tokenInput" placeholder="zeus_xxx... 토큰 입력" />
+    <button onclick="verifyToken()" style="background:rgba(52,152,219,0.5); color:#fff;">검증하기</button>
+    <div id="verifyResult"></div>
+</div>
+
+</div>
+
+<script>
+const API_BASE = 'https://tarot-api.omegafund01.workers.dev';
+let _adminPass = '';
+
+function login() {
+    const pass = document.getElementById('adminPass').value.trim();
+    if (!pass) { alert('비밀번호를 입력하세요.'); return; }
+    _adminPass = pass;
+    document.getElementById('loginCard').style.display = 'none';
+    document.getElementById('grantCard').style.display = 'block';
+    document.getElementById('verifyCard').style.display = 'block';
+}
+
+async function grantAccess() {
+    const plan = document.getElementById('planSelect').value;
+    const userId = document.getElementById('userIdInput').value.trim() || null;
+    const resultDiv = document.getElementById('result');
+    resultDiv.innerHTML = '<div class="result">⏳ 권한 발급 중...</div>';
+
+    try {
+        const res = await fetch(API_BASE + '/admin/grant', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'x-admin-pass': _adminPass
+            },
+            body: JSON.stringify({ plan, userId })
+        });
+
+        const data = await res.json();
+        if (!data.success) throw new Error(data.error || '권한 발급 실패');
+
+        const planLabel = plan === 'month' ? '30일' : plan === 'day' ? '1일' : '1시간';
+        resultDiv.innerHTML = `
+            <div class="result">
+                <div style="font-size:0.95rem; font-weight:800; color:#7ad188; margin-bottom:10px;">
+                    ✅ 권한 발급 완료 (${planLabel})
+                </div>
+                <div><b>유저ID:</b> ${data.userId}</div>
+                <div><b>플랜:</b> <span class="tag">${data.plan}</span></div>
+                <div><b>만료:</b> ${data.expiresAtKST}</div>
+                <div style="margin-top:10px; padding:10px; background:rgba(0,0,0,0.5); border-radius:6px; font-size:0.78rem;">
+                    <div style="color:#FFD970; font-weight:800; margin-bottom:6px;">📋 유저에게 전달할 토큰:</div>
+                    <code id="tokenText" style="display:block; word-break:break-all; user-select:all;">${data.token}</code>
+                </div>
+                <button class="copy-btn" onclick="copyToken()">📋 토큰 복사</button>
+                <div style="margin-top:12px; padding:10px; background:rgba(255,217,112,0.06); border-left:3px solid #FFD970; border-radius:4px; font-size:0.78rem; line-height:1.7;">
+                    <b>💌 유저에게 전달할 메시지 예시:</b><br>
+                    "입금 확인 완료되었습니다. 아래 토큰을 복사한 후 제우스 오라클 앱에서 [토큰 입력] → 붙여넣기 하시면 PRO 점사가 활성화됩니다.<br>
+                    토큰: ${data.token.slice(0, 30)}..."
+                </div>
+            </div>
+        `;
+        window._lastToken = data.token;
+    } catch (e) {
+        resultDiv.innerHTML = `<div class="result error">❌ 오류: ${e.message}</div>`;
+    }
+}
+
+function copyToken() {
+    const text = window._lastToken || '';
+    if (!text) return;
+    navigator.clipboard.writeText(text).then(() => {
+        alert('토큰이 클립보드에 복사되었습니다.\n\n유저에게 카톡/문자로 전달하세요.');
+    }).catch(() => {
+        // fallback
+        const ta = document.createElement('textarea');
+        ta.value = text; document.body.appendChild(ta); ta.select();
+        document.execCommand('copy'); ta.remove();
+        alert('토큰 복사됨');
+    });
+}
+
+function verifyToken() {
+    const token = document.getElementById('tokenInput').value.trim();
+    const resultDiv = document.getElementById('verifyResult');
+    if (!token) { resultDiv.innerHTML = '<div class="result error">토큰을 입력하세요.</div>'; return; }
+    try {
+        const parts = token.split('|');
+        if (parts.length < 4) throw new Error('토큰 형식 오류');
+        const expiry = parseInt(parts[2]);
+        const isExpired = Date.now() > expiry;
+        const expiresKST = new Date(expiry + 9*60*60*1000).toISOString().replace('T', ' ').slice(0, 19);
+        const remainingMs = expiry - Date.now();
+        const remainingHours = Math.floor(remainingMs / 3600000);
+        const remainingDays = Math.floor(remainingHours / 24);
+
+        resultDiv.innerHTML = `
+            <div class="result ${isExpired ? 'error' : ''}">
+                <div><b>상태:</b> ${isExpired ? '❌ 만료됨' : '✅ 유효'}</div>
+                <div><b>유저ID:</b> ${parts[1]}</div>
+                <div><b>만료시각 (KST):</b> ${expiresKST}</div>
+                ${!isExpired ? `<div><b>남은 시간:</b> ${remainingDays}일 ${remainingHours % 24}시간</div>` : ''}
+            </div>
+        `;
+    } catch (e) {
+        resultDiv.innerHTML = `<div class="result error">❌ 토큰 파싱 오류: ${e.message}</div>`;
+    }
+}
+
+// Enter 키로 로그인
+document.getElementById('adminPass').addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') login();
+});
+</script>
+</body>
+</html>
