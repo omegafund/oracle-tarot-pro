@@ -812,7 +812,9 @@
             font-weight: 900;
             letter-spacing: 0.15em;
             text-shadow: 0 0 12px rgba(212,175,55,0.5);
-            margin-bottom: 8px;
+            /* [V20.6] 텍스트 두 줄 묶음을 위로 끌어올림 — 사장님 설계 */
+            margin-top: -1.2em;
+            margin-bottom: 6px;
             text-align: center;
         }
         /* [V18.1] 부제목 밝기 상향 — 금색 계열 대신 밝은 흰색 */
@@ -821,8 +823,8 @@
             font-size: 0.88rem;
             font-weight: 500;
             letter-spacing: 0.05em;
-            /* [V20.5] 부제 다음 한 줄 공백 — 사장님 설계 */
-            margin-bottom: 22px;
+            /* [V20.6] 부제 → 도트 사이 공백 (위쪽 텍스트 그룹 묶음 유지) */
+            margin-bottom: 14px;
             text-align: center;
             text-shadow: 0 0 4px rgba(0,0,0,0.8);
         }
@@ -831,8 +833,9 @@
             color: #50C878;
             font-size: 0.95rem;
             font-weight: 700;
-            /* [V20.5] 동그라미 다음 한 줄 공백 — 사장님 설계 */
-            margin-bottom: 18px;
+            /* [V20.6] 도트 다음 한 줄 빈 공백 — 사장님 설계
+               부채꼴 위에 시각적 호흡 공간 확보 */
+            margin-bottom: 32px;
             min-height: 1.3em;
             text-align: center;
             text-shadow: 0 0 8px rgba(80,200,120,0.45);
