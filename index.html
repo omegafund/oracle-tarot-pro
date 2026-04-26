@@ -800,7 +800,8 @@
             flex-direction: column;
             align-items: center;
             justify-content: flex-start;
-            padding: 24px 10px 16px 10px;
+            /* [V20.5] 페이지 상단 20% 공백 — 사장님 설계 */
+            padding: 12vh 10px 16px 10px;
             box-sizing: border-box;
             overflow: hidden;
         }
@@ -811,7 +812,7 @@
             font-weight: 900;
             letter-spacing: 0.15em;
             text-shadow: 0 0 12px rgba(212,175,55,0.5);
-            margin-bottom: 6px;
+            margin-bottom: 8px;
             text-align: center;
         }
         /* [V18.1] 부제목 밝기 상향 — 금색 계열 대신 밝은 흰색 */
@@ -820,7 +821,8 @@
             font-size: 0.88rem;
             font-weight: 500;
             letter-spacing: 0.05em;
-            margin-bottom: 12px;
+            /* [V20.5] 부제 다음 한 줄 공백 — 사장님 설계 */
+            margin-bottom: 22px;
             text-align: center;
             text-shadow: 0 0 4px rgba(0,0,0,0.8);
         }
@@ -829,7 +831,8 @@
             color: #50C878;
             font-size: 0.95rem;
             font-weight: 700;
-            margin-bottom: 10px;
+            /* [V20.5] 동그라미 다음 한 줄 공백 — 사장님 설계 */
+            margin-bottom: 18px;
             min-height: 1.3em;
             text-align: center;
             text-shadow: 0 0 8px rgba(80,200,120,0.45);
@@ -859,11 +862,11 @@
             margin: 0 auto 6px auto;
             perspective: 1200px;
         }
-        /* [V19.9] 모바일 — 계단식 2줄 부채꼴 (사장님 조정 반영) */
+        /* [V20.5] 모바일 — 계단식 2줄 부채꼴 (컨테이너 높이 최적화) */
         @media (max-width: 768px) {
             .deck-arch {
-                height: 60vh;
-                min-height: 460px;     /* 윗줄(150) + 간격 축소 + 아래줄(280) + 여백 */
+                height: 50vh;            /* 60vh → 50vh (불필요한 빈공간 축소) */
+                min-height: 380px;       /* 460 → 380 (하단 공허감 80px 해소) */
                 max-width: 380px;
                 position: relative;
             }
@@ -3510,6 +3513,33 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
         .replace(/\n/g, '<br>');
 
     let cardTexts = [paragraphs[0] || "", paragraphs[1] || "", paragraphs[2] || ""];
+
+    // [V20.3] 본문 시작 자동 보정 — AI가 조사("의/는/은/를/이/가/에/와")로 시작하면 라벨로 보정
+    //   예: "의 내면과 시장의~" → "과거의 내면과 시장의~"
+    //       "은 자신감을 의미하며~" → "과거는 자신감을 의미하며~"
+    //   카드 이미지가 끼는 구조에서 문장이 끊어 보이는 UX 버그 방지
+    const labelPrefix = ['과거', '현재', '미래'];
+    cardTexts = cardTexts.map((txt, i) => {
+        if (!txt) return txt;
+        let t = txt.trim();
+        // 카드 이름이 본문 첫 줄에 단독으로 또 등장하면 제거
+        if (cards && cards[i]) {
+            const cardName = cards[i].name;
+            // "Queen of Wands\n의~" 같은 패턴 → "의~" 로 (다음 단계에서 보정됨)
+            const escapedName = cardName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            t = t.replace(new RegExp('^' + escapedName + '[\\s\\n]*', 'i'), '').trim();
+        }
+        // 조사·연결어로 시작하면 라벨 prefix 자동 추가
+        if (/^(의|은|는|이|가|을|를|에|에서|와|과|로|으로|도|만|랑|로서|로써|에게|마저|조차)\s/.test(t)) {
+            t = labelPrefix[i] + t;
+        }
+        // "의 ~" 형태 (조사 + 공백 + 단어)
+        else if (/^(의|는|은)\s*[가-힣]/.test(t)) {
+            t = labelPrefix[i] + t;
+        }
+        return t;
+    });
+
     let oracleContent = paragraphs.slice(3).join('\n\n').trim();
     const labels = ['과거', '현재', '미래'];
 
@@ -4465,65 +4495,91 @@ async function saveResultAsImage() {
 
         const dateStr = new Date().toISOString().slice(0,10).replace(/-/g,'');
         const fileName = `zeus-oracle-${dateStr}.png`;
-        const url = URL.createObjectURL(blob);
-
-        // [V20.0] 디바이스 감지 — 모바일은 새 창 띄워서 길게 눌러 저장, PC는 자동 다운로드
         const isMobile = /iPhone|iPad|iPod|Android|webOS|BlackBerry/i.test(navigator.userAgent);
+        const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
 
         if (isMobile) {
-            // ━━━ 모바일: 새 창에 이미지 표시 → 길게 눌러 사진 저장 ━━━
-            //    iOS Safari, Android Chrome 등에서 download attribute 미작동 문제 우회
-            const win = window.open('', '_blank');
-            if (!win) {
-                // 팝업 차단 시 fallback — 현재 창에서 이미지 표시
-                const overlay = document.createElement('div');
-                overlay.style.cssText = `
-                    position:fixed; inset:0; background:rgba(0,0,0,0.95); z-index:99999;
-                    display:flex; flex-direction:column; align-items:center; justify-content:center;
-                    padding:20px; overflow:auto;
-                `;
-                overlay.innerHTML = `
-                    <div style="color:#FFD970; font-size:1rem; font-weight:800; margin-bottom:12px; text-align:center;">
-                        ✦ 이미지를 길게 누르고 [사진/이미지 저장] 선택 ✦
-                    </div>
-                    <img src="${url}" style="max-width:100%; max-height:80vh; border:2px solid #D4AF37; border-radius:8px;" />
-                    <button onclick="this.parentElement.remove(); URL.revokeObjectURL('${url}');"
-                            style="margin-top:14px; padding:10px 20px; background:#D4AF37; color:#000;
-                                   border:none; border-radius:6px; font-weight:800; cursor:pointer;">
-                        ✕ 닫기
-                    </button>
-                `;
-                document.body.appendChild(overlay);
-            } else {
-                win.document.write(`<!DOCTYPE html>
-                    <html><head>
-                        <title>제우스 오라클 신탁 — 이미지 저장</title>
-                        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-                        <style>
-                            body { margin:0; padding:14px; background:#0a0a0a; color:#fff;
-                                   font-family: -apple-system, sans-serif; }
-                            .guide { color:#FFD970; font-size:1rem; font-weight:800;
-                                     text-align:center; margin-bottom:14px; padding:12px;
-                                     background:rgba(212,175,55,0.12); border-radius:8px;
-                                     border:1px solid #D4AF37; line-height:1.5; }
-                            img { width:100%; border:2px solid #D4AF37; border-radius:8px;
-                                  display:block; }
-                            .step { font-size:0.84rem; color:rgba(255,255,255,0.85);
-                                    text-align:center; margin-top:14px; line-height:1.7; }
-                        </style>
-                    </head><body>
-                        <div class="guide">✦ 이미지를 길게 누르고 [사진 저장] 선택 ✦</div>
-                        <img src="${url}" />
-                        <div class="step">
-                            📱 iOS: 사진 앱에 자동 저장됩니다<br>
-                            📱 Android: 갤러리·다운로드 폴더에 저장됩니다
-                        </div>
-                    </body></html>`);
-                win.document.close();
+            // [V20.3] 모바일 — 3단계 fallback 전략
+            // 우선순위: 1) Web Share API (가장 자연스러움) 
+            //          2) 새 창 + 길게 누르기 (iOS Safari 호환)
+            //          3) 현재 화면 오버레이 (팝업 차단 시)
+
+            // 1) Web Share API 우선 시도 (iOS 14+, Android Chrome 75+)
+            if (navigator.share && navigator.canShare) {
+                try {
+                    const file = new File([blob], fileName, { type: 'image/png' });
+                    if (navigator.canShare({ files: [file] })) {
+                        await navigator.share({
+                            files: [file],
+                            title: '제우스 오라클 신탁',
+                            text: '✦ 제우스 오라클 타로 신탁 결과 ✦'
+                        });
+                        if (btn) {
+                            btn.textContent = '✅ 공유 완료';
+                            setTimeout(() => { btn.disabled = false; btn.textContent = '📷 이미지 저장'; }, 2000);
+                        }
+                        return;
+                    }
+                } catch (shareErr) {
+                    // 공유 취소 또는 실패 → 다음 단계로
+                    if (shareErr.name === 'AbortError') {
+                        if (btn) { btn.disabled = false; btn.textContent = '📷 이미지 저장'; }
+                        return;  // 사용자가 취소함
+                    }
+                }
             }
-            if (btn) { btn.textContent = '✅ 새 창에 이미지 표시됨'; setTimeout(() => { btn.disabled = false; btn.textContent = '📷 이미지 저장'; }, 2500); }
+
+            // 2) base64로 변환 (URL.createObjectURL 만료 문제 회피)
+            const reader = new FileReader();
+            reader.readAsDataURL(blob);
+            await new Promise((resolve, reject) => {
+                reader.onload = resolve;
+                reader.onerror = reject;
+            });
+            const dataUrl = reader.result;
+
+            // 3) 화면 오버레이 (현재 창) — 팝업 차단 영향 안 받음, base64라 안정적
+            const overlay = document.createElement('div');
+            overlay.style.cssText = `
+                position:fixed; inset:0; background:rgba(0,0,0,0.97); z-index:99999;
+                display:flex; flex-direction:column; align-items:center; justify-content:flex-start;
+                padding:20px 14px 80px; overflow-y:auto;
+            `;
+            overlay.innerHTML = `
+                <div style="color:#FFD970; font-size:1rem; font-weight:800; margin-bottom:14px;
+                            text-align:center; padding:14px; background:rgba(212,175,55,0.12);
+                            border:1px solid #D4AF37; border-radius:8px; line-height:1.6;
+                            width:100%; max-width:500px;">
+                    ✦ 이미지를 <b>길게 누르고</b><br>
+                    <b>[사진에 저장]</b> 또는 <b>[이미지 저장]</b> 선택 ✦
+                </div>
+                <img src="${dataUrl}" 
+                     style="max-width:100%; width:auto; height:auto; max-height:none;
+                            border:2px solid #D4AF37; border-radius:8px; display:block;
+                            -webkit-touch-callout: default; touch-callout: default;
+                            user-select: auto; -webkit-user-select: auto;" />
+                <div style="margin-top:14px; font-size:0.84rem; color:rgba(255,255,255,0.85);
+                            text-align:center; line-height:1.7; padding:10px;">
+                    📱 ${isIOS ? 'iOS: 사진 앱에 저장됩니다' : 'Android: 갤러리에 저장됩니다'}
+                </div>
+                <button onclick="this.parentElement.remove();"
+                        style="position:fixed; bottom:20px; left:50%; transform:translateX(-50%);
+                               padding:14px 30px; background:#D4AF37; color:#000;
+                               border:none; border-radius:30px; font-weight:800;
+                               font-size:0.95rem; cursor:pointer; z-index:100000;
+                               box-shadow:0 4px 12px rgba(0,0,0,0.5);">
+                    ✕ 닫기
+                </button>
+            `;
+            document.body.appendChild(overlay);
+
+            if (btn) {
+                btn.textContent = '✅ 이미지 표시됨';
+                setTimeout(() => { btn.disabled = false; btn.textContent = '📷 이미지 저장'; }, 2500);
+            }
         } else {
             // ━━━ PC: 자동 다운로드 (기존 방식) ━━━
+            const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url; a.download = fileName;
             document.body.appendChild(a); a.click(); a.remove();
@@ -4845,6 +4901,19 @@ function showPayModal() {
                         <span>${b}</span>
                     </div>`).join('')}
                 </div>
+            </div>
+
+            <!-- [V20.3] 토스 결제 진행 안내 (사실 기반) -->
+            <div style="margin-bottom:14px; padding:10px 12px;
+                        background: rgba(52,152,219,0.06);
+                        border: 1px solid rgba(52,152,219,0.3);
+                        border-radius: 6px;
+                        font-size:0.74rem; color:rgba(255,255,255,0.85); line-height:1.6;">
+                <b style="color:#5dade2;">💳 결제 진행 안내:</b><br>
+                결제 완료 후 <b style="color:#FFD970;">[직접 이동하기] 버튼</b>을 눌러 돌아오세요.<br>
+                <span style="color:rgba(255,255,255,0.65); font-size:0.72rem;">
+                    (노란 화살표는 안내용 — 터치해도 자동 이동되지 않습니다)
+                </span>
             </div>
 
             ${tossCardHTML}
@@ -5180,23 +5249,29 @@ function _layoutDeckArch() {
         //   3. 아래줄 와이드 20% 축소: 140도 → 112도 (좌우 잘림 방지)
         const half = Math.ceil(total / 2);  // 39장
 
-        // [V20.1] 윗줄: 와이드 +20%, 곡률 -15% (평평하게 = 반지름 +15%)
-        const UPPER_SPAN   = 125;  // 104 → 125 (20% UP)
-        const UPPER_RADIUS = 161;  // 140 → 161 (15% UP — 더 평평)
+        // [V20.4] 윗줄: 곡률 10% 더 평평 (반지름 +10% — 161 → 177)
+        const UPPER_SPAN   = 125;  // 와이드 그대로
+        const UPPER_RADIUS = 177;  // 161 → 177 (10% UP — 더 평평하게)
         const upperStartAng = -UPPER_SPAN / 2;
         const upperEndAng   =  UPPER_SPAN / 2;
         const upperStepAng  = (upperEndAng - upperStartAng) / (half - 1);
 
         // [V20.1] 아래줄: 와이드 -20% (좌우 10%씩 축소)
-        const LOWER_SPAN   = 90;   // 112 → 90 (20% DOWN — 좌우 -10%씩)
-        const LOWER_RADIUS = 220;  // 회전 반경 김 (그대로)
+        const LOWER_SPAN   = 90;   // 그대로
+        const LOWER_RADIUS = 220;  // 그대로 (하단 고정)
         const lowerStartAng = -LOWER_SPAN / 2;
         const lowerEndAng   =  LOWER_SPAN / 2;
         const lowerStepAng  = (lowerEndAng - lowerStartAng) / (half - 1);
 
-        // [V20.1] 두 줄 위치 — 위·아래 간격 -15%
-        const UPPER_TOP = 10;
-        const LOWER_TOP = 136;  // 160 → 136 (15% DOWN — 위·아래 거리 더 축소)
+        // [V20.5] 두 부채꼴 위치 — 380px 컨테이너 내 데이터 기반 균형 배치
+        //   계산: 컨테이너 380px ÷ 4 영역
+        //     - 상단 여백 30px (텍스트와 부채꼴 사이 호흡)
+        //     - 윗줄 카드 영역 (cardHeight 54 + 곡률 보정 ≈ 90px)
+        //     - 사이 간격 30px (윗줄 끝 ~120 + 30 = 150)
+        //     - 아래줄 카드 영역 (cardHeight 54 + 곡률 보정 ≈ 130px)
+        //     - 하단 여백 50px (시각적 안정)
+        const UPPER_TOP = 40;   // 윗줄 시작 (텍스트와 충분한 거리)
+        const LOWER_TOP = 156;  // 아래줄 시작 (윗줄 + 116px 간격)
 
         // 윗줄 컨테이너
         const upperRow = document.createElement('div');
