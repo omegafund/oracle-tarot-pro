@@ -3506,7 +3506,32 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
         .replace(/\n{3,}/g, '\n\n')
         .trim();
 
-    const splitIndex = cleanText.search(/[📈🧭⚡🛡️]/);
+    // [V20.8.2] 5계층 박스 시작 위치만 정확히 식별 (본문 내 이모지 사용 보호)
+    //   문제: 본문 첫 단어에 이모지(📈🧭⚡🛡️)가 있으면 splitIndex=0이 되어 본문 0자
+    //   해결: 5계층 박스 정확한 시그니처만 매치
+    //     "📈 주식 실전" / "🧭 최종 결론" / "⚡ 실전 매매" / "🛡 제우스 행동" 등
+    //   이런 명확한 박스 헤더만 잡고, 본문 내 이모지는 무시
+    const sectionPatterns = [
+        /📈\s*(주식|코인|부동산|진입 추천 구간)/,
+        /🧭\s*최종\s*결론/,
+        /⚡\s*실전\s*(매매|거래)\s*전략/,
+        /⏱\s*매매\s*타이밍/,
+        /🧠\s*흐름\s*해석/,
+        /🛡\s*제우스/,
+        /🛡️\s*리스크\s*경고/,
+        /⚠️\s*중요\s*고지/,
+        /⚠️\s*리스크\s*분석/
+    ];
+    let splitIndex = -1;
+    for (const pat of sectionPatterns) {
+        const m = cleanText.match(pat);
+        if (m && m.index !== undefined) {
+            // 본문 시작(0~30자) 안에는 5계층 박스가 절대 안 나옴 — 본문이라 간주
+            if (m.index >= 30 && (splitIndex === -1 || m.index < splitIndex)) {
+                splitIndex = m.index;
+            }
+        }
+    }
     if (splitIndex !== -1) cleanText = cleanText.substring(0, splitIndex).trim();
 
     // 2. 문단 분리
@@ -3544,7 +3569,35 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
         paragraphs.shift();  // 첫 단락 제거 → 정상 위치 복원
     }
 
+    // [V20.8.2] cardTexts 안전장치 — 본문이 비어있으면 카드 기본 의미 표시 (점사가 백지 출력 방지)
+    const _CARD_FALLBACK = {
+        'The Tower': '과거에 거짓 구조가 무너지는 충격적 변화를 경험하셨습니다. 이는 정화의 신호였습니다.',
+        'Death': '과거에 한 챕터가 마무리되며 새 흐름이 시작될 준비가 되었습니다.',
+        'The Hanged Man': '현재 잠시 멈추어 새 관점을 확보하는 중요한 시간입니다.',
+        'The Devil': '집착의 함정을 인식하고 자유로워지는 순간입니다.',
+        'The Sun': '명확한 성공 에너지가 유저님을 비추고 있습니다.',
+        'The World': '목표 달성의 완성 에너지가 흐릅니다.',
+        'The Star': '저점을 지나 회복의 희망이 떠오르는 시점입니다.',
+        'The Moon': '안개 속에서 직관에 귀 기울일 시간입니다.',
+        'The Chariot': '강한 전진 에너지로 목표를 향해 나아가는 흐름입니다.',
+        'Judgement': '각성과 재평가의 순간을 맞이하고 있습니다.'
+    };
+    function getFallbackText(card, role) {
+        if (!card || !card.name) return `${role} 카드의 에너지가 유저님의 흐름에 영향을 주고 있습니다.`;
+        const fb = _CARD_FALLBACK[card.name];
+        if (fb) return fb;
+        // 일반 fallback
+        return `${role} 시점에서 ${card.name} 카드의 에너지가 유저님께 메시지를 보내고 있습니다.`;
+    }
+
     let cardTexts = [paragraphs[0] || "", paragraphs[1] || "", paragraphs[2] || ""];
+
+    // [V20.8.2] 빈 텍스트 fallback — AI 응답 누락이나 파싱 실패 시 카드 기본 의미라도 표시
+    cardTexts = cardTexts.map((t, i) => {
+        if (t && t.trim().length > 10) return t;
+        const role = ['과거', '현재', '미래'][i];
+        return getFallbackText(cards && cards[i], role);
+    });
 
     // [V20.3] 본문 시작 자동 보정 — AI가 조사("의/는/은/를/이/가/에/와")로 시작하면 라벨로 보정
     //   예: "의 내면과 시장의~" → "과거의 내면과 시장의~"
