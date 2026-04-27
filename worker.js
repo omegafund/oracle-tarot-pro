@@ -2362,6 +2362,11 @@ export default {
         if (metrics) {
           metrics.synergies = synergies.map(s => ({ tag: s.tag, bonus: s.bonus, cards: s.cards }));
           metrics.reversedFlags = reversedFlags;
+          // [V21.1] 종목명 주입 — Client에서 이모지 → 종목명 자동 치환에 사용
+          //   AI가 가끔 "📈에 대한 유저님의~" 출력 시 클라이언트가 보정
+          const _subj = (queryType === "stock" || queryType === "crypto" || queryType === "realestate")
+            ? extractSubject(prompt, queryType) : '';
+          if (_subj) metrics.subjectName = _subj;
         }
 
         // financeInject — 도메인별 분기
@@ -2406,7 +2411,7 @@ export default {
             : '';
 
           const subjectDirective = subjectName
-            ? `\n🎯 [종목명 언급 — 과거 단락 안에서]\n"${subjectName}"이 본 점사의 대상이다. \n\n⚠️ 매우 중요: 절대 별도의 인사/도입 단락을 만들지 마라.\n   "과거" 라벨 다음에 오는 첫 단락(과거 카드 해석) 안에서 자연스럽게 ${subjectName}을 언급하라.\n\n✅ 올바른 예 ("과거" 단락 안에서 자연스럽게):\n   과거\n   ${subjectName}에 대한 유저님의 과거 진입 에너지는 [카드 의미]를 보여줍니다. 시장 참여자들의 집단 심리는~\n\n❌ 잘못된 예 (별도 도입부로 출력):\n   ${subjectName} 매수에 관한 우주적 타이밍은 지금 유저님께 강력한 신호를 보내고 있습니다.\n   ↑↑ 이런 별도 인사/도입 단락 절대 금지!\n   \n   과거\n   유저님께서는~\n\n❌ 다음 단어로 시작하면 안 됨:\n  - "내일", "오늘", "이번주" 같은 시간 부사\n  - "5월 1일", "4/29" 같은 날짜\n\n⚠️ 절대 금지 (법적 안전):\n  - "${subjectName}이 좋은 회사다/오를 것이다" (가치 평가 금지)\n  - "${subjectName}의 실적/매출/재무 분석" (회사 분석 금지)\n  - "${subjectName} 강력 추천" (개별 종목 추천 금지)\n${holidayDirective}`
+            ? `\n🎯 [종목명 강제 언급 — 매우 중요]\n"${subjectName}"이 본 점사의 대상이다.\n\n✅ 절대 규칙:\n  1. "과거" 단락 첫 문장에 반드시 "${subjectName}"을 명시 — 이모지(📈🏠💘) 대신!\n  2. 좋은 예: "유저님의 ${subjectName} 매수에 대한 과거 진입 에너지는~"\n  3. 좋은 예: "${subjectName}을 향한 유저님의 과거 흐름은 [카드 의미]를 보여줍니다"\n  4. 좋은 예: "과거 ${subjectName}에 대한 유저님의 에너지는~"\n  5. "현재" 단락에도 가능하면 한 번 더 ${subjectName} 언급\n  6. "미래" 단락에도 가능하면 한 번 더 ${subjectName} 언급\n  7. 제우스 신탁 박스 첫 문장에도 "${subjectName}" 포함\n\n❌ 절대 금지:\n  - 종목명 자리에 📈, 🏠, 💘, ✨ 같은 이모지 사용 금지!\n  - "📈에 대한 유저님의" ← 이런 형식 절대 금지!\n  - 종목명을 생략하고 "유저님의 진입 에너지" 만 쓰는 것 금지\n  - 별도 인사/도입 단락 만들기 금지 (바로 "과거" 라벨부터)\n  - "내일", "오늘", "이번주" 같은 시간 부사로 단락 시작 금지\n\n⚠️ 법적 안전 (반드시 준수):\n  - "${subjectName}이 좋은 회사다/오를 것이다" (가치 평가) ❌\n  - "${subjectName}의 실적/매출/재무 분석" (회사 분석) ❌\n  - "${subjectName} 강력 추천" (개별 종목 추천) ❌\n  - "${subjectName}에 대한 유저님의 심리/내면/집단 감정" → ✅ OK (영성적 해석)\n${holidayDirective}`
             : holidayDirective;
 
           financeInject = `
