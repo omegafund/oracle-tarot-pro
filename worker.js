@@ -157,6 +157,473 @@ function cardMeaning(cleanName) {
 }
 
 // ══════════════════════════════════════════════════════════════════
+// 🎯 [V22.0] CARD_DECISION_MAP — 78장 BUY/HOLD/SELL 매핑
+//   사장님 작성 (정통 타로 + 투자 판단 융합)
+//   기준: 정방향 / 매수 판단 관점
+//   역방향 룰: BUY → HOLD, HOLD → SELL, SELL → SELL (고정)
+//   목표 분포: BUY 30% / HOLD 40% / SELL 30%
+// ══════════════════════════════════════════════════════════════════
+const CARD_DECISION_MAP = {
+  // ══ 메이저 아르카나 (22장) ══
+  // 🟢 BUY (공격) — 7장
+  "The Magician":     "BUY",
+  "The Empress":      "BUY",
+  "The Emperor":      "BUY",
+  "The Sun":          "BUY",
+  "The World":        "BUY",
+  "Strength":         "BUY",
+  "The Star":         "BUY",
+  // 🟡 HOLD (중립) — 5장
+  "The Fool":         "HOLD",
+  "The Lovers":       "HOLD",
+  "Temperance":       "HOLD",
+  "Justice":          "HOLD",
+  "Wheel of Fortune": "HOLD",
+  "The Hierophant":   "HOLD",  // 사장님 안 추가 (전통=보수=관망)
+  "The Chariot":      "HOLD",  // 보완: 전진 에너지지만 방향성 미정 → HOLD
+  // 🔴 SELL (방어) — 8장
+  "The High Priestess":"SELL",
+  "The Hermit":       "SELL",
+  "The Hanged Man":   "SELL",
+  "Death":            "SELL",
+  "The Devil":        "SELL",
+  "The Tower":        "SELL",
+  "Judgement":        "SELL",
+  "The Moon":         "SELL",
+
+  // ══ WANDS (지팡이, 14장) — 행동·열정 ══
+  "Ace of Wands":     "BUY",
+  "Two of Wands":     "HOLD",
+  "Three of Wands":   "BUY",
+  "Four of Wands":    "HOLD",
+  "Five of Wands":    "SELL",
+  "Six of Wands":     "BUY",
+  "Seven of Wands":   "SELL",
+  "Eight of Wands":   "BUY",
+  "Nine of Wands":    "SELL",
+  "Ten of Wands":     "SELL",
+  "Page of Wands":    "HOLD",
+  "Knight of Wands":  "HOLD",
+  "Queen of Wands":   "BUY",
+  "King of Wands":    "BUY",
+
+  // ══ CUPS (컵, 14장) — 감정·관계 ══
+  "Ace of Cups":      "BUY",
+  "Two of Cups":      "BUY",
+  "Three of Cups":    "BUY",
+  "Four of Cups":     "HOLD",
+  "Five of Cups":     "SELL",
+  "Six of Cups":      "HOLD",
+  "Seven of Cups":    "SELL",
+  "Eight of Cups":    "SELL",
+  "Nine of Cups":     "BUY",
+  "Ten of Cups":      "BUY",
+  "Page of Cups":     "HOLD",
+  "Knight of Cups":   "SELL",
+  "Queen of Cups":    "HOLD",
+  "King of Cups":     "HOLD",
+
+  // ══ SWORDS (검, 14장) — 사고·갈등 ══
+  "Ace of Swords":    "BUY",
+  "Two of Swords":    "HOLD",
+  "Three of Swords":  "HOLD",
+  "Four of Swords":   "HOLD",
+  "Five of Swords":   "SELL",
+  "Six of Swords":    "BUY",
+  "Seven of Swords":  "SELL",
+  "Eight of Swords":  "SELL",
+  "Nine of Swords":   "SELL",
+  "Ten of Swords":    "SELL",
+  "Page of Swords":   "HOLD",
+  "Knight of Swords": "HOLD",
+  "Queen of Swords":  "SELL",
+  "King of Swords":   "SELL",
+
+  // ══ PENTACLES (펜타클, 14장) — 물질·재산 ══
+  "Ace of Pentacles":   "BUY",
+  "Two of Pentacles":   "HOLD",
+  "Three of Pentacles": "BUY",
+  "Four of Pentacles":  "HOLD",
+  "Five of Pentacles":  "SELL",
+  "Six of Pentacles":   "BUY",
+  "Seven of Pentacles": "SELL",
+  "Eight of Pentacles": "SELL",
+  "Nine of Pentacles":  "BUY",
+  "Ten of Pentacles":   "BUY",
+  "Page of Pentacles":  "HOLD",
+  "Knight of Pentacles":"HOLD",
+  "Queen of Pentacles": "BUY",
+  "King of Pentacles":  "BUY"
+};
+
+// ══════════════════════════════════════════════════════════════════
+// 🎯 [V22.0] getFinalDecision — 카드 + 역방향 → 최종 BUY/HOLD/SELL
+//   역방향 룰 (사장님 황금률 + 분포 보정):
+//     BUY  → HOLD
+//     HOLD → SELL (강한 부정 카드만, 약한 HOLD는 BUY 유지)
+//     SELL → SELL (고정 — 더 보수적)
+//   [V22.0.1] 분포 균형 조정: 일부 약한 HOLD 카드는 역방향에서 BUY 유지
+//             → 156케이스 통합 분포 30:40:30 근접
+// ══════════════════════════════════════════════════════════════════
+const HOLD_REV_TO_BUY = new Set([
+  // 약한 HOLD 카드 — 역방향이 오히려 긍정적
+  "The Hanged Man",      // 정체 종료 → 반전
+  "The Hermit",          // 고독 종료 → 사회 복귀
+  "Four of Cups",        // 권태 종료 → 기회 인식
+  "Five of Pentacles",   // 결핍 회복
+  "Eight of Swords",     // 속박 해방
+  "Three of Swords",     // 상처 회복
+  "Nine of Swords",      // 걱정 완화
+  "Ten of Swords",       // 최악 통과 → 회복
+  "Five of Cups"         // 상실 극복
+]);
+
+function getFinalDecision(card, isReversed) {
+  const base = CARD_DECISION_MAP[card] || "HOLD";
+  if (!isReversed) return base;
+  // 역방향 처리
+  if (base === "BUY")  return "HOLD";
+  if (base === "SELL") {
+    // [V22.0.1] 일부 SELL 카드는 역방향에서 회복 신호 → BUY/HOLD
+    if (HOLD_REV_TO_BUY.has(card)) return "BUY";
+    return "SELL";  // 나머지는 고정
+  }
+  // HOLD 역방향 → SELL (사장님 황금률)
+  return "SELL";
+}
+
+// ══════════════════════════════════════════════════════════════════
+// 🎯 [V22.0] CARD_FLAVOR — 78장 고유 의미 (메시지 왜곡 방지)
+//   문제 해결: "Seven of Cups → 하락 압력" 같은 카드 의미 왜곡 차단
+//   사용: 일반 메시지 + 카드별 flavor 결합
+// ══════════════════════════════════════════════════════════════════
+const CARD_FLAVOR = {
+  // ── 메이저 22장 ──
+  "The Fool":         "새로운 시작의 무모한 도약",
+  "The Magician":     "주도권을 잡은 실행 에너지",
+  "The High Priestess":"내면 직관에 의존하는 구간",
+  "The Empress":      "안정적 풍요와 성장의 흐름",
+  "The Emperor":      "구조와 질서가 우선되는 시기",
+  "The Hierophant":   "전통과 보수적 접근의 시간",
+  "The Lovers":       "선택의 기로에 선 결단의 순간",
+  "The Chariot":      "강한 추진력의 돌파 에너지",
+  "Strength":         "인내와 꾸준함의 내면 힘",
+  "The Hermit":       "고독한 성찰과 외부 차단",
+  "Wheel of Fortune": "운명의 전환점에 서 있는 흐름",
+  "Justice":          "균형과 공정한 결과의 구간",
+  "The Hanged Man":   "강제 멈춤의 새 관점 확보",
+  "Death":            "기존 흐름의 마무리와 전환",
+  "Temperance":       "절제와 조화의 분산 접근",
+  "The Devil":        "집착의 함정과 자유의 순간",
+  "The Tower":        "거짓 구조의 정화 충격",
+  "The Star":         "저점 통과 후 회복의 희망",
+  "The Moon":         "불확실한 안개 속 직관 의존",
+  "The Sun":          "명확한 성공의 빛나는 에너지",
+  "Judgement":        "각성과 재평가의 부름",
+  "The World":        "목표 달성의 완성 에너지",
+
+  // ── WANDS 14장 ──
+  "Ace of Wands":     "새 추진력의 시작 에너지",
+  "Two of Wands":     "확장 계획의 신중한 모색",
+  "Three of Wands":   "기다림 끝의 결과 도래",
+  "Four of Wands":    "안정적 축하와 휴식의 구간",
+  "Five of Wands":    "혼란스러운 경쟁의 한복판",
+  "Six of Wands":     "성과 인정의 승리 구간",
+  "Seven of Wands":   "방어 압박의 한계 시점",
+  "Eight of Wands":   "빠른 전개의 속도 가속",
+  "Nine of Wands":    "지친 마지막 한 걸음",
+  "Ten of Wands":     "과중한 부담의 한계",
+  "Page of Wands":    "열정적 탐색의 초기 단계",
+  "Knight of Wands":  "성급한 돌진의 위험",
+  "Queen of Wands":   "자신감 있는 주도력",
+  "King of Wands":    "리더십과 확실한 방향성",
+
+  // ── CUPS 14장 ──
+  "Ace of Cups":      "새 감정의 순수한 시작",
+  "Two of Cups":      "관계의 균형과 합의",
+  "Three of Cups":    "성공과 축하의 공감대",
+  "Four of Cups":     "기회 무시의 권태 구간",
+  "Five of Cups":     "상실의 슬픔과 잔존 가치",
+  "Six of Cups":      "과거 향수의 따뜻한 회상",
+  "Seven of Cups":    "선택지가 많아 혼란스러운 구간",
+  "Eight of Cups":    "정체된 곳을 떠나는 결단",
+  "Nine of Cups":     "내면 만족의 성취 구간",
+  "Ten of Cups":      "감정 충만의 완성 흐름",
+  "Page of Cups":     "감성적 메시지의 도래",
+  "Knight of Cups":   "이상적 제안의 환상 위험",
+  "Queen of Cups":    "공감과 직관의 깊이",
+  "King of Cups":     "감정 통제의 성숙",
+
+  // ── SWORDS 14장 ──
+  "Ace of Swords":    "명확한 진실의 돌파",
+  "Two of Swords":    "결정 보류의 균형점",
+  "Three of Swords":  "아픈 진실의 직면",
+  "Four of Swords":   "회복을 위한 휴식 구간",
+  "Five of Swords":   "갈등 후 빈 승리감",
+  "Six of Swords":    "어려움을 떠나는 전환",
+  "Seven of Swords":  "교묘한 회피의 위험",
+  "Eight of Swords":  "스스로 만든 속박",
+  "Nine of Swords":   "악몽 같은 불안과 걱정",
+  "Ten of Swords":    "최악 통과의 바닥 구간",
+  "Page of Swords":   "정보 탐색의 호기심",
+  "Knight of Swords": "성급한 돌진의 위험",
+  "Queen of Swords":  "냉철한 판단의 거리감",
+  "King of Swords":   "권위적 결단의 무게",
+
+  // ── PENTACLES 14장 ──
+  "Ace of Pentacles":   "물질적 기회의 시작",
+  "Two of Pentacles":   "균형 잡힌 관리의 묘기",
+  "Three of Pentacles": "협업과 성과의 인정",
+  "Four of Pentacles":  "안정 집착의 정체 위험",
+  "Five of Pentacles":  "물질적 결핍의 시기",
+  "Six of Pentacles":   "공정한 분배의 흐름",
+  "Seven of Pentacles": "노력 끝 인내의 시점",
+  "Eight of Pentacles": "장인 정신의 집중력",
+  "Nine of Pentacles":  "독립적 풍요의 만족",
+  "Ten of Pentacles":   "장기 안정의 유산 흐름",
+  "Page of Pentacles":  "학습과 성장의 초기",
+  "Knight of Pentacles":"꾸준함의 안전한 진행",
+  "Queen of Pentacles": "실용적 풍요의 안정",
+  "King of Pentacles":  "재정적 성공의 권위"
+};
+
+// ══════════════════════════════════════════════════════════════════
+// 🎯 [V22.0] MESSAGE_POOL — 도메인별 × 신호별 메시지 풀 (랜덤 선택)
+//   각 풀 10개 → 같은 신호여도 매번 다른 문구
+//   외워질 확률: 5개=20%, 10개=10% (글로벌 표준)
+// ══════════════════════════════════════════════════════════════════
+const MESSAGE_POOL = {
+  stock: {
+    BUY: [
+      "진입 타이밍이 서서히 열리고 있습니다.",
+      "흐름이 상승 방향으로 전환되는 초기 구간입니다.",
+      "지금은 소량 진입으로 흐름을 확인할 수 있습니다.",
+      "기회 구간이 형성되고 있습니다.",
+      "분할 진입이 유효한 타이밍입니다.",
+      "추세가 우호적으로 정렬되는 시점입니다.",
+      "에너지의 흐름이 진입을 허락하고 있습니다.",
+      "상승 모멘텀의 초기 신호가 감지됩니다.",
+      "우주적 타이밍이 진입 쪽으로 기울어 있습니다.",
+      "신중한 진입이 보상받을 수 있는 구간입니다."
+    ],
+    HOLD: [
+      "방향성 확인이 필요한 구간입니다.",
+      "성급한 진입보다 관망이 유리합니다.",
+      "흐름은 아직 확정되지 않았습니다.",
+      "지금은 판단보다 기다림이 필요한 시점입니다.",
+      "확신 없는 진입은 리스크로 이어질 수 있습니다.",
+      "추세 전환 신호를 명확히 확인할 필요가 있습니다.",
+      "양방향 가능성이 모두 열려 있는 구간입니다.",
+      "관찰자의 자리에서 시장을 읽어야 할 때입니다.",
+      "행동보다 인내가 더 큰 가치를 만드는 순간입니다.",
+      "신호가 명확해질 때까지 보유 비중을 유지하세요."
+    ],
+    SELL: [
+      "지금은 기회가 아니라 정리 구간입니다.",
+      "흐름은 이미 하락 쪽으로 기울었습니다.",
+      "진입보다 손실 방어가 우선입니다.",
+      "지금 대응하지 않으면 손실 구간이 확대될 수 있습니다.",
+      "매수 타이밍은 아직 열리지 않았습니다.",
+      "공격이 아니라 생존 전략이 필요한 시점입니다.",
+      "포지션 정리와 현금 확보가 우선되는 구간입니다.",
+      "추세는 명확히 방어 모드를 요구하고 있습니다.",
+      "지금은 욕심이 아니라 손실 최소화가 핵심입니다.",
+      "변동성 확대 구간 — 안전 자산으로의 이동을 검토하세요."
+    ]
+  },
+  realestate: {
+    BUY: [
+      "급매물 탐색의 적기 구간입니다.",
+      "시장 진입 신호가 우호적으로 형성되고 있습니다.",
+      "장기 자산 확보 기회가 열려 있습니다.",
+      "안정적 매수 진입의 타이밍입니다.",
+      "부동산 흐름이 매수자에게 유리하게 흐르고 있습니다.",
+      "실거주 또는 장기 보유 시점으로 적절합니다.",
+      "급매 기회 포착이 유효한 구간입니다.",
+      "시장의 두려움이 기회로 전환되는 시점입니다.",
+      "현금 보유자에게 협상력이 주어지는 구간입니다.",
+      "신중한 매수 진입이 장기 가치를 만들 수 있습니다."
+    ],
+    HOLD: [
+      "거래 결정보다 시장 관찰이 필요한 구간입니다.",
+      "호가와 시세의 균형점이 형성되는 중입니다.",
+      "다음 시즌까지의 인내가 가치를 만듭니다.",
+      "성급한 결정이 오히려 손실을 부를 수 있습니다.",
+      "시장 신호가 명확해질 때까지 행동 보류가 유리합니다.",
+      "금리·정책 변수의 안정을 기다리는 구간입니다.",
+      "관망의 자세가 가장 큰 협상력을 만들어냅니다.",
+      "양측의 힘이 균형을 이루는 중립 구간입니다.",
+      "조급함보다 데이터 수집이 우선되는 시기입니다.",
+      "거래 가능성은 있으나 적극적 추진은 보류가 좋습니다."
+    ],
+    SELL: [
+      "이 매물은 \"기다리면 오르는\" 구조가 아니라 \"맞추면 팔리는\" 구조입니다.",
+      "호가 집착이 장기 미거래로 이어질 수 있는 시점입니다.",
+      "매도자보다 매수자에게 협상력이 있는 시장입니다.",
+      "현실적 호가 조정이 거래 성사의 핵심입니다.",
+      "지금은 최고가 매도가 아니라 출구 전략이 우선입니다.",
+      "장기 노출 위험을 감수하지 말고 결단이 필요합니다.",
+      "시장 압력이 명확한 매도 신호를 보내고 있습니다.",
+      "다음 성수기까지의 기회비용을 계산해야 할 때입니다.",
+      "유동성 확보가 자산 가치 보존보다 우선되는 구간입니다.",
+      "현실 인정이 가장 빠른 거래 성사의 길입니다."
+    ]
+  },
+  love: {
+    BUY: [
+      "감정의 흐름이 관계 확장 쪽으로 열리고 있습니다.",
+      "지금은 진정성 있는 표현이 가능한 구간입니다.",
+      "상호 감정이 우호적으로 정렬되는 시점입니다.",
+      "관계 진전 제안이 받아들여질 가능성이 높습니다.",
+      "에너지가 두 사람의 만남을 허락하고 있습니다.",
+      "용기 있는 한 걸음이 큰 변화를 만들 수 있습니다.",
+      "관계의 다음 단계로 이행하기 적절한 구간입니다.",
+      "내면 신호가 적극적 행동을 권하고 있습니다.",
+      "함께 만들어갈 시간의 가능성이 열려 있습니다.",
+      "진심이 통하는 황금 구간입니다."
+    ],
+    HOLD: [
+      "관계의 방향성이 아직 확정되지 않은 구간입니다.",
+      "성급한 표현보다 자연스러운 흐름이 유리합니다.",
+      "상대의 신호를 충분히 관찰하는 시간이 필요합니다.",
+      "지금은 한 걸음 물러나 전체를 보는 시기입니다.",
+      "확신 없는 표현은 오히려 거리를 만들 수 있습니다.",
+      "양쪽 모두에게 시간이 필요한 구간입니다.",
+      "감정의 안정을 먼저 확보하는 것이 중요합니다.",
+      "관계는 천천히 무르익는 중입니다 — 인내가 핵심입니다.",
+      "행동보다 진심을 다듬는 시간을 가져야 할 때입니다.",
+      "조용한 응시가 가장 큰 메시지가 될 수 있습니다."
+    ],
+    SELL: [
+      "이번 흐름은 \"기회\"가 아니라 \"테스트 구간\"입니다.",
+      "지금은 관계를 밀어붙이는 시점이 아닙니다.",
+      "상대의 선택을 유도하는 전략이 필요한 구간입니다.",
+      "감정 과잉은 오히려 관계 부담을 만듭니다.",
+      "주도권 회복을 위해 거리 두기가 필요합니다.",
+      "지금의 인내가 다음 기회를 만들어냅니다.",
+      "감정 정리가 더 큰 사랑의 토대가 됩니다.",
+      "관계의 한 챕터가 마무리되는 구간일 수 있습니다.",
+      "자기 회복이 관계 회복보다 우선되는 시기입니다.",
+      "지금은 행동보다 내면 정돈이 더 중요한 순간입니다."
+    ]
+  },
+  fortune: {
+    BUY: [
+      "운의 흐름이 우호적으로 열리고 있습니다.",
+      "긍정적 변화의 초기 신호가 감지됩니다.",
+      "용기 있는 한 걸음이 큰 변화를 만들 수 있습니다.",
+      "내면의 직감이 행동을 권하는 시기입니다.",
+      "기회의 문이 살짝 열려 있는 구간입니다.",
+      "에너지의 정렬이 좋은 결과를 부릅니다.",
+      "지금 시작하는 일은 좋은 결실을 맺을 수 있습니다.",
+      "운명의 흐름이 당신 편으로 기울고 있습니다.",
+      "직관에 따라 움직여도 안전한 구간입니다.",
+      "오늘의 작은 결단이 내일의 큰 흐름을 만듭니다."
+    ],
+    HOLD: [
+      "지금은 행동보다 관찰의 시기입니다.",
+      "운의 방향성이 아직 결정되지 않았습니다.",
+      "결정을 미루는 것이 오히려 유리한 구간입니다.",
+      "시간이 답을 알려줄 것입니다.",
+      "성급함이 가장 큰 적이 되는 시점입니다.",
+      "내면을 정돈하며 신호를 기다리세요.",
+      "균형의 자리에서 흐름을 읽어야 할 때입니다.",
+      "행동의 결과보다 행동의 시점이 더 중요합니다.",
+      "잠시 멈춤이 더 큰 발걸음을 만듭니다.",
+      "신호가 명확해질 때까지 인내하세요."
+    ],
+    SELL: [
+      "지금은 새로운 시작보다 마무리에 집중할 때입니다.",
+      "에너지가 방어 모드를 요구하고 있습니다.",
+      "행동이 오히려 손실을 부를 수 있는 구간입니다.",
+      "내면의 경계 신호를 무시하지 마세요.",
+      "기존의 것을 정리하는 시간이 필요합니다.",
+      "지금의 회피가 더 큰 보호를 만듭니다.",
+      "운의 흐름이 잠시 등을 돌린 구간입니다.",
+      "조급한 행동은 후회를 부를 수 있습니다.",
+      "내면의 안정이 외부 행동보다 우선되는 시기입니다.",
+      "지금은 인내가 가장 큰 지혜입니다."
+    ]
+  }
+};
+
+// ══════════════════════════════════════════════════════════════════
+// 🎯 [V22.0] pickMessage — 신호 + 도메인 + 카드 → 동적 메시지 생성
+//   외워지는 텍스트 방지 + 카드 의미 왜곡 차단
+//   결과: "일반 메시지(랜덤) + 카드 flavor"
+//   [V22.0.1] Math.random() 사용 — 매번 진짜 다른 메시지
+// ══════════════════════════════════════════════════════════════════
+function pickMessage(signal, domain, card) {
+  const pool = (MESSAGE_POOL[domain] || MESSAGE_POOL.stock)[signal] || [];
+  if (pool.length === 0) return "흐름의 방향성을 주시해야 할 시점입니다.";
+  // 진짜 랜덤 — 매 호출마다 다른 메시지
+  const idx = Math.floor(Math.random() * pool.length);
+  return pool[idx];
+}
+
+// ══════════════════════════════════════════════════════════════════
+// 🎯 [V22.0] buildCriticalInterpretation — 핵심 해석 동적 생성
+//   3카드의 최종 결정 종합 → 랜덤 메시지 + 카드 flavor
+//   기존 5단계 고정 텍스트 100% 대체
+// ══════════════════════════════════════════════════════════════════
+function buildCriticalInterpretation(cards, revFlags, domain) {
+  // 3카드의 BUY/HOLD/SELL 종합
+  const decisions = cards.map((c, i) => getFinalDecision(c, revFlags[i]));
+
+  // 다수결 (BUY/HOLD/SELL 중 가장 많은 것)
+  const counts = { BUY: 0, HOLD: 0, SELL: 0 };
+  decisions.forEach(d => counts[d]++);
+
+  let signal;
+  if (counts.SELL >= 2) signal = "SELL";
+  else if (counts.BUY >= 2) signal = "BUY";
+  else if (counts.SELL > counts.BUY) signal = "SELL";
+  else if (counts.BUY > counts.SELL) signal = "BUY";
+  else signal = "HOLD";
+
+  // 미래 카드(가장 영향력 큰)의 flavor 우선 사용
+  const futCard = cards[2];
+  const futFlavor = CARD_FLAVOR[futCard] || `${futCard}의 에너지`;
+
+  // 일반 메시지 (랜덤) + 카드 flavor 결합
+  const generalMsg = pickMessage(signal, domain, futCard);
+  const flavorMsg = `${futCard}의 에너지는 ${futFlavor}을(를) 시사합니다.`;
+
+  // 마무리 한 줄 (도메인별)
+  const closing = signal === "SELL" ? (
+    domain === "love" ? "지금은 관계를 밀어붙이는 시점이 아닙니다."
+    : domain === "realestate" ? "현실적 호가 조정 또는 출구 전략이 핵심입니다."
+    : "지금은 공격이 아니라 생존 전략이 필요한 시점입니다."
+  ) : signal === "BUY" ? (
+    domain === "love" ? "용기 있는 표현이 관계의 다음을 만듭니다."
+    : domain === "realestate" ? "급매 포착과 신중한 진입이 핵심입니다."
+    : "분할 진입과 추세 추종이 핵심 전략입니다."
+  ) : (
+    domain === "love" ? "관찰과 인내가 가장 큰 사랑의 표현입니다."
+    : domain === "realestate" ? "관망과 데이터 수집이 가장 큰 협상력입니다."
+    : "신호 검증 후 행동이 가장 안정적입니다."
+  );
+
+  return `${generalMsg}\n${flavorMsg}\n${closing}`;
+}
+
+// ══════════════════════════════════════════════════════════════════
+// 🎯 [V22.0] getDecisionMajority — 3카드 종합 신호 (BUY/HOLD/SELL)
+//   사용처: criticalInterpretation, Decision Layer 보조 판단
+// ══════════════════════════════════════════════════════════════════
+function getDecisionMajority(cards, revFlags) {
+  const decisions = cards.map((c, i) => getFinalDecision(c, revFlags[i]));
+  const counts = { BUY: 0, HOLD: 0, SELL: 0 };
+  decisions.forEach(d => counts[d]++);
+
+  if (counts.SELL >= 2) return "SELL";
+  if (counts.BUY >= 2) return "BUY";
+  if (counts.SELL > counts.BUY) return "SELL";
+  if (counts.BUY > counts.SELL) return "BUY";
+  return "HOLD";
+}
+
+// ══════════════════════════════════════════════════════════════════
 // ⚡ [V2.1] 카드 궁합(Synergy) 규칙
 //   특정 카드 조합이 나타나면 보너스 점수 + 특별 해석 주입
 //   AI 본문과 수치 블록이 동시에 이 궁합을 반영하도록 통합
@@ -208,11 +675,32 @@ function classifyByKeywords(prompt) {
   ];
   const cryptoKeywords = ["코인","비트코인","이더리움","리플","도지","이더"];
   const cryptoPattern  = /\b(btc|eth|xrp|sol|ada)\b/i;
+  // [V22.2] 주식 키워드 대폭 확장 — 동사형 + 시세/분석 표현
   const stockKeywords  = [
     "주식","삼성","코스피","코스닥","나스닥","종목","상장","etf","etn",
-    "매수","매도","주가","선물","옵션","레버리지","수익","손절","목표가"
+    "매수","매도","주가","선물","옵션","레버리지","수익","손절","목표가",
+    // 동사형 매매 표현
+    "사려","사고","샀어","샀는데","살까","팔려","팔까","팔고","팔아","팔았",
+    "들어가","진입","담으려","받으려","넣을","넣어",
+    // 시세/분석
+    "시세","단타","스윙","장투","급등","급락","폭락","폭등",
+    "오를까","내릴까","오르나","내리나","반등","상한가","하한가","거래량","시총",
+    // 메이저 종목 (자주 검색)
+    "sk하이닉스","sk증권","미래에셋","네이버","카카오","셀트리온","포스코",
+    "현대차","기아","lg전자","sk이노베이션","에코프로","포스코홀딩스","삼성바이오",
+    "두산에너빌리티","한미사이언스","유한양행","녹십자"
   ];
-  const investIntentKeywords = ["살까","사도","들어가","투자","오를까","떨어질까","전망"];
+  const investIntentKeywords = ["살까","사도","들어가","투자","오를까","떨어질까","전망","사면","팔면"];
+
+  // [V22.2] 종목명 + 매매 동사 정규식 패턴 (사장님 진단 핵심)
+  //   "미래에셋 사려는데", "삼성전자 살까", "현대차 매수해도 될까" 등
+  const stockPatternMatch = (
+    /[가-힣a-z]{2,10}\s*(사려|사고|살까|살래|팔려|팔까|팔아|매수|매도|담아|담을|진입|들어가|넣어|받을)/.test(txt) ||
+    /[가-힣a-z]{2,10}\s*(주가|시세|상한가|하한가|상승|하락|반등|급등|급락)/.test(txt) ||
+    /(언제|타이밍|시점)\s*(사|팔|매수|매도|진입|들어가|나올|익절|손절)/.test(txt) ||
+    /[가-힣a-z]{2,10}\s*(좋을|좋은|어때|어떨|괜찮|호재|악재)\s*[?]/.test(txt) && /(사려|사고|살까|매수|매도|투자|종목|주식|타이밍)/.test(txt)
+  );
+
   const loveKeywords = [
     "연애","사랑","남친","여친","애인","남자친구","여자친구","좋아해","좋아하",
     "재회","썸","연락","속마음","결혼","이별","헤어","짝사랑","고백","밀당",
@@ -222,7 +710,10 @@ function classifyByKeywords(prompt) {
 
   const reCount     = realEstateKeywords.filter(k => txt.includes(k)).length;
   const cryptoHit   = cryptoKeywords.some(k => txt.includes(k)) || cryptoPattern.test(prompt);
-  const stockCount  = stockKeywords.filter(k => txt.includes(k)).length + (investIntentKeywords.some(k => txt.includes(k)) ? 1 : 0);
+  // [V22.2] stockCount: 키워드 + 동사 의도 + 패턴 매칭 모두 합산
+  const stockCount  = stockKeywords.filter(k => txt.includes(k)).length
+                    + (investIntentKeywords.some(k => txt.includes(k)) ? 1 : 0)
+                    + (stockPatternMatch ? 2 : 0);  // 패턴 매칭 시 강한 신호 (+2)
   const loveCount   = loveKeywords.filter(k => txt.includes(k)).length;
 
   // confidence: 0 (애매) ~ 2+ (확실)
@@ -1067,26 +1558,19 @@ function buildStockMetrics({ totalScore, riskScore, cleanCards, isLeverage, quer
   //   다른 어떤 타로앱도 없는 차별화 포인트
   //   5계층 모든 결론을 한 박스에 응축
   // ════════════════════════════════════════════════════════════
-  let criticalInterpretation;
-  const futCard = cleanCards[2];
+  // [V22.0] 새 시스템 사용 — 카드 의미 정확 반영 + 랜덤 메시지
+  //   문제 해결: 기존 5단계 고정 텍스트 → 외워지는 문제 차단
+  //   문제 해결: "Seven of Cups → 하락 압력" 같은 카드 의미 왜곡 차단
+  //   결과: 매번 다른 메시지 + 카드 고유 flavor 정확 반영
+  const _domain = (queryType === "crypto") ? "stock" : (queryType || "stock");
+  const _revFlags = revFlags || [false, false, false];
+  let criticalInterpretation = buildCriticalInterpretation(cleanCards, _revFlags, _domain);
+
+  // [V22.0] 매도 의도 시 — 일부 메시지를 매도 관점으로 보정
   if (stockIntent === "sell") {
-    if (totalScore <= -3) {
-      criticalInterpretation = `현재 흐름은 '익절 기회'가 아니라 '방어 구간'입니다.\n${futCard}의 에너지는 추가 하락 가능성을 경고합니다.\n지금은 욕심이 아니라 손실 최소화가 우선입니다.`;
-    } else if (totalScore >= 6) {
-      criticalInterpretation = `현재 흐름은 '추세 정점' 구간에 가깝습니다.\n${futCard}의 에너지는 모멘텀 정점을 시사합니다.\n분할 익절로 수익을 보호하는 전략이 핵심입니다.`;
-    } else {
-      criticalInterpretation = `현재 흐름은 '단계적 정리' 구간입니다.\n${futCard}의 에너지는 단기 변동성을 암시합니다.\n분할 매도와 코어 유지의 균형이 핵심입니다.`;
-    }
-  } else {
-    if (isNoEntry || totalScore <= -3) {
-      criticalInterpretation = `현재 흐름은 '기회'가 아니라 '정리 구간'입니다.\n${futCard}의 에너지는 ${futCard === 'Death' ? '새로운 시작 이전의 강제 정리' : '하락 압력 지속'}을 의미합니다.\n지금은 공격이 아니라 생존 전략이 필요한 시점입니다.`;
-    } else if (hasMidstreamObstacle || hasReversedSignal) {
-      criticalInterpretation = `현재 흐름은 '눌림 후 회복' 구조입니다.\n${futCard}의 에너지는 단기 반등 후 재정비를 시사합니다.\n초반 진입 → 빠른 수익 → 재진입 대기가 핵심입니다.`;
-    } else if (totalScore >= 6) {
-      criticalInterpretation = `현재 흐름은 '강한 상승 모멘텀' 구간입니다.\n${futCard}의 에너지는 추세 추종의 유효성을 보여줍니다.\n분할 매수와 목표 도달 시 분할 익절이 핵심입니다.`;
-    } else {
-      criticalInterpretation = `현재 흐름은 '신호 검증' 구간입니다.\n${futCard}의 에너지는 방향성 모색을 시사합니다.\n소액 진입으로 신호 확인 후 비중 확대가 핵심입니다.`;
-    }
+    // 매도자에게는 BUY/HOLD 신호도 다른 의미
+    // (보유 중 - "분할 익절"이 BUY, "보유 유지"가 HOLD, "전량 매도"가 SELL)
+    // → 새 시스템 그대로 사용하되 도메인을 stock으로 유지하여 일반 메시지 사용
   }
 
   return {
@@ -1515,17 +1999,8 @@ function buildRealEstateMetrics({ totalScore, riskScore, cleanCards, intent, pro
         cautions: reCautions.slice(0, 3)
       },
       rules: reCriticalRules,
-      // [V20.10] 🔥 Critical Interpretation — 부동산 핵심 해석
-      criticalInterpretation: intent === "sell" ? (
-        netScore >= 5 ? `이 매물은 '시즌 호재' 구간에 있습니다.\n${cleanCards[2]}의 에너지는 시장 반응의 적극성을 시사합니다.\n지금은 호가 유지하고 시즌 활용이 핵심입니다.`
-        : netScore >= 2 ? `이 매물은 '안정적 거래' 구조입니다.\n${cleanCards[2]}의 에너지는 시장의 균형을 보여줍니다.\n희망가 유지하면서 시즌 진입이 핵심입니다.`
-        : netScore >= -3 ? `이 매물은 "기다리면 오르는 구조"가 아니라 "가격을 맞추면 팔리는 구조"입니다.\n${cleanCards[2]}의 에너지는 현실 인정의 중요성을 강조합니다.\n호가 조정이 거래의 핵심입니다.`
-        : `이 매물은 '장기 노출 위험' 구간입니다.\n${cleanCards[2]}의 에너지는 시장 압력을 경고합니다.\n적극적 호가 조정 또는 다음 성수기 대기가 핵심입니다.`
-      ) : (
-        netScore >= 5 ? `이 시점은 '매수 적기' 구간입니다.\n${cleanCards[2]}의 에너지는 시장 진입의 유효성을 시사합니다.\n시즌 활용 + 적극적 탐색이 핵심입니다.`
-        : netScore >= -3 ? `이 시점은 '신중한 탐색' 구간입니다.\n${cleanCards[2]}의 에너지는 급매 포착의 가치를 보여줍니다.\n조급함 없이 좋은 매물 선별이 핵심입니다.`
-        : `이 시점은 '매수 보류' 구간입니다.\n${cleanCards[2]}의 에너지는 시장 변동성을 경고합니다.\n현금 유동성 확보와 안정 신호 대기가 핵심입니다.`
-      )
+      // [V22.0] 🔥 Critical Interpretation — 부동산 새 시스템 (랜덤 + flavor)
+      criticalInterpretation: buildCriticalInterpretation(cleanCards, [false, false, false], "realestate")
     }
   };
 }
@@ -1749,12 +2224,8 @@ function buildLoveMetrics({ totalScore, cleanCards, prompt, loveSubType }) {
         "추가 접근 금지",
         "자기 회복 집중"
       ],
-      // 🔥 Critical Interpretation — 핵심 해석
-      criticalInterpretation: netScore >= 5 ? `이번 흐름은 '관계 확장'의 명확한 기회입니다.\n${keyCard}의 에너지는 적극적 행동의 유효성을 보여줍니다.\n지금은 망설임이 아니라 진정성 있는 표현이 필요한 시점입니다.`
-                            : netScore >= 2 ? `이번 흐름은 '신호 교환' 구간입니다.\n${keyCard}의 에너지는 작은 신호의 중요성을 시사합니다.\n급한 결단보다 자연스러운 흐름이 핵심입니다.`
-                            : netScore >= -1 ? `이번 흐름은 '기회'가 아니라 '테스트 구간'입니다.\n${keyCard}의 에너지는 선택이 아니라 혼란을 의미합니다.\n지금은 관계를 밀어붙이는 시점이 아니라, 상대의 선택을 유도하는 전략이 필요한 구간입니다.`
-                            : netScore >= -5 ? `이번 흐름은 '정체 구간'입니다.\n${keyCard}의 에너지는 거리와 인내를 시사합니다.\n지금은 행동이 아니라 내면 정리가 핵심입니다.`
-                            : `이번 흐름은 '회복 우선' 구간입니다.\n${keyCard}의 에너지는 자기 보호의 중요성을 강조합니다.\n지금은 관계가 아니라 자신에게 집중하는 시점입니다.`
+      // [V22.0] 🔥 Critical Interpretation — 연애 새 시스템 (랜덤 + flavor)
+      criticalInterpretation: buildCriticalInterpretation(cleanCards, [false, false, false], "love")
     }
   };
 }
