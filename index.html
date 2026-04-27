@@ -2280,7 +2280,7 @@ function classifyQuery(question) {
     const stockKeywords = [
         '주식','삼성','코스피','코스닥','나스닥','종목','상장',
         '배당','실적','매출','PER','ETF','펀드','증권','거래소',
-        '주가','티엘비','우리은행','카카오','네이버','하이닉스','인텔',
+        '주가','티엘비','우리은행','카카오','네이버','하이닉스',
         '현대','기아','LG','SK','포스코','셀트리온','KB','신한','하나',
         '선물','옵션','공매도','시가총액','상한가','하한가','증시'
     ];
@@ -3514,6 +3514,35 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
     const formatChunk = t => (t || '').trim()
         .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
         .replace(/\n/g, '<br>');
+
+    // [V20.8] 인사/도입부 자동 감지 — 카드 텍스트가 한 칸씩 밀리는 버그 방지
+    //   AI가 가끔 종목명 인사말을 첫 단락에 출력하면 paragraphs[0]에 들어가
+    //   → cardTexts[0]에 인사말, [1]에 과거 텍스트로 한 칸씩 밀림
+    //
+    //   해결: 첫 단락이 카드 의미를 담지 않은 "도입부"로 판단되면 스킵
+    //   판단 기준:
+    //     - "과거", "현재", "미래", "지난", "앞으로" 등 시점 단어 없음
+    //     - 카드 이름도 본문에 없음
+    //     - 길이가 짧음 (~150자 이하 인사말)
+    //   또는:
+    //     - 다음 단락이 "과거", "지난", "그동안" 등으로 시작
+    function looksLikeIntro(text, nextText) {
+        if (!text) return false;
+        const txt = text.trim();
+        // 카드 시점 단어가 없음
+        const noTimeRef = !/(과거|지난|예전|그동안|현재|지금|이번|미래|앞으로|다가올|향후)/.test(txt);
+        // 길이가 짧은 도입부 (250자 이하)
+        const isShort = txt.length <= 250;
+        // 다음 단락이 카드 시점으로 시작
+        const nextIsCardStart = nextText && /^(과거|지난|예전|그동안|유저님은|유저님께서|유저님의)/.test(nextText.trim());
+
+        return (noTimeRef && isShort) || (isShort && nextIsCardStart);
+    }
+
+    // 첫 단락이 인사/도입부면 제거
+    if (paragraphs.length >= 4 && looksLikeIntro(paragraphs[0], paragraphs[1])) {
+        paragraphs.shift();  // 첫 단락 제거 → 정상 위치 복원
+    }
 
     let cardTexts = [paragraphs[0] || "", paragraphs[1] || "", paragraphs[2] || ""];
 
