@@ -3680,41 +3680,38 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
         function _render5LayerBlock(d, opts) {
             opts = opts || {};
             const isSell  = !!opts.isSell;
-            const domain  = opts.domain || 'stock';  // 'stock' | 'crypto' | 'realestate'
+            const domain  = opts.domain || 'stock';  // 'stock' | 'crypto' | 'realestate' | 'love'
             const title   = opts.title || '';
             const layers  = (d._server && d._server.layers) ? d._server.layers : null;
             if (!layers) return null;  // layers 없으면 fallback 신호
 
-            // 계층별 색상
+            // 계층별 색상 (V20.10 — 도메인별 통일)
             const colors = {
-                decision:   '#D4AF37',   // 골드 (가장 강조)
-                execution:  '#2ecc71',   // 그린 (실행)
-                timing:     '#3498db',   // 블루 (시간)
-                signal:     '#9b59b6',   // 퍼플 (분석)
-                risk:       '#e67e22',   // 오렌지 (경고)
-                rules:      '#e74c3c'    // 레드 (규칙)
+                decision:    '#D4AF37',   // 골드 (가장 강조)
+                market:      '#5dade2',   // 라이트 블루 (시장 판단 — 부동산)
+                mind:        '#ec7063',   // 핑크 (상대 심리 — 연애)
+                execution:   '#2ecc71',   // 그린 (실행)
+                action:      '#2ecc71',   // 그린 (행동)
+                contract:    '#16a085',   // 다크 그린 (계약)
+                timing:      '#3498db',   // 블루 (시간)
+                signal:      '#9b59b6',   // 퍼플 (분석)
+                risk:        '#e67e22',   // 오렌지 (경고)
+                rules:       '#e74c3c',   // 레드 (규칙)
+                critical:    '#ff6b6b'    // 강한 레드 (🔥 핵심)
             };
 
-            // 도메인별 아이콘 + 라벨
-            const labels = (domain === 'realestate')
-                ? {
-                    decision:  isSell ? '🧭 최종 결론 — 매도' : '🧭 최종 결론 — 매수',
-                    execution: '⚡ 실전 거래 전략',
-                    timing:    '⏱ 거래 타이밍 가이드',
-                    signal:    '🧠 시장 흐름 해석',
-                    risk:      '⚠️ 리스크 분석',
-                    rules:     '🛡 제우스 행동 지침'
-                  }
-                : {
-                    decision:  isSell ? '🧭 최종 결론 — 매도' : '🧭 최종 결론 — 매수',
-                    execution: '⚡ 실전 매매 전략',
-                    timing:    '⏱ 매매 타이밍 가이드',
-                    signal:    '🧠 흐름 해석',
-                    risk:      '⚠️ 리스크 분석',
-                    rules:     '🛡 제우스 행동 지침'
-                  };
+            // ────────────────────────────────────────────────
+            // [V20.10] Decision Layer (도메인별 라벨)
+            // ────────────────────────────────────────────────
+            const decisionLabel = (domain === 'love')        ? '🧭 최종 결론 (Decision Layer)'
+                                : (domain === 'realestate')   ? '🧭 최종 결론 (Decision Layer)'
+                                :                               '🧭 최종 결론 (Decision Layer)';
+            const positionLabel = (domain === 'love')        ? '관계 상태'
+                                : (domain === 'realestate')   ? '포지션'
+                                :                               '포지션';
+            const strategyLabel = (domain === 'love')        ? '핵심 전략'
+                                : '전략';
 
-            // ───────── Decision Layer (가장 강조)
             const decisionHTML = `
                 <div style="margin-bottom:16px; padding:14px 16px;
                             background: linear-gradient(135deg, rgba(212,175,55,0.18), rgba(212,175,55,0.06));
@@ -3722,40 +3719,138 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
                             border-radius: 12px;
                             box-shadow: 0 0 18px rgba(212,175,55,0.18);">
                     <div style="color:${colors.decision}; font-size:0.84rem; font-weight:900; letter-spacing:0.1em; margin-bottom:10px;">
-                        ${labels.decision} <span style="font-size:0.7rem; opacity:0.7;">(Decision Layer)</span>
+                        ${decisionLabel}
                     </div>
                     <div style="font-size:1.05rem; color:#fff; font-weight:900; margin-bottom:6px; line-height:1.5;">
-                        👉 포지션: ${layers.decision.position}
+                        👉 ${positionLabel}: ${layers.decision.position}
                     </div>
                     <div style="font-size:0.92rem; color:rgba(255,255,255,0.92); font-weight:600; line-height:1.6;">
-                        👉 전략: ${layers.decision.strategy}
+                        👉 ${strategyLabel}: ${layers.decision.strategy}
                     </div>
                 </div>`;
 
-            // ───────── Execution Layer
-            const exec = layers.execution || {};
-            const execHTML = `
+            // ────────────────────────────────────────────────
+            // [V20.10] Mind Layer (연애 전용 — 상대 심리)
+            // ────────────────────────────────────────────────
+            const mindHTML = (domain === 'love' && layers.mind) ? `
+                <div style="margin-bottom:14px; padding:13px 14px;
+                            background: rgba(236,112,99,0.08);
+                            border-left: 3px solid ${colors.mind};
+                            border-radius: 6px;">
+                    <div style="color:${colors.mind}; font-size:0.78rem; font-weight:900; letter-spacing:0.08em; margin-bottom:8px;">
+                        💭 상대 심리 (Mind Layer)
+                    </div>
+                    <div style="font-size:0.88rem; color:rgba(255,255,255,0.92); line-height:1.85; margin-bottom:8px;">
+                        <div>→ ${layers.mind.feeling}</div>
+                        <div>→ ${layers.mind.attitude}</div>
+                    </div>
+                    <div style="margin-top:6px; padding:8px 10px; background:rgba(236,112,99,0.12); border-radius:5px; font-size:0.92rem; color:#fff; font-weight:700;">
+                        👉 핵심: ${layers.mind.coreInsight}
+                    </div>
+                </div>` : '';
+
+            // ────────────────────────────────────────────────
+            // [V20.10] Market Layer (부동산 전용 — 시장 판단)
+            // ────────────────────────────────────────────────
+            const marketHTML = (domain === 'realestate' && layers.market) ? `
+                <div style="margin-bottom:14px; padding:13px 14px;
+                            background: rgba(93,173,226,0.08);
+                            border-left: 3px solid ${colors.market};
+                            border-radius: 6px;">
+                    <div style="color:${colors.market}; font-size:0.78rem; font-weight:900; letter-spacing:0.08em; margin-bottom:8px;">
+                        📊 시장 판단 (Market Layer)
+                    </div>
+                    <div style="font-size:0.88rem; color:rgba(255,255,255,0.92); line-height:1.85;">
+                        <div>→ 현재 흐름: ${layers.market.flow}</div>
+                        <div>→ ${layers.market.position}</div>
+                        <div>→ ${layers.market.delay}</div>
+                    </div>
+                </div>` : '';
+
+            // ────────────────────────────────────────────────
+            // [V20.10] Execution / Action Layer
+            //   - stock/crypto/realestate: weight/stopLoss/target
+            //   - love: action.rules + examples (체크리스트형)
+            // ────────────────────────────────────────────────
+            let executionHTML;
+            if (domain === 'love' && layers.action) {
+                const actionItems = (layers.action.rules || []).map(r => `<div>✔ ${r}</div>`).join('');
+                const examples = (layers.action.examples || []).map(e => `<div style="font-size:0.82rem; opacity:0.85;">  • ${e}</div>`).join('');
+                executionHTML = `
+                <div style="margin-bottom:14px; padding:12px 14px;
+                            background: rgba(46,204,113,0.06);
+                            border-left: 3px solid ${colors.action};
+                            border-radius: 6px;">
+                    <div style="color:${colors.action}; font-size:0.78rem; font-weight:900; letter-spacing:0.08em; margin-bottom:8px;">
+                        ⚡ 행동 전략 (Action Layer)
+                    </div>
+                    <div style="font-size:0.86rem; color:rgba(255,255,255,0.92); line-height:1.9; margin-bottom:8px;">
+                        ${actionItems}
+                    </div>
+                    ${examples ? `
+                    <div style="margin-top:6px; padding-top:6px; border-top:1px dashed rgba(46,204,113,0.3); font-size:0.82rem; color:rgba(255,255,255,0.85);">
+                        💡 추천 행동:
+                        ${examples}
+                    </div>` : ''}
+                </div>`;
+            } else if (domain === 'realestate') {
+                const exec = layers.execution || {};
+                const actionItems = (exec.actionItems || []).map(r => `<div>✔ ${r}</div>`).join('');
+                executionHTML = `
                 <div style="margin-bottom:14px; padding:12px 14px;
                             background: rgba(46,204,113,0.06);
                             border-left: 3px solid ${colors.execution};
                             border-radius: 6px;">
                     <div style="color:${colors.execution}; font-size:0.78rem; font-weight:900; letter-spacing:0.08em; margin-bottom:8px;">
-                        ${labels.execution} <span style="font-size:0.66rem; opacity:0.6;">(Execution Layer)</span>
+                        ⚡ ${isSell ? '실전 매도' : '실전 매수'} 전략 (Execution Layer)
                     </div>
                     <div style="font-size:0.88rem; color:rgba(255,255,255,0.92); line-height:1.85;">
-                        ${domain === 'realestate' ? `
+                        ${actionItems || `
                             <div>📊 ${exec.weight || '-'}</div>
                             <div>⚠️ ${exec.stopLoss || '-'}</div>
                             <div>🎯 ${exec.target || '-'}</div>
-                        ` : `
-                            <div>💰 ${isSell ? '매도 비중' : '권장 비중'}: <b>${exec.weight || '-'}</b></div>
-                            <div>🛑 ${isSell ? '손실 한도' : '손절 기준'}: ${exec.stopLoss || '-'}</div>
-                            <div>🎯 ${isSell ? '익절 구간' : '목표 구간'}: ${exec.target || '-'}</div>
                         `}
                     </div>
                 </div>`;
+            } else {
+                // stock / crypto
+                const exec = layers.execution || {};
+                executionHTML = `
+                <div style="margin-bottom:14px; padding:12px 14px;
+                            background: rgba(46,204,113,0.06);
+                            border-left: 3px solid ${colors.execution};
+                            border-radius: 6px;">
+                    <div style="color:${colors.execution}; font-size:0.78rem; font-weight:900; letter-spacing:0.08em; margin-bottom:8px;">
+                        ⚡ 실전 매매 전략 (Execution Layer)
+                    </div>
+                    <div style="font-size:0.88rem; color:rgba(255,255,255,0.92); line-height:1.85;">
+                        <div>💰 ${isSell ? '매도 비중' : '권장 비중'}: <b>${exec.weight || '-'}</b></div>
+                        <div>🛑 ${isSell ? '손실 한도' : '손절 기준'}: ${exec.stopLoss || '-'}</div>
+                        <div>🎯 ${isSell ? '익절 구간' : '목표 구간'}: ${exec.target || '-'}</div>
+                    </div>
+                </div>`;
+            }
 
-            // ───────── Timing Layer (사장님 강조 — 구간 방식)
+            // ────────────────────────────────────────────────
+            // [V20.10] Contract Layer (부동산 전용 — 계약 성사 구조)
+            // ────────────────────────────────────────────────
+            const contractHTML = (domain === 'realestate' && layers.contract) ? `
+                <div style="margin-bottom:14px; padding:12px 14px;
+                            background: rgba(22,160,133,0.08);
+                            border-left: 3px solid ${colors.contract};
+                            border-radius: 6px;">
+                    <div style="color:${colors.contract}; font-size:0.78rem; font-weight:900; letter-spacing:0.08em; margin-bottom:8px;">
+                        🎯 계약 성사 구조
+                    </div>
+                    <div style="font-size:0.88rem; color:rgba(255,255,255,0.92); line-height:1.85;">
+                        <div>👉 예상 소요 기간: <b>${layers.contract.expectedWeeks}</b></div>
+                        <div style="margin-top:4px; font-style:italic; color:#7AD188;">${layers.contract.coreInsight}</div>
+                    </div>
+                </div>` : '';
+
+            // ────────────────────────────────────────────────
+            // [V20.10] Timing Layer
+            // ────────────────────────────────────────────────
             const tim = layers.timing || {};
             const renderRanges = (arr, color, prefix) => (arr || []).map(r =>
                 `<div style="padding:6px 10px; margin-bottom:5px; background:${color}; border-radius:5px; font-size:0.85rem; color:#fff;">
@@ -3763,13 +3858,41 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
                 </div>`
             ).join('');
 
-            const timingHTML = `
+            let timingHTML;
+            if (domain === 'love') {
+                // 연애 — entry point + energy points
+                const energyPoints = (tim.energyPoints || []).map(p => `<div>• ${p}</div>`).join('');
+                timingHTML = `
                 <div style="margin-bottom:14px; padding:12px 14px;
                             background: rgba(52,152,219,0.06);
                             border-left: 3px solid ${colors.timing};
                             border-radius: 6px;">
                     <div style="color:${colors.timing}; font-size:0.78rem; font-weight:900; letter-spacing:0.08em; margin-bottom:8px;">
-                        ${labels.timing} <span style="font-size:0.66rem; opacity:0.6;">(Timing Layer)</span>
+                        ⏱ 타이밍 전략 (Timing Layer)
+                    </div>
+                    <div style="font-size:0.88rem; color:rgba(255,255,255,0.92); line-height:1.85; margin-bottom:8px;">
+                        👉 ${tim.entryPoint || '-'}
+                    </div>
+                    ${energyPoints ? `
+                    <div style="margin-top:8px; padding:8px 10px; background:rgba(52,152,219,0.08); border-radius:5px; font-size:0.84rem; color:rgba(255,255,255,0.85);">
+                        🌙 에너지 포인트:<br>
+                        ${energyPoints}
+                    </div>` : ''}
+                    ${tim.flow ? `
+                    <div style="margin-top:8px; font-size:0.85rem; color:#FFD970; font-weight:700;">
+                        📈 관계 흐름: ${tim.flow}
+                    </div>` : ''}
+                </div>`;
+            } else {
+                // stock / crypto / realestate — 시간 구간 방식
+                const timingTitle = (domain === 'realestate') ? '⏱ 거래 타이밍 가이드' : '⏱ 매매 타이밍 가이드';
+                timingHTML = `
+                <div style="margin-bottom:14px; padding:12px 14px;
+                            background: rgba(52,152,219,0.06);
+                            border-left: 3px solid ${colors.timing};
+                            border-radius: 6px;">
+                    <div style="color:${colors.timing}; font-size:0.78rem; font-weight:900; letter-spacing:0.08em; margin-bottom:8px;">
+                        ${timingTitle} (Timing Layer)
                     </div>
                     ${tim.seasonal ? `
                         <div style="margin-bottom:10px; padding:8px 10px; background:rgba(212,175,55,0.10); border-radius:5px; font-size:0.88rem; color:#FFD970; font-weight:700;">
@@ -3794,27 +3917,50 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
                         ${renderRanges(tim.watchRanges, 'rgba(255,217,112,0.08)', '•')}
                     ` : ''}
                 </div>`;
+            }
 
-            // ───────── Signal Layer
+            // ────────────────────────────────────────────────
+            // [V20.10] Signal Layer — 한 줄 임팩트 (stock/crypto)
+            // ────────────────────────────────────────────────
             const sig = layers.signal || {};
+            // 한 줄 임팩트 사용 가능 여부 체크
+            const hasImpact = !!(sig.pastImpact && sig.currentImpact && sig.futureImpact);
+            const signalTitle = (domain === 'realestate') ? '🧠 시장 흐름 해석' : '🧠 흐름 해석';
             const signalHTML = `
                 <div style="margin-bottom:14px; padding:12px 14px;
                             background: rgba(155,89,182,0.06);
                             border-left: 3px solid ${colors.signal};
                             border-radius: 6px;">
                     <div style="color:${colors.signal}; font-size:0.78rem; font-weight:900; letter-spacing:0.08em; margin-bottom:8px;">
-                        ${labels.signal} <span style="font-size:0.66rem; opacity:0.6;">(Signal Layer)</span>
+                        ${signalTitle} (Signal Layer)
                     </div>
                     <div style="font-size:0.85rem; color:rgba(255,255,255,0.88); line-height:1.85; margin-bottom:8px;">
-                        <div>• ${sig.past || '-'}</div>
-                        <div>• ${sig.current || '-'}</div>
-                        <div>• ${sig.future || '-'}</div>
+                        ${hasImpact ? `
+                            <div style="margin-bottom:8px;">
+                                <div style="font-weight:700; color:#fff;">• ${sig.past || '-'}</div>
+                                <div style="margin-left:14px; color:rgba(255,255,255,0.78); font-size:0.82rem;">→ ${sig.pastImpact}</div>
+                            </div>
+                            <div style="margin-bottom:8px;">
+                                <div style="font-weight:700; color:#fff;">• ${sig.current || '-'}</div>
+                                <div style="margin-left:14px; color:rgba(255,255,255,0.78); font-size:0.82rem;">→ ${sig.currentImpact}</div>
+                            </div>
+                            <div style="margin-bottom:8px;">
+                                <div style="font-weight:700; color:#fff;">• ${sig.future || '-'}</div>
+                                <div style="margin-left:14px; color:rgba(255,255,255,0.78); font-size:0.82rem;">→ ${sig.futureImpact}</div>
+                            </div>
+                        ` : `
+                            <div>• ${sig.past || '-'}</div>
+                            <div>• ${sig.current || '-'}</div>
+                            <div>• ${sig.future || '-'}</div>
+                        `}
                     </div>
                     ${sig.summary ? `<div style="margin-top:6px; padding:6px 10px; background:rgba(155,89,182,0.10); border-radius:5px; font-size:0.82rem; color:rgba(212,175,55,0.92); font-style:italic;">↳ ${sig.summary}</div>` : ''}
                     ${sig.verdict ? `<div style="margin-top:8px; padding:8px 10px; background:rgba(155,89,182,0.14); border-radius:5px; font-size:0.92rem; color:#fff; font-weight:700;">👉 결론: ${sig.verdict}</div>` : ''}
                 </div>`;
 
-            // ───────── Risk Analysis
+            // ────────────────────────────────────────────────
+            // [V20.10] Risk Analysis
+            // ────────────────────────────────────────────────
             const rsk = layers.risk || {};
             const riskColor = (rsk.level || '').includes('매우 높음') ? '#ff5252'
                             : (rsk.level || '').includes('높음') ? '#ff8060'
@@ -3826,20 +3972,22 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
                             border-left: 3px solid ${colors.risk};
                             border-radius: 6px;">
                     <div style="color:${colors.risk}; font-size:0.78rem; font-weight:900; letter-spacing:0.08em; margin-bottom:8px;">
-                        ${labels.risk}
+                        ⚠️ 리스크 분석
                     </div>
                     <div style="font-size:0.85rem; color:rgba(255,255,255,0.92); line-height:1.85;">
-                        <div>• 리스크 수준: <b style="color:${riskColor};">${rsk.level || '보통'}</b></div>
-                        <div>• 변동성: ${rsk.volatility || '보통'}</div>
+                        ${domain !== 'love' ? `<div>• 리스크 수준: <b style="color:${riskColor};">${rsk.level || '보통'}</b></div>
+                        <div>• 변동성: ${rsk.volatility || '보통'}</div>` : ''}
                         ${(rsk.cautions && rsk.cautions.length) ? `
-                        <div style="margin-top:6px; font-size:0.78rem; opacity:0.9;">• 주의 포인트:</div>
+                        ${domain !== 'love' ? `<div style="margin-top:6px; font-size:0.78rem; opacity:0.9;">• 주의 포인트:</div>` : ''}
                         <ul style="margin:4px 0 0 16px; padding:0; font-size:0.82rem; line-height:1.7;">
                             ${rsk.cautions.map(c => `<li style="color:rgba(255,255,255,0.85);">${c}</li>`).join('')}
                         </ul>` : ''}
                     </div>
                 </div>`;
 
-            // ───────── Critical Rules
+            // ────────────────────────────────────────────────
+            // [V20.10] Critical Rules
+            // ────────────────────────────────────────────────
             const rules = layers.rules || [];
             const rulesHTML = rules.length ? `
                 <div style="margin-bottom:14px; padding:12px 14px;
@@ -3847,14 +3995,44 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
                             border-left: 3px solid ${colors.rules};
                             border-radius: 6px;">
                     <div style="color:${colors.rules}; font-size:0.78rem; font-weight:900; letter-spacing:0.08em; margin-bottom:8px;">
-                        ${labels.rules} <span style="font-size:0.66rem; opacity:0.6;">(Critical Rule)</span>
+                        🛡 제우스 행동 지침
                     </div>
                     <div style="font-size:0.86rem; color:rgba(255,255,255,0.92); line-height:1.9;">
                         ${rules.map(r => `<div>✔ ${r}</div>`).join('')}
                     </div>
                 </div>` : '';
 
-            return decisionHTML + execHTML + timingHTML + signalHTML + riskHTML + rulesHTML;
+            // ────────────────────────────────────────────────
+            // [V20.10] 🔥 Critical Interpretation — 핵심 해석 (NEW)
+            //   다른 어떤 타로앱도 없는 차별화 포인트
+            // ────────────────────────────────────────────────
+            const criticalInterpHTML = layers.criticalInterpretation ? `
+                <div style="margin-top:18px; margin-bottom:14px; padding:16px 18px;
+                            background: linear-gradient(135deg, rgba(255,107,107,0.15), rgba(255,107,107,0.06));
+                            border: 2px solid rgba(255,107,107,0.45);
+                            border-radius: 12px;
+                            box-shadow: 0 0 16px rgba(255,107,107,0.18);">
+                    <div style="color:${colors.critical}; font-size:0.88rem; font-weight:900; letter-spacing:0.1em; margin-bottom:10px;">
+                        🔥 핵심 해석
+                    </div>
+                    <div style="font-size:0.95rem; color:#fff; font-weight:600; line-height:1.8; white-space:pre-line;">
+                        ${layers.criticalInterpretation}
+                    </div>
+                </div>` : '';
+
+            // ────────────────────────────────────────────────
+            // 최종 결합 — 도메인별 순서 다름
+            // ────────────────────────────────────────────────
+            if (domain === 'love') {
+                // 연애: Decision → Mind → Action → Timing → Signal → Risk → Rules → Critical
+                return decisionHTML + mindHTML + executionHTML + timingHTML + signalHTML + riskHTML + rulesHTML + criticalInterpHTML;
+            } else if (domain === 'realestate') {
+                // 부동산: Decision → Market → Execution → Contract → Timing → Signal → Risk → Rules → Critical
+                return decisionHTML + marketHTML + executionHTML + contractHTML + timingHTML + signalHTML + riskHTML + rulesHTML + criticalInterpHTML;
+            } else {
+                // 주식/코인: Decision → Execution → Timing → Signal → Risk → Rules → Critical
+                return decisionHTML + executionHTML + timingHTML + signalHTML + riskHTML + rulesHTML + criticalInterpHTML;
+            }
         }
 
         // ── 🔒 방호벽: 주식/코인 전용 렌더러 [V20.0] 5계층 우선 + 기존 폴백
@@ -4441,7 +4619,47 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
 
             if (isLoveQuery) {
                 // 💘 연애 전용 블록 — 투자 용어 완전 배제
-                return _renderLoveBlock(cards, qRaw2, LOVE_SUBTYPE) + `
+                // [V20.10] 5계층 데이터 있으면 우선 표시 (Decision/Mind/Action/Timing/Risk/Rules/🔥)
+                const investData = window._serverMetrics ? _mapServerMetricsToInvestData(window._serverMetrics, cards) : null;
+                const layer5HTML = investData ? _render5LayerBlock(investData, { isSell: false, domain: 'love', title: '제우스 연애 신탁' }) : null;
+
+                // 무료 영역 — 5계층 결과 또는 기존 _renderLoveBlock
+                const freeContent = layer5HTML
+                    ? `<div style="padding:18px; background:rgba(212,175,55,0.06); border:1px solid rgba(212,175,55,0.4); border-radius:12px; margin-top:18px;">
+                            <h3 style="color:#FF7BAC; text-align:center; margin:0 0 15px 0; font-size:1.1rem; border-bottom:1px solid rgba(255,123,172,0.35); padding-bottom:10px;">
+                                💘 제우스 연애 신탁 <span style="font-size:0.78rem; opacity:0.7; letter-spacing:0.15em;">ZEUS LOVE ORACLE</span>
+                            </h3>
+                            ${layer5HTML}
+                        </div>`
+                    : _renderLoveBlock(cards, qRaw2, LOVE_SUBTYPE);
+
+                // [V20.10] 🔒 PRO 전환 박스 — FREE 영역 마지막에 배치
+                const proHookHTML = `
+                    <div style="margin-top:20px; padding:18px 16px;
+                                background: linear-gradient(135deg, rgba(255,123,172,0.15), rgba(212,175,55,0.10));
+                                border: 2px solid rgba(255,123,172,0.5);
+                                border-radius: 12px;
+                                box-shadow: 0 0 20px rgba(255,123,172,0.18);
+                                text-align: center;">
+                        <div style="color:#FFD970; font-size:0.78rem; font-weight:800; letter-spacing:0.1em; margin-bottom:10px;">
+                            ✨ PRO 신탁에서 더 깊게
+                        </div>
+                        <div style="font-size:0.94rem; color:#fff; line-height:1.9; margin-bottom:14px;">
+                            👉 상대가 나를 어떻게 생각하는지<br>
+                            👉 내일 실제 행동 타이밍<br>
+                            👉 이 관계의 결론
+                        </div>
+                        <button onclick="showPayModal()" style="
+                            padding:13px 30px;
+                            background: linear-gradient(135deg, #D4AF37, #F1C40F);
+                            color:#000; border:none; border-radius:30px;
+                            font-weight:900; font-size:0.95rem; cursor:pointer;
+                            box-shadow: 0 4px 12px rgba(212,175,55,0.4);">
+                            🔒 지금 바로 확인하기
+                        </button>
+                    </div>`;
+
+                return freeContent + proHookHTML + `
                 <div style="margin-top:14px; padding:14px 16px; background:rgba(212,175,55,0.07); border-left:3px solid var(--gold); border-radius:0 8px 8px 0; font-size:0.9rem; line-height:1.8; color:rgba(255,255,255,0.9);">${lucky}</div>`;
             }
 
@@ -4863,6 +5081,9 @@ document.addEventListener('DOMContentLoaded', () => {
 function showPayModal() {
     const cfg = PAYMENT_CONFIG;
 
+    // [V20.10] 계좌이체 행동 추적 시작 (체류 시간 측정용)
+    if (typeof zeusClaimResetTracking === 'function') zeusClaimResetTracking();
+
     // [V19.3] 도메인별 동적 PRO 혜택 — 질문 맥락에 맞춤
     let proBullets = [];
     if (CURRENT_MODE === 'stock' || CURRENT_MODE === 'crypto') {
@@ -5014,43 +5235,67 @@ function showPayModal() {
                     ▼ 계좌이체로 결제 (카드 결제 불가 시)
                 </summary>
                 <div style="margin-top:10px;">
-                    <div class="pay-account">
+                    <div class="pay-account" id="payAccountInfo">
                         <div><strong>입금 금액</strong>: ₩${amountFmt}</div>
                         <div><strong>입금 은행</strong>: ${cfg.bank}</div>
-                        <div><strong>계좌번호</strong>: ${cfg.account}</div>
+                        <div onclick="zeusClaimCopyAccount('${cfg.account}')" style="cursor:pointer; padding:6px 8px; margin:4px 0; background:rgba(212,175,55,0.10); border:1px dashed rgba(212,175,55,0.5); border-radius:4px;">
+                            <strong>계좌번호</strong>: ${cfg.account} <span id="zeusCopyHint" style="margin-left:8px; font-size:0.74rem; color:#FFD970;">📋 탭하여 복사</span>
+                        </div>
                         <div><strong>예금주</strong>: ${cfg.holder}</div>
                         <div style="margin-top:6px;font-size:0.78rem;color:rgba(212,175,55,0.5);">송금 메모: ${cfg.productName}</div>
                     </div>
                     ${tossBtn}
 
-                    <!-- [V20.0] 계좌이체 안내 + 영업시간 명시 -->
+                    <!-- [V20.10] 계좌이체 안내 -->
                     <div style="margin-top:12px; padding:10px 12px;
                                 background: rgba(52,152,219,0.06);
                                 border-left: 3px solid #3498db;
                                 border-radius: 6px;
                                 font-size:0.76rem; line-height:1.7; color:rgba(255,255,255,0.85);">
-                        <b style="color:#5dade2;">💡 계좌이체 절차 (반자동 — 처리 지연 가능):</b><br>
-                        1️⃣ 위 계좌로 입금 (입금자명에 카카오ID/연락처)<br>
-                        2️⃣ 카톡 또는 문자로 알려주세요<br>
-                        3️⃣ 확인 후 PRO 토큰 전달드립니다<br>
-                        4️⃣ 받은 토큰을 아래 박스에 입력 → PRO 활성화
+                        <b style="color:#5dade2;">💡 계좌이체 절차 (즉시 활성화):</b><br>
+                        1️⃣ 위 계좌번호 탭하여 복사<br>
+                        2️⃣ 본인 은행 앱에서 송금 (입금자명에 본인 이름)<br>
+                        3️⃣ 아래 [송금 완료 신고] 클릭<br>
+                        4️⃣ 즉시 PRO 활성화!
                     </div>
-                    <div style="margin-top:8px; padding:10px 12px;
-                                background: rgba(255,165,0,0.08);
-                                border-left: 3px solid #ffa040;
-                                border-radius: 6px;
-                                font-size:0.74rem; line-height:1.6; color:rgba(255,255,255,0.85);">
-                        ⏰ <b style="color:#ffd970;">처리 가능 시간: 매일 09:00 ~ 22:00</b><br>
-                        야간(22시 이후)·새벽 입금은 다음날 오전 처리됩니다.<br>
-                        <b style="color:#7ad188;">즉시 사용 원하시면 위 카드결제를 권장드립니다.</b>
+
+                    <!-- [V20.10] 자동 토큰 발급 폼 -->
+                    <div style="margin-top:14px; padding:14px;
+                                background: rgba(46,204,113,0.06);
+                                border: 1px solid rgba(46,204,113,0.4);
+                                border-radius: 8px;">
+                        <div style="font-size:0.84rem; color:#7ad188; font-weight:800; margin-bottom:8px;">
+                            ✅ 송금 완료 후 즉시 활성화
+                        </div>
+                        <input type="text" id="zeusSenderName"
+                               placeholder="입금자명 입력 (예: 홍길동)"
+                               maxlength="30"
+                               style="width:100%; padding:10px;
+                                      background:rgba(0,0,0,0.4);
+                                      border:1px solid rgba(46,204,113,0.4);
+                                      border-radius:6px; color:#fff; font-size:0.88rem;
+                                      margin-bottom:8px;" />
+                        <button onclick="zeusClaimSubmit('${cfg.amount === 990 ? 'trial' : cfg.amount === 3900 ? 'day' : 'month'}')" style="
+                                width:100%; padding:13px;
+                                background: linear-gradient(135deg, #2ecc71, #27ae60);
+                                color:#fff; border:none; border-radius:6px;
+                                font-weight:900; font-size:0.95rem; cursor:pointer;
+                                box-shadow: 0 4px 12px rgba(46,204,113,0.3);">
+                            ✅ 송금 완료 신고 — 즉시 활성화
+                        </button>
+                        <div id="zeusClaimResult" style="margin-top:10px; font-size:0.82rem;"></div>
+                        <div style="margin-top:10px; padding:8px; background:rgba(255,165,0,0.06); border-radius:4px; font-size:0.72rem; color:rgba(255,255,255,0.75); line-height:1.5;">
+                            ⚠️ 거짓 신고 시 향후 이용 제한 + 법적 책임이 따를 수 있습니다.<br>
+                            모든 신고 내역은 입금 내역과 대조됩니다.
+                        </div>
                     </div>
                 </div>
             </details>
 
-            <!-- [V20.0] 받은 토큰 직접 입력 (계좌이체 후 받은 토큰) -->
+            <!-- [V20.0] 받은 토큰 직접 입력 (백업 — 관리자 수동 발급용) -->
             <details style="margin-top:8px;">
                 <summary style="cursor:pointer; color:rgba(212,175,55,0.7); font-size:0.78rem; text-align:center; padding:8px 0; font-weight:600;">
-                    🎫 받은 토큰 입력 (계좌이체 완료 후)
+                    🎫 받은 토큰 입력 (관리자 발급용)
                 </summary>
                 <div style="margin-top:10px; padding:12px;
                             background: rgba(212,175,55,0.06);
@@ -5085,6 +5330,149 @@ function showPayModal() {
 }
 
 // [V20.0] 계좌이체 후 받은 토큰 직접 활성화
+// [V20.10] 행동 추적 변수 — 결제 모달 열릴 때 초기화
+window._zeusClaimActions = {
+    accountCopied: false,
+    startTime: 0,
+    tossClicked: false
+};
+
+// 결제 모달 열릴 때 startTime 시작
+function zeusClaimResetTracking() {
+    window._zeusClaimActions = {
+        accountCopied: false,
+        startTime: Date.now(),
+        tossClicked: false
+    };
+}
+
+// 계좌번호 복사 (행동 기록)
+function zeusClaimCopyAccount(accNum) {
+    const cleaned = String(accNum).replace(/[^0-9\-]/g, '');
+    if (navigator.clipboard) {
+        navigator.clipboard.writeText(cleaned).then(() => {
+            window._zeusClaimActions.accountCopied = true;
+            const hint = document.getElementById('zeusCopyHint');
+            if (hint) {
+                hint.textContent = '✅ 복사 완료';
+                hint.style.color = '#7ad188';
+            }
+        }).catch(() => {
+            // fallback
+            const ta = document.createElement('textarea');
+            ta.value = cleaned; document.body.appendChild(ta); ta.select();
+            try { document.execCommand('copy'); } catch {}
+            ta.remove();
+            window._zeusClaimActions.accountCopied = true;
+            const hint = document.getElementById('zeusCopyHint');
+            if (hint) {
+                hint.textContent = '✅ 복사 완료';
+                hint.style.color = '#7ad188';
+            }
+        });
+    } else {
+        const ta = document.createElement('textarea');
+        ta.value = cleaned; document.body.appendChild(ta); ta.select();
+        try { document.execCommand('copy'); } catch {}
+        ta.remove();
+        window._zeusClaimActions.accountCopied = true;
+    }
+}
+
+// 토스 송금 버튼 클릭 추적 (이미 있는 토스 링크 onclick과 연동)
+function zeusClaimMarkTossClick() {
+    window._zeusClaimActions.tossClicked = true;
+}
+
+// [V20.10] 송금 완료 신고 → 자동 토큰 발급
+async function zeusClaimSubmit(plan) {
+    const senderName = document.getElementById('zeusSenderName')?.value?.trim() || '';
+    const resultDiv = document.getElementById('zeusClaimResult');
+
+    // 0. 입력 검증
+    if (!senderName || senderName.length < 2) {
+        resultDiv.innerHTML = '<span style="color:#ff8080;">❌ 입금자명을 정확히 입력해주세요 (2자 이상)</span>';
+        return;
+    }
+
+    // 1. 행동 검증 (클라이언트 측 1차)
+    const stayTime = window._zeusClaimActions.startTime
+        ? (Date.now() - window._zeusClaimActions.startTime) / 1000
+        : 0;
+    const accountCopied = window._zeusClaimActions.accountCopied;
+    const tossClicked = window._zeusClaimActions.tossClicked;
+
+    if (!accountCopied) {
+        resultDiv.innerHTML = '<span style="color:#ffa040;">⚠️ 계좌번호를 먼저 탭하여 복사해주세요</span>';
+        return;
+    }
+    if (stayTime < 30) {
+        const remain = Math.ceil(30 - stayTime);
+        resultDiv.innerHTML = `<span style="color:#ffa040;">⏳ 안내문을 충분히 확인해주세요 (${remain}초 더 필요)</span>`;
+        return;
+    }
+
+    resultDiv.innerHTML = '<span style="color:#FFD970;">⏳ 송금 신고 처리 중...</span>';
+
+    // 2. 서버 요청
+    try {
+        const API_BASE = 'https://tarot-api.omegafund01.workers.dev';
+        const res = await fetch(API_BASE + '/claim-payment', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                senderName,
+                plan,
+                accountCopied,
+                stayTime,
+                tossClicked
+            })
+        });
+
+        const data = await res.json();
+
+        if (!data.ok) {
+            // 서버 측 거부 — 친절한 안내
+            if (data.nightTime) {
+                resultDiv.innerHTML = `<div style="color:#ff8080; padding:8px; background:rgba(255,128,128,0.08); border-radius:4px;">
+                    🌙 ${data.error}
+                </div>`;
+            } else if (data.blocked) {
+                resultDiv.innerHTML = `<div style="color:#ff5252; padding:8px; background:rgba(255,82,82,0.08); border-radius:4px;">
+                    🚫 ${data.error}
+                </div>`;
+            } else {
+                resultDiv.innerHTML = `<span style="color:#ff8080;">❌ ${data.error || '처리 실패'}</span>`;
+            }
+            return;
+        }
+
+        // 3. 성공 — 토큰 저장 + UI 업데이트
+        localStorage.setItem('oracleSessionToken', data.token);
+
+        const planLabel = plan === 'month' ? '30일' : plan === 'day' ? '1일' : '1시간';
+
+        resultDiv.innerHTML = `
+            <div style="padding:12px; background:rgba(46,204,113,0.12); border:1px solid rgba(46,204,113,0.5); border-radius:6px;">
+                <div style="color:#7ad188; font-weight:800; font-size:0.95rem; margin-bottom:6px;">
+                    ✅ PRO 활성화 완료! (${planLabel})
+                </div>
+                <div style="color:rgba(255,255,255,0.85); font-size:0.82rem; line-height:1.6;">
+                    ${data.message || '신탁의 봉인이 즉시 해제되었습니다.'}
+                </div>
+            </div>
+        `;
+
+        // 4. 2초 후 모달 닫고 새로고침
+        setTimeout(() => {
+            try { closePayModal(); } catch {}
+            location.reload();
+        }, 2500);
+    } catch (e) {
+        resultDiv.innerHTML = `<span style="color:#ff8080;">❌ 네트워크 오류: ${e.message}</span>`;
+    }
+}
+
 function activateManualToken() {
     const input = document.getElementById('manualTokenInput');
     const result = document.getElementById('manualTokenResult');
