@@ -426,10 +426,12 @@ function buildStockMetrics({ totalScore, riskScore, cleanCards, isLeverage, quer
 
     // [V20.0] 카드 시퀀스 패턴 — 역방향 카드나 현재 정체 시 자동 cautious
     //   "단기 매수 (눌림 후 회복)" 케이스는 비중도 신중하게 조정
+    // [V20.9] totalScore가 음수(-1 이하)면 cautious 안 적용 → noEntry 흐름 유지
+    //   (Decision "관망" / Execution "0~10%" 일관성 보장)
     const _revCount = (revFlags || []).filter(x => x === true).length;
     const _curScore = (CARD_SCORE[cleanCards[1]] ?? 0) * (revFlags[1] ? -1 : 1);
     const _futScore = (CARD_SCORE[cleanCards[2]] ?? 0) * (revFlags[2] ? -1 : 1);
-    // 역방향 1+ 또는 현재 카드 정체(현재 ≤ 0) + 미래 회복(미래 > 0) 패턴
+    // 양수 점수에서만 cautious 적용 (음수면 그냥 noEntry/회피로 두어 일관성 유지)
     if (totalScore >= 2 && (_revCount >= 1 || (_curScore <= 0 && _futScore > 0))) {
       if (!positionAdjust || positionAdjust === null) {
         positionAdjust = "cautious";
@@ -673,7 +675,15 @@ function buildStockMetrics({ totalScore, riskScore, cleanCards, isLeverage, quer
 
   // [V19.9] 포지션 전략 블록 — 매도/매수 intent별 완전 분기
   // [V19.11] positionAdjust 반영 — action과 모순 방지
-  const isNoEntry = finalAction.includes("금지") || finalAction.includes("회피") || positionAdjust === "noEntry";
+  // [V20.10.1] Decision-Execution 일관성 강화
+  //   Decision Layer가 "관망"으로 정해지는 모든 경우를 isNoEntry에 포함
+  //   - totalScore <= -3 → Decision "관망 (Wait & See)"
+  //   - finalAction에 "금지"/"회피" 단어
+  //   - positionAdjust === "noEntry"
+  //   이 셋 중 하나라도 해당하면 Execution도 "0~10% 극도로 보수적"으로 통일
+  const isNoEntry = finalAction.includes("금지") || finalAction.includes("회피")
+                  || positionAdjust === "noEntry"
+                  || (stockIntent !== "sell" && totalScore <= -3);
   let position;
   if (stockIntent === "sell") {
     // ━━ 매도 의도: 보유분의 익절·손절 기준 ━━
@@ -698,18 +708,19 @@ function buildStockMetrics({ totalScore, riskScore, cleanCards, isLeverage, quer
   } else {
     // ━━ 매수 의도 (기본): 신규 진입 비중·손절·목표 ━━
     // [V19.11] positionAdjust 반영
+    // [V20.9] 사장님 디자인 — Decision "관망"과 Execution 일관성
     const isCautious = positionAdjust === "cautious";
     const isTentative = positionAdjust === "tentative";
     position = {
-      weight:    isNoEntry  ? "0% (진입 금지 구간)" :
+      weight:    isNoEntry  ? "0~10% (극도로 보수적 접근)" :
                  isCautious ? "10~20% (모멘텀 약화 — 신중 진입)" :
                  isTentative ? "5~10% (조건 만족 시 시범 진입)" :
                  totalScore >= 6 ? "40~50% (강한 확신 구간)" :
                  totalScore >= 2 ? "20~30% (분할 진입)" : "10~20% (탐색 구간)",
-      stopLoss:  isNoEntry ? "진입 금지 — 해당 없음" :
+      stopLoss:  isNoEntry ? "-2~3% 이탈 시 즉시 정리" :
                  isCautious ? "-2~3% 이탈 시 즉시 손절 (타이트하게)" :
                  "-3~5% 이탈 시 즉시 손절",
-      target:    isNoEntry ? "설정 보류 (추세 확정 후 재설정)" :
+      target:    isNoEntry ? "+0~2% (단기 반등 대응용)" :
                  isCautious ? `+${basePct}~${Math.min(8, upPct-3)}% 구간 (보수적)` :
                  totalScore >= 6 ? `+${Math.min(15, basePct+5)}~${upPct}% 구간` :
                  `+${basePct}~${Math.min(12, upPct)}% 구간`
@@ -752,18 +763,22 @@ function buildStockMetrics({ totalScore, riskScore, cleanCards, isLeverage, quer
     }
   } else {
     // 매수 의도 — 카드 패턴별 결정
-    if (totalScore >= 6 && !hasReversedSignal && !hasMidstreamObstacle) {
+    // [V20.10.1] positionAdjust 반영하여 Execution과 동기화
+    if (positionAdjust === "noEntry" || (totalScore <= -3)) {
+      decisionPosition = "관망 (Wait & See)";
+      decisionStrategy = "신규 진입 금지 → 추세 전환 신호 대기";
+    } else if (positionAdjust === "tentative") {
+      decisionPosition = "탐색 매수 (Exploratory)";
+      decisionStrategy = "소액 진입 → 신호 검증";
+    } else if (totalScore >= 6 && !hasReversedSignal && !hasMidstreamObstacle && positionAdjust !== "cautious") {
       decisionPosition = "적극 매수 (Strong Buy)";
       decisionStrategy = "초기 진입 + 눌림목 추가매수 → 목표가까지 보유";
-    } else if (hasMidstreamObstacle || hasReversedSignal) {
+    } else if (hasMidstreamObstacle || hasReversedSignal || positionAdjust === "cautious") {
       decisionPosition = "단기 매수 (Short-Term Buy)";
       decisionStrategy = "초반 진입 → 빠른 수익 실현 → 재진입 대기";
     } else if (totalScore >= 2) {
       decisionPosition = "분할 매수 (Split Buy)";
       decisionStrategy = "단계적 진입 → 추세 확인 후 비중 확대";
-    } else if (totalScore <= -3) {
-      decisionPosition = "관망 (Wait & See)";
-      decisionStrategy = "신규 진입 금지 → 추세 전환 신호 대기";
     } else {
       decisionPosition = "탐색 매수 (Exploratory)";
       decisionStrategy = "소액 진입 → 신호 검증";
@@ -856,20 +871,62 @@ function buildStockMetrics({ totalScore, riskScore, cleanCards, isLeverage, quer
     }
   }
 
-  // [V20.0-D] Critical Rules — 행동 지침 (3가지)
-  const criticalRules = stockIntent === "sell"
-    ? [
-        "수익 구간 진입 시 욕심 금지 — 분할 익절 원칙",
-        "반등만 보고 보유 유지 금지 — 추세 우선",
+  // ════════════════════════════════════════════════════════════
+  // [V20.9] Critical Rules — 카드 시퀀스/상황 맞춤 동적 생성
+  // ════════════════════════════════════════════════════════════
+  let criticalRules;
+  if (stockIntent === "sell") {
+    if (totalScore <= -3) {
+      criticalRules = [
+        "즉시 청산 우선 검토",
+        "반등만 기다리며 보유 금지",
+        "추가 매수로 평단 낮추기 절대 금지"
+      ];
+    } else if (totalScore >= 6) {
+      criticalRules = [
+        "분할 익절 — 한 번에 전량 매도 금지",
+        "코어 포지션 일부 유지",
+        "정점 신호 확인 후 행동"
+      ];
+    } else {
+      criticalRules = [
+        "수익 구간 진입 시 욕심 금지 — 분할 익절",
+        "반등만 보고 보유 유지 금지",
         "단기 반등에 추가 매수 절대 금지"
-      ]
-    : [
+      ];
+    }
+  } else {
+    // ── 매수 의도 ──
+    if (isNoEntry || totalScore <= -3) {
+      criticalRules = [
+        "신규 진입 금지",
+        "기존 포지션 정리 우선 검토",
+        "반등 시 탈출 전략 필수"
+      ];
+    } else if (hasMidstreamObstacle || hasReversedSignal) {
+      criticalRules = [
+        "초반 진입 후 빠른 수익 실현",
+        "장기 보유 절대 금지",
+        "재진입 신호 확인 후에만 추가"
+      ];
+    } else if (totalScore >= 6) {
+      criticalRules = [
+        "분할 매수 원칙 — 한 번에 풀 매수 금지",
+        "목표가 도달 시 즉시 분할 익절",
+        "손절 기준 무조건 준수"
+      ];
+    } else {
+      criticalRules = [
         "수익 구간 진입 시 욕심 금지 — 분할 매도 원칙",
         "계획 없는 추가 매수 절대 금지",
         "손절 기준 무조건 준수 — 감정적 보유 금지"
       ];
+    }
+  }
 
-  // [V20.0-E] Risk 주의 포인트 (3가지)
+  // ════════════════════════════════════════════════════════════
+  // [V20.9] Risk Cautions — 3가지 (변경 없음)
+  // ════════════════════════════════════════════════════════════
   const riskCautions = [];
   if (hasReversedSignal) riskCautions.push("역방향 카드 신호 — 추세 지속성 약화 가능");
   if (hasMidstreamObstacle) riskCautions.push("현재 카드 정체 신호 — 단기 변동성 ↑");
@@ -880,6 +937,157 @@ function buildStockMetrics({ totalScore, riskScore, cleanCards, isLeverage, quer
     riskCautions.push("수익 미실현 상태 장기 보유 금지");
   }
   const finalRiskCautions = riskCautions.slice(0, 3);
+
+  // ════════════════════════════════════════════════════════════
+  // [V20.9] Signal 한 줄 임팩트 해석 — 카드별 행동 결과형
+  //   기존: "직관·새 아이디어의 정체·지연 — 본래 흐름이 가로막힌 상태" (장황)
+  //   신규: "감정 기반 진입 실패 — 신뢰도 낮은 판단" (행동 결과)
+  // ════════════════════════════════════════════════════════════
+  const SIGNAL_IMPACT = {
+    // ─ 메이저 ─
+    "The Tower":        "거짓 구조 정화 — 강제 리셋 신호",
+    "Death":            "기존 흐름 종료 — 강제 리셋 구간 진입",
+    "The Devil":        "집착 함정 인식 — 자유 회복 시작",
+    "The Hanged Man":   "강제 멈춤 — 새 관점 확보 시간",
+    "The Moon":         "정보 불명확 — 직관 의존 구간",
+    "The Sun":          "명확한 성공 신호 — 적극 행동 가능",
+    "The World":        "목표 달성 — 익절·완성 구간",
+    "The Star":         "회복 희망 — 저점 통과 신호",
+    "The Chariot":      "강한 전진 동력 — 돌파 에너지",
+    "Judgement":        "각성·재평가 — 포지션 재검토",
+    "The Fool":         "새 시작 — 미지의 기회 탐색",
+    "The Magician":     "주도권 확보 — 행동 결과 명확",
+    "The High Priestess": "직관 강화 — 내면 신호 우선",
+    "The Empress":      "안정적 성장 — 풍요로운 흐름",
+    "The Emperor":      "구조 확립 — 규칙 기반 행동",
+    "The Hierophant":   "전통 따름 — 기본 원칙 회귀",
+    "The Lovers":       "선택의 기로 — 결단 필요",
+    "Strength":         "내면의 힘 — 인내 우세",
+    "The Hermit":       "고독한 성찰 — 외부 차단 권고",
+    "Wheel of Fortune": "운명 전환 — 흐름 변화 임박",
+    "Justice":          "균형 회복 — 공정한 결과",
+    "Temperance":       "절제와 조화 — 분산 접근"
+  };
+  function getSignalImpact(card, isReversed, role) {
+    let base = SIGNAL_IMPACT[card];
+    if (!base) {
+      // 마이너 아르카나는 기본 의미 활용
+      const m = CARD_MEANING[card] || { flow: "에너지 흐름", signal: "방향성 주시" };
+      base = `${m.flow}`;
+    }
+    if (isReversed) {
+      // 역방향 — 행동 결과형 표현
+      const reversed = {
+        "Page of Cups": "감정 기반 진입 실패 — 신뢰도 낮은 판단",
+        "Knight of Cups": "성급한 제안 환상 — 검증 부족 판단",
+        "Queen of Cups": "감정 과잉 왜곡 — 객관성 저하",
+        "King of Cups": "냉철함 상실 — 감정적 결정 위험",
+        "Two of Cups": "관계 균열 — 합의 실패",
+        "Three of Cups": "성공 환상 — 실제 결과 미달",
+        "Four of Cups": "기회 인식 회복 — 관망 종료 신호",
+        "Five of Cups": "상실 극복 — 잔존 가치 재발견",
+        "Six of Cups": "과거 집착 해소 — 현재 집중 가능",
+        "Seven of Cups": "현실 직시 — 환상 깨짐",
+        "Eight of Cups": "정체 지속 — 떠나지 못함",
+        "Nine of Cups": "기대 대비 결과 미달 — 심리적 왜곡 구간",
+        "Ten of Cups": "표면적 안정 — 내부 불만",
+        "Knight of Wands": "추진력 상실 — 방향 잃음",
+        "Queen of Wands": "자신감 위축 — 주도권 상실",
+        "King of Wands": "리더십 약화 — 결단력 부족",
+        "Page of Wands": "열정 식음 — 동기 부족",
+        "Ace of Wands": "시작 동력 부족 — 추진 어려움",
+        "Two of Wands": "계획 모호 — 실행 지연",
+        "Three of Wands": "기다림 무산 — 결과 미흡",
+        "Four of Wands": "축하 무산 — 안정 깨짐",
+        "Five of Wands": "갈등 해소 — 협력 가능",
+        "Six of Wands": "성과 지연 — 인정 미흡",
+        "Seven of Wands": "방어 붕괴 — 입지 약화",
+        "Eight of Wands": "속도 둔화 — 전개 지연",
+        "Nine of Wands": "체력 소진 — 마지막 한 걸음",
+        "Ten of Wands": "부담 경감 — 짐 내려놓음",
+        "Knight of Swords": "성급함 자제 — 신중 회복",
+        "Queen of Swords": "냉정함 약화 — 판단 흔들림",
+        "King of Swords": "권위 약화 — 결정력 부족",
+        "Page of Swords": "정보 왜곡 — 판단 흐림",
+        "Ace of Swords": "방향성 모호 — 결단 부족",
+        "Two of Swords": "결정 강요 — 회피 불가",
+        "Three of Swords": "상처 회복 시작 — 치유 가능",
+        "Four of Swords": "휴식 종료 — 행동 재개",
+        "Five of Swords": "갈등 종결 — 화해 가능",
+        "Six of Swords": "정체 — 떠나지 못함",
+        "Seven of Swords": "진실 드러남 — 속임수 노출",
+        "Eight of Swords": "구속 해방 — 자유 회복",
+        "Nine of Swords": "걱정 완화 — 불안 해소",
+        "Ten of Swords": "최악 통과 — 회복 시작",
+        "Knight of Pentacles": "꾸준함 깨짐 — 일관성 상실",
+        "Queen of Pentacles": "안정성 약화 — 풍요 위협",
+        "King of Pentacles": "재정 통제 약화 — 위험 노출",
+        "Page of Pentacles": "학습 정체 — 발전 지연",
+        "Ace of Pentacles": "기회 무산 — 시작 어려움",
+        "Two of Pentacles": "균형 깨짐 — 우선순위 혼란",
+        "Three of Pentacles": "협업 실패 — 개별 행동 권고",
+        "Four of Pentacles": "집착 해소 — 흐름 회복",
+        "Five of Pentacles": "결핍 회복 — 도움 도래",
+        "Six of Pentacles": "불공정 시정 — 균형 회복",
+        "Seven of Pentacles": "인내 종료 — 결과 도출",
+        "Eight of Pentacles": "집중력 저하 — 노력 분산",
+        "Nine of Pentacles": "독립 위협 — 의존 발생",
+        "Ten of Pentacles": "유산 위기 — 안정 흔들림",
+        // 메이저 역방향
+        "The Tower": "강제 리셋 지연 — 표면 안정 (불안 잔존)",
+        "Death": "변화 거부 — 정체 지속",
+        "The Devil": "집착 약화 — 자유 가능",
+        "The Hanged Man": "정체·지연 — 본래 흐름이 가로막힌 상태",
+        "The Moon": "안개 걷힘 — 진실 드러남",
+        "The Sun": "성공 지연 — 빛이 가려짐",
+        "The World": "완성 지연 — 마지막 한 걸음 부족",
+        "The Star": "희망 약화 — 신뢰 흔들림",
+        "The Chariot": "추진력 상실 — 방향 잃음",
+        "Judgement": "각성 지연 — 변화 회피",
+        "The Fool": "성급함 자제 — 신중 회복",
+        "The Magician": "주도권 상실 — 행동 약화",
+        "The High Priestess": "직관 흐림 — 객관성 필요",
+        "The Empress": "성장 정체 — 풍요 약화",
+        "The Emperor": "권위 약화 — 통제 상실",
+        "The Hierophant": "전통 거부 — 새 길 모색",
+        "The Lovers": "관계 균열 — 갈등 발생",
+        "Strength": "인내 한계 — 폭발 위험",
+        "The Hermit": "고독 종료 — 사회 복귀",
+        "Wheel of Fortune": "운명 정체 — 변화 보류",
+        "Justice": "불공정 — 균형 흐트러짐",
+        "Temperance": "균형 깨짐 — 극단 위험"
+      };
+      return reversed[card] || `${base}의 정체·지연 — 본래 흐름이 가로막힌 상태`;
+    }
+    return base;
+  }
+
+  // ════════════════════════════════════════════════════════════
+  // [V20.9] 🔥 Critical Interpretation — 핵심 해석 박스 (NEW)
+  //   다른 어떤 타로앱도 없는 차별화 포인트
+  //   5계층 모든 결론을 한 박스에 응축
+  // ════════════════════════════════════════════════════════════
+  let criticalInterpretation;
+  const futCard = cleanCards[2];
+  if (stockIntent === "sell") {
+    if (totalScore <= -3) {
+      criticalInterpretation = `현재 흐름은 '익절 기회'가 아니라 '방어 구간'입니다.\n${futCard}의 에너지는 추가 하락 가능성을 경고합니다.\n지금은 욕심이 아니라 손실 최소화가 우선입니다.`;
+    } else if (totalScore >= 6) {
+      criticalInterpretation = `현재 흐름은 '추세 정점' 구간에 가깝습니다.\n${futCard}의 에너지는 모멘텀 정점을 시사합니다.\n분할 익절로 수익을 보호하는 전략이 핵심입니다.`;
+    } else {
+      criticalInterpretation = `현재 흐름은 '단계적 정리' 구간입니다.\n${futCard}의 에너지는 단기 변동성을 암시합니다.\n분할 매도와 코어 유지의 균형이 핵심입니다.`;
+    }
+  } else {
+    if (isNoEntry || totalScore <= -3) {
+      criticalInterpretation = `현재 흐름은 '기회'가 아니라 '정리 구간'입니다.\n${futCard}의 에너지는 ${futCard === 'Death' ? '새로운 시작 이전의 강제 정리' : '하락 압력 지속'}을 의미합니다.\n지금은 공격이 아니라 생존 전략이 필요한 시점입니다.`;
+    } else if (hasMidstreamObstacle || hasReversedSignal) {
+      criticalInterpretation = `현재 흐름은 '눌림 후 회복' 구조입니다.\n${futCard}의 에너지는 단기 반등 후 재정비를 시사합니다.\n초반 진입 → 빠른 수익 → 재진입 대기가 핵심입니다.`;
+    } else if (totalScore >= 6) {
+      criticalInterpretation = `현재 흐름은 '강한 상승 모멘텀' 구간입니다.\n${futCard}의 에너지는 추세 추종의 유효성을 보여줍니다.\n분할 매수와 목표 도달 시 분할 익절이 핵심입니다.`;
+    } else {
+      criticalInterpretation = `현재 흐름은 '신호 검증' 구간입니다.\n${futCard}의 에너지는 방향성 모색을 시사합니다.\n소액 진입으로 신호 확인 후 비중 확대가 핵심입니다.`;
+    }
+  }
 
   return {
     queryType,
@@ -911,6 +1119,10 @@ function buildStockMetrics({ totalScore, riskScore, cleanCards, isLeverage, quer
         past:    cardNarrative[0] || '-',
         current: cardNarrative[1] || '-',
         future:  cardNarrative[2] || '-',
+        // [V20.10] 한 줄 임팩트 (행동 결과형)
+        pastImpact: getSignalImpact(cleanCards[0], revFlags[0], '과거'),
+        currentImpact: getSignalImpact(cleanCards[1], revFlags[1], '현재'),
+        futureImpact: getSignalImpact(cleanCards[2], revFlags[2], '미래'),
         summary: flowSummary,
         verdict: hasMidstreamObstacle ? "초반 상승은 유효, 후반은 불안정" :
                  hasReversedSignal ? "추세 유효, 단기 변동성 주의" :
@@ -924,7 +1136,9 @@ function buildStockMetrics({ totalScore, riskScore, cleanCards, isLeverage, quer
         volatility: hasReversedSignal || hasMidstreamObstacle ? "증가 가능성 있음" : (totalScore <= -3 ? "높음" : "보통"),
         cautions: finalRiskCautions
       },
-      rules: criticalRules
+      rules: criticalRules,
+      // [V20.10] 🔥 Critical Interpretation — 핵심 해석 박스
+      criticalInterpretation: criticalInterpretation
     }
   };
 }
@@ -1214,10 +1428,69 @@ function buildRealEstateMetrics({ totalScore, riskScore, cleanCards, intent, pro
         position: reDecisionPosition,
         strategy: reDecisionStrategy
       },
+      // [V20.10] 📊 Market Layer — 시장 판단 (NEW)
+      market: {
+        flow: netScore >= 5 ? "완만한 상승 흐름"
+            : netScore >= 2 ? "안정적 시장 — 거래 가능"
+            : netScore >= 0 ? "방향성 탐색 — 균형 시장"
+            : netScore <= -3 ? "완만한 하락 흐름"
+            : "약한 하락 압력",
+        position: netScore >= 2 ? "매도자 우위 시장"
+                : netScore >= 0 ? "균형 시장 — 양측 신중"
+                : "매수자 우위 시장",
+        delay: netScore >= 2 ? "거래 진행 가능성 높음"
+             : netScore >= 0 ? "통상적 거래 진행 예상"
+             : "거래 지연 가능성 높음"
+      },
       execution: {
         weight: intent === "sell" ? `호가 전략: ${priceStrategy}` : `매수 전략: ${strategy}`,
         stopLoss: caution || "현 호가 유지 가능",
-        target: timing2 || "시즌 내 거래 가능"
+        target: timing2 || "시즌 내 거래 가능",
+        // [V20.10] 체크리스트형 행동 지침 (NEW)
+        actionItems: intent === "sell" ? (
+          netScore >= 2 ? [
+            "희망가 유지 + 시즌 활용",
+            "초기 반응 양호하면 호가 고수",
+            "성수기 진입 적기"
+          ] : netScore >= -3 ? [
+            "시세 대비 -3~5% 조정 시 거래 확률 상승",
+            "초기 반응 없으면 추가 조정 필요",
+            "버티기 전략 → 장기 미거래 위험"
+          ] : [
+            "시세 대비 -5~8% 적극 조정 검토",
+            "장기 미거래 위험 매우 높음",
+            "다음 성수기 대기 vs 즉시 정리 결단"
+          ]
+        ) : (
+          netScore >= 2 ? [
+            "급매물 적극 탐색",
+            "시즌 진입 적기",
+            "5~10% 추가 협상 시도"
+          ] : netScore >= -3 ? [
+            "급매 위주 탐색",
+            "조급한 결정 회피",
+            "다음 성수기 대기 권고"
+          ] : [
+            "신규 매수 보류",
+            "시장 안정 신호 대기",
+            "현금 유동성 확보 우선"
+          ]
+        )
+      },
+      // [V20.10] 🎯 Contract Layer — 계약 성사 구조 (NEW)
+      contract: {
+        expectedWeeks: netScore >= 5 ? "4~6주"
+                     : netScore >= 2 ? "6~10주"
+                     : netScore >= 0 ? "8~12주"
+                     : netScore >= -3 ? "10~16주"
+                     : "16주 이상 (장기 노출 예상)",
+        coreInsight: intent === "sell" ? (
+          netScore >= 2 ? '핵심: "가격 유지가 가능한 시장"'
+          : '핵심: 가격이 아니라 "반응 속도"가 중요'
+        ) : (
+          netScore >= 2 ? '핵심: "급매 포착이 진짜 기회"'
+          : '핵심: "신중한 탐색이 안전망"'
+        )
       },
       timing: {
         entryRanges: reEntryRanges,
@@ -1241,7 +1514,18 @@ function buildRealEstateMetrics({ totalScore, riskScore, cleanCards, intent, pro
         volatility: netScore <= -3 ? "높음" : netScore <= 0 ? "보통" : "낮음",
         cautions: reCautions.slice(0, 3)
       },
-      rules: reCriticalRules
+      rules: reCriticalRules,
+      // [V20.10] 🔥 Critical Interpretation — 부동산 핵심 해석
+      criticalInterpretation: intent === "sell" ? (
+        netScore >= 5 ? `이 매물은 '시즌 호재' 구간에 있습니다.\n${cleanCards[2]}의 에너지는 시장 반응의 적극성을 시사합니다.\n지금은 호가 유지하고 시즌 활용이 핵심입니다.`
+        : netScore >= 2 ? `이 매물은 '안정적 거래' 구조입니다.\n${cleanCards[2]}의 에너지는 시장의 균형을 보여줍니다.\n희망가 유지하면서 시즌 진입이 핵심입니다.`
+        : netScore >= -3 ? `이 매물은 "기다리면 오르는 구조"가 아니라 "가격을 맞추면 팔리는 구조"입니다.\n${cleanCards[2]}의 에너지는 현실 인정의 중요성을 강조합니다.\n호가 조정이 거래의 핵심입니다.`
+        : `이 매물은 '장기 노출 위험' 구간입니다.\n${cleanCards[2]}의 에너지는 시장 압력을 경고합니다.\n적극적 호가 조정 또는 다음 성수기 대기가 핵심입니다.`
+      ) : (
+        netScore >= 5 ? `이 시점은 '매수 적기' 구간입니다.\n${cleanCards[2]}의 에너지는 시장 진입의 유효성을 시사합니다.\n시즌 활용 + 적극적 탐색이 핵심입니다.`
+        : netScore >= -3 ? `이 시점은 '신중한 탐색' 구간입니다.\n${cleanCards[2]}의 에너지는 급매 포착의 가치를 보여줍니다.\n조급함 없이 좋은 매물 선별이 핵심입니다.`
+        : `이 시점은 '매수 보류' 구간입니다.\n${cleanCards[2]}의 에너지는 시장 변동성을 경고합니다.\n현금 유동성 확보와 안정 신호 대기가 핵심입니다.`
+      )
     }
   };
 }
@@ -1353,7 +1637,125 @@ function buildLoveMetrics({ totalScore, cleanCards, prompt, loveSubType }) {
     finalTimingText,
     totalScore,
     cardNarrative,
-    finalOracle: interpret
+    finalOracle: interpret,
+    // ════════════════════════════════════════════════
+    // [V20.10] 연애 5계층 데이터 (Mind Layer 신설)
+    // ════════════════════════════════════════════════
+    layers: {
+      decision: {
+        // 관계 상태 + 핵심 전략
+        position: netScore >= 5 ? "확장 가능 (적극 진행)"
+                 : netScore >= 2 ? "신호 단계 (조심스러운 접근)"
+                 : netScore >= -1 ? "가능성 구간 (확정 아님)"
+                 : netScore >= -5 ? "정체 구간 (거리 필요)"
+                 : "단절 위험 (자기 보호 우선)",
+        strategy: netScore >= 5 ? "감정 표현 적극 → 관계 확장"
+                 : netScore >= 2 ? "가벼운 신호 → 반응 관찰"
+                 : netScore >= -1 ? '먼저 밀지 말고 "반응 유도"'
+                 : netScore >= -5 ? "거리 두기 → 내면 회복"
+                 : "관계 차단 → 자기 보호"
+      },
+      // 💭 Mind Layer — 상대 심리 분석 (연애 특화)
+      mind: {
+        feeling: netScore >= 5 ? "호감 명확 — 적극 표현 의지"
+               : netScore >= 2 ? "호감 있음 — 그러나 망설임"
+               : netScore >= -1 ? "호감은 있음 (확정) — 그러나 확신 부족"
+               : netScore >= -5 ? "관심 약화 — 거리감 형성"
+               : "관심 거의 없음 — 다른 곳 향함",
+        attitude: netScore >= 5 ? "관계 발전 원함"
+                : netScore >= 2 ? "관망 중 — 기다리는 태도"
+                : netScore >= -1 ? "당신의 반응을 보고 움직이려는 구조"
+                : netScore >= -5 ? "방어적 — 거리 유지"
+                : "회피 — 단절 의도",
+        coreInsight: netScore >= 5 ? "상대도 적극적으로 다가올 준비"
+                   : netScore >= 2 ? "상대는 신중하지만 가능성 열려 있음"
+                   : netScore >= -1 ? "상대는 먼저 행동하지 않습니다"
+                   : netScore >= -5 ? "상대는 잠시 거리를 둡니다"
+                   : "상대는 멀어지는 중입니다"
+      },
+      // ⚡ Action Layer — 행동 전략 + 추천 행동
+      action: {
+        rules: netScore >= 5 ? [
+          "감정을 솔직하게 표현하기",
+          "관계 발전 제안하기",
+          "구체적인 약속·계획 잡기"
+        ] : netScore >= 2 ? [
+          "가벼운 신호 1~2회 보내기",
+          "상대 반응 자연스럽게 관찰",
+          "급하지 않은 데이트 제안"
+        ] : netScore >= -1 ? [
+          "짧은 신호 1회만 보내기",
+          "감정 표현 금지 (과도 금물)",
+          "추가 연락 금지 (반응 전까지)"
+        ] : netScore >= -5 ? [
+          "연락 빈도 줄이기",
+          "내면 정리 시간 갖기",
+          "다른 활동에 집중"
+        ] : [
+          "관계 정리 검토",
+          "자기 회복 우선",
+          "새로운 환경 모색"
+        ],
+        examples: netScore >= 2 ? [
+          "가벼운 안부 톡 1회",
+          "공통 관심사 가벼운 농담",
+          "자연스러운 과거 연결 포인트 언급"
+        ] : netScore >= -1 ? [
+          "가벼운 안부 톡 1회",
+          "짧은 농담 (감정 없음)",
+          "자연스러운 과거 연결"
+        ] : [
+          "당분간 연락 보류",
+          "본인 일에 집중",
+          "감정 정리 시간"
+        ]
+      },
+      timing: {
+        entryPoint: netScore >= -1 ? "상대 반응이 온 순간 = 진입 타이밍"
+                  : netScore >= -5 ? "1~2주 시간 두고 재확인"
+                  : "당분간 진입 시점 없음",
+        energyPoints: [
+          `목요일 자정 (전환 에너지)`,
+          `보름달 (감정 결정 시점, 수비학 ${numNum})`
+        ],
+        flow: netScore >= 5 ? "감정 상승 → 확장 가능 구간"
+            : netScore >= 2 ? "감정 형성 → 가능성 열림"
+            : netScore >= -1 ? "감정 정체 → 선택 혼란 구간 진입"
+            : netScore >= -5 ? "감정 하강 → 거리감 구간"
+            : "감정 단절 → 회복 시기 필요"
+      },
+      risk: {
+        level: riskLevel,
+        cautions: netScore >= -1 ? [
+          "감정 과잉 → 관계 부담 증가",
+          "추가 연락 → 주도권 상실",
+          "비현실적 기대 → 실망 위험"
+        ] : [
+          "집착 → 관계 균열 가속",
+          "감정 호소 → 부담 가중",
+          "회복 시간 부족 → 더 큰 상처"
+        ]
+      },
+      rules: netScore >= 5 ? [
+        "감정 표현 적극 (그러나 진정성 유지)",
+        "관계 진전 제안 가능",
+        "지나친 확신은 금물"
+      ] : netScore >= -1 ? [
+        "먼저 깊어지지 말 것",
+        "상대 반응 전 절대 추가 행동 금지",
+        "한 번 던지고 기다리는 구조"
+      ] : [
+        "거리 두기 우선",
+        "추가 접근 금지",
+        "자기 회복 집중"
+      ],
+      // 🔥 Critical Interpretation — 핵심 해석
+      criticalInterpretation: netScore >= 5 ? `이번 흐름은 '관계 확장'의 명확한 기회입니다.\n${keyCard}의 에너지는 적극적 행동의 유효성을 보여줍니다.\n지금은 망설임이 아니라 진정성 있는 표현이 필요한 시점입니다.`
+                            : netScore >= 2 ? `이번 흐름은 '신호 교환' 구간입니다.\n${keyCard}의 에너지는 작은 신호의 중요성을 시사합니다.\n급한 결단보다 자연스러운 흐름이 핵심입니다.`
+                            : netScore >= -1 ? `이번 흐름은 '기회'가 아니라 '테스트 구간'입니다.\n${keyCard}의 에너지는 선택이 아니라 혼란을 의미합니다.\n지금은 관계를 밀어붙이는 시점이 아니라, 상대의 선택을 유도하는 전략이 필요한 구간입니다.`
+                            : netScore >= -5 ? `이번 흐름은 '정체 구간'입니다.\n${keyCard}의 에너지는 거리와 인내를 시사합니다.\n지금은 행동이 아니라 내면 정리가 핵심입니다.`
+                            : `이번 흐름은 '회복 우선' 구간입니다.\n${keyCard}의 에너지는 자기 보호의 중요성을 강조합니다.\n지금은 관계가 아니라 자신에게 집중하는 시점입니다.`
+    }
   };
 }
 
@@ -1625,6 +2027,271 @@ export default {
         return new Response(JSON.stringify({ success: false, error: e.message }), {
           status: 500,
           headers: { ...corsHeaders(), "Content-Type": "application/json" }
+        });
+      }
+    }
+
+    // ══════════════════════════════════════════════════════════════
+    // [V20.10] /claim-payment — 계좌이체 자동 토큰 발급
+    // ══════════════════════════════════════════════════════════════
+    //  유저 행동 기반 검증 → 즉시 토큰 발급 → 사장님 사후 확인 구조
+    //
+    //  유저 측 검증 항목 (3가지 — 점수제):
+    //    • 계좌번호 복사 (+30점)
+    //    • 30초 이상 체류 (+20점)
+    //    • 입금자명 입력 (+20점)
+    //    • 토스 링크 클릭 (+30점, 옵션)
+    //  → 80점 이상 또는 [복사+체류+이름] 3종 모두 충족 시 발급
+    //
+    //  악성 차단:
+    //    • 같은 senderName + IP → 24시간 내 5회 차단
+    //    • 새벽 2~6시 → 자동 발급 X (사장님 확인 후)
+    //
+    //  사후 추적:
+    //    • Cloudflare KV에 발급 기록 저장
+    //    • 사장님이 admin.html에서 명단 조회 → 실 입금 대조
+    if (url.pathname === "/claim-payment" && request.method === "POST") {
+      try {
+        const body = await request.json();
+        const {
+          senderName, plan,
+          accountCopied, stayTime, tossClicked
+        } = body;
+
+        // 1. 입력 검증
+        if (!senderName || senderName.length < 2 || senderName.length > 30) {
+          return new Response(JSON.stringify({
+            ok: false, error: "입금자명을 정확히 입력해주세요 (2~30자)"
+          }), { status: 400, headers: { ...corsHeaders(), "Content-Type": "application/json" } });
+        }
+        if (!["trial", "day", "month"].includes(plan)) {
+          return new Response(JSON.stringify({
+            ok: false, error: "유효하지 않은 플랜입니다"
+          }), { status: 400, headers: { ...corsHeaders(), "Content-Type": "application/json" } });
+        }
+
+        // 2. 행동 점수 계산 (Behavior Score)
+        let behaviorScore = 0;
+        if (accountCopied) behaviorScore += 30;
+        if (stayTime >= 30) behaviorScore += 20;
+        if (senderName.length >= 2) behaviorScore += 20;
+        if (tossClicked) behaviorScore += 30;
+        // 최소 통과 기준: 70점 (계좌복사 + 체류 + 이름 = 70점)
+        if (behaviorScore < 70) {
+          return new Response(JSON.stringify({
+            ok: false,
+            error: "계좌번호 복사 + 30초 이상 체류 + 입금자명 입력이 모두 필요합니다",
+            score: behaviorScore
+          }), { status: 400, headers: { ...corsHeaders(), "Content-Type": "application/json" } });
+        }
+
+        // 3. 시간대 체크 (새벽 2~6시는 자동 발급 X)
+        const kstHour = (new Date().getUTCHours() + 9) % 24;
+        if (kstHour >= 2 && kstHour < 6) {
+          return new Response(JSON.stringify({
+            ok: false,
+            error: "야간(02:00~06:00)에는 자동 발급이 제한됩니다. 09:00 이후 다시 시도해주세요.",
+            nightTime: true
+          }), { status: 423, headers: { ...corsHeaders(), "Content-Type": "application/json" } });
+        }
+
+        // 4. 클라이언트 IP 추출
+        const clientIP = request.headers.get("cf-connecting-ip") ||
+                         request.headers.get("x-forwarded-for") || "unknown";
+
+        // 5. 어뷰즈 차단 체크 (KV 사용 가능 시)
+        const abuseKey = `abuse_${senderName}_${clientIP}`;
+        if (env.KV) {
+          const requestCount = parseInt(await env.KV.get(abuseKey) || "0");
+          if (requestCount >= 5) {
+            return new Response(JSON.stringify({
+              ok: false,
+              error: "비정상적인 요청이 감지되었습니다. 관리자 확인 후 승인됩니다.",
+              blocked: true
+            }), { status: 429, headers: { ...corsHeaders(), "Content-Type": "application/json" } });
+          }
+        }
+
+        // 6. 블랙리스트 체크
+        if (env.KV) {
+          const isBlacklisted = await env.KV.get(`blacklist_${senderName}`);
+          if (isBlacklisted) {
+            return new Response(JSON.stringify({
+              ok: false,
+              error: "관리자에게 문의해주세요.",
+              blocked: true
+            }), { status: 403, headers: { ...corsHeaders(), "Content-Type": "application/json" } });
+          }
+        }
+
+        // 7. 토큰 발급 (만료 시간 적용)
+        const durationMs = plan === 'month' ? (30 * 24 * 60 * 60 * 1000)
+                         : plan === 'day'   ? (24 * 60 * 60 * 1000)
+                         :                    (60 * 60 * 1000);
+        const expiry = Date.now() + durationMs;
+        const finalUserId = `claim-${senderName}-${Date.now()}`;
+        const payload = `paid|${finalUserId}|${expiry}`;
+        const token = await signHmac(payload, env.TOKEN_SECRET || "default_secret");
+        const fullToken = `${payload}|${token}`;
+
+        // 8. 발급 기록 저장 (사장님 사후 확인용)
+        if (env.KV) {
+          const claimData = {
+            senderName,
+            plan,
+            time: new Date().toISOString(),
+            timeKST: new Date(Date.now() + 9 * 60 * 60 * 1000).toISOString().replace('T', ' ').slice(0, 19),
+            token: fullToken,
+            ip: clientIP,
+            behaviorScore,
+            accountCopied,
+            stayTime,
+            tossClicked,
+            verified: false  // 사장님 입금 확인 여부
+          };
+          await env.KV.put(
+            `claim_${Date.now()}_${senderName}`,
+            JSON.stringify(claimData),
+            { expirationTtl: 90 * 24 * 60 * 60 }  // 90일 보관
+          );
+          // 어뷰즈 카운트 증가
+          await env.KV.put(abuseKey, String((parseInt(await env.KV.get(abuseKey) || "0")) + 1),
+                           { expirationTtl: 86400 });
+        }
+
+        return new Response(JSON.stringify({
+          ok: true,
+          token: fullToken,
+          plan,
+          expiresAt: expiry,
+          message: "입금 신고가 접수되어 즉시 PRO를 활성화했습니다. 송금이 확인되지 않으면 향후 이용이 제한될 수 있습니다."
+        }), { headers: { ...corsHeaders(), "Content-Type": "application/json" } });
+
+      } catch (e) {
+        return new Response(JSON.stringify({ ok: false, error: e.message }), {
+          status: 500, headers: { ...corsHeaders(), "Content-Type": "application/json" }
+        });
+      }
+    }
+
+    // ══════════════════════════════════════════════════════════════
+    // [V20.10] /admin/list — 사장님 입금 신고 명단 조회
+    // ══════════════════════════════════════════════════════════════
+    if (url.pathname === "/admin/list" && request.method === "GET") {
+      try {
+        const adminPass = request.headers.get("x-admin-pass") || "";
+        const expectedPass = env.ADMIN_PASSWORD || "zeus2026admin";
+        if (adminPass !== expectedPass) {
+          return new Response(JSON.stringify({ success: false, error: "unauthorized" }), {
+            status: 401, headers: { ...corsHeaders(), "Content-Type": "application/json" }
+          });
+        }
+
+        if (!env.KV) {
+          return new Response(JSON.stringify({
+            success: true,
+            claims: [],
+            note: "KV가 설정되지 않았습니다. Cloudflare Workers KV namespace를 'KV'로 바인딩하세요."
+          }), { headers: { ...corsHeaders(), "Content-Type": "application/json" } });
+        }
+
+        // KV에서 claim_ 접두사로 시작하는 모든 키 조회 (최대 100개)
+        const list = await env.KV.list({ prefix: "claim_", limit: 100 });
+        const claims = [];
+        for (const key of list.keys) {
+          const data = await env.KV.get(key.name);
+          if (data) {
+            try { claims.push({ key: key.name, ...JSON.parse(data) }); } catch {}
+          }
+        }
+        // 시간 역순 정렬
+        claims.sort((a, b) => (b.time || '').localeCompare(a.time || ''));
+
+        return new Response(JSON.stringify({
+          success: true,
+          count: claims.length,
+          claims
+        }), { headers: { ...corsHeaders(), "Content-Type": "application/json" } });
+
+      } catch (e) {
+        return new Response(JSON.stringify({ success: false, error: e.message }), {
+          status: 500, headers: { ...corsHeaders(), "Content-Type": "application/json" }
+        });
+      }
+    }
+
+    // ══════════════════════════════════════════════════════════════
+    // [V20.10] /admin/block — 악성 유저 차단
+    // ══════════════════════════════════════════════════════════════
+    if (url.pathname === "/admin/block" && request.method === "POST") {
+      try {
+        const adminPass = request.headers.get("x-admin-pass") || "";
+        const expectedPass = env.ADMIN_PASSWORD || "zeus2026admin";
+        if (adminPass !== expectedPass) {
+          return new Response(JSON.stringify({ success: false, error: "unauthorized" }), {
+            status: 401, headers: { ...corsHeaders(), "Content-Type": "application/json" }
+          });
+        }
+
+        const body = await request.json();
+        const { senderName, action } = body;  // action: 'block' or 'unblock' or 'verify'
+
+        if (!senderName) {
+          return new Response(JSON.stringify({ success: false, error: "senderName required" }), {
+            status: 400, headers: { ...corsHeaders(), "Content-Type": "application/json" }
+          });
+        }
+
+        if (!env.KV) {
+          return new Response(JSON.stringify({ success: false, error: "KV not bound" }), {
+            status: 500, headers: { ...corsHeaders(), "Content-Type": "application/json" }
+          });
+        }
+
+        if (action === 'block') {
+          await env.KV.put(`blacklist_${senderName}`, "1",
+                           { expirationTtl: 365 * 24 * 60 * 60 });  // 1년
+          return new Response(JSON.stringify({
+            success: true,
+            message: `${senderName} 차단 완료 (1년)`
+          }), { headers: { ...corsHeaders(), "Content-Type": "application/json" } });
+        } else if (action === 'unblock') {
+          await env.KV.delete(`blacklist_${senderName}`);
+          return new Response(JSON.stringify({
+            success: true,
+            message: `${senderName} 차단 해제 완료`
+          }), { headers: { ...corsHeaders(), "Content-Type": "application/json" } });
+        } else if (action === 'verify') {
+          // 입금 확인 마크 (claim 데이터에 verified: true 업데이트)
+          const claimKey = body.claimKey;
+          if (!claimKey) {
+            return new Response(JSON.stringify({ success: false, error: "claimKey required" }), {
+              status: 400, headers: { ...corsHeaders(), "Content-Type": "application/json" }
+            });
+          }
+          const data = await env.KV.get(claimKey);
+          if (data) {
+            const parsed = JSON.parse(data);
+            parsed.verified = true;
+            parsed.verifiedAt = new Date().toISOString();
+            await env.KV.put(claimKey, JSON.stringify(parsed));
+            return new Response(JSON.stringify({
+              success: true,
+              message: `${senderName} 입금 확인 완료`
+            }), { headers: { ...corsHeaders(), "Content-Type": "application/json" } });
+          }
+          return new Response(JSON.stringify({ success: false, error: "claim not found" }), {
+            status: 404, headers: { ...corsHeaders(), "Content-Type": "application/json" }
+          });
+        } else {
+          return new Response(JSON.stringify({ success: false, error: "invalid action (block|unblock|verify)" }), {
+            status: 400, headers: { ...corsHeaders(), "Content-Type": "application/json" }
+          });
+        }
+
+      } catch (e) {
+        return new Response(JSON.stringify({ success: false, error: e.message }), {
+          status: 500, headers: { ...corsHeaders(), "Content-Type": "application/json" }
         });
       }
     }
