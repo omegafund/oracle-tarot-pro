@@ -3,24 +3,58 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>ZEUS ORACLE TAROT</title>
+    <title>ZEUS · Tarot Oracle</title>
+    <!-- [V21.0] 글로벌 럭셔리 폰트 (Co-Star/Sanctuary 수준) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600;700&family=Inter:wght@400;500;600;700;800;900&family=Noto+Sans+KR:wght@400;500;700;900&display=swap" rel="stylesheet">
     <style>
         :root {
-            --gold: #D4AF37;
-            --bright-gold: #FFF5C3;
-            --dark-gold: #8C6212;
-            --bg: #000;
-            --text: #fff;
-            --font: 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif;
+            /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+            /* [V21.0] ZEUS 글로벌 럭셔리 컬러 팔레트     */
+            /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+            /* — 메인 골드 (브랜드 핵심) — */
+            --gold: #D4AF37;             /* 메인 골드 */
+            --gold-bright: #FFEC9F;      /* 밝은 금 — 강조 */
+            --gold-soft: #B8860B;        /* 부드러운 금 — 부제 */
+            --bright-gold: #FFF5C3;      /* 호환 */
+            --dark-gold: #8C6212;        /* 호환 */
+
+            /* — 액센트 컬러 (도메인별) — */
+            --accent-purple: #9B59B6;    /* Signal 분석 */
+            --accent-emerald: #50C878;   /* 성공/긍정 */
+            --accent-rose: #FF7BAC;      /* 연애 */
+            --accent-blue: #5DADE2;      /* 부동산/Market */
+            --accent-coral: #FF6B6B;     /* Critical/경고 */
+
+            /* — 깊이감 (배경) — */
+            --bg: #0A0A0F;               /* 더 깊은 검정 (블루 톤) */
+            --bg-mid: #14141F;           /* 중간 톤 */
+            --bg-card: rgba(20, 20, 31, 0.7);   /* 카드 배경 */
+
+            /* — 텍스트 톤 (계층화) — */
+            --text: #FFFFFF;
+            --text-soft: rgba(255,255,255,0.85);
+            --text-muted: rgba(255,255,255,0.6);
+            --text-dim: rgba(255,255,255,0.4);
+
+            /* — 폰트 — */
+            --font-display: 'Cormorant Garamond', 'Noto Serif KR', serif;   /* 타이틀 */
+            --font-body: 'Inter', 'Noto Sans KR', -apple-system, sans-serif; /* 본문 영문 */
+            --font-ko: 'Noto Sans KR', 'Apple SD Gothic Neo', sans-serif;     /* 본문 한글 */
+            --font: var(--font-body);    /* 기존 호환 */
         }
         * { box-sizing: border-box; }
         body {
             margin: 0; padding: 0;
-            background: radial-gradient(circle at center, #1a1a1a 0%, #000 100%);
+            background: radial-gradient(ellipse at center, #14141F 0%, #0A0A0F 70%, #000 100%);
             color: var(--text);
-            font-family: var(--font);
+            font-family: var(--font-body), var(--font-ko);
             min-height: 100vh;
             overflow-x: hidden;
+            letter-spacing: 0.01em;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
         }
         #app-container {
             max-width: 500px;
@@ -59,27 +93,44 @@
             width: 100%; height: 100%;
             overflow: visible;
         }
+        /* [V21.0] 럭셔리 디스플레이 타이틀 — Cormorant Garamond serif */
         .gold-title {
             position: absolute;
             bottom: 0; left: 0; right: 0;
             text-align: center;
             z-index: 2;
+            font-family: var(--font-display);
             color: var(--gold);
-            font-size: 2.3rem;
-            font-weight: 900;
+            font-size: 3.4rem;          /* 더 크게 (단어 짧아져서) */
+            font-weight: 600;            /* serif는 600이 더 우아 */
             margin: 0;
-            letter-spacing: 0.3em;
-            text-shadow: 0 0 15px rgba(212,175,55,0.6), 0 0 30px rgba(212,175,55,0.3);
+            letter-spacing: 0.35em;     /* 럭셔리 spacing */
+            text-shadow:
+                0 0 20px rgba(212,175,55,0.7),
+                0 0 40px rgba(212,175,55,0.4),
+                0 2px 4px rgba(0,0,0,0.8);
             line-height: 1;
+            background: linear-gradient(180deg,
+                #FFEC9F 0%,
+                #D4AF37 50%,
+                #B8860B 100%);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+            filter: drop-shadow(0 0 12px rgba(212,175,55,0.5));
         }
+        /* [V21.0] 부제 — Inter sans-serif (대비 효과) */
         .sub-title {
-            color: var(--gold);
-            font-size: 0.95rem;
-            letter-spacing: 0.5em;
-            margin-top: 6px;
-            margin-bottom: 20px;
+            font-family: var(--font-body);
+            color: var(--gold-soft);
+            font-size: 0.78rem;
+            letter-spacing: 0.4em;
+            margin-top: 10px;
+            margin-bottom: 24px;
             display: block;
-            font-weight: 800;
+            font-weight: 500;
+            text-transform: uppercase;
+            opacity: 0.85;
         }
 
         /* ════════════════════════════════════
@@ -105,6 +156,63 @@
         @keyframes archStarTwinkle5 {
             0%,100%{opacity:0.3;}
             55%{opacity:1;filter:drop-shadow(0 0 10px #D4AF37);}
+        }
+
+        /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+        /* [V21.0] 별빛 하이브리드 애니메이션 (3 레이어) */
+        /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+
+        /* Layer 1: 미세 점 — 부드러운 페이드 */
+        @keyframes starFade {
+            0%, 100% { opacity: 0.15; }
+            50%      { opacity: 0.7; }
+        }
+
+        /* Layer 2: 작은 ✦ 스파클 — 회전 + scale + glow */
+        @keyframes starTwinkleSmall {
+            0%, 100% {
+                opacity: 0.3;
+                transform: scale(0.7) rotate(0deg);
+            }
+            50% {
+                opacity: 1;
+                transform: scale(1.1) rotate(45deg);
+                filter: drop-shadow(0 0 6px #FFFFFF) drop-shadow(0 0 12px #D4AF37);
+            }
+        }
+
+        /* Layer 3: 큰 ✦ 메인 스파클 — 강한 빛 + 회전 + scale */
+        @keyframes starTwinkleLarge {
+            0%, 100% {
+                opacity: 0.5;
+                transform: scale(0.85) rotate(0deg);
+            }
+            50% {
+                opacity: 1;
+                transform: scale(1.25) rotate(45deg);
+                filter: drop-shadow(0 0 10px #FFFFFF) drop-shadow(0 0 20px #FFEC9F) drop-shadow(0 0 30px #D4AF37);
+            }
+        }
+
+        /* 중앙 가장 큰 별 (히어로) — 가장 화려하게 */
+        @keyframes starTwinkleHero {
+            0%, 100% {
+                opacity: 0.7;
+                transform: scale(0.9) rotate(0deg);
+            }
+            50% {
+                opacity: 1;
+                transform: scale(1.4) rotate(90deg);
+                filter: drop-shadow(0 0 14px #FFFFFF) drop-shadow(0 0 28px #FFEC9F) drop-shadow(0 0 42px #D4AF37);
+            }
+        }
+
+        /* 접근성 — 모션 감소 모드 시 정지 */
+        @media (prefers-reduced-motion: reduce) {
+            [class*="starTwinkle"], [style*="starTwinkle"], [style*="starFade"] {
+                animation: none !important;
+                opacity: 0.6 !important;
+            }
         }
 
         .star-icon {
@@ -139,6 +247,7 @@
             background: linear-gradient(135deg, #2D0054, #120022);
             clip-path: polygon(14px 0%, calc(100% - 14px) 0%, 100% 14px, 100% calc(100% - 14px), calc(100% - 14px) 100%, 14px 100%, 0% calc(100% - 14px), 0% 14px);
         }
+        /* [V21.0] 입력 박스 — 한글 가독성 ↑ + 럭셔리 폰트 */
         .gold-input {
             position: relative;
             z-index: 10;
@@ -151,10 +260,16 @@
             text-align: center;
             resize: none;
             height: 70px;
-            font-weight: bold;
-            font-family: var(--font);
+            font-weight: 500;
+            font-family: var(--font-ko);
+            letter-spacing: 0.02em;
+            line-height: 1.7;
         }
-        .gold-input::placeholder { color: rgba(212,175,55,0.6); }
+        .gold-input::placeholder {
+            color: rgba(212,175,55,0.55);
+            font-weight: 400;
+            font-style: italic;
+        }
         .cards-stage {
             display: flex;
             justify-content: space-between;
@@ -196,16 +311,34 @@
             95%  { transform: translate(-50%, -50%) rotate(360deg); opacity: 0.6; }
             100% { transform: translate(-50%, -50%) rotate(360deg); opacity: 1; }
         }
+        /* [V21.0] 카드 라벨 — 영문(메인) + 한글(부제) 병기 럭셔리 */
         .card-label {
             position: absolute;
             bottom: 0; left: 0; right: 0;
-            background: rgba(0,0,0,0.75);
-            color: var(--gold);
-            font-size: 0.6rem;
-            font-weight: bold;
-            padding: 4px 2px;
+            background: linear-gradient(180deg, rgba(0,0,0,0.5), rgba(0,0,0,0.92));
+            color: var(--gold-bright);
+            padding: 6px 2px 5px;
             text-align: center;
-            letter-spacing: 0.05em;
+            line-height: 1.15;
+            border-top: 1px solid rgba(212,175,55,0.3);
+        }
+        .card-label-en {
+            display: block;
+            font-family: var(--font-body);
+            font-size: 0.6rem;
+            font-weight: 700;
+            letter-spacing: 0.18em;
+            color: var(--gold-bright);
+            text-shadow: 0 0 8px rgba(212,175,55,0.5);
+        }
+        .card-label-ko {
+            display: block;
+            font-family: var(--font-ko);
+            font-size: 0.55rem;
+            font-weight: 500;
+            letter-spacing: 0.1em;
+            color: rgba(212,175,55,0.7);
+            margin-top: 1px;
         }
         @keyframes cardFlip {
             0%   { transform: rotateY(0deg) scale(1); }
@@ -223,21 +356,54 @@
             width: 100%;
             margin-top: 15px;
         }
+        /* [V21.0] CTA 버튼 — 럭셔리 강화 (다층 glow + 호버 효과) */
         .gold-button {
-            background: linear-gradient(180deg, #FFF5C3 0%, #D4AF37 100%);
-            color: #000;
-            border: none;
-            padding: 18px 0;
+            background: linear-gradient(135deg,
+                #FFEC9F 0%,
+                #D4AF37 50%,
+                #B8860B 100%);
+            color: #1A1A1A;
+            border: 1px solid rgba(255,236,159,0.6);
+            padding: 18px 24px;
             width: 100%;
             border-radius: 50px;
-            font-weight: 900;
+            font-weight: 800;
             cursor: pointer;
-            font-size: 1.1rem;
-            font-family: var(--font);
-            transition: transform 0.1s;
+            font-size: 1.05rem;
+            font-family: var(--font-body);
+            letter-spacing: 0.05em;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow:
+                0 4px 16px rgba(212,175,55,0.35),
+                0 0 0 1px rgba(255,236,159,0.2) inset,
+                0 -2px 4px rgba(0,0,0,0.1) inset;
+            position: relative;
+            overflow: hidden;
         }
-        .gold-button:active { transform: scale(0.97); }
-        .gold-button:disabled { opacity: 0.7; cursor: not-allowed; }
+        .gold-button::before {
+            content: '';
+            position: absolute;
+            top: 0; left: -100%;
+            width: 100%; height: 100%;
+            background: linear-gradient(90deg,
+                transparent,
+                rgba(255,255,255,0.4),
+                transparent);
+            transition: left 0.6s;
+        }
+        .gold-button:hover::before { left: 100%; }
+        .gold-button:hover {
+            transform: translateY(-1px);
+            box-shadow:
+                0 6px 24px rgba(212,175,55,0.5),
+                0 0 0 1px rgba(255,236,159,0.4) inset;
+        }
+        .gold-button:active { transform: scale(0.98); }
+        .gold-button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            box-shadow: none;
+        }
         .gold-button .orb-spin {
             display: inline-block;
             animation: orbPulse 0.8s ease-in-out infinite;
@@ -259,16 +425,20 @@
             0%, 100% { transform: translateY(0) rotate(150deg); }
             50%       { transform: translateY(-15px) rotate(150deg); }
         }
+        /* [V21.0] 면책 고지 — 우아한 톤 + 영문 강조 */
         .disclaimer-text {
-            margin-top: 28px;
-            font-size: 0.76rem;                 /* 0.72 → 0.76 살짝 키움 */
-            color: rgba(212,175,55,0.95);       /* [V19.3] 0.75 → 0.95 (진하게) */
-            line-height: 1.6;
-            letter-spacing: 0.03em;
-            font-weight: 500;                   /* [V19.3] 기본 weight 추가 */
-            border-top: 1px solid rgba(212,175,55,0.25);
-            padding-top: 12px;
+            margin-top: 32px;
+            font-size: 0.72rem;
+            color: var(--text-dim);
+            line-height: 1.7;
+            letter-spacing: 0.05em;
+            font-weight: 400;
+            font-family: var(--font-body);
+            border-top: 1px solid rgba(212,175,55,0.15);
+            padding-top: 16px;
+            padding-bottom: 8px;
             text-align: center;
+            font-style: italic;
         }
 
         /* ── 상황 선택 UI */
@@ -1018,41 +1188,86 @@
 
     <div id="home-view">
 
-        <!-- ✦ 아치형 별 타이틀 -->
+        <!-- [V21.0] ✦ 아치형 별빛 — 하이브리드 (큰 스파클 + 작은 점 + 골드 글로우) -->
         <div class="arch-title-wrapper">
             <div class="arch-svg-wrapper">
                 <svg viewBox="0 0 320 130" xmlns="http://www.w3.org/2000/svg">
                     <defs>
-                        <filter id="glow">
-                            <feGaussianBlur stdDeviation="2.5" result="coloredBlur"/>
+                        <!-- [V21.0] 강화된 다중 glow 필터 -->
+                        <filter id="glow-strong" x="-100%" y="-100%" width="300%" height="300%">
+                            <feGaussianBlur stdDeviation="3" result="blur1"/>
+                            <feGaussianBlur stdDeviation="6" in="blur1" result="blur2"/>
                             <feMerge>
-                                <feMergeNode in="coloredBlur"/>
+                                <feMergeNode in="blur2"/>
+                                <feMergeNode in="blur1"/>
                                 <feMergeNode in="SourceGraphic"/>
                             </feMerge>
                         </filter>
+                        <filter id="glow-soft" x="-50%" y="-50%" width="200%" height="200%">
+                            <feGaussianBlur stdDeviation="2"/>
+                            <feMerge>
+                                <feMergeNode/>
+                                <feMergeNode in="SourceGraphic"/>
+                            </feMerge>
+                        </filter>
+                        <!-- ✦ 4점 스파클 path (재사용) -->
+                        <symbol id="sparkle" viewBox="-10 -10 20 20">
+                            <path d="M 0 -10 L 1.5 -1.5 L 10 0 L 1.5 1.5 L 0 10 L -1.5 1.5 L -10 0 L -1.5 -1.5 Z"
+                                  fill="currentColor"/>
+                        </symbol>
                     </defs>
-                    <!-- 아치 별 — 모두 글자(하단 40px) 위쪽에만 위치 -->
-                    <circle cx="18"  cy="90" r="3"   fill="#D4AF37" filter="url(#glow)" style="animation:archStarTwinkle3 2.1s infinite ease-in-out;"/>
-                    <circle cx="38"  cy="68" r="2.5" fill="#FFF5C3" filter="url(#glow)" style="animation:archStarTwinkle1 1.7s 0.3s infinite ease-in-out;"/>
-                    <circle cx="58"  cy="48" r="4"   fill="#D4AF37" filter="url(#glow)" style="animation:archStarTwinkle5 2.4s 0.6s infinite ease-in-out;"/>
-                    <circle cx="82"  cy="30" r="3"   fill="#FFF5C3" filter="url(#glow)" style="animation:archStarTwinkle2 1.9s 0.1s infinite ease-in-out;"/>
-                    <circle cx="110" cy="16" r="3.5" fill="#D4AF37" filter="url(#glow)" style="animation:archStarTwinkle4 2.2s 0.8s infinite ease-in-out;"/>
-                    <circle cx="140" cy="6"  r="4.5" fill="#FFF5C3" filter="url(#glow)" style="animation:archStarTwinkle1 1.5s 0.4s infinite ease-in-out;"/>
-                    <circle cx="160" cy="2"  r="5.5" fill="#FFD700" filter="url(#glow)" style="animation:archStarTwinkle5 1.3s 0s   infinite ease-in-out;"/>
-                    <circle cx="180" cy="6"  r="4.5" fill="#FFF5C3" filter="url(#glow)" style="animation:archStarTwinkle1 1.5s 0.5s infinite ease-in-out;"/>
-                    <circle cx="210" cy="16" r="3.5" fill="#D4AF37" filter="url(#glow)" style="animation:archStarTwinkle4 2.2s 0.2s infinite ease-in-out;"/>
-                    <circle cx="238" cy="30" r="3"   fill="#FFF5C3" filter="url(#glow)" style="animation:archStarTwinkle2 1.9s 0.7s infinite ease-in-out;"/>
-                    <circle cx="262" cy="48" r="4"   fill="#D4AF37" filter="url(#glow)" style="animation:archStarTwinkle5 2.4s 0.3s infinite ease-in-out;"/>
-                    <circle cx="282" cy="68" r="2.5" fill="#FFF5C3" filter="url(#glow)" style="animation:archStarTwinkle1 1.7s 0.9s infinite ease-in-out;"/>
-                    <circle cx="302" cy="90" r="3"   fill="#D4AF37" filter="url(#glow)" style="animation:archStarTwinkle3 2.1s 0.5s infinite ease-in-out;"/>
-                    <circle cx="48"  cy="58" r="1.5" fill="#FFF5C3" filter="url(#glow)" style="animation:archStarTwinkle2 1.1s 0.2s infinite ease-in-out;"/>
-                    <circle cx="96"  cy="22" r="2"   fill="#FFD700" filter="url(#glow)" style="animation:archStarTwinkle4 1.8s 0.6s infinite ease-in-out;"/>
-                    <circle cx="224" cy="22" r="2"   fill="#FFD700" filter="url(#glow)" style="animation:archStarTwinkle4 1.8s 0.3s infinite ease-in-out;"/>
-                    <circle cx="272" cy="58" r="1.5" fill="#FFF5C3" filter="url(#glow)" style="animation:archStarTwinkle2 1.1s 0.7s infinite ease-in-out;"/>
+
+                    <!-- ─── Layer 1: 미세 점 (배경 안개) ─── -->
+                    <g opacity="0.45" filter="url(#glow-soft)">
+                        <circle cx="48"  cy="58" r="0.8" fill="#FFF5C3" style="animation:starFade 3s 0.2s infinite ease-in-out;"/>
+                        <circle cx="96"  cy="22" r="1"   fill="#D4AF37" style="animation:starFade 4s 0.6s infinite ease-in-out;"/>
+                        <circle cx="120" cy="40" r="0.6" fill="#FFFFFF" style="animation:starFade 2.5s 1.1s infinite ease-in-out;"/>
+                        <circle cx="180" cy="35" r="0.8" fill="#FFEC9F" style="animation:starFade 3.5s 0.4s infinite ease-in-out;"/>
+                        <circle cx="224" cy="22" r="1"   fill="#D4AF37" style="animation:starFade 4s 0.3s infinite ease-in-out;"/>
+                        <circle cx="272" cy="58" r="0.8" fill="#FFF5C3" style="animation:starFade 3s 0.7s infinite ease-in-out;"/>
+                        <circle cx="68"  cy="100" r="0.6" fill="#FFFFFF" style="animation:starFade 2.8s 1.5s infinite ease-in-out;"/>
+                        <circle cx="252" cy="100" r="0.6" fill="#FFFFFF" style="animation:starFade 2.8s 0.9s infinite ease-in-out;"/>
+                    </g>
+
+                    <!-- ─── Layer 2: 작은 ✦ 4점 스파클 (보조) ─── -->
+                    <g filter="url(#glow-soft)">
+                        <use href="#sparkle" x="38" y="68" width="8" height="8" color="#FFEC9F"
+                             style="animation:starTwinkleSmall 2.2s 0.3s infinite ease-in-out; transform-origin:38px 68px;"/>
+                        <use href="#sparkle" x="82" y="30" width="9" height="9" color="#FFFFFF"
+                             style="animation:starTwinkleSmall 1.9s 0.1s infinite ease-in-out; transform-origin:82px 30px;"/>
+                        <use href="#sparkle" x="238" y="30" width="9" height="9" color="#FFFFFF"
+                             style="animation:starTwinkleSmall 1.9s 0.7s infinite ease-in-out; transform-origin:238px 30px;"/>
+                        <use href="#sparkle" x="282" y="68" width="8" height="8" color="#FFEC9F"
+                             style="animation:starTwinkleSmall 2.2s 0.9s infinite ease-in-out; transform-origin:282px 68px;"/>
+                        <use href="#sparkle" x="18" y="90" width="8" height="8" color="#D4AF37"
+                             style="animation:starTwinkleSmall 2.5s 0s infinite ease-in-out; transform-origin:18px 90px;"/>
+                        <use href="#sparkle" x="302" y="90" width="8" height="8" color="#D4AF37"
+                             style="animation:starTwinkleSmall 2.5s 0.5s infinite ease-in-out; transform-origin:302px 90px;"/>
+                    </g>
+
+                    <!-- ─── Layer 3: 큰 ✦ 메인 스파클 (강한 빛) ─── -->
+                    <g filter="url(#glow-strong)">
+                        <use href="#sparkle" x="58" y="48" width="14" height="14" color="#FFFFFF"
+                             style="animation:starTwinkleLarge 2.4s 0.6s infinite ease-in-out; transform-origin:58px 48px;"/>
+                        <use href="#sparkle" x="110" y="16" width="14" height="14" color="#FFEC9F"
+                             style="animation:starTwinkleLarge 2.2s 0.8s infinite ease-in-out; transform-origin:110px 16px;"/>
+                        <use href="#sparkle" x="140" y="6" width="16" height="16" color="#FFFFFF"
+                             style="animation:starTwinkleLarge 1.5s 0.4s infinite ease-in-out; transform-origin:140px 6px;"/>
+                        <!-- 중앙 가장 큰 별 (핵심) -->
+                        <use href="#sparkle" x="160" y="2" width="20" height="20" color="#FFFFFF"
+                             style="animation:starTwinkleHero 1.3s 0s infinite ease-in-out; transform-origin:160px 2px;"/>
+                        <use href="#sparkle" x="180" y="6" width="16" height="16" color="#FFFFFF"
+                             style="animation:starTwinkleLarge 1.5s 0.5s infinite ease-in-out; transform-origin:180px 6px;"/>
+                        <use href="#sparkle" x="210" y="16" width="14" height="14" color="#FFEC9F"
+                             style="animation:starTwinkleLarge 2.2s 0.2s infinite ease-in-out; transform-origin:210px 16px;"/>
+                        <use href="#sparkle" x="262" y="48" width="14" height="14" color="#FFFFFF"
+                             style="animation:starTwinkleLarge 2.4s 0.3s infinite ease-in-out; transform-origin:262px 48px;"/>
+                    </g>
                 </svg>
-                <h1 class="gold-title">ZEUS ORACLE TAROT</h1>
+                <!-- [V21.0] 글로벌 타이틀 — ZEUS / Tarot Oracle (1줄 메인 + 1줄 부제) -->
+                <h1 class="gold-title">ZEUS</h1>
             </div>
-            <span class="sub-title">PRO · MASTERPIECE</span>
+            <span class="sub-title">Tarot Oracle · 운명의 신탁</span>
         </div>
 
         <!-- [V19 Phase4] 오늘의 카드 + 최근 신탁 이력 — [V19.4] 공백 제거 -->
@@ -1070,8 +1285,11 @@
                 margin:0 auto 10px;
                 max-width:340px;
                 box-shadow: 0 2px 12px rgba(212,175,55,0.08);">
-                <div style="font-size:0.7rem; letter-spacing:0.15em; color:var(--gold); font-weight:900; text-align:center; line-height:1;">
-                    ✦ 오늘의 카드 ✦
+                <div style="font-size:0.7rem; letter-spacing:0.18em; color:var(--gold); font-weight:900; text-align:center; line-height:1.3;">
+                    TODAY'S CARD
+                    <div style="font-size:0.62rem; opacity:0.75; letter-spacing:0.15em; margin-top:2px;">
+                        ✦ 오늘의 카드 ✦
+                    </div>
                 </div>
                 <!-- [V19.4] img 기본 숨김 (display:none) → JS에서 src 성공 시에만 표시 -->
                 <img id="daily-card-img" alt=""
@@ -1083,10 +1301,16 @@
             </div>
             <!-- 최근 신탁 — 중앙정렬 -->
             <div id="history-list-wrap" style="display:none; max-width:440px; margin:0 auto;">
-                <div style="font-size:0.72rem; letter-spacing:0.1em; color:#D4AF37; font-weight:700; margin-bottom:8px; text-align:center;">
-                    📜 최근 신탁
+                <div style="font-size:0.72rem; letter-spacing:0.15em; color:#D4AF37; font-weight:800; margin-bottom:10px; text-align:center; line-height:1.4;">
+                    RECENT READINGS
+                    <div style="font-size:0.64rem; opacity:0.75; letter-spacing:0.12em; margin-top:2px;">
+                        📜 최근 신탁
+                    </div>
                 </div>
                 <div id="history-list" style="display:flex; flex-direction:column; gap:6px;"></div>
+                <div style="margin-top:8px; font-size:0.62rem; color:rgba(255,255,255,0.45); text-align:center; font-style:italic;">
+                    탭하여 신탁 결과 확인 · Tap to reveal
+                </div>
             </div>
         </div>
 
@@ -1139,27 +1363,44 @@
 
         <div class="cards-stage">
             <div class="card-slot" id="slot-0">
-                <img id="card-img-0" src="" alt="카드">
-                <div class="card-label">과 거</div>
+                <img id="card-img-0" src="" alt="Past">
+                <div class="card-label">
+                    <span class="card-label-en">PAST</span>
+                    <span class="card-label-ko">과거</span>
+                </div>
             </div>
             <div class="card-slot" id="slot-1">
-                <img id="card-img-1" src="" alt="카드">
-                <div class="card-label">현 재</div>
+                <img id="card-img-1" src="" alt="Present">
+                <div class="card-label">
+                    <span class="card-label-en">PRESENT</span>
+                    <span class="card-label-ko">현재</span>
+                </div>
             </div>
             <div class="card-slot" id="slot-2">
-                <img id="card-img-2" src="" alt="카드">
-                <div class="card-label">미 래</div>
+                <img id="card-img-2" src="" alt="Future">
+                <div class="card-label">
+                    <span class="card-label-en">FUTURE</span>
+                    <span class="card-label-ko">미래</span>
+                </div>
             </div>
         </div>
 
         <div class="button-container">
-            <button class="gold-button" id="ritual-btn" onclick="startRitual()">운명의 3대 신탁 확인</button>
+            <button class="gold-button" id="ritual-btn" onclick="startRitual()">
+                <span style="display:block; font-size:0.92rem; font-weight:900; letter-spacing:0.08em; line-height:1.3;">
+                    ✨ Begin Your Reading
+                </span>
+                <span style="display:block; font-size:0.78rem; font-weight:600; opacity:0.85; letter-spacing:0.05em; margin-top:3px;">
+                    운명의 카드를 펼치소서
+                </span>
+            </button>
             <div class="spiritual-pointer">👇</div>
         </div>
 
-        <div class="disclaimer-text">
-            ✦ 본 서비스는 영성적 매칭 알고리즘과 AI 기반의 타로 해석을 제공합니다 ✦<br>
-            참고용 콘텐츠이며, 실제 투자·법률·의료 판단의 근거로 사용하지 마십시오.
+        <!-- [V21.0] 면책 고지 — 짧고 우아하게 (자세한 건 결제/결과 화면에) -->
+        <div class="disclaimer-text" style="font-size:0.7rem; line-height:1.6; padding:8px 16px;">
+            ✦ For reflection &amp; entertainment only ✦<br>
+            <span style="opacity:0.7; font-size:0.65rem;">영성적 참고용 콘텐츠입니다 · Not financial / legal / medical advice</span>
         </div>
     </div>
 
@@ -1597,7 +1838,7 @@ function setSituation(btn, type, domain) {
             try {
                 // 홈뷰 숨기고 result-view 노출
                 document.getElementById('home-view').style.display = 'none';
-                const positions = ['과 거','현 재','미 래'];
+                const positions = ['과거','현재','미래'];
                 const revFlags = window._reversedFlags || [false,false,false];
                 const container = document.getElementById('result-cards-container');
                 if (container && selectedCards.length === 3) {
@@ -1898,7 +2139,7 @@ async function getTradingSignal(fullText) {
 // ════════════════════════════════════
 function showResultView(question, streamPromise) {
     document.getElementById('home-view').style.display = 'none';
-    const positions = ['과 거','현 재','미 래'];
+    const positions = ['과거','현재','미래'];
     const revFlags = window._reversedFlags || [false,false,false];
     document.getElementById('result-cards-container').innerHTML =
         selectedCards.map((card, i) => `
@@ -3604,9 +3845,36 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
     //       "은 자신감을 의미하며~" → "과거는 자신감을 의미하며~"
     //   카드 이미지가 끼는 구조에서 문장이 끊어 보이는 UX 버그 방지
     const labelPrefix = ['과거', '현재', '미래'];
+    // [V21.1] 종목명 이모지 치환용 — Worker 응답에 subjectName 있으면 사용
+    // [V21.2] 강화 — 단락 중간 이모지도 치환 + 빈 종목명 자리 보강
+    const _subjectName = (window._serverMetrics && window._serverMetrics.subjectName) || '';
     cardTexts = cardTexts.map((txt, i) => {
         if (!txt) return txt;
         let t = txt.trim();
+
+        // [V21.2] 종목명이 빠지고 이모지로 시작하는 모든 패턴 치환
+        if (_subjectName) {
+            // 1) 단락 첫 자리: 이모지 + 조사 (📈에 / 🏠의 / 💘에 / ✨을 등)
+            //    "📈에 대한 유저님의~" → "산일전기에 대한 유저님의~"
+            t = t.replace(/^([\u{1F300}-\u{1F9FF}\u{2600}-\u{27BF}\u{1F000}-\u{1F1FF}])\s*(에|의|을|를|이|가|은|는|에서|와|과|로|으로|에게|에)\s/u,
+                          _subjectName + '$2 ');
+            // 2) 단락 첫 자리: 이모지 + 공백 + 한글
+            t = t.replace(/^([\u{1F300}-\u{1F9FF}\u{2600}-\u{27BF}\u{1F000}-\u{1F1FF}])\s+([가-힣])/u,
+                          _subjectName + ' $2');
+            // 3) 단락 중간 — 줄바꿈/마침표 후 이모지 + 조사
+            //    "...입니다.\n📈에 대한~" → "...입니다.\n산일전기에 대한~"
+            t = t.replace(/([\.\n])\s*([\u{1F300}-\u{1F9FF}\u{2600}-\u{27BF}\u{1F000}-\u{1F1FF}])\s*(에|의|을|를|이|가|은|는|에서|와|과|로|으로|에게|에)\s/gu,
+                          '$1 ' + _subjectName + '$3 ');
+            // 4) 본문 어디에든 이모지 + 조사 패턴 (가장 폭넓음)
+            //    "📈에" / "📈을" / "📈의" 등이 단어처럼 박혀있는 경우
+            t = t.replace(/([\u{1F300}-\u{1F9FF}\u{2600}-\u{27BF}\u{1F000}-\u{1F1FF}])(에 대한|에 관한|을 향한|에 대해|을 위한|의 흐름|의 매수|의 매도)/gu,
+                          _subjectName + '$2');
+            // 5) 단락 시작이 종목명 없이 "에 대한 유저님의~" 패턴 (이모지가 이미 제거된 경우)
+            if (/^(에 대한|에 관한|을 향한|에 대해|을 위한)\s/.test(t)) {
+                t = _subjectName + ' ' + t;
+            }
+        }
+
         // 카드 이름이 본문 첫 줄에 단독으로 또 등장하면 제거
         if (cards && cards[i]) {
             const cardName = cards[i].name;
@@ -3626,6 +3894,19 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
     });
 
     let oracleContent = paragraphs.slice(3).join('\n\n').trim();
+
+    // [V21.2] 제우스 신탁 박스 본문도 이모지 → 종목명 치환
+    if (_subjectName && oracleContent) {
+        oracleContent = oracleContent.replace(
+            /([\u{1F300}-\u{1F9FF}\u{2600}-\u{27BF}\u{1F000}-\u{1F1FF}])\s*(에 대한|에 관한|을 향한|에 대해|을 위한|의 흐름|의 매수|의 매도)/gu,
+            _subjectName + '$2'
+        );
+        // 단순 이모지 + 조사
+        oracleContent = oracleContent.replace(
+            /([\u{1F300}-\u{1F9FF}\u{2600}-\u{27BF}\u{1F000}-\u{1F1FF}])\s*(에|의|을|를|이|가|은|는|에서|와|과)\s/gu,
+            _subjectName + '$2 '
+        );
+    }
     const labels = ['과거', '현재', '미래'];
 
     // 3. 공개 영역 (과거/현재)
@@ -5024,28 +5305,56 @@ function renderDailyAndHistory() {
         const listEl   = document.getElementById('history-list');
         if (list.length > 0 && listEl && listWrap) {
             listWrap.style.display = 'block';
-            listEl.innerHTML = list.slice(0, HISTORY_MAX).map(h => {
+            // [V21.0] 최근 신탁 — 결과 가림 (사생활 보호 / GDPR 대응)
+            //   • 클릭하면 결과 노출 (toggle)
+            //   • 기본 상태: "✦ 신탁 보기" 라벨만 표시
+            listEl.innerHTML = list.slice(0, HISTORY_MAX).map((h, idx) => {
                 const emoji = h.queryType === 'stock' || h.queryType === 'crypto' ? '📈'
                             : h.queryType === 'realestate' ? '🏠'
                             : h.queryType === 'love' ? '💘' : '✨';
                 const trendTxt = h.trend || '-';
                 const dateTxt  = h.date ? h.date.slice(5).replace('-','/') : '';
                 const qShort   = (h.question || '').slice(0, 20);
+                // 결과는 data-attribute에 보관 — 클릭 시에만 노출
+                const trendEsc = trendTxt.replace(/"/g, '&quot;');
                 return `
-                <div style="display:flex; align-items:center; gap:8px;
+                <div class="zeus-history-item" data-trend="${trendEsc}"
+                     onclick="zeusToggleHistoryItem(this)"
+                     style="display:flex; align-items:center; gap:8px; cursor:pointer;
                             background:rgba(0,0,0,0.35); border:1px solid rgba(212,175,55,0.15);
-                            border-radius:8px; padding:6px 10px; font-size:0.76rem;">
+                            border-radius:8px; padding:8px 10px; font-size:0.76rem;
+                            transition: all 0.25s ease;">
                     <div style="color:var(--gold); font-weight:700; min-width:36px;">${dateTxt}</div>
                     <div style="flex:1; color:rgba(255,255,255,0.85); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
                         ${emoji} ${qShort}${qShort.length>=20?'…':''}
                     </div>
-                    <div style="color:rgba(212,175,55,0.8); font-size:0.7rem; white-space:nowrap;">${trendTxt}</div>
+                    <div class="zeus-history-veil"
+                         style="color:rgba(212,175,55,0.85); font-size:0.7rem; white-space:nowrap;
+                                font-weight:700; letter-spacing:0.05em;">
+                        ✦ 신탁 보기
+                    </div>
                 </div>`;
             }).join('');
         }
     } catch(e) { console.warn('history render fail:', e); }
 
     bar.style.display = 'block';
+}
+
+// [V21.0] 최근 신탁 토글 — 클릭 시 결과 노출/숨김 (사생활 보호)
+function zeusToggleHistoryItem(el) {
+    const veil = el.querySelector('.zeus-history-veil');
+    if (!veil) return;
+    const isVeiled = veil.textContent.includes('신탁 보기');
+    if (isVeiled) {
+        veil.textContent = el.dataset.trend || '-';
+        veil.style.color = 'rgba(255,255,255,0.85)';
+        el.style.background = 'rgba(212,175,55,0.06)';
+    } else {
+        veil.textContent = '✦ 신탁 보기';
+        veil.style.color = 'rgba(212,175,55,0.85)';
+        el.style.background = 'rgba(0,0,0,0.35)';
+    }
 }
 
 // 이력에 신탁 하나 추가 — 결과창이 뜰 때마다 호출
@@ -6016,7 +6325,15 @@ function cancelShuffle() {
     const btn = document.getElementById('ritual-btn');
     if (btn) {
         btn.disabled = false;
-        btn.innerHTML = '운명의 3대 신탁 확인';
+        // [V21.0] 글로벌 라벨로 복원
+        btn.innerHTML = `
+            <span style="display:block; font-size:0.92rem; font-weight:900; letter-spacing:0.08em; line-height:1.3;">
+                ✨ Begin Your Reading
+            </span>
+            <span style="display:block; font-size:0.78rem; font-weight:600; opacity:0.85; letter-spacing:0.05em; margin-top:3px;">
+                운명의 카드를 펼치소서
+            </span>
+        `;
     }
 }
 </script>
