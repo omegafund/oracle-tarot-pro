@@ -2240,6 +2240,7 @@ async function startStreamFetch(userQuestion, cards) {
             method: 'POST',
             headers: {
                 'Content-Type':    'application/json',
+                'Accept':          'application/json, text/event-stream',
                 'x-session-token': sessionToken
             },
             body: JSON.stringify({
@@ -2254,9 +2255,20 @@ async function startStreamFetch(userQuestion, cards) {
                 stockSubType:  STOCK_SUBTYPE,
                 reSubType:     RE_SUBTYPE
             }),
-            signal: controller.signal
+            signal: controller.signal,
+            // [V22.4] Wi-Fi/보안망 우회 옵션 (사장님 진단)
+            //   • cache: "no-store" — 보안 프록시 캐시 우회
+            //   • mode: "cors" — CORS 명시
+            //   • credentials: "omit" — 쿠키 제외 (보안망 차단 회피)
+            cache: "no-store",
+            mode: "cors",
+            credentials: "omit"
         });
         clearTimeout(connectTimer); // 연결 성공 → 타임아웃 해제
+        // [V22.4] 응답 상태 명시적 체크 (Wi-Fi 차단 시 4xx/5xx 가능)
+        if (!response.ok) {
+            throw new Error("NETWORK_BLOCK_" + response.status);
+        }
         return response;
     } catch(e) {
         clearTimeout(connectTimer);
@@ -2448,11 +2460,52 @@ async function renderStream(fetchPromise, cards) {
         loadingEl.style.display    = 'none';
         progressWrap.style.display = 'none';
         if (wisdomEl) wisdomEl.style.display = 'none';
-        contentEl.innerHTML = `
-            <div style="color:#ff6b6b;padding:20px;border:1px solid #ff6b6b;border-radius:10px;">
-                <strong>⚠️ 신탁 연결 실패</strong><br><br>
-                <pre style="white-space:pre-wrap;font-size:0.8rem;color:#eee;">${error.message}</pre>
-            </div>`;
+
+        // [V22.4] Wi-Fi/보안망 차단 친절 안내 (사장님 진단)
+        //   증상: 집은 OK, 지방/보안폰은 처음부터 에러
+        //   원인: 회사/공공/보안망 프록시가 Cloudflare Worker 차단
+        //   해결: 모바일 데이터 전환 안내
+        const isNetworkBlock = (error.message || '').includes('NETWORK_BLOCK')
+                             || (error.message || '').includes('Failed to fetch')
+                             || (error.message || '').includes('NetworkError')
+                             || (error.message || '').includes('aborted');
+
+        if (isNetworkBlock) {
+            contentEl.innerHTML = `
+                <div style="padding:24px; border:2px solid rgba(255,165,0,0.5); border-radius:12px;
+                            background: linear-gradient(135deg, rgba(255,165,0,0.10), rgba(255,165,0,0.04));
+                            box-shadow: 0 0 16px rgba(255,165,0,0.18);">
+                    <div style="color:#FFD970; font-size:1.05rem; font-weight:900; margin-bottom:14px; text-align:center;">
+                        🔮 신탁 연결 안내
+                    </div>
+                    <div style="color:#fff; font-size:0.92rem; line-height:1.85; margin-bottom:16px;">
+                        현재 <b style="color:#FFD970;">Wi-Fi 또는 보안 네트워크</b>에서<br>
+                        연결이 차단되고 있습니다.
+                    </div>
+                    <div style="background:rgba(46,204,113,0.10); border-left:3px solid #7AD188;
+                                padding:12px 14px; border-radius:0 6px 6px 0; margin-bottom:16px;
+                                font-size:0.86rem; color:rgba(255,255,255,0.92); line-height:1.85;">
+                        <b style="color:#7AD188;">✔ 해결 방법</b><br>
+                        ① 모바일 데이터(LTE/5G)로 전환 후 재시도<br>
+                        ② 회사/공공 Wi-Fi 사용 시 차단 가능<br>
+                        ③ 잠시 후 다시 시도해주세요
+                    </div>
+                    <div style="font-size:0.78rem; color:rgba(255,255,255,0.6); text-align:center; font-style:italic;">
+                        문제가 반복되면 네트워크 환경을 변경해 주세요
+                    </div>
+                </div>`;
+        } else {
+            // 그 외 일반 에러
+            contentEl.innerHTML = `
+                <div style="color:#ff6b6b;padding:20px;border:1px solid #ff6b6b;border-radius:10px;">
+                    <strong>⚠️ 신탁 연결 실패</strong><br><br>
+                    <pre style="white-space:pre-wrap;font-size:0.8rem;color:#eee;">${error.message}</pre>
+                    <div style="margin-top:12px; font-size:0.82rem; color:rgba(255,255,255,0.7);">
+                        잠시 후 다시 시도해주세요.<br>
+                        문제가 반복되면 모바일 데이터(LTE/5G)로 전환 후 시도해보세요.
+                    </div>
+                </div>`;
+        }
     }
 } // renderStream 함수 종료
 
@@ -4064,9 +4117,68 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
                     <div style="font-size:1.05rem; color:#fff; font-weight:900; margin-bottom:6px; line-height:1.5;">
                         👉 ${positionLabel}: ${layers.decision.position}
                     </div>
-                    <div style="font-size:0.92rem; color:rgba(255,255,255,0.92); font-weight:600; line-height:1.6;">
+                    <div style="font-size:0.92rem; color:rgba(255,255,255,0.92); font-weight:600; line-height:1.6; margin-bottom:14px;">
                         👉 ${strategyLabel}: ${layers.decision.strategy}
                     </div>
+
+                    ${layers.decision.diagnosis ? `
+                    <!-- [V22.3] 🔍 진단 (명확한 단일 메시지) -->
+                    <div style="margin-top:12px; padding:11px 13px;
+                                background: rgba(255,236,159,0.10);
+                                border-left: 3px solid #FFEC9F;
+                                border-radius: 0 6px 6px 0;">
+                        <div style="font-size:0.68rem; color:#FFEC9F; font-weight:800; letter-spacing:0.1em; margin-bottom:5px; text-transform:uppercase;">
+                            🔍 Diagnosis · 진단
+                        </div>
+                        <div style="font-size:0.92rem; color:#fff; font-weight:600; line-height:1.55;">
+                            ${layers.decision.diagnosis}
+                        </div>
+                    </div>` : ''}
+
+                    ${layers.decision.cardEvidence ? `
+                    <!-- [V22.3] 🎴 카드 근거 (의미로 입증) -->
+                    <div style="margin-top:10px; padding:11px 13px;
+                                background: rgba(155,89,182,0.10);
+                                border-left: 3px solid ${colors.signal};
+                                border-radius: 0 6px 6px 0;">
+                        <div style="font-size:0.68rem; color:#C39BD3; font-weight:800; letter-spacing:0.1em; margin-bottom:5px; text-transform:uppercase;">
+                            🎴 Card Evidence · 카드 근거
+                        </div>
+                        <div style="font-size:0.86rem; color:rgba(255,255,255,0.92); font-weight:500; line-height:1.65; white-space:pre-line;">
+                            ${layers.decision.cardEvidence}
+                        </div>
+                    </div>` : ''}
+
+                    ${layers.decision.outcomePrediction ? `
+                    <!-- [V22.3] 💡 결과 예측 (행동 시 어떻게) -->
+                    <div style="margin-top:10px; padding:11px 13px;
+                                background: rgba(46,204,113,0.10);
+                                border-left: 3px solid ${colors.execution};
+                                border-radius: 0 6px 6px 0;">
+                        <div style="font-size:0.68rem; color:#7AD188; font-weight:800; letter-spacing:0.1em; margin-bottom:5px; text-transform:uppercase;">
+                            💡 Outcome · 행동 시 결과
+                        </div>
+                        <div style="font-size:0.86rem; color:rgba(255,255,255,0.92); font-weight:500; line-height:1.65; white-space:pre-line;">
+                            ${layers.decision.outcomePrediction}
+                        </div>
+                    </div>` : ''}
+
+                    ${(layers.decision.entryTriggers && layers.decision.entryTriggers.length) ? `
+                    <!-- [V22.3] ⏱ 실행 트리거 (1차/2차 신호) -->
+                    <div style="margin-top:10px; padding:11px 13px;
+                                background: rgba(52,152,219,0.10);
+                                border-left: 3px solid ${colors.timing};
+                                border-radius: 0 6px 6px 0;">
+                        <div style="font-size:0.68rem; color:#5DADE2; font-weight:800; letter-spacing:0.1em; margin-bottom:6px; text-transform:uppercase;">
+                            ⏱ Entry Triggers · 실행 트리거
+                        </div>
+                        ${layers.decision.entryTriggers.map(t => `
+                            <div style="display:flex; align-items:flex-start; gap:8px; padding:5px 0; font-size:0.84rem; line-height:1.55;">
+                                <span style="color:#5DADE2; font-weight:800; min-width:60px;">[${t.stage}]</span>
+                                <span style="color:rgba(255,255,255,0.92); flex:1;">${t.action}</span>
+                            </div>
+                        `).join('')}
+                    </div>` : ''}
                 </div>`;
 
             // ────────────────────────────────────────────────
