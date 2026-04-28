@@ -388,6 +388,112 @@ const CARD_FLAVOR = {
 };
 
 // ══════════════════════════════════════════════════════════════════
+// 🎯 [V22.4] CARD_FLAVOR_REVERSED — 78장 역방향 의미
+//   사장님 진단: "Eight of Wands 역방향 → 가속" 같은 왜곡 100% 차단
+//   원리: 역방향 = 정방향 의미의 정체/지연/반전
+// ══════════════════════════════════════════════════════════════════
+const CARD_FLAVOR_REVERSED = {
+  // ── 메이저 22장 역방향 ──
+  "The Fool":         "무모한 도약의 실패와 후회",
+  "The Magician":     "주도권 상실과 실행력 부족",
+  "The High Priestess":"직관 차단과 혼란의 정체",
+  "The Empress":      "성장 정체와 풍요의 결핍",
+  "The Emperor":      "구조 와해와 권위 약화",
+  "The Hierophant":   "전통 거부와 규범 이탈",
+  "The Lovers":       "선택 회피와 불일치의 갈등",
+  "The Chariot":      "추진력 약화와 방향성 혼란",
+  "Strength":         "인내 한계와 통제력 상실",
+  "The Hermit":       "고독의 종료와 외부 노출",
+  "Wheel of Fortune": "운명 정체와 전환 지연",
+  "Justice":          "불공정한 결과와 균형 붕괴",
+  "The Hanged Man":   "정체 종료와 새 시작의 신호",
+  "Death":            "변화 거부와 마무리 지연",
+  "Temperance":       "조화 붕괴와 극단적 선택",
+  "The Devil":        "집착에서 자유로운 해방의 시간",
+  "The Tower":        "충격 회피와 진실 직면 지연",
+  "The Star":         "희망 약화와 회복 지연",
+  "The Moon":         "안개 걷힘과 진실 드러남",
+  "The Sun":          "성공 지연과 빛의 약화",
+  "Judgement":        "각성 거부와 재평가 회피",
+  "The World":        "완성 지연과 마무리 미완",
+
+  // ── WANDS 14장 역방향 ──
+  "Ace of Wands":     "추진력 부족과 시작의 망설임",
+  "Two of Wands":     "확장 계획의 정체와 결정 미루기",
+  "Three of Wands":   "결과 지연과 기다림의 좌절",
+  "Four of Wands":    "축하의 약화와 안정 흔들림",
+  "Five of Wands":    "갈등 종료와 협력 가능성",
+  "Six of Wands":     "성과 인정의 지연과 좌절",
+  "Seven of Wands":   "방어 포기와 위치 상실",
+  "Eight of Wands":   "속도 둔화와 전개의 지연",
+  "Nine of Wands":    "한계 돌파의 회복 신호",
+  "Ten of Wands":     "부담 해소와 짐 내려놓기",
+  "Page of Wands":    "탐색 지연과 의욕 약화",
+  "Knight of Wands":  "성급함의 후회와 속도 조절",
+  "Queen of Wands":   "자신감 약화와 주도력 상실",
+  "King of Wands":    "리더십 흔들림과 방향 혼란",
+
+  // ── CUPS 14장 역방향 ──
+  "Ace of Cups":      "감정 차단과 새 시작의 망설임",
+  "Two of Cups":      "관계 균형 붕괴와 합의 실패",
+  "Three of Cups":    "축하의 단절과 공감대 약화",
+  "Four of Cups":     "권태 종료와 기회 인식",
+  "Five of Cups":     "상실 회복과 잔존 가치 발견",
+  "Six of Cups":      "과거 집착의 종료와 현재 직면",
+  "Seven of Cups":    "환상에서 깨어남과 현실 인식",
+  "Eight of Cups":    "이별 보류와 정체된 자리 유지",
+  "Nine of Cups":     "만족의 약화와 공허함",
+  "Ten of Cups":      "감정 충만의 균열과 가족 갈등",
+  "Page of Cups":     "감성 메시지의 차단",
+  "Knight of Cups":   "이상 환상에서 깨어남",
+  "Queen of Cups":    "공감 약화와 거리감 형성",
+  "King of Cups":     "감정 통제 실패와 폭발 위험",
+
+  // ── SWORDS 14장 역방향 ──
+  "Ace of Swords":    "진실 차단과 결단 지연",
+  "Two of Swords":    "결정 회피와 균형 붕괴",
+  "Three of Swords":  "상처 회복과 치유 시작",
+  "Four of Swords":   "휴식 종료와 활동 재개",
+  "Five of Swords":   "갈등 종료와 화해 가능성",
+  "Six of Swords":    "전환 지연과 정체된 자리",
+  "Seven of Swords":  "회피 종료와 진실 드러남",
+  "Eight of Swords":  "속박에서 해방의 시간",
+  "Nine of Swords":   "걱정 완화와 불안 해소",
+  "Ten of Swords":    "최악 통과와 회복 시작",
+  "Page of Swords":   "정보 차단과 호기심 약화",
+  "Knight of Swords": "성급함의 후회와 속도 조절",
+  "Queen of Swords":  "냉철함 약화와 감정적 흔들림",
+  "King of Swords":   "권위 약화와 결단 회피",
+
+  // ── PENTACLES 14장 역방향 ──
+  "Ace of Pentacles":   "물질 기회 차단과 시작 지연",
+  "Two of Pentacles":   "균형 붕괴와 관리 실패",
+  "Three of Pentacles": "협업 균열과 성과 부족",
+  "Four of Pentacles":  "집착 해소와 베풂의 시간",
+  "Five of Pentacles":  "결핍 회복과 도움의 도착",
+  "Six of Pentacles":   "분배 불공정과 받기만 하기",
+  "Seven of Pentacles": "노력 결실 지연과 인내 한계",
+  "Eight of Pentacles": "장인 정신 약화와 집중력 부족",
+  "Nine of Pentacles":  "독립 약화와 의존성 증가",
+  "Ten of Pentacles":   "유산 균열과 가족 갈등",
+  "Page of Pentacles":  "학습 정체와 성장 지연",
+  "Knight of Pentacles":"진행 정체와 게으름",
+  "Queen of Pentacles": "실용성 약화와 풍요 흔들림",
+  "King of Pentacles":  "재정 권위 약화와 손실 위험"
+};
+
+// ══════════════════════════════════════════════════════════════════
+// 🎯 [V22.4] getCardFlavor — 카드 + 역방향 → 정확한 의미 반환
+//   사용처: criticalInterpretation, cardEvidence 등 모든 카드 의미 표시
+// ══════════════════════════════════════════════════════════════════
+function getCardFlavor(card, isReversed) {
+  if (isReversed) {
+    return CARD_FLAVOR_REVERSED[card] || CARD_FLAVOR[card] || `${card}의 에너지`;
+  }
+  return CARD_FLAVOR[card] || `${card}의 에너지`;
+}
+
+// ══════════════════════════════════════════════════════════════════
 // 🎯 [V22.0] MESSAGE_POOL — 도메인별 × 신호별 메시지 풀 (랜덤 선택)
 //   각 풀 10개 → 같은 신호여도 매번 다른 문구
 //   외워질 확률: 5개=20%, 10개=10% (글로벌 표준)
@@ -582,12 +688,15 @@ function buildCriticalInterpretation(cards, revFlags, domain) {
   else signal = "HOLD";
 
   // 미래 카드(가장 영향력 큰)의 flavor 우선 사용
+  // [V22.4] 역방향이면 역방향 의미 사용 (Eight of Wands 역방향 = 정체)
   const futCard = cards[2];
-  const futFlavor = CARD_FLAVOR[futCard] || `${futCard}의 에너지`;
+  const futReversed = revFlags && revFlags[2];
+  const futFlavor = getCardFlavor(futCard, futReversed);
+  const futCardLabel = futReversed ? `${futCard} (역방향)` : futCard;
 
   // 일반 메시지 (랜덤) + 카드 flavor 결합
   const generalMsg = pickMessage(signal, domain, futCard);
-  const flavorMsg = `${futCard}의 에너지는 ${futFlavor}을(를) 시사합니다.`;
+  const flavorMsg = `${futCardLabel}의 에너지는 ${futFlavor}을(를) 시사합니다.`;
 
   // 마무리 한 줄 (도메인별)
   const closing = signal === "SELL" ? (
@@ -893,6 +1002,15 @@ function buildStockMetrics({ totalScore, riskScore, cleanCards, isLeverage, quer
       action = "선제 익절 — 고점 근접 시 분할 매도";
       positionAdjust = "moderate";
     }
+
+    // [V22.4] 매도 Decision/Execution 동기화 (사장님 진단 핵심)
+    //   대한광통신 케이스: Decision "전량 매도"인데 Weight "30~50%" 모순 차단
+    //   강한 하락 (totalScore<=-3) 시 무조건 urgent → 비중도 100%로 통일
+    //   원리: "전량 매도"는 100%여야 함 (Decision/Execution 일관성)
+    if (totalScore <= -3) {
+      action = "🚨 전량 매도 — 즉시 청산";
+      positionAdjust = "urgent";
+    }
   } else {
     // ━━ 매수 의도일 때 (기본값 — 언제 살까?) ━━
     if      (trend === "강한 상승") action = "강매수";
@@ -1178,19 +1296,22 @@ function buildStockMetrics({ totalScore, riskScore, cleanCards, isLeverage, quer
   let position;
   if (stockIntent === "sell") {
     // ━━ 매도 의도: 보유분의 익절·손절 기준 ━━
+    // [V22.4] 사장님 안: Decision/Execution 100% 동기화
+    //   Decision "전량 매도" → Weight도 100% 통일
+    //   "1차 50% → 2차 전량" 자연스러운 연결
     const isUrgent = finalAction.includes("즉시") || finalAction.includes("전량") || positionAdjust === "urgent";
     const isModerate = positionAdjust === "moderate";
     position = {
-      weight:    isUrgent       ? "🚨 전량 매도 (100%)" :
+      weight:    isUrgent       ? "🚨 1차 50% 즉시 → 2차 전량 청산" :
                  isModerate     ? "30~50% 분할 익절 (모멘텀 약화 대응)" :
                  totalScore <= -2 ? "70~100% 매도 (대부분 정리)" :
                  totalScore >= 6  ? "10~20% 부분 익절 (코어 유지)" :
                  totalScore >= 2  ? "30~50% 분할 익절 (단계적)" :
                  "50~70% 매도 (방어 모드)",
-      stopLoss:  isUrgent       ? "더 떨어지기 전 즉시 청산" :
+      stopLoss:  isUrgent       ? "현재가 -2% 이탈 시 잔여 전량 청산" :
                  totalScore >= 2 ? "보유분 -3% 추가 하락 시 즉시 매도" :
                  "현 시점에서 -2% 이탈 시 즉시 청산",
-      target:    isUrgent       ? "손실 확대 차단 우선" :
+      target:    isUrgent       ? "반등 시 분할 청산 (고점 회복 기대 금지)" :
                  isModerate     ? `현재가 +${basePct}% 도달 시 추가 익절` :
                  totalScore >= 6 ? `현재가 +${upPct}% 구간 도달 시 추가 익절` :
                  totalScore >= 2 ? `현재가 +${basePct}~${Math.min(10, upPct-2)}% 구간 익절` :
@@ -1247,14 +1368,17 @@ function buildStockMetrics({ totalScore, riskScore, cleanCards, isLeverage, quer
       decisionStrategy = "단계적 차익실현 → 코어 일부 유지";
     } else if (totalScore <= -3) {
       decisionPosition = "전량 매도 (Full Exit)";
-      decisionStrategy = "추가 하락 차단 → 즉시 청산";
+      // [V22.4] 사장님 안: "반등 시 분할 청산 → 최종 이탈" (자연스러운 연결)
+      decisionStrategy = "반등 시 분할 청산 → 최종 이탈";
     } else {
       decisionPosition = "조건부 매도 (Conditional Exit)";
       decisionStrategy = "반등 신호 시 매도 또는 일부 정리";
     }
   } else {
     // 매수 의도 — 카드 패턴별 결정
-    // [V20.10.1] positionAdjust 반영하여 Execution과 동기화
+    // [V22.3] Position을 Diagnosis와 동기화 (Single Source of Truth)
+    //   사장님 진단: "탐색 매수 + 신규 진입 금지" 모순 100% 해결
+    //   핵심: Position 분기 = Diagnosis 분기 = Triggers 분기 (3중 동기)
     if (positionAdjust === "noEntry" || (totalScore <= -3)) {
       decisionPosition = "관망 (Wait & See)";
       decisionStrategy = "신규 진입 금지 → 추세 전환 신호 대기";
@@ -1271,8 +1395,205 @@ function buildStockMetrics({ totalScore, riskScore, cleanCards, isLeverage, quer
       decisionPosition = "분할 매수 (Split Buy)";
       decisionStrategy = "단계적 진입 → 추세 확인 후 비중 확대";
     } else {
-      decisionPosition = "탐색 매수 (Exploratory)";
-      decisionStrategy = "소액 진입 → 신호 검증";
+      // [V22.3] 핵심 수정: 사장님 케이스 (totalScore=0, 미래 BUY 신호)
+      //   미래에 회복 신호가 있어도 totalScore < 2면 진입 보류
+      //   → "탐색 매수"가 아니라 "관망 — 신호 대기"가 정직한 표현
+      const _futSig = CARD_DECISION_MAP[cleanCards[2]] || "HOLD";
+      const _futEff = revFlags[2] ? (_futSig === "BUY" ? "HOLD" : _futSig === "SELL" ? "BUY" : "SELL") : _futSig;
+      if (_futEff === "BUY") {
+        // 미래 회복 신호 있지만 진입 신중 — Diagnosis와 일치
+        decisionPosition = "관망 (Wait & See)";
+        decisionStrategy = "반등 신호 확인 후 진입 → 횡보 갇힘 방지";
+      } else {
+        decisionPosition = "관망 (Wait & See)";
+        decisionStrategy = "방향성 확인 후 진입 검토";
+      }
+    }
+  }
+
+  // ════════════════════════════════════════════════════════════
+  // [V22.3] Decision Layer 보강 — 명확한 진단 + 카드 근거 + 결과 예측 + 실행 트리거
+  //   사장님 비전: "그래서 뭐 하라는 거냐?" 모호함 100% 해결
+  //   구조:
+  //     1. diagnosis — 명확한 단일 진단 ("진입 타이밍 아님")
+  //     2. cardEvidence — 카드 의미로 근거 입증
+  //     3. outcomePrediction — 행동 시 결과 예측 ("횡보에 갇힘")
+  //     4. entryTriggers — 실행 트리거 (1차/2차 신호)
+  // ════════════════════════════════════════════════════════════
+  const _futCardName = cleanCards[2];
+  const _curCardName = cleanCards[1];
+  const _pastCardName = cleanCards[0];
+  // [V22.4] 역방향 의미 정확히 반영 (Eight of Wands 역방향 = 정체)
+  const _curFlavor = getCardFlavor(_curCardName, revFlags[1]);
+  const _futFlavor = getCardFlavor(_futCardName, revFlags[2]);
+  // 카드 라벨 (역방향이면 표시)
+  const _curCardLabel = revFlags[1] ? `${_curCardName} (역방향)` : _curCardName;
+  const _futCardLabel = revFlags[2] ? `${_futCardName} (역방향)` : _futCardName;
+
+  // 🎯 1. 진단 (diagnosis) — 명확한 단일 메시지
+  //   사장님 비전: "그래서 뭐 하라는 거냐?" 모호함 100% 차단
+  //   [V22.3.2] Position 분기와 완전 동기 — Single Source of Truth
+  let diagnosis;
+  const _futureSig = CARD_DECISION_MAP[_futCardName] || "HOLD";
+  const _futureSigEffective = revFlags[2] ? (_futureSig === "BUY" ? "HOLD" : _futureSig === "SELL" ? "BUY" : "SELL") : _futureSig;
+
+  if (stockIntent === "sell") {
+    if (totalScore <= -3) {
+      diagnosis = "현재 구간은 '익절 기회가 아닌, 손실 방어가 우선되는 시점'입니다.";
+    } else if (totalScore >= 6) {
+      diagnosis = "현재 구간은 '추세 정점에서 분할 익절을 검토할 시점'입니다.";
+    } else if (hasReversedSignal || hasMidstreamObstacle) {
+      diagnosis = "현재 구간은 '단기 변동성 속에서 코어를 유지하며 일부 정리하는 시점'입니다.";
+    } else {
+      diagnosis = "현재 구간은 '단계적 차익실현이 유효한 안정 구간'입니다.";
+    }
+  } else {
+    // [V22.3.2] Position 분기와 1:1 매칭 (모순 차단)
+    if (positionAdjust === "noEntry" || (totalScore <= -3)) {
+      // Position: 관망 (Wait & See)
+      diagnosis = "현재 구간은 '진입 타이밍이 아니며, 방어가 우선되는 시점'입니다.";
+    } else if (positionAdjust === "tentative") {
+      // Position: 탐색 매수
+      diagnosis = "현재 구간은 '소액 진입으로 신호를 검증할 수 있는 탐색 구간'입니다.";
+    } else if (totalScore >= 6 && !hasReversedSignal && !hasMidstreamObstacle && positionAdjust !== "cautious") {
+      // Position: 적극 매수 (Strong Buy)
+      diagnosis = "현재 구간은 '강한 상승 모멘텀이 진행 중인 진입 가능 구간'입니다.";
+    } else if (hasMidstreamObstacle || hasReversedSignal || positionAdjust === "cautious") {
+      // Position: 단기 매수 (Short-Term Buy) — 진입은 가능하지만 신중
+      diagnosis = "현재 구간은 '진입은 가능하지만 단기 변동성을 조심해야 하는 구간'입니다.";
+    } else if (totalScore >= 2) {
+      // Position: 분할 매수
+      diagnosis = "현재 구간은 '분할 진입으로 흐름을 확인할 수 있는 안정 구간'입니다.";
+    } else {
+      // Position: 관망 — 사장님 케이스 (totalScore=0, 미래 BUY)
+      if (_futureSigEffective === "BUY") {
+        diagnosis = "현재 구간은 '반등 가능성은 존재하지만, 진입 타이밍은 아닌 구간'입니다.";
+      } else {
+        diagnosis = "현재 구간은 '방향성을 탐색하며 신호를 기다려야 하는 중립 구간'입니다.";
+      }
+    }
+  }
+
+  // 🎯 2. 카드 근거 (cardEvidence) — 카드 의미로 진단 입증
+  //   사장님 비전: "The Star는 회복 가능성을 보여주지만, Four of Cups의 정체 에너지가..."
+  //   원리: 미래 카드(가장 영향력) + 현재 카드의 의미 대비
+  let cardEvidence;
+  const _futDecision = CARD_DECISION_MAP[_futCardName] || "HOLD";
+  const _curDecision = CARD_DECISION_MAP[_curCardName] || "HOLD";
+  const _futEffective = revFlags[2] ? (_futDecision === "BUY" ? "HOLD" : _futDecision === "SELL" ? "BUY_REV" : "SELL") : _futDecision;
+  const _curEffective = revFlags[1] ? (_curDecision === "BUY" ? "HOLD" : _curDecision === "SELL" ? "BUY_REV" : "SELL") : _curDecision;
+
+  // 카드 의미 자연어 변환 (조사 제거)
+  const _strip = (s) => (s || '').replace(/\s*(구간|시점|에너지|상황)$/, '');
+  const _curMeaningClean = _strip(_curFlavor);
+  const _futMeaningClean = _strip(_futFlavor);
+
+  // 미래/현재 조합별 cardEvidence 생성
+  if (_futEffective === "BUY" && _curEffective !== "BUY") {
+    // 미래 회복 + 현재 약함 = "회복 가능성 vs 정체"
+    cardEvidence = `${_futCardLabel}는 ${_futMeaningClean}을 보여주지만,\n${_curCardLabel}의 ${_curMeaningClean} 에너지가 시장을 눌러 움직임을 제한하고 있습니다.`;
+  } else if (_futEffective === "SELL" && _curEffective === "BUY") {
+    // 현재 강세 + 미래 약화 = "단기 모멘텀 vs 정점 임박"
+    cardEvidence = `${_curCardLabel}의 ${_curMeaningClean} 에너지가 단기적으로 흐름을 띄우고 있지만,\n${_futCardLabel}의 ${_futMeaningClean}이(가) 정점 후 조정 가능성을 시사합니다.`;
+  } else if (_futEffective === "SELL" && _curEffective === "SELL") {
+    // 둘 다 약함 = "지속 하락"
+    cardEvidence = `${_curCardLabel}의 ${_curMeaningClean} 에너지가 현재를 누르고 있고,\n${_futCardLabel}의 ${_futMeaningClean}마저 추가 약세를 시사하고 있습니다.`;
+  } else if (_futEffective === "BUY" && _curEffective === "BUY") {
+    // 둘 다 강세 = "강한 추세"
+    cardEvidence = `${_curCardLabel}의 ${_curMeaningClean} 에너지가 우호적으로 정렬되어 있고,\n${_futCardLabel}의 ${_futMeaningClean}이(가) 추세 강화를 시사하고 있습니다.`;
+  } else if (_futEffective === "HOLD" || _curEffective === "HOLD") {
+    // 한 쪽 HOLD = "방향성 모호"
+    cardEvidence = `${_curCardLabel}의 ${_curMeaningClean} 에너지가 균형 지점에 있고,\n${_futCardLabel}의 ${_futMeaningClean}이(가) 신중한 관찰을 권하고 있습니다.`;
+  } else if (_futEffective === "SELL" && _curEffective === "HOLD") {
+    cardEvidence = `${_curCardLabel}의 ${_curMeaningClean} 에너지가 균형 지점에 있고,\n${_futCardLabel}의 ${_futMeaningClean}이(가) 약세 압력을 시사합니다.`;
+  } else {
+    cardEvidence = `${_curCardLabel}의 ${_curMeaningClean} 에너지가 현재 흐름을 형성하고,\n${_futCardLabel}의 ${_futMeaningClean}이(가) 다음 단계를 예고합니다.`;
+  }
+
+  // 🎯 3. 결과 예측 (outcomePrediction) — 행동 시 어떻게 될지
+  //   [V22.3.2] Position 분기와 동기 (Single Source of Truth)
+  let outcomePrediction;
+  if (stockIntent === "sell") {
+    if (totalScore <= -3) {
+      outcomePrediction = "👉 지금 매도하지 않으면 '추가 하락 시 손실이 확대'될 가능성이 높고\n👉 반등 후 매도가 아닌 즉시 정리가 유리한 구조입니다";
+    } else if (totalScore >= 6) {
+      outcomePrediction = "👉 지금 전량 매도하면 '추가 상승 기회를 놓칠' 가능성이 있고\n👉 분할 익절로 코어 유지가 훨씬 유리한 구조입니다";
+    } else {
+      outcomePrediction = "👉 한 번에 정리하면 '단기 반등 기회를 놓칠' 가능성이 있고\n👉 분할 매도로 단계적 정리가 훨씬 유리한 구조입니다";
+    }
+  } else {
+    // [V22.3.2] Position 분기와 1:1 매칭
+    if (positionAdjust === "noEntry" || (totalScore <= -3)) {
+      // Position: 관망
+      outcomePrediction = "👉 지금 진입하면 '추가 하락에 갇힐' 가능성이 높고\n👉 추세 전환 신호 후 진입이 훨씬 유리한 구조입니다";
+    } else if (totalScore >= 6 && !hasReversedSignal && !hasMidstreamObstacle && positionAdjust !== "cautious") {
+      // Position: 적극 매수
+      outcomePrediction = "👉 지금 진입을 미루면 '본격 상승 구간을 놓칠' 가능성이 높고\n👉 분할 매수로 즉시 진입이 유리한 구조입니다";
+    } else if (hasMidstreamObstacle || hasReversedSignal || positionAdjust === "cautious") {
+      // Position: 단기 매수 — 진입 OK지만 변동성 주의
+      outcomePrediction = "👉 지금 풀 매수하면 '단기 변동성에 흔들릴' 가능성이 있고\n👉 분할 진입 + 빠른 수익 실현이 훨씬 유리한 구조입니다";
+    } else if (totalScore >= 2) {
+      // Position: 분할 매수
+      outcomePrediction = "👉 지금 큰 비중으로 진입하면 '추세 미확인 리스크'에 노출되고\n👉 분할 진입으로 신호 확인 후 비중 확대가 유리한 구조입니다";
+    } else {
+      // Position: 관망 (사장님 케이스)
+      outcomePrediction = "👉 지금 진입하면 '지루한 횡보 또는 추가 하락'에 갇힐 가능성이 있고\n👉 반등 신호 이후 진입이 훨씬 유리한 구조입니다";
+    }
+  }
+
+  // 🎯 4. 실행 트리거 (entryTriggers) — 1차/2차 신호 (구체적)
+  //   [V22.3.2] Position 분기와 동기
+  let entryTriggers;
+  if (stockIntent === "sell") {
+    if (totalScore <= -3) {
+      entryTriggers = [
+        { stage: "현재", action: "즉시 비중 축소 (50% 우선 정리)" },
+        { stage: "1차 신호", action: "지지선 이탈 시 → 추가 정리" },
+        { stage: "2차 확정", action: "거래량 동반 음봉 시 → 전량 청산" }
+      ];
+    } else {
+      entryTriggers = [
+        { stage: "현재", action: "분할 익절 시작 (1/3 정리)" },
+        { stage: "1차 신호", action: "단기 고점 형성 시 → 추가 1/3 정리" },
+        { stage: "2차 확정", action: "추세 둔화 신호 시 → 코어 일부만 유지" }
+      ];
+    }
+  } else {
+    if (positionAdjust === "noEntry" || (totalScore <= -3)) {
+      // Position: 관망
+      entryTriggers = [
+        { stage: "현재", action: "관망 유지 (신규 진입 금지)" },
+        { stage: "1차 신호", action: "거래량 증가 + 양봉 전환 시 → 진입 검토" },
+        { stage: "2차 확정", action: "전일 고점 돌파 시 → 소량 진입" }
+      ];
+    } else if (totalScore >= 6 && !hasReversedSignal && !hasMidstreamObstacle && positionAdjust !== "cautious") {
+      // Position: 적극 매수
+      entryTriggers = [
+        { stage: "현재", action: "분할 진입 시작 (1/3)" },
+        { stage: "1차 추가", action: "눌림목 형성 시 → 1/3 추가 매수" },
+        { stage: "2차 확정", action: "신고점 돌파 시 → 잔여 1/3 매수" }
+      ];
+    } else if (hasMidstreamObstacle || hasReversedSignal || positionAdjust === "cautious") {
+      // Position: 단기 매수
+      entryTriggers = [
+        { stage: "현재", action: "소량 시범 진입 (1/4)" },
+        { stage: "1차 신호", action: "거래량 증가 + 양봉 전환 시 → 1/4 추가" },
+        { stage: "2차 확정", action: "전일 고점 돌파 시 → 잔여 진입 (단, 빠른 익절 준비)" }
+      ];
+    } else if (totalScore >= 2) {
+      // Position: 분할 매수
+      entryTriggers = [
+        { stage: "현재", action: "1/3 시범 진입" },
+        { stage: "1차 추가", action: "추세 확인 시 → 1/3 추가" },
+        { stage: "2차 확정", action: "목표가 접근 시 → 잔여 1/3 진입" }
+      ];
+    } else {
+      // Position: 관망 (사장님 케이스)
+      entryTriggers = [
+        { stage: "현재", action: "관망 유지" },
+        { stage: "1차 신호", action: "거래량 증가 + 양봉 전환 시 → 진입 검토" },
+        { stage: "2차 확정", action: "전일 고점 돌파 시 → 소량 진입" }
+      ];
     }
   }
 
@@ -1591,7 +1912,12 @@ function buildStockMetrics({ totalScore, riskScore, cleanCards, isLeverage, quer
     layers: {
       decision: {
         position: decisionPosition,
-        strategy: decisionStrategy
+        strategy: decisionStrategy,
+        // [V22.3] 신뢰감 강화 4개 필드 (사장님 비전)
+        diagnosis,            // 명확한 단일 진단
+        cardEvidence,         // 카드 의미로 근거 입증
+        outcomePrediction,    // 행동 시 결과 예측
+        entryTriggers         // 1차/2차 실행 트리거
       },
       execution: position,  // 기존 position 그대로 (weight/stopLoss/target)
       timing: {
@@ -2235,16 +2561,17 @@ function buildLoveMetrics({ totalScore, cleanCards, prompt, loveSubType }) {
 // ══════════════════════════════════════════════════════════════════
 function buildFortuneMetrics({ totalScore, cleanCards, prompt }) {
   const netScore = totalScore;
-  const trend = netScore >= 5 ? "기운의 상승 — 기회 확장 시기"
-              : netScore >= 2 ? "완만한 긍정 흐름"
-              : netScore >= -1 ? "방향성 탐색 중 — 관망 구간"
-              : netScore >= -5 ? "운세 정체기 — 내면 정리의 시기"
-              : "강한 하강 에너지 — 자기 보호 우선";
+  // [V22.4] 사장님 안 — "수렴/선택" 톤으로 정밀화
+  const trend = netScore >= 5 ? "기운의 확장 — 결단의 황금 구간"
+              : netScore >= 2 ? "긍정 수렴 — 방향성 명확화 중"
+              : netScore >= -1 ? "정체 해소 직전 — 방향 수렴 구간"
+              : netScore >= -5 ? "내면 정리기 — 선택 준비 단계"
+              : "강한 하강 — 자기 보호 우선";
 
   const action = netScore >= 5 ? "과감한 결단 유리"
                : netScore >= 2 ? "유연한 수용 + 적극 시도"
-               : netScore >= -1 ? "현재 상태 유지, 신호 대기"
-               : netScore >= -5 ? "내면 성찰 우선"
+               : netScore >= -1 ? "관망 → 선택 전환 준비"
+               : netScore >= -5 ? "내면 정리 → 선택 준비"
                : "휴식 + 에너지 보존";
 
   const riskLevel = netScore >= 0 ? "외부 개입 주의" : "에너지 소모 경계";
@@ -2265,11 +2592,19 @@ function buildFortuneMetrics({ totalScore, cleanCards, prompt }) {
   });
 
   const keyCard = cleanCards[2] || "미래 카드";
+  // [V22.4] 사장님 안 — 수렴/선택 톤 + 정밀한 메시지
   const interpret = netScore >= 3
-    ? `흐름은 긍정 에너지로 열려 있습니다. ${keyCard}의 기운은 작은 행동 하나가 큰 결과로 이어질 수 있음을 시사합니다. 마음의 문을 열고 기회를 맞이하십시오.`
+    ? `흐름은 긍정의 수렴 구간으로 들어섰습니다. ${keyCard}의 기운은 작은 결단 하나가 큰 흐름을 결정짓는 시점임을 시사합니다. 외부 의견보다 내부 기준을 우선하며, 미루던 결정을 정리할 시기입니다.`
     : netScore >= 0
-    ? `에너지는 균형 구간에 놓여 있습니다. ${keyCard}의 기운은 과함보다 꾸준함이 유리함을 알립니다. 지금은 일상을 정돈하는 시기입니다.`
-    : `흐름은 일시적 정체기에 접어들어 있습니다. ${keyCard}의 기운은 외부 확장보다 내면 회복이 최우선임을 암시합니다. 자신에게 집중하는 시간이 다음 기회의 토대가 됩니다.`;
+    ? `흐름은 균형 지점에 있으며, 방향성이 점차 수렴되는 중입니다. ${keyCard}의 기운은 감정의 확장이 아니라 판단의 정밀도가 요구됨을 알립니다. 작은 결정 하나가 흐름을 바꾸는 계기가 됩니다.`
+    : `흐름은 정체 해소 직전의 정리 단계에 있습니다. ${keyCard}의 기운은 외부 확장보다 내면 정돈이 우선임을 암시합니다. 이 정리가 다음 선택의 토대가 됩니다.`;
+
+  // [V22.4] 🔥 운세 핵심 해석 — 사장님 안: "행동하지 않으면 유지, 결정하면 전환"
+  const criticalInterpretation = netScore >= 3
+    ? `👉 지금은 '운이 좋아지는 시기'가 아니라\n👉 '결단이 흐름을 결정짓는 구간'입니다.\n👉 행동하면 확장 / 미루면 기회 약화`
+    : netScore >= 0
+    ? `👉 지금은 '운이 좋아지는 시기'가 아니라\n👉 '선택에 따라 결과가 갈리는 구간'입니다.\n👉 행동하지 않으면 유지 / 결정하면 전환`
+    : `👉 지금은 '운이 약해지는 시기'가 아니라\n👉 '내면 정돈이 다음 선택을 만드는 구간'입니다.\n👉 정리하지 않으면 정체 / 정돈하면 회복`;
 
   return {
     queryType: "life",
@@ -2277,7 +2612,40 @@ function buildFortuneMetrics({ totalScore, cleanCards, prompt }) {
     finalTimingText,
     totalScore,
     cardNarrative,
-    finalOracle: interpret
+    finalOracle: interpret,
+    // [V22.4] 운세 5계층 데이터 (사장님 안 적용)
+    layers: {
+      decision: {
+        position: netScore >= 5 ? "결단의 황금 구간"
+                 : netScore >= 2 ? "긍정 수렴 — 행동 준비"
+                 : netScore >= -1 ? "정체 해소 직전 — 선택 준비"
+                 : netScore >= -5 ? "내면 정리기"
+                 : "자기 보호 우선",
+        strategy: netScore >= 2 ? "내부 기준 우선 → 미루던 결정 정리"
+                : netScore >= -1 ? "관망 → 선택 전환 준비"
+                : "내면 정돈 → 다음 선택 준비"
+      },
+      timing: {
+        primary: netScore >= 0 ? "1차: 수요일 자정 (내부 전환)" : "1차: 그믐 전후 (정리 시작)",
+        secondary: "2차: 보름달 ±1일 (결정 실행 구간)",
+        flow: netScore >= 5 ? "기운 확장 — 결단 유리"
+            : netScore >= 0 ? "방향 수렴 — 선택 구간"
+            : "정체 해소 직전 — 인내 필요"
+      },
+      risk: {
+        level: riskLevel,
+        cautions: netScore >= 0 ? [
+          "감정 과잉 판단 금지",
+          "외부 의견 과신 주의",
+          "결정 지연 시 기회 약화"
+        ] : [
+          "에너지 소모 주의",
+          "외부 자극 회피",
+          "내면 신호에 집중"
+        ]
+      },
+      criticalInterpretation
+    }
   };
 }
 
@@ -3465,9 +3833,62 @@ function extractSubject(prompt, queryType) {
 
   // 주식/코인 — 종목명 추출
   if (queryType === "stock" || queryType === "crypto") {
-    // [V20.2] 키워드 앞 단일 단어 — 조사도 같이 캡처되므로 후처리
-    //   허용: SK증권, K-삼성, 삼성전자, BTC 등
-    const m = p.match(/^([가-힣A-Za-z][가-힣A-Za-z0-9\-]{1,15})\s+(?:다음주|이번주|언제|매수|매도|매입|살|팔|진입|타이밍|적기|좋은|시점|급등|급락|이번|지금|단타|장투|들어갈|뽑|어떻|어떤|어떨|거래|재개|익절|손절|청산|정리|살려|적당)/);
+    // [V22.4] 메이저 종목 사전 — 띄어쓰기 있어도 정확 매칭
+    //   사장님 진단: "대한 광통신 매수" → "대한"만 추출되는 버그 해결
+    //   주의: 길이순 정렬 필수 (긴 이름 우선 매칭 — "SK 하이닉스" > "SK")
+    const KOREAN_TICKERS = [
+      // ── 띄어쓰기 형태 (사용자가 자주 입력) ──
+      "대한 광통신", "대한 항공", "대한 해운", "대한 제강", "대한 전선",
+      "한국 전력", "한국 가스공사", "한국 조선해양", "한국 타이어", "한국 금융지주",
+      "현대 모비스", "현대 건설", "현대 해상", "현대 미포조선", "현대 백화점",
+      "삼성 전자", "삼성 SDI", "삼성 바이오로직스", "삼성 물산", "삼성 생명",
+      "LG 화학", "LG 전자", "LG 유플러스", "LG 디스플레이", "LG 에너지솔루션",
+      "SK 하이닉스", "SK 이노베이션", "SK 텔레콤", "SK 증권", "SK 바이오팜",
+      "GS 건설", "GS 리테일", "KB 금융", "KT&G",
+      "포스코 홀딩스", "포스코 케미칼", "포스코 인터내셔널",
+      "두산 에너빌리티", "두산 밥캣", "두산 인프라코어",
+      "한미 사이언스", "한미 약품", "유한 양행", "녹십자 홀딩스",
+      "신한 금융지주", "신한 카드", "하나 금융지주", "우리 금융지주",
+      // ── 붙여쓴 형태 (대안) ──
+      "대한광통신", "대한항공", "대한해운", "대한제강", "대한전선",
+      "한국전력", "한국가스공사", "한국타이어", "한국조선해양",
+      "삼성바이오로직스", "삼성에너빌리티", "삼성생명", "삼성전자", "삼성SDI", "삼성물산",
+      "SK하이닉스", "SK이노베이션", "SK텔레콤", "SK증권", "SK바이오팜",
+      "LG에너지솔루션", "LG디스플레이", "LG유플러스", "LG화학", "LG전자",
+      "현대모비스", "현대건설", "현대해상", "현대미포조선", "현대차",
+      "포스코홀딩스", "포스코케미칼", "포스코인터내셔널",
+      "두산에너빌리티", "두산밥캣",
+      "한미사이언스", "한미약품", "유한양행", "녹십자홀딩스",
+      "신한금융지주", "하나금융지주", "우리금융지주",
+      "에코프로비엠", "에코프로", "셀트리온", "카카오", "네이버", "쿠팡",
+      "미래에셋증권", "미래에셋", "기아", "테슬라", "엔비디아", "애플"
+    ];
+
+    // [V22.4.1] 길이순 정렬 (긴 이름 먼저 매칭 — "SK하이닉스" > "SK")
+    KOREAN_TICKERS.sort((a, b) => b.replace(/\s/g, '').length - a.replace(/\s/g, '').length);
+
+    // [V22.4] 1순위: 사전에 있는 종목명 매칭
+    const pNormalized = p.replace(/\s+/g, ' ').trim();
+    for (const ticker of KOREAN_TICKERS) {
+      // 띄어쓰기 무시하고 매칭
+      const tickerPattern = ticker.replace(/\s+/g, '\\s*');
+      // 단어 경계: 다음 글자가 한글/영문이 아니어야 (오매칭 방지)
+      const re = new RegExp('^(' + tickerPattern + ')(?![가-힣A-Za-z0-9])', 'i');
+      const match = pNormalized.match(re);
+      if (match) {
+        // "대한 광통신" → "대한광통신" (한 단어로 정리)
+        return match[1].replace(/\s+/g, '');
+      }
+    }
+
+    // [V22.4] 2순위: 한글+한글 띄어쓰기 패턴 (사전에 없는 새 종목)
+    const m2 = p.match(/^([가-힣]{2,6})\s+([가-힣]{2,8})\s+(?:다음주|이번주|언제|매수|매도|매입|살|팔|사려|사고|살까|팔려|팔까|팔고|팔아|진입|타이밍|적기|시점|단타|장투|들어가|뽑|익절|손절|청산|어떨|어때|좋을)/);
+    if (m2) {
+      return (m2[1] + m2[2]).trim();
+    }
+
+    // [V20.2] 3순위: 키워드 앞 단일 단어
+    const m = p.match(/^([가-힣A-Za-z][가-힣A-Za-z0-9\-]{1,15})\s+(?:다음주|이번주|언제|매수|매도|매입|살|팔|사려|사고|살까|팔려|팔까|진입|타이밍|적기|좋은|시점|급등|급락|이번|지금|단타|장투|들어갈|뽑|어떻|어떤|어떨|거래|재개|익절|손절|청산|정리|살려|적당)/);
     if (m) return stripJosa(m[1].trim());
     // fallback: 첫 단어
     const first = p.split(/\s+/)[0];
@@ -3479,7 +3900,14 @@ function extractSubject(prompt, queryType) {
         const second = p.split(/\s+/)[1];
         if (second && second.length >= 2 && second.length <= 15) return stripJosa(second);
       }
-      return stripJosa(first);
+      // [V22.4] 조사 붙은 종목명 처리 — "미래에셋사려는데" → "미래에셋"
+      const stripped = stripJosa(first);
+      // 동사 어간 제거 — "미래에셋사려는데" → "미래에셋"
+      const verbStripped = stripped.replace(/(사려는데|사려고|사고싶|사고자|살려고|살까말까|팔려는데|매수하려|매도하려|들어가려|진입하려|뽑으려|뽑고|넣으려|받으려)$/, '');
+      if (verbStripped && verbStripped.length >= 2 && verbStripped !== stripped) {
+        return verbStripped;
+      }
+      return stripped;
     }
   }
 
