@@ -2913,23 +2913,32 @@ async function fetchMarketData(symbol) {
         if (!res.ok) throw new Error(`Worker HTTP ${res.status}`);
         const marketData = await res.json();
 
-        // [V23.6] 운영용 — 디버그 로그 제거 (사용자 콘솔 노출 차단)
+        // ── 디버그 로그 (운영 시 제거 가능)
+        console.log("marketData:", marketData);
+        console.log("chart:", marketData?.chart);
+        console.log("result:", marketData?.chart?.result);
+        console.log("indicators:", marketData?.chart?.result?.[0]?.indicators);
+
         // ── 안전 코드 — null 접근 방어
         const result = marketData?.chart?.result?.[0];
         if (!result) {
+            console.log("❌ Yahoo 데이터 없음 — 카드 엔진만으로 작동");
             return null;
         }
 
         const closes = result?.indicators?.quote?.[0]?.close;
         if (!closes || closes.length === 0) {
+            console.log("❌ close 데이터 없음");
             return null;
         }
 
         // null 제거
         const prices = closes.filter(v => v !== null);
         if (prices.length < 2) {
+            console.log("❌ 유효 데이터 부족 (최소 2개 필요)");
             return null;
         }
+        console.log("✅ 정상 prices:", prices.length + "개");
 
         const volumes   = result?.indicators?.quote?.[0]?.volume || [];
         const lastClose = prices[prices.length - 1];
@@ -4489,18 +4498,6 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
             } else {
                 // stock / crypto
                 const exec = layers.execution || {};
-                // [V23.6] 관망 판정 시 비중 강제 동기화
-                //   Decision "관망" → Execution "10~20%" 모순 완전 차단
-                //   Worker의 0% 값도 있지만 Client에서 2차 방어
-                const decisionPos = layers.decision?.position || '';
-                const isWatchMode = decisionPos.includes('관망') || decisionPos.includes('Wait') ||
-                                    decisionPos.includes('진입 금지') || layers.decision?.blockLevel === 'HARD';
-                const displayWeight = isWatchMode
-                    ? '0% — 신호 확인 전까지 비중 할당 금지'
-                    : (exec.weight || '-');
-                const displayStop = isWatchMode ? '진입 없음' : (exec.stopLoss || '-');
-                const displayTarget = isWatchMode ? '진입 없음' : (exec.target || '-');
-
                 executionHTML = `
                 <div style="margin-bottom:14px; padding:12px 14px;
                             background: rgba(46,204,113,0.06);
@@ -4510,9 +4507,9 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
                         ⚡ 실전 매매 전략 (Execution Layer)
                     </div>
                     <div style="font-size:0.88rem; color:rgba(255,255,255,0.92); line-height:1.85;">
-                        <div>💰 ${isSell ? '매도 비중' : '권장 비중'}: <b style="${isWatchMode ? 'color:#FF8080;' : ''}">${displayWeight}</b></div>
-                        <div>🛑 ${isSell ? '손실 한도' : '손절 기준'}: ${displayStop}</div>
-                        <div>🎯 ${isSell ? '익절 구간' : '목표 구간'}: ${displayTarget}</div>
+                        <div>💰 ${isSell ? '매도 비중' : '권장 비중'}: <b>${exec.weight || '-'}</b></div>
+                        <div>🛑 ${isSell ? '손실 한도' : '손절 기준'}: ${exec.stopLoss || '-'}</div>
+                        <div>🎯 ${isSell ? '익절 구간' : '목표 구간'}: ${exec.target || '-'}</div>
                     </div>
                 </div>`;
             }
@@ -4883,7 +4880,21 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
                 <div style="margin-top:12px; padding:12px 14px; background:rgba(0,0,0,0.4); border-left:3px solid var(--gold); line-height:1.8; font-size:0.9rem; color:rgba(255,255,255,0.92);">
                     ${finalOracleHTML}
                 </div>
-                <!-- [V23.6] 면책 고지 최하단 이동 — PRO Hook 뒤에 배치 -->
+                <!-- [V19.3] 법적 면책 강화 — AI 환각 방지 고지 -->
+                <div style="margin-top:14px; padding:10px 12px;
+                            background: rgba(255,165,0,0.06);
+                            border: 1px solid rgba(255,165,0,0.3);
+                            border-left: 3px solid rgba(255,165,0,0.7);
+                            border-radius: 6px;
+                            font-size:0.74rem; color:rgba(255,255,255,0.82); line-height:1.6;">
+                    ⚠️ <b>중요 고지</b>: 본 신탁은 타로 카드 에너지에 기반한 <b>유저님의 투자 심리 분석</b>이며,
+                    특정 종목의 실제 재무 상태·경영 현황·미래 성과를 의미하지 않습니다.
+                    AI 서술은 영성적 해석이며 실제 기업 상황과 <b>무관</b>합니다.
+                    투자 판단은 반드시 객관적 재무 정보와 전문가 상담을 통해 이루어져야 합니다.
+                </div>
+                <div style="margin-top:10px; padding-top:8px; font-size:0.72rem; color:rgba(255,255,255,0.6); text-align:center;">
+                    본 신탁은 참고용 콘텐츠입니다.
+                </div>
             </div>`;
         }
 
@@ -4934,19 +4945,19 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
                     <div style="margin-top:12px; padding:12px 14px; background:rgba(0,0,0,0.4); border-left:3px solid var(--gold); line-height:1.8; font-size:0.9rem; color:rgba(255,255,255,0.92);">
                         ${finalOracleHTML}
                     </div>
-                    <!-- [V23.6] PRO 유도 → 면책 고지 순서 확정 -->
-                    <div style="margin-top:20px; padding:16px; background:linear-gradient(135deg,rgba(212,175,55,0.13),rgba(0,0,0,0.3)); border:1.5px solid rgba(212,175,55,0.45); border-radius:12px; text-align:center;">
-                        <div style="color:#FFD970; font-size:0.76rem; font-weight:800; letter-spacing:0.1em; margin-bottom:10px;">✨ PRO 신탁에서 더 깊게</div>
-                        <div style="font-size:0.88rem; color:#fff; line-height:1.9; margin-bottom:12px;">
-                            ${isSell ? '👉 매도 적정가의 구체적 수치<br>👉 거래 성사까지의 정확한 주차<br>👉 이 매물의 진짜 가치 평가' : '👉 매수 진입 적정 가격대<br>👉 거래 성사 핵심 시점<br>👉 이 매물의 진짜 가치 평가'}
-                        </div>
-                        <button onclick="showPayModal()" style="padding:12px 26px; background:linear-gradient(135deg,#D4AF37,#F1C40F); color:#000; border:none; border-radius:30px; font-weight:900; font-size:0.9rem; cursor:pointer; box-shadow:0 4px 14px rgba(212,175,55,0.45);">
-                            ${isSell ? '👉 정확한 매도 타이밍 보기' : '👉 매수 적정가 확인하기'}
-                        </button>
+                    <!-- 법적 면책 -->
+                    <div style="margin-top:14px; padding:10px 12px;
+                                background: rgba(255,165,0,0.06);
+                                border: 1px solid rgba(255,165,0,0.3);
+                                border-left: 3px solid rgba(255,165,0,0.7);
+                                border-radius: 6px;
+                                font-size:0.74rem; color:rgba(255,255,255,0.82); line-height:1.6;">
+                        ⚠️ <b>중요 고지</b>: 본 신탁은 타로 카드 에너지에 기반한 <b>유저님의 부동산 심리 분석</b>이며,
+                        특정 지역·매물의 실제 시세·거래 현황을 의미하지 않습니다.
+                        실제 거래 판단은 반드시 공인중개사 및 시장 조사를 통해 이루어져야 합니다.
                     </div>
-                    <!-- 면책 최하단 -->
-                    <div style="margin-top:12px; font-size:0.70rem; color:rgba(255,255,255,0.45); text-align:center; line-height:1.6; padding:6px 0;">
-                        ※ 본 신탁은 타로 에너지 기반의 영성 가이드이며, 실제 투자 및 법적 결정의 책임은 사용자에게 있습니다.
+                    <div style="margin-top:10px; padding-top:8px; font-size:0.72rem; color:rgba(255,255,255,0.6); text-align:center;">
+                        본 신탁은 참고용 콘텐츠입니다.
                     </div>
                 </div>`;
             }
@@ -5028,19 +5039,19 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
                     ${finalOracleHTML}
                 </div>
 
-                <!-- [V23.6] PRO 유도 → 면책 순서 확정 -->
-                <div style="margin-top:20px; padding:16px; background:linear-gradient(135deg,rgba(212,175,55,0.13),rgba(0,0,0,0.3)); border:1.5px solid rgba(212,175,55,0.45); border-radius:12px; text-align:center;">
-                    <div style="color:#FFD970; font-size:0.76rem; font-weight:800; letter-spacing:0.1em; margin-bottom:10px;">✨ PRO 신탁에서 더 깊게</div>
-                    <div style="font-size:0.88rem; color:#fff; line-height:1.9; margin-bottom:12px;">
-                        ${isSell ? '👉 매도 적정가의 구체적 수치<br>👉 거래 성사까지의 정확한 주차<br>👉 이 매물의 진짜 가치 평가' : '👉 매수 진입 적정 가격대<br>👉 거래 성사 핵심 시점<br>👉 이 매물의 진짜 가치 평가'}
-                    </div>
-                    <button onclick="showPayModal()" style="padding:12px 26px; background:linear-gradient(135deg,#D4AF37,#F1C40F); color:#000; border:none; border-radius:30px; font-weight:900; font-size:0.9rem; cursor:pointer; box-shadow:0 4px 14px rgba(212,175,55,0.45);">
-                        ${isSell ? '👉 정확한 매도 타이밍 보기' : '👉 매수 적정가 확인하기'}
-                    </button>
+                <!-- [V19.3] 법적 면책 강화 -->
+                <div style="margin-top:14px; padding:10px 12px;
+                            background: rgba(255,165,0,0.06);
+                            border: 1px solid rgba(255,165,0,0.3);
+                            border-left: 3px solid rgba(255,165,0,0.7);
+                            border-radius: 6px;
+                            font-size:0.74rem; color:rgba(255,255,255,0.82); line-height:1.6;">
+                    ⚠️ <b>중요 고지</b>: 본 신탁은 타로 카드 에너지에 기반한 <b>유저님의 부동산 심리 분석</b>이며,
+                    특정 지역·매물의 실제 시세·거래 현황을 의미하지 않습니다.
+                    실제 거래 판단은 반드시 공인중개사 및 시장 조사를 통해 이루어져야 합니다.
                 </div>
-                <!-- 면책 최하단 -->
-                <div style="margin-top:10px; font-size:0.70rem; color:rgba(255,255,255,0.45); text-align:center; line-height:1.6; padding:6px 0;">
-                    ※ 본 신탁은 타로 에너지 기반의 영성 가이드이며, 실제 투자 및 법적 결정의 책임은 사용자에게 있습니다.
+                <div style="margin-top:10px; padding-top:8px; font-size:0.72rem; color:rgba(255,255,255,0.6); text-align:center;">
+                    본 신탁은 참고용 콘텐츠입니다.
                 </div>
             </div>`;
         }
@@ -5242,7 +5253,7 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
                 </div>
 
                 <div style="margin-top:14px; padding-top:10px; border-top:1px solid rgba(46,204,113,0.4); font-size:0.76rem; color:rgba(255,255,255,0.75); text-align:center; font-weight:500;">
-                    ※ 본 신탁은 타로 에너지 기반의 영성 가이드이며, 실제 투자 및 법적 결정의 책임은 사용자에게 있습니다.
+                    ※ 본 신탁은 타로 에너지 해석 기반 참고 정보입니다.
                 </div>
             </div>`;
         }
@@ -5418,10 +5429,7 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
                     </div>`;
 
                 return freeContent + proHookHTML + `
-                <div style="margin-top:14px; padding:14px 16px; background:rgba(212,175,55,0.07); border-left:3px solid var(--gold); border-radius:0 8px 8px 0; font-size:0.9rem; line-height:1.8; color:rgba(255,255,255,0.9);">${lucky}</div>
-                <div style="margin-top:10px; padding:8px 14px; font-size:0.72rem; color:rgba(255,255,255,0.45); text-align:center; line-height:1.6;">
-                    ※ 본 신탁은 타로 에너지 기반의 영성 가이드이며, 실제 투자 및 법적 결정의 책임은 사용자에게 있습니다.
-                </div>`;
+                <div style="margin-top:14px; padding:14px 16px; background:rgba(212,175,55,0.07); border-left:3px solid var(--gold); border-radius:0 8px 8px 0; font-size:0.9rem; line-height:1.8; color:rgba(255,255,255,0.9);">${lucky}</div>`;
             }
 
             // ✨ 일반 운세: 기존 지표 박스 유지 (연애 용어 배제)
@@ -5433,23 +5441,10 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
                     <div style="margin-bottom:4px;">🧭 행동: <span style="color:rgba(255,255,255,0.9);">${fi.action}</span></div>
                     <div style="margin-bottom:4px;">⚡ 타이밍: <span style="color:rgba(255,255,255,0.9);">${fi.timing}</span></div>
                     <div>🛡️ 주의: <span style="color:rgba(255,255,255,0.9);">${fi.risk}</span></div>
-                </div>
-                <div style="margin-top:10px; padding:8px 14px; font-size:0.72rem; color:rgba(255,255,255,0.45); text-align:center; line-height:1.6;">
-                    ※ 본 신탁은 타로 에너지 기반의 영성 가이드이며, 실제 투자 및 법적 결정의 책임은 사용자에게 있습니다.
                 </div>`;
         })() : ''}
         ${investBlock}
         ${_zeusProHook}
-        <!-- [V23.6] 면책 고지 최하단 (PRO Hook 뒤) — 주식/부동산 공통 -->
-        ${(isFinance || (d._server && d._server.queryType === 'realestate')) ? `
-        <div style="margin-top:14px; padding:10px 12px;
-                    background: rgba(255,165,0,0.05);
-                    border: 1px solid rgba(255,165,0,0.2);
-                    border-left: 3px solid rgba(255,165,0,0.5);
-                    border-radius: 6px;
-                    font-size:0.72rem; color:rgba(255,255,255,0.65); line-height:1.6;">
-            ※ 본 신탁은 타로 에너지 기반의 영성 가이드이며, 실제 투자 및 법적 결정의 책임은 사용자에게 있습니다.
-        </div>` : ''}
     </div>`;
 
         return publicSections + futureCardHTML + oracleHTML;
