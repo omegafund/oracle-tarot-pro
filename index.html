@@ -3,14 +3,6 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <!-- [V23.7] PWA 설정 — 홈화면 아이콘 + 앱 모드 -->
-    <link rel="manifest" href="manifest.json">
-    <meta name="theme-color" content="#D4AF37">
-    <meta name="mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="ZEUS Oracle">
-    <link rel="apple-touch-icon" href="https://omegafund.github.io/oracle-tarot-pro/images/icon-192.png">
     <title>ZEUS · Tarot Oracle</title>
     <!-- [V21.0] 글로벌 럭셔리 폰트 (Co-Star/Sanctuary 수준) -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -1307,39 +1299,42 @@
                 <div id="daily-card-name" style="font-size:0.92rem; color:#fff; font-weight:800; text-align:center; line-height:1.2; margin:0;">-</div>
                 <div id="daily-card-message" style="font-size:0.74rem; color:rgba(255,255,255,0.78); line-height:1.5; text-align:center; font-style:italic; margin:0;">-</div>
             </div>
-            <!-- 최근 신탁 — 재설계 V23.7 -->
+            <!-- 최근 신탁 — 중앙정렬 -->
             <div id="history-list-wrap" style="display:none; max-width:440px; margin:0 auto;">
-                <div style="display:flex; align-items:center; justify-content:space-between;
-                            margin-bottom:12px; padding:0 2px;">
-                    <div style="font-size:0.68rem; letter-spacing:0.18em; color:rgba(212,175,55,0.8);
-                                font-weight:800; text-transform:uppercase;">
-                        ✦ Recent Readings
-                    </div>
-                    <div style="font-size:0.62rem; color:rgba(255,255,255,0.35); letter-spacing:0.06em;">
-                        탭하여 결과 확인
+                <div style="font-size:0.72rem; letter-spacing:0.15em; color:#D4AF37; font-weight:800; margin-bottom:10px; text-align:center; line-height:1.4;">
+                    RECENT READINGS
+                    <div style="font-size:0.64rem; opacity:0.75; letter-spacing:0.12em; margin-top:2px;">
+                        📜 최근 신탁
                     </div>
                 </div>
-                <div id="history-list" style="display:flex; flex-direction:column; gap:8px;"></div>
-                <!-- 패턴 분석 + 카카오 — 최하단 조용하게 -->
-                <div style="margin-top:14px; display:flex; gap:8px;">
-                    <button onclick="zeusShowPatternAnalysis()" style="
-                        flex:1; padding:9px 0;
-                        background:rgba(212,175,55,0.08);
-                        color:rgba(212,175,55,0.75); border:1px solid rgba(212,175,55,0.2);
-                        border-radius:8px; cursor:pointer;
-                        font-size:0.68rem; font-weight:700; letter-spacing:0.06em;">
-                        ✦ 패턴 분석
-                    </button>
-                    <a href="javascript:zeusKakaoChannel()" style="
-                        flex:1; padding:9px 0;
-                        background:rgba(254,229,0,0.10);
-                        color:rgba(254,229,0,0.8); border:1px solid rgba(254,229,0,0.2);
-                        border-radius:8px; cursor:pointer;
-                        font-size:0.68rem; font-weight:700; letter-spacing:0.04em;
-                        text-decoration:none; text-align:center; display:block;">
-                        💬 카카오 알림
-                    </a>
+                <div id="history-list" style="display:flex; flex-direction:column; gap:6px;"></div>
+                <div style="margin-top:8px; font-size:0.62rem; color:rgba(255,255,255,0.45); text-align:center; font-style:italic;">
+                    탭하여 신탁 결과 확인 · Tap to reveal
                 </div>
+                <!-- [V23 P0-3] 점사 패턴 분석 버튼 (3회 이상 시 활성화) -->
+                <button onclick="zeusShowPatternAnalysis()" style="
+                    margin-top: 12px; width: 100%; padding: 10px 14px;
+                    background: linear-gradient(135deg, rgba(212,175,55,0.18), rgba(155,89,182,0.10));
+                    color: #FFD970; border: 1px solid rgba(212,175,55,0.4);
+                    border-radius: 8px; cursor: pointer;
+                    font-size: 0.78rem; font-weight: 700; letter-spacing: 0.08em;
+                    transition: all 0.2s ease;">
+                    ✨ 나의 신탁 패턴 보기
+                </button>
+
+                <!-- [V23 P0-4] 카카오톡 채널 (한국 사용자 옵트인 알림 — 푸시 대체)
+                     사장님 안: 푸시 알림 X (탈퇴 위험), 카톡 채널 = 한국 친화적
+                     활성화 조건: 카카오 비즈 채널 등록 후 KAKAO_CHANNEL_URL 입력 -->
+                <a href="javascript:zeusKakaoChannel()" style="
+                    display:block; margin-top: 8px; width: 100%; padding: 10px 14px;
+                    background: linear-gradient(135deg, #FEE500, #FFD400);
+                    color: #3C1E1E; border-radius: 8px;
+                    text-decoration: none; text-align: center;
+                    font-size: 0.78rem; font-weight: 800; letter-spacing: 0.05em;
+                    box-shadow: 0 2px 8px rgba(254,229,0,0.25);
+                    transition: all 0.2s ease;">
+                    💬 카카오톡 알림 받기 (광고 X · 신탁만)
+                </a>
             </div>
         </div>
 
@@ -2016,30 +2011,10 @@ function setSituation(btn, type, domain) {
 }
 
 // ── 페이지 로드 시 결제 상태 복원
-//   [V23.7] 로컬 토큰(PAID_*)은 Worker 호출 없이 즉시 처리
-//     → 네트워크 에러 자체를 회피
-//     → Worker 검증은 oraclePaidAt 타임스탬프 + Toss successUrl로 이미 완료
+// 토큰이 있으면 Worker에 검증 요청 → 유효 시 isPaidUser = true
 (async () => {
     const token = localStorage.getItem('oracleSessionToken') || '';
     if (!token) return;
-
-    // [V23.7] 자체 발급 토큰(PAID_*)은 로컬 검증만
-    //   Toss successUrl이 PWA로 직접 돌아왔다는 자체가 결제 완료 증거
-    if (token.startsWith('PAID_')) {
-        const paidAt = parseInt(localStorage.getItem('oraclePaidAt') || '0', 10);
-        if (paidAt && (Date.now() - paidAt < 24 * 60 * 60 * 1000)) {
-            // 24시간 이내 토큰 = 유효
-            isPaidUser = true;
-            console.log('✅ 결제 상태 복원 완료 (로컬)');
-        } else {
-            // 만료된 토큰 제거
-            localStorage.removeItem('oracleSessionToken');
-            localStorage.removeItem('oraclePaidAt');
-        }
-        return;
-    }
-
-    // Worker 발급 토큰만 서버 검증 (선택적)
     try {
         const res = await fetch('https://tarot-api.omegafund01.workers.dev/verify-payment', {
             method: 'POST',
@@ -2049,98 +2024,41 @@ function setSituation(btn, type, domain) {
         const data = await res.json();
         if (data?.ok) {
             isPaidUser = true;
-            console.log('✅ 결제 상태 복원 완료 (서버)');
+            console.log('✅ 결제 상태 복원 완료');
         } else {
+            // 만료된 토큰 제거
             localStorage.removeItem('oracleSessionToken');
         }
     } catch(e) {
-        // 네트워크 에러 시: 토큰 그대로 유지 (다음 로드 시 재시도)
-        // 사용자 경험: 결제 완료 상태 유지
-        console.warn('서버 검증 실패 — 로컬 토큰 유지:', e.message);
-        if (token.length > 10) isPaidUser = true; // 토큰 있으면 일단 인정
+        console.warn('결제 상태 복원 실패 (네트워크):', e.message);
     }
 })();
 
 // ══════════════════════════════════════════════════════════════════
-// [V23.7 핵심 Fix] 결제 완료 후 복원 — 다중 트리거
-//   문제: 15일 묵은 버그
-//     1. PWA가 결제 중 Android에 의해 종료(killed)
-//     2. 사용자 복귀 시 PWA 새로 로드
-//     3. URL에 ?paid=ok 없음 (window.close 했거나 사용자가 앱 아이콘 눌러 복귀)
-//     4. → pendingOracle 복원 자체가 안 됨 → "신탁의 실타래..." stuck
-//
-//   해결: 트리거 조건 3가지로 확장
-//     ① URL ?paid=ok (기존)
-//     ② localStorage.oraclePaidAt 최근 5분 이내 (NEW)
-//     ③ pendingOracle 존재 + savedAt 최근 30분 이내 (NEW)
-//
-//   [V23.7-A] 사장님 안 통합: paid=ok URL 들어오면 즉시 Toss 검증 후 토큰 저장
-//     successUrl을 index.html?paid=ok로 직접 보냄 → Chrome Custom Tab 우회
+// [V19 Phase6] 결제 완료 후 돌아왔을 때 pendingOracle 복원
+//   success.html → "?paid=ok" 파라미터로 홈으로 리다이렉트
+//   → localStorage.pendingOracle 읽어서 결과창 자동 재표시 (30분 이내)
 // ══════════════════════════════════════════════════════════════════
 (async () => {
     const params = new URLSearchParams(window.location.search);
-    const hasPaidParam = params.get('paid') === 'ok';
-    const paymentKey   = params.get('paymentKey') || '';
-    const orderId      = params.get('orderId')    || '';
-    const amount       = Number(params.get('amount')) || 0;
+    if (params.get('paid') !== 'ok') return;
 
-    // [V23.7-A] paymentKey 있으면 Toss 검증 + 토큰 저장 (사장님 안)
-    //   네트워크 에러 발생해도 Toss successUrl 도달 = 결제 완료 증거
-    //   → 토큰을 무조건 저장 (Worker 의존성 제거)
-    if (paymentKey && orderId && amount) {
-        // 즉시 토큰 저장 (Worker 응답 안 와도 결제 완료 처리)
-        const fallbackToken = 'PAID_' + paymentKey.slice(0, 16) + '_' + Date.now();
-        localStorage.setItem('oracleSessionToken', fallbackToken);
-        localStorage.setItem('oraclePaidAt', String(Date.now()));
+    // URL에서 ?paid=ok 제거 (새로고침 시 중복 복원 방지)
+    history.replaceState({}, '', window.location.pathname);
 
-        // Worker 검증은 background — 실패해도 무시
-        fetch('https://tarot-api.omegafund01.workers.dev/verify-toss', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ paymentKey, orderId, amount })
-        }).then(r => r.json())
-          .then(result => {
-              if (result.token) {
-                  localStorage.setItem('oracleSessionToken', result.token);
-                  localStorage.setItem('oraclePaidAt', String(Date.now()));
-              }
-          })
-          .catch(() => {
-              // 네트워크 에러 무시 — fallbackToken 그대로 유지
-              console.log('Worker 검증 스킵 (오프라인) — 로컬 토큰 사용');
-          });
-    }
-
-    // 최근 결제 토큰 확인 (5분 이내)
-    const paidAt = parseInt(localStorage.getItem('oraclePaidAt') || '0', 10);
-    const recentlyPaid = paidAt && (Date.now() - paidAt < 5 * 60 * 1000);
-
-    // pendingOracle 존재 + 30분 이내
-    let pendingValid = false;
-    let pending = null;
     try {
         const raw = localStorage.getItem('pendingOracle');
-        if (raw) {
-            pending = JSON.parse(raw);
-            if (pending && pending.savedAt && (Date.now() - pending.savedAt < 30 * 60 * 1000)) {
-                pendingValid = true;
-            }
+        if (!raw) return;
+        const pending = JSON.parse(raw);
+        if (!pending || !pending.savedAt) return;
+
+        // 30분 만료 체크
+        const ageMs = Date.now() - pending.savedAt;
+        if (ageMs > 30 * 60 * 1000) {
+            localStorage.removeItem('pendingOracle');
+            alert('결제 세션이 만료되었습니다. 다시 점사를 진행해주세요.');
+            return;
         }
-    } catch(e) {}
-
-    // 3가지 조건 중 하나라도 만족하면 복원 시도
-    const shouldRestore = hasPaidParam || (recentlyPaid && pendingValid);
-    if (!shouldRestore) {
-        if (pending && !pendingValid) localStorage.removeItem('pendingOracle');
-        return;
-    }
-
-    // URL에서 ?paid=ok&paymentKey=...&orderId=...&amount=... 모두 제거
-    if (hasPaidParam) history.replaceState({}, '', window.location.pathname);
-
-    if (!pending) return;
-
-    try {
 
         // 점사 상태 전역 변수 복원
         if (pending.selectedCards && pending.selectedCards.length === 3) {
@@ -2183,51 +2101,33 @@ function setSituation(btn, type, domain) {
                         </div>`).join('');
                 }
                 const rv = document.getElementById('result-view');
-                if (rv) { rv.style.display = 'flex'; rv.style.opacity = '1'; }
-
-                // [V23.7 Fix] holding-message 반드시 숨김 (결제 완료 = 항상 숨겨야 함)
-                const holdingMsg   = document.getElementById('holding-message');
-                const loadingEl    = document.getElementById('ai-loading-text');
-                const progressWrap = document.getElementById('oracle-progress-wrap');
-                const wisdomEl     = document.getElementById('oracle-wisdom-note');
-                const finalBtn     = document.getElementById('final-reset-btn');
-                const shareActions = document.getElementById('share-actions');
-                if (holdingMsg)   holdingMsg.style.display   = 'none';
-                if (loadingEl)    loadingEl.style.display    = 'none';
-                if (progressWrap) progressWrap.style.display = 'none';
-                if (wisdomEl)     wisdomEl.style.display     = 'none';
+                if (rv) {
+                    rv.style.display = 'flex';
+                    rv.style.opacity = '1';
+                }
 
                 // 결과 텍스트 복원
                 const contentEl = document.getElementById('oracle-content');
                 if (contentEl && cachedFullText) {
+                    // [V19.3 버그수정] 연애는 finance 아님
                     const isFinance = (CURRENT_MODE === 'stock' || CURRENT_MODE === 'crypto' || CURRENT_MODE === 'realestate');
                     const seedInput = qInput?.value || '';
                     const investData = isFinance ? buildInvestmentData(selectedCards, seedInput) : null;
                     contentEl.innerHTML = renderText(cachedFullText, selectedCards, investData, true, isFinance);
-                    if (finalBtn)    { finalBtn.style.display = 'inline-block'; finalBtn.style.marginTop = '25px'; }
-                    if (shareActions) shareActions.style.display = 'flex';
 
-                } else if (contentEl && selectedCards.length === 3) {
-                    // [V23.7 Fix2] cachedFullText 없음 — 스트림 재호출
-                    const question = qInput?.value || '신탁을 보여주세요';
-                    contentEl.innerHTML = `
-                        <div style="text-align:center; padding:32px 0; color:rgba(212,175,55,0.8);">
-                            <div style="font-size:1.5rem; margin-bottom:12px;">⚡</div>
-                            <div style="font-size:0.88rem; letter-spacing:0.06em;">신탁의 실타래를 다시 엮는 중...</div>
-                        </div>`;
-                    const streamPromise = startStreamFetch(question, selectedCards);
-                    renderStream(streamPromise, selectedCards);
-                } else if (contentEl) {
-                    // [V23.7 Fix3] 카드도 없는 최악 케이스 — 안내 메시지
-                    contentEl.innerHTML = `
-                        <div style="padding:24px; text-align:center; color:rgba(255,255,255,0.7);">
-                            <div style="font-size:1.5rem; margin-bottom:12px;">🔮</div>
-                            <div style="font-size:0.88rem; line-height:1.7;">
-                                결제가 완료되었습니다.<br>
-                                새로운 질문을 입력하여 PRO 신탁을 받으세요.
-                            </div>
-                        </div>`;
-                    if (finalBtn) { finalBtn.style.display = 'inline-block'; finalBtn.style.marginTop = '25px'; }
+                    // 로딩/대기문구 숨김 + 공유/저장 + 새 신탁 버튼 노출
+                    const loadingEl   = document.getElementById('ai-loading-text');
+                    const progressWrap = document.getElementById('oracle-progress-wrap');
+                    const holdingMsg  = document.getElementById('holding-message');
+                    const finalBtn    = document.getElementById('final-reset-btn');
+                    const shareActions = document.getElementById('share-actions');
+                    const wisdomEl    = document.getElementById('oracle-wisdom-note');
+                    if (loadingEl)   loadingEl.style.display   = 'none';
+                    if (progressWrap) progressWrap.style.display = 'none';
+                    if (wisdomEl)   wisdomEl.style.display   = 'none';
+                    if (holdingMsg)  holdingMsg.style.display  = 'none';
+                    if (finalBtn)   { finalBtn.style.display = 'inline-block'; finalBtn.style.marginTop = '25px'; }
+                    if (shareActions) shareActions.style.display = 'flex';
                 }
 
                 // 한 번만 복원 — 성공 후 삭제
@@ -5826,7 +5726,7 @@ async function shareResult() {
 // ════════════════════════════════════════════════════════════════
 const DAILY_CARD_KEY   = 'zeusDailyCardV1';    // { date:"2025-xx-xx", cardIndex:N }
 const HISTORY_KEY      = 'zeusHistoryV1';      // [{ date, question, queryType, trend, cards }]
-const HISTORY_MAX      = 2;
+const HISTORY_MAX      = 3;
 
 // 오늘 날짜 (YYYY-MM-DD)
 function _todayStr() {
@@ -5908,40 +5808,26 @@ function renderDailyAndHistory() {
                 const emoji = h.queryType === 'stock' || h.queryType === 'crypto' ? '📈'
                             : h.queryType === 'realestate' ? '🏠'
                             : h.queryType === 'love' ? '💘' : '✨';
-                const domainLabel = h.queryType === 'stock' || h.queryType === 'crypto' ? 'STOCK'
-                            : h.queryType === 'realestate' ? 'REAL ESTATE'
-                            : h.queryType === 'love' ? 'LOVE' : 'FORTUNE';
-                const domainColor = h.queryType === 'stock' || h.queryType === 'crypto'
-                            ? 'rgba(46,204,113,0.8)'
-                            : h.queryType === 'realestate' ? 'rgba(52,152,219,0.8)'
-                            : h.queryType === 'love' ? 'rgba(255,123,172,0.8)'
-                            : 'rgba(155,89,182,0.8)';
-                const trendTxt = h.trend || '신탁 확인';
+                const trendTxt = h.trend || '-';
                 const dateTxt  = h.date ? h.date.slice(5).replace('-','/') : '';
-                const qShort   = (h.question || '').slice(0, 22);
+                const qShort   = (h.question || '').slice(0, 20);
+                // 결과는 data-attribute에 보관 — 클릭 시에만 노출
                 const trendEsc = trendTxt.replace(/"/g, '&quot;');
-
                 return `
                 <div class="zeus-history-item" data-trend="${trendEsc}"
                      onclick="zeusToggleHistoryItem(this)"
-                     style="cursor:pointer; border-radius:8px;
-                            display:flex; align-items:center; gap:8px;
-                            padding:8px 12px;
-                            background:rgba(255,255,255,0.03);
-                            border:1px solid rgba(212,175,55,0.12);
-                            transition:all 0.2s ease;">
-                    <span style="font-size:0.68rem; font-weight:900;
-                                 color:${domainColor}; flex-shrink:0;">${emoji}</span>
-                    <div style="flex:1; font-size:0.76rem; color:rgba(255,255,255,0.7);
-                                overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
-                        ${qShort}${qShort.length >= 22 ? '…' : ''}
+                     style="display:flex; align-items:center; gap:8px; cursor:pointer;
+                            background:rgba(0,0,0,0.35); border:1px solid rgba(212,175,55,0.15);
+                            border-radius:8px; padding:8px 10px; font-size:0.76rem;
+                            transition: all 0.25s ease;">
+                    <div style="color:var(--gold); font-weight:700; min-width:36px;">${dateTxt}</div>
+                    <div style="flex:1; color:rgba(255,255,255,0.85); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
+                        ${emoji} ${qShort}${qShort.length>=20?'…':''}
                     </div>
-                    <div style="font-size:0.62rem; color:rgba(255,255,255,0.3);
-                                flex-shrink:0;">${dateTxt}</div>
                     <div class="zeus-history-veil"
-                         style="font-size:0.65rem; color:rgba(212,175,55,0.6);
-                                font-weight:800; flex-shrink:0; white-space:nowrap;">
-                        ✦
+                         style="color:rgba(212,175,55,0.85); font-size:0.7rem; white-space:nowrap;
+                                font-weight:700; letter-spacing:0.05em;">
+                        ✦ 신탁 보기
                     </div>
                 </div>`;
             }).join('');
@@ -5951,139 +5837,24 @@ function renderDailyAndHistory() {
     bar.style.display = 'block';
 }
 
-// [V23.7] 최근 신탁 토글 — 블러 처리 + 결과 노출/숨김
+// [V21.0] 최근 신탁 토글 — 클릭 시 결과 노출/숨김 (사생활 보호)
 function zeusToggleHistoryItem(el) {
     const veil = el.querySelector('.zeus-history-veil');
     if (!veil) return;
-    const isVeiled = veil.textContent.trim() === '✦';
+    const isVeiled = veil.textContent.includes('신탁 보기');
     if (isVeiled) {
-        const trend = el.dataset.trend || '-';
-        veil.textContent  = trend.slice(0, 12) + (trend.length > 12 ? '…' : '');
-        veil.style.color  = 'rgba(255,255,255,0.75)';
-        veil.style.fontWeight = '600';
-        el.style.background   = 'rgba(212,175,55,0.06)';
-        el.style.borderColor  = 'rgba(212,175,55,0.25)';
+        veil.textContent = el.dataset.trend || '-';
+        veil.style.color = 'rgba(255,255,255,0.85)';
+        el.style.background = 'rgba(212,175,55,0.06)';
     } else {
-        veil.textContent  = '✦';
-        veil.style.color  = 'rgba(212,175,55,0.6)';
-        veil.style.fontWeight = '800';
-        el.style.background   = 'rgba(255,255,255,0.03)';
-        el.style.borderColor  = 'rgba(212,175,55,0.12)';
+        veil.textContent = '✦ 신탁 보기';
+        veil.style.color = 'rgba(212,175,55,0.85)';
+        el.style.background = 'rgba(0,0,0,0.35)';
     }
 }
 
-// ════════════════════════════════════════════════════════════════
-// [V23.7 PWA Fix] 결제 후 복원 — visibilitychange / pageshow
-//   문제: PWA → Toss(외부브라우저) → success.html → index.html?paid=ok
-//         이게 외부 브라우저에서 열려 PWA는 그대로 멈춤
-//   해결: PWA가 포그라운드로 돌아올 때 localStorage 체크 → 자동 복원
-// ════════════════════════════════════════════════════════════════
-function _checkAndRestoreAfterPayment() {
-    const token = localStorage.getItem('oracleSessionToken');
-    if (!token || isPaidUser) return; // 이미 처리됨
-
-    // [V23.7 핵심] selectedCards 비어있으면 pendingOracle에서 먼저 복원
-    //   PWA가 결제 중 종료되었다 부활한 경우 selectedCards가 빈 배열
-    if (!selectedCards || selectedCards.length !== 3) {
-        try {
-            const raw = localStorage.getItem('pendingOracle');
-            if (raw) {
-                const pending = JSON.parse(raw);
-                if (pending && pending.savedAt && (Date.now() - pending.savedAt < 30 * 60 * 1000)) {
-                    if (pending.selectedCards && pending.selectedCards.length === 3) {
-                        selectedCards = pending.selectedCards;
-                        cachedFullText = pending.cachedFullText || '';
-                        window._serverMetrics = pending.serverMetrics || null;
-                        window._reversedFlags = pending.reversedFlags || [];
-                        CURRENT_MODE  = pending.queryMode  || 'life';
-                        LOVE_SUBTYPE  = pending.loveSubType  || '';
-                        STOCK_SUBTYPE = pending.stockSubType || '';
-                        RE_SUBTYPE    = pending.reSubType    || '';
-                        const qInput = document.getElementById('seed-input');
-                        if (qInput && pending.question) qInput.value = pending.question;
-                    }
-                }
-            }
-        } catch(e) {}
-    }
-
-    // 토큰 있고 아직 paid 아님 → 결제 복원
-    isPaidUser = true;
-
-    // 카드 + cachedFullText 있으면 즉시 결과 표시
-    if (selectedCards && selectedCards.length === 3) {
-        const rv = document.getElementById('result-view');
-        const homeView = document.getElementById('home-view');
-        if (homeView) homeView.style.display = 'none';
-        if (rv) { rv.style.display = 'flex'; rv.style.opacity = '1'; }
-
-        // holding-message 강제 숨김
-        ['holding-message','ai-loading-text','oracle-progress-wrap','oracle-wisdom-note']
-            .forEach(id => { const el = document.getElementById(id); if(el) el.style.display = 'none'; });
-
-        const contentEl = document.getElementById('oracle-content');
-        const finalBtn  = document.getElementById('final-reset-btn');
-        const shareActions = document.getElementById('share-actions');
-
-        if (contentEl && cachedFullText) {
-            const isFinance = (CURRENT_MODE === 'stock' || CURRENT_MODE === 'crypto' || CURRENT_MODE === 'realestate');
-            const seedInput = document.getElementById('seed-input')?.value || '';
-            const investData = isFinance ? buildInvestmentData(selectedCards, seedInput) : null;
-            contentEl.innerHTML = renderText(cachedFullText, selectedCards, investData, true, isFinance);
-            if (finalBtn)    { finalBtn.style.display = 'inline-block'; finalBtn.style.marginTop = '25px'; }
-            if (shareActions)  shareActions.style.display = 'flex';
-        } else if (contentEl) {
-            // cachedFullText 없음 → 재호출
-            const question = document.getElementById('seed-input')?.value || '신탁을 보여주세요';
-            contentEl.innerHTML = `<div style="text-align:center;padding:28px 0;color:rgba(212,175,55,0.8);">
-                <div style="font-size:1.4rem;margin-bottom:10px;">⚡</div>
-                <div style="font-size:0.86rem;letter-spacing:0.06em;">신탁의 실타래를 다시 엮는 중...</div></div>`;
-            const streamPromise = startStreamFetch(question, selectedCards);
-            renderStream(streamPromise, selectedCards);
-        }
-    }
-}
-
-// PWA 포그라운드 복귀 시 체크 (Toss 결제 후 돌아올 때)
-document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'visible') {
-        setTimeout(_checkAndRestoreAfterPayment, 500);
-    }
-});
-
-// 페이지 재방문 시 체크 (back/forward cache)
-window.addEventListener('pageshow', (e) => {
-    if (e.persisted) {
-        setTimeout(_checkAndRestoreAfterPayment, 300);
-    }
-});
-
-// 앱 포커스 복귀 시 체크 (Android PWA)
-window.addEventListener('focus', () => {
-    setTimeout(_checkAndRestoreAfterPayment, 400);
-});
-
-// [V23.7] localStorage 폴링 — Android Chrome Custom Tab 복귀 시
-//   visibilitychange가 발화 안 하는 Android 버그 대응
-//   결제 버튼 클릭 후 30초간 2초마다 체크
-let _paymentPollTimer = null;
-function _startPaymentPolling() {
-    // 중복 시작 방지 — 기존 타이머 정리
-    if (_paymentPollTimer) {
-        clearInterval(_paymentPollTimer);
-        _paymentPollTimer = null;
-    }
-    let count = 0;
-    _paymentPollTimer = setInterval(() => {
-        count++;
-        try { _checkAndRestoreAfterPayment(); } catch(e) {}
-        // 복원되거나 60초 지나면 중단 (Toss redirect 시간 고려해서 길게)
-        if (isPaidUser || count > 30) {
-            clearInterval(_paymentPollTimer);
-            _paymentPollTimer = null;
-        }
-    }, 2000);
-}
+// ══════════════════════════════════════════════════════════════════
+// [V23 P0-3] 점사 패턴 분석 — PRO 기능 (글로벌 톱앱 표준)
 //   사장님 V23 P0 작업: Co-Star "통계/패턴" 기능 = 재방문 ↑ 핵심
 //   원리: 누적된 점사 데이터 분석 → 사용자 패턴 발견
 //     • 가장 많이 나온 카드 TOP 3
@@ -6273,14 +6044,11 @@ function saveToHistory(question, queryType, cards, metrics) {
 
 // 홈 진입 시점에 자동 실행
 document.addEventListener('DOMContentLoaded', () => {
-    // [V23.7 핵심] PWA killed → 부활 시 즉시 결제 복원 체크
-    //   페이지 로드 직후 localStorage 확인 → 토큰 있으면 자동 복원
-    setTimeout(() => {
-        if (typeof _checkAndRestoreAfterPayment === 'function') {
-            _checkAndRestoreAfterPayment();
-        }
-    }, 200);
     setTimeout(renderDailyAndHistory, 100);
+    // [V23] 인앱 알림 — 재방문 유저 환영 + 결제 전환 유도
+    //   사장님 진단: 푸시 알림 = 한국 사용자 탈퇴 위험
+    //   해결: 푸시 X, 사용자가 직접 진입할 때만 화면 안 표시
+    //   효과: 탈퇴 위험 0 + 재방문 가치 제공
     setTimeout(showInAppNotification, 1200);
 });
 
@@ -7363,21 +7131,16 @@ function startTossPayment(planKey, method) {
     const paymentMethod = method || '카드';
 
     // 4. Toss 결제 요청
-    //   [V23.7 핵심 수정] success를 index.html로 직접 보냄
-    //   → success.html 거치지 않고 즉시 PWA 내부에서 검증
-    //   → Chrome Custom Tab 충돌 우회
-    _startPaymentPolling();
-
-    const pathDir = window.location.pathname.replace(/\/[^/]*$/, '') || '';
-    const baseUrl = window.location.origin + pathDir;
+    const baseUrl = window.location.origin + window.location.pathname.replace(/\/[^/]*$/, '');
     toss.requestPayment(paymentMethod, {
         amount:       plan.amount,
         orderId:      orderId,
         orderName:    `제우스 오라클 ${plan.label}`,
         customerName: window._oracleUserName || '유저',
-        successUrl:   baseUrl + '/index.html?paid=ok',
-        failUrl:      baseUrl + '/index.html?paid=fail'
+        successUrl:   baseUrl + '/success.html',
+        failUrl:      baseUrl + '/fail.html'
     }).catch(err => {
+        // 사용자가 결제 창을 닫았을 때 등
         if (err.code !== 'USER_CANCEL') {
             alert('결제 요청에 실패했습니다: ' + (err.message || err.code));
         }
@@ -7408,42 +7171,37 @@ async function confirmPayment() {
         if (title) title.innerText = "🔓 봉인 해제 완료";
     }
 
-    // 2️⃣ 1.2초 후 모달을 닫고 화면을 강제로 다시 그립니다.
+    // 2️⃣ 1.2초 후 모달을 닫고 화면을 '강제로' 다시 그립니다.
     setTimeout(() => {
         closePayModal();
         const contentEl = document.getElementById('oracle-content');
-
-        // [V23.7] 항상 먼저 holding-message 숨김 (결제 완료 = 무조건 숨겨야 함)
-        const holdingMsg   = document.getElementById('holding-message');
-        const loadingEl    = document.getElementById('ai-loading-text');
-        const progressWrap = document.getElementById('oracle-progress-wrap');
-        const wisdomEl     = document.getElementById('oracle-wisdom-note');
-        const finalBtn     = document.getElementById('final-reset-btn');
-        const shareActions = document.getElementById('share-actions');
-        if (holdingMsg)   holdingMsg.style.display   = 'none';
-        if (loadingEl)    loadingEl.style.display    = 'none';
-        if (progressWrap) progressWrap.style.display = 'none';
-        if (wisdomEl)     wisdomEl.style.display     = 'none';
-
+        
         if (contentEl && cachedFullText) {
+            // [V19.3 버그수정] 연애는 finance 아님
             const isFinance = (CURRENT_MODE === 'stock' || CURRENT_MODE === 'crypto' || CURRENT_MODE === 'realestate');
-            const seedInput = document.getElementById('seed-input')?.value || '';
-            const investData = isFinance ? buildInvestmentData(selectedCards, seedInput) : null;
-            contentEl.innerHTML = renderText(cachedFullText, selectedCards, investData, true, isFinance);
-            if (finalBtn)    { finalBtn.style.display = 'inline-block'; finalBtn.style.marginTop = '25px'; }
-            if (shareActions)  shareActions.style.display = 'flex';
-            contentEl.scrollIntoView({ behavior: 'smooth', block: 'end' });
+            const seedInput = document.getElementById('seed-input')?.value || "";
 
-        } else if (contentEl && selectedCards.length === 3) {
-            // [V23.7] cachedFullText 없음 → 스트림 재호출
-            const question = document.getElementById('seed-input')?.value || '신탁을 보여주세요';
-            contentEl.innerHTML = `
-                <div style="text-align:center; padding:28px 0; color:rgba(212,175,55,0.8);">
-                    <div style="font-size:1.4rem; margin-bottom:10px;">⚡</div>
-                    <div style="font-size:0.86rem; letter-spacing:0.06em;">신탁의 실타래를 다시 엮는 중...</div>
-                </div>`;
-            const streamPromise = startStreamFetch(question, selectedCards);
-            renderStream(streamPromise, selectedCards);
+            // 🔥 [중요] 통합 엔진 buildInvestmentData를 사용하여 데이터를 새로 뽑습니다.
+            const investData = isFinance ? buildInvestmentData(selectedCards, seedInput) : null;
+
+            // 🔥 [핵심] isPaidUser가 true이므로 이제 renderText는 잠금 화면을 내보내지 않습니다.
+            contentEl.innerHTML = renderText(cachedFullText, selectedCards, investData, true, isFinance);
+
+            // 3️⃣ UI 요소 최종 정리: 대기 문구 숨기고, 새 신탁 버튼 노출
+            const holdingMsg = document.getElementById('holding-message');
+            const finalBtn   = document.getElementById('final-reset-btn');
+            
+            if (holdingMsg) holdingMsg.style.display = 'none';
+            if (finalBtn) {
+                finalBtn.style.display = 'inline-block';
+                finalBtn.style.marginTop = '25px';
+            }
+            // [V19 Phase3] 공유/저장 버튼 노출
+            const shareActions = document.getElementById('share-actions');
+            if (shareActions) shareActions.style.display = 'flex';
+            
+            // 4️⃣ 유저를 결과 하단으로 부드럽게 이동
+            contentEl.scrollIntoView({ behavior: 'smooth', block: 'end' });
         }
     }, 1200);
 }
