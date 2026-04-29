@@ -1337,11 +1337,12 @@
                 <button class="sit-btn" data-type="general"  onclick="setSituation(this,'general','love')">✨ 일반 운세</button>
             </div>
             <!-- 주식/코인 세부 전략 -->
+            <!-- [V22.6] 매수/매도 타이밍 직접 버튼 추가 (사장님 안 — 의도 명확화) -->
             <div class="situation-tabs" id="situation-tabs-stock" style="display:none;">
+                <button class="sit-btn" data-type="buy_timing"  onclick="setSituation(this,'buy_timing','stock')">💰 매수 타이밍</button>
+                <button class="sit-btn" data-type="sell_timing" onclick="setSituation(this,'sell_timing','stock')">📤 매도 타이밍</button>
                 <button class="sit-btn" data-type="short" onclick="setSituation(this,'short','stock')">📈 단타 분석</button>
-                <button class="sit-btn" data-type="swing" onclick="setSituation(this,'swing','stock')">📊 스윙 분석</button>
                 <button class="sit-btn" data-type="long"  onclick="setSituation(this,'long','stock')">🏦 중장기 투자</button>
-                <button class="sit-btn" data-type="pump"  onclick="setSituation(this,'pump','stock')">⚡ 급등 포착</button>
                 <button class="sit-btn" data-type="risk"  onclick="setSituation(this,'risk','stock')">🛡️ 리스크 체크</button>
             </div>
             <!-- 부동산 세부 전략 -->
@@ -4492,9 +4493,14 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
             const isStock = d && (d.type === 'stock' || d.type === 'crypto');
             if (!isStock) return '';
 
-            // [V19.10] 매도 의도 감지 — Worker가 보낸 stockIntent 우선, 없으면 action에서 추론
+            // [V22.6] 매도 의도 감지 — Worker stockIntent 100% 신뢰 (사장님 진단)
+            //   기존 버그: /매도|익절|청산|손절|전량/ 정규식이 매수 의도의
+            //              "손절 -5%" 같은 단어를 매도 신호로 오판하던 버그
+            //   해결: Worker가 명시적으로 보낸 stockIntent만 사용
+            //         → 매수 질문하면 절대 매도 UI 안 뜸
+            //   대비책: stockIntent 없으면 investData.intent (Client 측 보조 신호) 사용
             const isSell = (d._server?.stockIntent === 'sell')
-                        || /매도|익절|청산|손절|전량/.test(d.action || '');
+                        || (d.intent === 'sell');
 
             // 도메인 + 의도별 타이틀
             const baseTitle = d.type === 'crypto' ? "🪙 코인" : "📈 주식";
@@ -5667,11 +5673,14 @@ function showPayModal() {
         ];
     }
 
-    // [V19.3 + V20.0] 990원 체험 + 1일권 + 30일권 Toss 카드결제 버튼
+    // [V19.3 + V20.0 + V22.6] 990원 체험 + 1일권 + 30일권 → 결제 방법 선택 모달
+    //   사장님 안: 카카오/네이버/토스/삼성페이 4종 + 카드 (간편결제 직접 노출)
+    //   기존: startTossPayment('plan') → Toss 기본 화면 (SSG/페이코 노출)
+    //   변경: showPaymentMethodModal('plan') → 4종 간편결제 + 카드 명시적 선택
     const tossCardHTML = `
         <div style="margin-bottom:14px; display:flex; flex-direction:column; gap:10px;">
             <!-- 🧪 990원 체험권 (보조 — 약하게) -->
-            <button class="pay-plan-btn" data-plan="trial" data-amount="990" onclick="startTossPayment('trial')" style="
+            <button class="pay-plan-btn" data-plan="trial" data-amount="990" onclick="showPaymentMethodModal('trial')" style="
                 display:block; width:100%; padding:13px 14px;
                 background: rgba(255,255,255,0.08);
                 color: rgba(255,255,255,0.85);
@@ -5683,12 +5692,12 @@ function showPayModal() {
                     <span style="font-size:1rem; font-weight:900;">₩990</span>
                 </div>
                 <div style="font-size:0.7rem; opacity:0.75; font-weight:500; line-height:1.5;">
-                    1시간 무제한 · 카드결제 즉시 사용 가능
+                    1시간 무제한 · 결제 후 즉시 사용 가능
                 </div>
             </button>
 
             <!-- 🔥 1일 이용권 — 메인 CTA (블루) -->
-            <button class="pay-plan-btn" data-plan="day" data-amount="3900" onclick="startTossPayment('day')" style="
+            <button class="pay-plan-btn" data-plan="day" data-amount="3900" onclick="showPaymentMethodModal('day')" style="
                 display:block; width:100%; padding:16px 14px;
                 background: linear-gradient(135deg, #0064ff, #0050cc);
                 color:#fff; border:none; border-radius:12px;
@@ -5704,7 +5713,7 @@ function showPayModal() {
             </button>
 
             <!-- 💎 30일 무제한 이용권 (골드 프리미엄) -->
-            <button class="pay-plan-btn" data-plan="month" data-amount="9900" onclick="startTossPayment('month')" style="
+            <button class="pay-plan-btn" data-plan="month" data-amount="9900" onclick="showPaymentMethodModal('month')" style="
                 display:block; width:100%; padding:16px 14px;
                 background: linear-gradient(135deg, #D4AF37, #F1C40F);
                 color:#000; border:none; border-radius:12px;
@@ -6123,12 +6132,192 @@ function activateManualToken() {
 }
 
 // ══════════════════════════════════════════════════════════════════
-// [V19 Phase6] Toss 결제 시작
-//   1. 현재 점사 상태를 localStorage에 저장 (결제 후 복원용)
-//   2. orderId 생성 (plan 정보 포함)
-//   3. Toss SDK requestPayment 호출 → successUrl로 리다이렉트
+// [V22.5] Toss 결제 시작 — 간편결제 직접 호출 (사장님 안)
+//   사장님 진단: 기존 Toss 기본 노출 = SSG/페이코 (사용자 익숙도 ↓)
+//   해결: 한국 점유율 90% 빅4 직접 노출
+//     • 카카오페이 — 25.1% (2030 친숙)
+//     • 네이버페이 — 51.5% (30~40대 1위, ZEUS 타겟층)
+//     • 토스페이   — 13.2% (Z세대 1위)
+//     • 삼성페이   — 13% (안드로이드 + 만족도 1위)
+//
+//   파라미터:
+//     planKey: 'trial' | 'day' | 'month'
+//     method:  '카드' | '카카오페이' | '네이버페이' | '토스페이' | '삼성페이'
 // ══════════════════════════════════════════════════════════════════
-function startTossPayment(planKey) {
+// ══════════════════════════════════════════════════════════════════
+// [V22.6] 결제 방법 선택 모달 — 사장님 안 (한국 빅4 간편결제 + 카드)
+//   사장님 진단: 기존 SSG/페이코 노출 → 사용자 익숙도 ↓
+//   해결: 한국 시장 90% 빅4 직접 노출
+//     • 카카오페이 (25.1% — 2030 친숙)
+//     • 네이버페이 (51.5% — 30~40대 1위, ZEUS 타겟층)
+//     • 토스페이   (13.2% — Z세대 1위)
+//     • 삼성페이   (13% — 안드로이드 + 만족도 1위)
+//     • 카드       (직접 카드 입력 — 백업)
+// ══════════════════════════════════════════════════════════════════
+function showPaymentMethodModal(planKey) {
+    const plan = PAYMENT_PLANS[planKey];
+    if (!plan) {
+        alert('잘못된 결제 플랜입니다.');
+        return;
+    }
+    const amountFmt = plan.amount.toLocaleString('ko-KR');
+
+    // 기존 결제 모달 제거 (중복 방지)
+    closePaymentMethodModal();
+
+    const overlay = document.createElement('div');
+    overlay.className = 'pay-modal-overlay';
+    overlay.id = 'paymentMethodModalOverlay';
+    overlay.style.cssText = 'position:fixed; inset:0; background:rgba(0,0,0,0.85); z-index:99999; display:flex; align-items:center; justify-content:center; padding:16px; backdrop-filter:blur(8px);';
+    overlay.innerHTML = `
+        <div style="position:relative; max-width:420px; width:100%;
+                    background: linear-gradient(160deg, #1A1A2E 0%, #0F0F1B 100%);
+                    border: 1px solid rgba(212,175,55,0.4);
+                    border-radius: 16px;
+                    padding: 24px 22px;
+                    box-shadow: 0 0 30px rgba(212,175,55,0.3);
+                    max-height: 90vh; overflow-y: auto;">
+
+            <!-- 닫기 버튼 -->
+            <button onclick="closePaymentMethodModal()" style="
+                position:absolute; top:12px; right:14px;
+                background: transparent; border: none;
+                color: rgba(255,255,255,0.7);
+                font-size: 1.5rem; cursor: pointer;
+                width: 36px; height: 36px; line-height: 1;
+                font-family: inherit;">×</button>
+
+            <!-- 헤더 -->
+            <div style="text-align:center; margin-bottom:18px;">
+                <div style="color:#FFD970; font-size:0.78rem; font-weight:800; letter-spacing:0.12em; margin-bottom:6px;">
+                    ✨ 결제 방법 선택
+                </div>
+                <div style="color:#fff; font-size:1.1rem; font-weight:900;">
+                    ${plan.label}
+                </div>
+                <div style="color:rgba(212,175,55,0.95); font-size:1.4rem; font-weight:900; margin-top:4px;">
+                    ₩${amountFmt}
+                </div>
+            </div>
+
+            <!-- 4 간편결제 + 카드 -->
+            <div style="display:flex; flex-direction:column; gap:9px;">
+
+                <!-- 카카오페이 (노란색) -->
+                <button onclick="startTossPayment('${planKey}','카카오페이'); closePaymentMethodModal();" style="
+                    display:flex; align-items:center; justify-content:space-between;
+                    width:100%; padding:14px 16px;
+                    background: linear-gradient(135deg, #FEE500, #FFD400);
+                    color: #3C1E1E; border: none; border-radius: 10px;
+                    font-weight: 800; font-size: 0.95rem; cursor: pointer;
+                    box-shadow: 0 3px 10px rgba(254,229,0,0.3);
+                    transition: transform 0.15s;">
+                    <span style="display:flex; align-items:center; gap:10px;">
+                        <span style="font-size:1.3rem;">💬</span>
+                        <span>카카오페이</span>
+                    </span>
+                    <span style="font-size:0.78rem; opacity:0.7; font-weight:600;">간편결제</span>
+                </button>
+
+                <!-- 네이버페이 (녹색) -->
+                <button onclick="startTossPayment('${planKey}','네이버페이'); closePaymentMethodModal();" style="
+                    display:flex; align-items:center; justify-content:space-between;
+                    width:100%; padding:14px 16px;
+                    background: linear-gradient(135deg, #03C75A, #028F44);
+                    color: #fff; border: none; border-radius: 10px;
+                    font-weight: 800; font-size: 0.95rem; cursor: pointer;
+                    box-shadow: 0 3px 10px rgba(3,199,90,0.35);
+                    transition: transform 0.15s;">
+                    <span style="display:flex; align-items:center; gap:10px;">
+                        <span style="font-size:1.3rem;">N</span>
+                        <span>네이버페이</span>
+                    </span>
+                    <span style="font-size:0.78rem; opacity:0.85; font-weight:600;">포인트 적립</span>
+                </button>
+
+                <!-- 토스페이 (블루) -->
+                <button onclick="startTossPayment('${planKey}','토스페이'); closePaymentMethodModal();" style="
+                    display:flex; align-items:center; justify-content:space-between;
+                    width:100%; padding:14px 16px;
+                    background: linear-gradient(135deg, #0064FF, #0050CC);
+                    color: #fff; border: none; border-radius: 10px;
+                    font-weight: 800; font-size: 0.95rem; cursor: pointer;
+                    box-shadow: 0 3px 10px rgba(0,100,255,0.35);
+                    transition: transform 0.15s;">
+                    <span style="display:flex; align-items:center; gap:10px;">
+                        <span style="font-size:1.3rem;">💙</span>
+                        <span>토스페이</span>
+                    </span>
+                    <span style="font-size:0.78rem; opacity:0.85; font-weight:600;">간편 인증</span>
+                </button>
+
+                <!-- 삼성페이 (다크) -->
+                <button onclick="startTossPayment('${planKey}','삼성페이'); closePaymentMethodModal();" style="
+                    display:flex; align-items:center; justify-content:space-between;
+                    width:100%; padding:14px 16px;
+                    background: linear-gradient(135deg, #1428A0, #0D1B6E);
+                    color: #fff; border: none; border-radius: 10px;
+                    font-weight: 800; font-size: 0.95rem; cursor: pointer;
+                    box-shadow: 0 3px 10px rgba(20,40,160,0.35);
+                    transition: transform 0.15s;">
+                    <span style="display:flex; align-items:center; gap:10px;">
+                        <span style="font-size:1.3rem;">📱</span>
+                        <span>삼성페이</span>
+                    </span>
+                    <span style="font-size:0.78rem; opacity:0.85; font-weight:600;">안드로이드</span>
+                </button>
+
+                <!-- 구분선 -->
+                <div style="display:flex; align-items:center; gap:10px; margin: 6px 0;">
+                    <div style="flex:1; height:1px; background:rgba(255,255,255,0.15);"></div>
+                    <div style="font-size:0.68rem; color:rgba(255,255,255,0.5); letter-spacing:0.1em;">또는</div>
+                    <div style="flex:1; height:1px; background:rgba(255,255,255,0.15);"></div>
+                </div>
+
+                <!-- 카드 직접 입력 -->
+                <button onclick="startTossPayment('${planKey}','카드'); closePaymentMethodModal();" style="
+                    display:flex; align-items:center; justify-content:space-between;
+                    width:100%; padding:13px 16px;
+                    background: rgba(255,255,255,0.08);
+                    color: rgba(255,255,255,0.92);
+                    border: 1px solid rgba(255,255,255,0.18);
+                    border-radius: 10px;
+                    font-weight: 700; font-size: 0.92rem; cursor: pointer;
+                    transition: background 0.15s;">
+                    <span style="display:flex; align-items:center; gap:10px;">
+                        <span style="font-size:1.2rem;">💳</span>
+                        <span>신용/체크카드</span>
+                    </span>
+                    <span style="font-size:0.72rem; opacity:0.7; font-weight:500;">직접 입력</span>
+                </button>
+            </div>
+
+            <!-- 하단 안내 -->
+            <div style="margin-top:16px; padding:10px 12px;
+                        background: rgba(46,204,113,0.06);
+                        border-left: 3px solid #2ecc71;
+                        border-radius: 0 6px 6px 0;
+                        font-size: 0.72rem; color: rgba(255,255,255,0.7); line-height: 1.6;">
+                ✓ 결제 후 즉시 PRO 봉인 해제<br>
+                ✓ 안전한 토스 페이먼츠 결제<br>
+                ✓ 어떤 방법을 선택해도 동일한 가격
+            </div>
+        </div>
+    `;
+    document.body.appendChild(overlay);
+
+    // 배경 클릭 시 닫기
+    overlay.addEventListener('click', (e) => {
+        if (e.target === overlay) closePaymentMethodModal();
+    });
+}
+
+function closePaymentMethodModal() {
+    const el = document.getElementById('paymentMethodModalOverlay');
+    if (el) el.remove();
+}
+
+function startTossPayment(planKey, method) {
     const plan = PAYMENT_PLANS[planKey];
     if (!plan) {
         alert('잘못된 결제 플랜입니다.');
@@ -6161,14 +6350,18 @@ function startTossPayment(planKey) {
     }
 
     // 2. orderId 생성 — "zeus_{plan}_{timestamp}_{random}" 형식
-    //    Worker에서 parsing하여 금액과 플랜 검증에 사용
     const rand = Math.random().toString(36).slice(2, 10);
     const orderId = `zeus_${planKey}_${Date.now()}_${rand}`;
 
-    // 3. Toss 결제 요청
-    //    successUrl: GitHub Pages repo 경로 정확히 지정 (404 방지)
+    // 3. [V22.5] 결제 방법 결정 — Toss SDK 표준 method 문자열
+    //    Toss requestPayment 지원 method:
+    //      '카드' | '계좌이체' | '가상계좌' | '휴대폰' |
+    //      '카카오페이' | '네이버페이' | '토스페이' | '삼성페이' | '페이코'
+    const paymentMethod = method || '카드';
+
+    // 4. Toss 결제 요청
     const baseUrl = window.location.origin + window.location.pathname.replace(/\/[^/]*$/, '');
-    toss.requestPayment('카드', {
+    toss.requestPayment(paymentMethod, {
         amount:       plan.amount,
         orderId:      orderId,
         orderName:    `제우스 오라클 ${plan.label}`,
@@ -6176,7 +6369,7 @@ function startTossPayment(planKey) {
         successUrl:   baseUrl + '/success.html',
         failUrl:      baseUrl + '/fail.html'
     }).catch(err => {
-        // 사용자가 카드 결제 창을 닫았을 때 등
+        // 사용자가 결제 창을 닫았을 때 등
         if (err.code !== 'USER_CANCEL') {
             alert('결제 요청에 실패했습니다: ' + (err.message || err.code));
         }
