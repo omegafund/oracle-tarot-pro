@@ -2563,7 +2563,10 @@ async function renderStream(fetchPromise, cards) {
                     //    이걸 전역에 저장해두면 buildInvestmentData가 서버 값을 우선 사용
                     if (parsed && parsed._type === 'metrics' && parsed.data) {
                         window._serverMetrics = parsed.data;
-                        // 서버가 queryType을 알려주므로 CURRENT_MODE도 서버 기준으로 갱신
+                        // [V23.4] 콘솔 디버그 (개발 모드)
+                        if (window.location.hostname === 'localhost' || window.location.search.includes('debug=1')) {
+                            debugMetrics(parsed.data);
+                        }
                         if (parsed.data.queryType) {
                             CURRENT_MODE           = parsed.data.queryType;
                             window._queryType      = parsed.data.queryType;
@@ -2605,6 +2608,17 @@ async function renderStream(fetchPromise, cards) {
 
         // 2️⃣ [최종 렌더링] 결제 여부(isPaidUser)에 따라 미래와 지표 노출 결정
         contentEl.innerHTML = renderText(fullText, cards, investmentData, isPaidUser, isFinance);
+
+        // [V23.4] 수치 메트릭 박스 — 서버 metrics 있을 때 결과 하단에 추가
+        const _sm = window._serverMetrics;
+        if (_sm) {
+            const metricsHtml = renderMetrics(_sm);
+            if (metricsHtml) {
+                const metricsWrap = document.createElement('div');
+                metricsWrap.innerHTML = metricsHtml;
+                contentEl.appendChild(metricsWrap);
+            }
+        }
 
         // [V19 Phase4] 이력 저장 — 중복 저장 방지 플래그
         if (!window._historySaved) {
@@ -2899,32 +2913,23 @@ async function fetchMarketData(symbol) {
         if (!res.ok) throw new Error(`Worker HTTP ${res.status}`);
         const marketData = await res.json();
 
-        // ── 디버그 로그 (운영 시 제거 가능)
-        console.log("marketData:", marketData);
-        console.log("chart:", marketData?.chart);
-        console.log("result:", marketData?.chart?.result);
-        console.log("indicators:", marketData?.chart?.result?.[0]?.indicators);
-
+        // [V23.6] 운영용 — 디버그 로그 제거 (사용자 콘솔 노출 차단)
         // ── 안전 코드 — null 접근 방어
         const result = marketData?.chart?.result?.[0];
         if (!result) {
-            console.log("❌ Yahoo 데이터 없음 — 카드 엔진만으로 작동");
             return null;
         }
 
         const closes = result?.indicators?.quote?.[0]?.close;
         if (!closes || closes.length === 0) {
-            console.log("❌ close 데이터 없음");
             return null;
         }
 
         // null 제거
         const prices = closes.filter(v => v !== null);
         if (prices.length < 2) {
-            console.log("❌ 유효 데이터 부족 (최소 2개 필요)");
             return null;
         }
-        console.log("✅ 정상 prices:", prices.length + "개");
 
         const volumes   = result?.indicators?.quote?.[0]?.volume || [];
         const lastClose = prices[prices.length - 1];
@@ -4154,7 +4159,14 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
     const labelPrefix = ['과거', '현재', '미래'];
     // [V21.1] 종목명 이모지 치환용 — Worker 응답에 subjectName 있으면 사용
     // [V21.2] 강화 — 단락 중간 이모지도 치환 + 빈 종목명 자리 보강
-    const _subjectName = (window._serverMetrics && window._serverMetrics.subjectName) || '';
+    // [Fix 4] Client 이중 방어 — Worker 폴백이 실패해도 여기서 최종 차단
+    const _rawSubjectName = (window._serverMetrics && window._serverMetrics.subjectName) || '';
+    // 이모지 포함 / 빈값 / 길이 1 이하 → 방어
+    const _subjectName = (_rawSubjectName &&
+                          !_rawSubjectName.match(/[\u{1F300}-\u{1F9FF}\u{2600}-\u{27BF}]/u) &&
+                          _rawSubjectName.length >= 2)
+        ? _rawSubjectName
+        : ((_rawSubjectName === '해당 자산') ? '해당 자산' : '');
     cardTexts = cardTexts.map((txt, i) => {
         if (!txt) return txt;
         let t = txt.trim();
@@ -4180,6 +4192,12 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
             if (/^(에 대한|에 관한|을 향한|에 대해|을 위한)\s/.test(t)) {
                 t = _subjectName + ' ' + t;
             }
+            // [V23.1] 6) 이모지 단독 + 공백만 있는 경우 완전 제거 (종목명 교체 실패 방어)
+            //   "📈 매수에 대한~" → "삼성전자 매수에 대한~"
+            t = t.replace(/([\u{1F300}-\u{1F9FF}\u{2600}-\u{27BF}\u{1F000}-\u{1F1FF}])\s+(매수|매도|주가|투자|진입|청산|종목|포지션)/gu,
+                          _subjectName + ' $2');
+            // [V23.1] 7) 남아있는 📈🏠💘 이모지가 조사 없이 단독 존재 시 종목명으로 교체
+            t = t.replace(/[\u{1F4C8}\u{1F3E0}\u{1F48B}]/gu, _subjectName);
         }
 
         // 카드 이름이 본문 첫 줄에 단독으로 또 등장하면 제거
@@ -4507,7 +4525,12 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
             // ────────────────────────────────────────────────
             // [V20.10] Timing Layer
             // ────────────────────────────────────────────────
-            const tim = layers.timing || {};
+            // [V23.5] HARD BLOCK → timing = null → Timing 섹션 완전 숨김
+            //   사장님 버그: "HARD 관망인데 타이밍 UI 뜨는" 신뢰 박살 문제 해결
+            const _blockLevelCheck = layers?.decision?.blockLevel;
+            const tim = (_blockLevelCheck === 'HARD' || layers.timing === null)
+                ? null  // HARD → Timing 섹션 자체 차단
+                : (layers.timing || {});
             const renderRanges = (arr, color, prefix) => (arr || []).map(r =>
                 `<div style="padding:6px 10px; margin-bottom:5px; background:${color}; border-radius:5px; font-size:0.85rem; color:#fff;">
                     <span style="opacity:0.85;">${prefix}</span> ${r}
@@ -4515,7 +4538,10 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
             ).join('');
 
             let timingHTML;
-            if (domain === 'love') {
+            // [V23.5] HARD → tim null → Timing 섹션 완전 빈 문자열
+            if (!tim) {
+                timingHTML = '';
+            } else if (domain === 'love') {
                 // 연애 — entry point + energy points
                 const energyPoints = (tim.energyPoints || []).map(p => `<div>• ${p}</div>`).join('');
                 timingHTML = `
@@ -6960,6 +6986,76 @@ function showPaymentMethodModal(planKey) {
 function closePaymentMethodModal() {
     const el = document.getElementById('paymentMethodModalOverlay');
     if (el) el.remove();
+}
+
+// ══════════════════════════════════════════════════════════════════
+// [V23.4] renderMetrics — 수치 메트릭 UI (사장님 설계)
+//   Worker에서 받은 수치를 결과 하단에 카드형으로 표시
+//   도메인별 해당 필드만 표시 (없으면 숨김)
+// ══════════════════════════════════════════════════════════════════
+function renderMetrics(metrics) {
+    if (!metrics) return '';
+
+    // 표시할 항목 구성
+    const items = [];
+    if (metrics.attractionScore      !== undefined) items.push({ icon: '💘', label: '매력도',    value: metrics.attractionScore + '%' });
+    if (metrics.conflictIndex        !== undefined) items.push({ icon: '⚔️', label: '갈등지수',  value: metrics.conflictIndex + '%' });
+    if (metrics.reconnectProbability !== undefined) items.push({ icon: '🔁', label: '재연결 가능성', value: metrics.reconnectProbability + '%' });
+    if (metrics.riskScore            !== undefined) items.push({ icon: '⚠️', label: '리스크',    value: metrics.riskScore + '%' });
+    if (metrics.opportunityWindow    !== undefined) items.push({ icon: '🎯', label: '기회지수',  value: metrics.opportunityWindow + '%' });
+    if (metrics.actionType) {
+        const actionLabel = { wait: '⏸ 대기', move: '🚀 행동', observe: '👁 관찰' };
+        items.push({ icon: '🧭', label: '행동', value: actionLabel[metrics.actionType] || metrics.actionType });
+    }
+    if (metrics.volatilityScore      !== undefined) items.push({ icon: '📊', label: '변동성',    value: metrics.volatilityScore + '%' });
+    if (metrics.dealConfidence       !== undefined) items.push({ icon: '🏠', label: '거래확률',  value: metrics.dealConfidence + '%' });
+    if (metrics.entryTiming) {
+        const timingLabel = { NOW: '✅ 지금', LATER: '⏳ 나중', AVOID: '❌ 보류' };
+        items.push({ icon: '⏱', label: '진입', value: timingLabel[metrics.entryTiming] || metrics.entryTiming });
+    }
+
+    if (!items.length) return '';
+
+    return `
+    <div style="margin:16px 0 8px; padding:14px 16px;
+                background: linear-gradient(135deg, rgba(212,175,55,0.08), rgba(0,0,0,0.3));
+                border: 1px solid rgba(212,175,55,0.25);
+                border-radius: 10px;
+                display: grid;
+                grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+                gap: 8px;">
+        ${items.map(it => `
+        <div style="display:flex; align-items:center; gap:7px;
+                    padding:7px 10px;
+                    background: rgba(255,255,255,0.04);
+                    border-radius: 7px;">
+            <span style="font-size:1rem;">${it.icon}</span>
+            <div>
+                <div style="font-size:0.62rem; color:rgba(255,215,112,0.75);
+                            letter-spacing:0.08em; font-weight:700;">${it.label}</div>
+                <div style="font-size:0.88rem; color:#fff; font-weight:800;">${it.value}</div>
+            </div>
+        </div>`).join('')}
+    </div>`;
+}
+
+// ══════════════════════════════════════════════════════════════════
+// [V23.4 ADMIN] debugMetrics — 콘솔 디버그 패널 (사장님 설계)
+// ══════════════════════════════════════════════════════════════════
+function debugMetrics(metrics) {
+    if (!metrics) return;
+    console.log('===== ZEUS METRICS DEBUG =====');
+    console.table({
+        attractionScore:       metrics.attractionScore,
+        conflictIndex:         metrics.conflictIndex,
+        reconnectProbability:  metrics.reconnectProbability,
+        riskScore:             metrics.riskScore,
+        opportunityWindow:     metrics.opportunityWindow,
+        actionType:            metrics.actionType,
+        volatilityScore:       metrics.volatilityScore,
+        dealConfidence:        metrics.dealConfidence,
+        entryTiming:           metrics.entryTiming,
+    });
 }
 
 function startTossPayment(planKey, method) {
