@@ -61,6 +61,52 @@ const CARD_SCORE = {
 };
 
 // ══════════════════════════════════════════════════════════════════
+// 🎯 [V23.4] CARD_SCORE_MULTI — 4차원 수치 테이블 (사장님 설계)
+//   변수명: CARD_SCORE_MULTI (기존 CARD_SCORE 숫자와 충돌 없음)
+//   차원: base(기본) / love(연애) / risk(리스크) / vol(변동성)
+//   범위: 0~100 (백분율 직관적 표시)
+//   커버: 16장 (핵심 메이저 + 주요 마이너)
+//   미정의 카드: calcScore에서 자동 제외 (count에 미포함)
+// ══════════════════════════════════════════════════════════════════
+const CARD_SCORE_MULTI = {
+  "The Fool":          { base: 60, love: 70, risk: 65, vol: 70 },
+  "The Magician":      { base: 80, love: 75, risk: 55, vol: 60 },
+  "The High Priestess":{ base: 65, love: 60, risk: 70, vol: 50 },
+  "The Empress":       { base: 90, love: 95, risk: 40, vol: 40 },
+  "The Emperor":       { base: 85, love: 70, risk: 45, vol: 50 },
+  "The Lovers":        { base: 85, love: 95, risk: 50, vol: 60 },
+  "The Hermit":        { base: 40, love: 35, risk: 80, vol: 30 },
+  "The Moon":          { base: 30, love: 40, risk: 90, vol: 70 },
+  "The Star":          { base: 90, love: 90, risk: 35, vol: 40 },
+  "The Sun":           { base: 95, love: 95, risk: 30, vol: 50 },
+  "Ten of Swords":     { base: 10, love: 20, risk: 95, vol: 90 },
+  "Nine of Swords":    { base: 20, love: 25, risk: 90, vol: 80 },
+  "Three of Wands":    { base: 75, love: 70, risk: 55, vol: 60 },
+  "Ace of Pentacles":  { base: 85, love: 65, risk: 45, vol: 55 },
+  "Queen of Wands":    { base: 80, love: 85, risk: 50, vol: 65 },
+  "Six of Cups":       { base: 65, love: 80, risk: 55, vol: 45 }
+};
+
+// ══════════════════════════════════════════════════════════════════
+// [V23.4] calcScore — 카드 배열에서 도메인별 점수 계산
+//   cards: 문자열 배열 (cleanCards) — 기존 구조 그대로 사용
+//   key:   "base" | "love" | "risk" | "vol"
+//   미정의 카드 → 건너뜀 (count에 미포함 → 정의된 카드만으로 평균)
+//   전부 미정의 시 → 50 (중립값 반환)
+// ══════════════════════════════════════════════════════════════════
+function calcScore(cardNames, key) {
+  if (!cardNames || !cardNames.length) return 50;
+  let sum = 0, count = 0;
+  cardNames.forEach(name => {
+    const entry = CARD_SCORE_MULTI[name];
+    if (!entry) return; // 미정의 카드 → 건너뜀
+    sum += entry[key] ?? 50;
+    count++;
+  });
+  return count > 0 ? Math.round(sum / count) : 50;
+}
+
+// ══════════════════════════════════════════════════════════════════
 // 📖 CARD_MEANING — 투자/관계 맥락 의미
 // ══════════════════════════════════════════════════════════════════
 const CARD_MEANING = {
@@ -491,6 +537,231 @@ function getCardFlavor(card, isReversed) {
     return CARD_FLAVOR_REVERSED[card] || CARD_FLAVOR[card] || `${card}의 에너지`;
   }
   return CARD_FLAVOR[card] || `${card}의 에너지`;
+}
+
+// ══════════════════════════════════════════════════════════════════
+// 🎯 [V23.1] 상태 기반 BLOCK 시스템 — 사장님 설계 확정안
+//   핵심 원칙: "카드 이름이 아니라 상태(정/역방향)로 판정"
+//
+//   HARD:   진입 완전 금지 + Timing 고정 시간 제거
+//   MEDIUM: 조건부 진입 + 조건형 Timing
+//   SOFT:   주의 진입 가능 + 손절 타이트
+//   BOTTOM: Ten of Swords 전용 — 조건부 탐색 진입
+//           "잘못 들어가면 죽고, 잘 들어가면 먹는 구간"
+//   NONE:   기존 엔진 그대로
+// ══════════════════════════════════════════════════════════════════
+
+// ─── MEDIUM 카드별 역방향 강등 규칙 ───
+const MEDIUM_CARD_RULES = {
+  'The Hanged Man':   { rev: 'SOFT' },   // 역방향 = 정체 종료
+  'Eight of Swords':  { rev: 'SOFT' },   // 역방향 = 속박 해방
+  'Four of Cups':     { rev: 'NONE' },   // 역방향 = 권태 종료 = 기회
+  'Five of Pentacles':{ rev: 'NONE' },   // 역방향 = 결핍 회복
+  'Seven of Swords':  { rev: 'SOFT' }    // 역방향 = 진실 드러남
+};
+
+// ─── 상태 기반 BLOCK 레벨 판정 ───
+function getBlockLevel(cardName, isReversed) {
+
+  // ── HERMIT: 무조건 HARD (정방향/역방향 관계없이)
+  //   정방향: "고독한 성찰과 외부 차단" → 진입 차단
+  //   역방향: "고독의 종료와 외부 노출" → 방금 끝난 고독 = 준비 미완
+  if (cardName === 'The Hermit') return 'HARD';
+
+  // ── MOON: 정방향만 HARD
+  //   정방향: "불확실한 안개 속 직관 의존" → 방향 불명 → HARD
+  //   역방향: "안개 걷힘과 진실 드러남" → 오히려 진입 신호 → MEDIUM
+  if (cardName === 'The Moon') {
+    return isReversed ? 'MEDIUM' : 'HARD';
+  }
+
+  // ── NINE OF SWORDS: 정방향만 HARD
+  //   정방향: "악몽 같은 불안과 걱정" → 심리 붕괴 → 진입 금지
+  //   역방향: "걱정 완화와 불안 해소" → 회복 국면 → SOFT
+  if (cardName === 'Nine of Swords') {
+    return isReversed ? 'SOFT' : 'HARD';
+  }
+
+  // ── TEN OF SWORDS: HARD 제외 — 별도 BOTTOM 로직
+  //   "잘못 들어가면 죽고, 잘 들어가면 먹는 구간"
+  //   정방향: "최악 통과의 바닥 구간" → BOTTOM (조건부 탐색 진입)
+  //   역방향: "최악 통과와 회복 시작" → MEDIUM (신호 대기)
+  if (cardName === 'Ten of Swords') {
+    return isReversed ? 'MEDIUM' : 'BOTTOM';
+  }
+
+  // ── MEDIUM 카드들 (정방향) + 역방향 강등
+  if (MEDIUM_CARD_RULES[cardName]) {
+    return isReversed ? MEDIUM_CARD_RULES[cardName].rev : 'MEDIUM';
+  }
+
+  return 'NONE'; // 억제 없음 → 기존 로직
+}
+
+// ─── BOTTOM 전용 Decision (사장님 확정안) ───
+//   Ten of Swords 정방향 전용
+//   조건 명시형 + Timing 조건 기반 강제
+function handleBottom(intent, futureCardScore) {
+  if (intent === 'sell') {
+    // 매도 의도 + 바닥 = 이미 최악 통과 = 보유 유지 또는 저점 확인
+    return {
+      position: '보유 관망 (바닥 확인 중)',
+      strategy: '최악 통과 구간 — 추가 매도 자제, 반등 신호 대기',
+      diagnosis: "현재 구간은 '최악이 통과된 바닥 구간 — 추가 하락보다 반등 가능성이 높은 시점'입니다.",
+      entryTriggers: [
+        { stage: '현재', action: '추가 매도 금지 — 최악 통과 바닥' },
+        { stage: '1차 신호', action: '거래량 증가 + 양봉 전환 시 → 일부 재매수 검토' },
+        { stage: '2차 확정', action: '전일 고점 돌파 시 → 포지션 복원' }
+      ],
+      timingNote: '조건 충족 시 (시간 고정 없음)'
+    };
+  }
+
+  // 매수 의도 + 바닥 — 사장님 확정안
+  return {
+    position: '대기형 매수 (Bottom Watch)',
+    strategy: '바닥 확인 후 조건부 소량 진입 (최대 20%)',
+    diagnosis: "현재 구간은 '바닥 확인 중인 구간 — 조건 충족 시 소량 진입 가능'입니다.",
+    entryTriggers: [
+      { stage: '현재', action: '관망 대기 — 바닥 신호 확인 중' },
+      { stage: '1차 신호', action: '거래량 증가 + 양봉 전환 확인 시 → 1/5 소량 진입' },
+      { stage: '2차 확정', action: '전일 고점 돌파 확인 시 → 추가 진입 (최대 20%까지)' }
+    ],
+    // [V23.1] Timing Layer 강제 수정 — BOTTOM 상태: 시간 고정 금지
+    //   사장님 확정: "조건 충족 시 진입" (시간 고정 없음)
+    timingNote: '조건 충족 시 (시간 고정 없음)'
+  };
+}
+
+// ─── BLOCK 레벨별 Decision 생성 ───
+//   HARD/MEDIUM/SOFT 공통 처리
+//   BOTTOM은 handleBottom() 별도 호출
+function buildBlockDecision(blockLevel, intent, futureCardScore, currentCardName, isReversed) {
+  const futStrong = futureCardScore >= 5; // 미래 강한 긍정 여부
+
+  switch (blockLevel) {
+    case 'HARD':
+      return {
+        position: '관망 (진입 금지)',
+        strategy: '현재 카드 강한 억제 — 추세 전환 신호 확인 후 재검토',
+        diagnosis: `현재 구간은 '${currentCardName} 억제 에너지로 진입 자체가 금지되는 구간'입니다.`,
+        entryTriggers: [
+          { stage: '현재', action: '진입 금지 — HARD 억제 에너지 (소량도 금지)' },
+          { stage: '1차 신호', action: '카드 에너지 전환 확인 + 거래량 급증 시 → 진입 재검토' },
+          { stage: '2차 확정', action: '추세 전환 + 전일 고점 돌파 시 → 소량 진입 가능' }
+        ],
+        timingNote: '고정 시간 진입 없음 — 조건 기반 신호만'
+      };
+
+    case 'MEDIUM':
+      if (futStrong) {
+        return {
+          position: '조건부 진입 대기 (임박 기회)',
+          strategy: '억제 에너지 존재하나 미래 강한 긍정 → 신호 발생 시 즉시 소량 진입',
+          diagnosis: `현재 구간은 '${currentCardName} 억제 존재하나 미래 에너지 강함 — 조건 충족 시 진입 가능'입니다.`,
+          entryTriggers: [
+            { stage: '현재', action: '관망 유지 (아직 진입 아님)' },
+            { stage: '1차 신호', action: '거래량 급증 + 추세 전환 확인 → 즉시 소량 진입 (1/4)' },
+            { stage: '2차 확정', action: '전일 고점 돌파 시 → 추가 진입 검토' }
+          ],
+          timingNote: '신호 기반 진입 — 장 초반 관망 후 전환점 포착'
+        };
+      } else {
+        return {
+          position: '관망 (신호 대기)',
+          strategy: '억제 에너지 존재 — 추세 확인 후 진입',
+          diagnosis: `현재 구간은 '${currentCardName} 억제 에너지 — 신호 확인 후 진입이 유리한 구간'입니다.`,
+          entryTriggers: [
+            { stage: '현재', action: '관망 유지' },
+            { stage: '1차 신호', action: '거래량 증가 + 양봉 전환 시 → 소량 진입 검토' },
+            { stage: '2차 확정', action: '방향성 명확 시 → 분할 진입' }
+          ],
+          timingNote: '고정 시간 진입 없음'
+        };
+      }
+
+    case 'SOFT':
+      return {
+        position: '신중 탐색 (주의 진입)',
+        strategy: '약한 억제 존재 — 소량 진입 가능하나 손절 타이트 유지',
+        diagnosis: `현재 구간은 '${currentCardName} 약한 억제 존재 — 소량 진입은 가능하나 변동성 주의'입니다.`,
+        entryTriggers: [
+          { stage: '현재', action: '소량 시범 진입 가능 (1/5) — 손절 타이트' },
+          { stage: '1차 신호', action: '추세 확인 시 → 1/4 추가' },
+          { stage: '2차 확정', action: '방향성 명확 시 → 비중 확대 검토' }
+        ],
+        timingNote: '장 초반 관망 후 안정 구간 진입'
+      };
+
+    default:
+      return null; // NONE → 기존 엔진 그대로
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════
+// 🎯 [V23.3] 연애 전용 BLOCK 시스템 — 사장님 설계 + 데이터 보완
+//   원칙: 주식 BLOCK과 별도 (연애 맥락 특화)
+//   HARD: 관계 진입 자체 위험 → 자기 보호 우선
+//   MEDIUM: 접근 가능하나 밀어붙이면 실패
+//   SOFT: 신중 접근 / 환상 주의
+// ══════════════════════════════════════════════════════════════════
+const LOVE_BLOCK = {
+  HARD: new Set([
+    'Three of Swords',  // 상처·배신 — 관계 상처가 아직 치유 안 됨
+    'The Tower',        // 관계 충격 이벤트 — 갑작스러운 단절
+    'The Devil',        // 집착·독성 에너지 — 관계 왜곡 위험
+    'The Moon',         // 착각·환상 — 상대를 오해할 위험 (정방향만)
+  ]),
+  MEDIUM: new Set([
+    'Seven of Swords',  // 회피·거짓 — 숨기는 것이 있음
+    'Five of Pentacles',// 고립·결핍 — 감정 에너지 부족
+    'Five of Swords',   // 갈등·승패 — 관계에서 이기려는 에너지
+    'Eight of Swords',  // 속박 — 스스로 선택 못하는 상태
+  ]),
+  SOFT: new Set([
+    'Two of Pentacles', // 조율·선택 유보 — 균형 잡는 중
+  ])
+};
+
+// 연애 특화 카드 해석 (Tower/Star 등 핵심 카드 연애 맥락 재해석)
+const LOVE_CARD_FLAVOR = {
+  'The Tower':       '관계 충격 이벤트 — 갑작스러운 단절 또는 진실 노출',
+  'The Star':        '상처 후 회복 기대 — 새로운 감정 연결 가능',
+  'The Devil':       '집착·독성 에너지 — 관계 왜곡 위험',
+  'The Moon':        '착각·환상 — 상대를 오해하거나 상황 왜곡',
+  'Three of Swords': '상처·배신 에너지 — 관계 아픔이 현재 작용 중',
+  'Seven of Swords': '회피·거짓 — 상대가 숨기는 것이 있을 가능성',
+  'Five of Cups':    '상실·후회 — 과거 집착으로 새 관계 차단',
+  'Two of Cups':     '감정 공명 — 상호 끌림이 균형 잡힌 상태',
+  'The Lovers':      '선택의 기로 — 감정과 이성 사이 균형 필요',
+  'Ace of Cups':     '새로운 감정의 시작 — 관계 시작 에너지',
+  'Ten of Cups':     '감정 충만 — 관계 완성 에너지',
+  'The Hermit':      '고독 선택 — 지금은 혼자가 답인 시기',
+  'Judgement':       '과거 관계 재평가 — 두 번째 기회 가능성',
+  'The World':       '관계 완성 — 감정 목표 달성 단계',
+  'Four of Cups':    '권태·무관심 — 상대의 관심이 식어있는 상태',
+  'Eight of Cups':   '이별·떠남 — 더 나은 것을 찾아 떠나는 에너지',
+};
+
+// 연애 BLOCK 레벨 판정 (상태 기반)
+function detectLoveBlock(currentCard, isReversed) {
+  // The Moon 정방향만 HARD (역방향 = 안개 걷힘 = 진실 드러남)
+  if (currentCard === 'The Moon') {
+    return isReversed ? 'MEDIUM' : 'HARD';
+  }
+  // HARD 카드 (정방향)
+  if (LOVE_BLOCK.HARD.has(currentCard)) return 'HARD';
+  // MEDIUM 카드 (역방향 시 SOFT로 강등)
+  if (LOVE_BLOCK.MEDIUM.has(currentCard)) return isReversed ? 'SOFT' : 'MEDIUM';
+  // SOFT 카드
+  if (LOVE_BLOCK.SOFT.has(currentCard)) return isReversed ? 'NONE' : 'SOFT';
+  return 'NONE';
+}
+
+// 연애 전용 카드 의미 반환 (LOVE_CARD_FLAVOR 우선, 없으면 일반 CARD_FLAVOR)
+function getLoveCardFlavor(card, isReversed) {
+  if (LOVE_CARD_FLAVOR[card]) return LOVE_CARD_FLAVOR[card];
+  return getCardFlavor(card, isReversed);
 }
 
 // ══════════════════════════════════════════════════════════════════
@@ -1384,12 +1655,54 @@ function buildStockMetrics({ totalScore, riskScore, cleanCards, isLeverage, quer
   // ═══════════════════════════════════════════════════════════
 
   // [V20.0-A] 카드 시퀀스 분석 — "직진 강매수"가 적절한지 검증
-  //   현재/미래 카드에 역방향이 있거나 부정 카드가 끼어있으면 "한 번 눌림 후 회복" 구조로 보정
   const reversedCount = (revFlags || []).filter(x => x === true).length;
   const currentCardScore = (CARD_SCORE[cleanCards[1]] ?? 0) * (revFlags[1] ? -1 : 1);
   const futureCardScore  = (CARD_SCORE[cleanCards[2]] ?? 0) * (revFlags[2] ? -1 : 1);
-  const hasMidstreamObstacle = (currentCardScore <= 0 && futureCardScore > 0);   // 현재 정체 + 미래 회복 = 눌림 구조
-  const hasReversedSignal = reversedCount >= 1 && totalScore >= 2;               // 역방향 1+ 있는데 점수는 양수
+  const hasMidstreamObstacle = (currentCardScore <= 0 && futureCardScore > 0);
+  const hasReversedSignal = reversedCount >= 1 && totalScore >= 2;
+
+  // [V23.1] 상태 기반 BLOCK 시스템 — 사장님 설계 확정안
+  //   핵심: "카드 이름이 아니라 상태(정/역방향)로 판정"
+  //   [버그 수정] Hermit 역방향은 CARD_SCORE 역전으로 hasMidstreamObstacle=false 되므로
+  //   BLOCK 판정을 hasMidstreamObstacle 독립 시켜서 항상 체크
+  const _blockCurrentCard = cleanCards[1];
+  const _blockReversed = revFlags[1] || false;
+
+  // [Fix 2] isRealBottom — BOTTOM 오판 방지 (사장님 확정)
+  //   "잘못 들어가면 죽고, 잘 들어가면 먹는 구간"
+  //   조건: Ten of Swords AND totalScore <= -6 (강한 하락에서만)
+  //   데이터 근거: totalScore > -6이면 과거/미래 카드가 긍정적 → 진짜 바닥 아님
+  function isRealBottom(cardName, score) {
+    return cardName === 'Ten of Swords' && score <= -6;
+  }
+
+  // BLOCK 레벨 판정 (hasMidstreamObstacle 조건 무관)
+  const _rawBlockLevel = (stockIntent !== 'sell')
+    ? getBlockLevel(_blockCurrentCard, _blockReversed)
+    : 'NONE';
+
+  // [Fix 2 적용] BOTTOM은 isRealBottom 통과 시에만 허용 — 오판 케이스 차단
+  const _adjustedBlockLevel = (_rawBlockLevel === 'BOTTOM' && !isRealBottom(_blockCurrentCard, totalScore))
+    ? 'NONE'
+    : _rawBlockLevel;
+
+  // HARD는 무조건 적용, MEDIUM/SOFT/BOTTOM은 원래 카드 점수 기준 미래 긍정일 때만 적용
+  const _rawCurrentScore = CARD_SCORE[_blockCurrentCard] ?? 0;
+  const _rawFutureScore  = CARD_SCORE[cleanCards[2]] ?? 0;
+  const _hasFuturePositive = (_rawFutureScore > 0 || futureCardScore > 0);
+  const _blockLevel = (_adjustedBlockLevel === 'HARD')
+    ? 'HARD'
+    : (_adjustedBlockLevel !== 'NONE' && _hasFuturePositive && _rawCurrentScore <= 0)
+      ? _adjustedBlockLevel
+      : 'NONE';
+
+  // BLOCK Decision 생성
+  let _blockDecision = null;
+  if (_blockLevel === 'BOTTOM') {
+    _blockDecision = handleBottom(stockIntent, futureCardScore);
+  } else if (_blockLevel !== 'NONE') {
+    _blockDecision = buildBlockDecision(_blockLevel, stockIntent, futureCardScore, _blockCurrentCard, _blockReversed);
+  }
 
   // [V20.0-A] Decision 결정 — 카드 시퀀스 패턴별 분기
   let decisionPosition, decisionStrategy;
@@ -1402,7 +1715,6 @@ function buildStockMetrics({ totalScore, riskScore, cleanCards, isLeverage, quer
       decisionStrategy = "단계적 차익실현 → 코어 일부 유지";
     } else if (totalScore <= -3) {
       decisionPosition = "전량 매도 (Full Exit)";
-      // [V22.4] 사장님 안: "반등 시 분할 청산 → 최종 이탈" (자연스러운 연결)
       decisionStrategy = "반등 시 분할 청산 → 최종 이탈";
     } else {
       decisionPosition = "조건부 매도 (Conditional Exit)";
@@ -1651,7 +1963,23 @@ function buildStockMetrics({ totalScore, riskScore, cleanCards, isLeverage, quer
   let exitRanges = [];
   let watchRanges = [];
 
-  if (queryType === "stock") {
+  // [V23.1] HARD / BOTTOM 상태: 고정 시간 진입 강제 제거
+  //   사장님 확정: "HARD = 시간 고정 없음", "BOTTOM = 조건 충족 시"
+  //   Hermit/Moon 정방향: "지금이 아닌 카드" → 고정 시간 무의미
+  //   Ten of Swords BOTTOM: "바닥 신호 시 진입" → 조건 기반
+  if (_blockLevel === 'HARD') {
+    entryRanges = [];  // 고정 시간 진입 없음
+    exitRanges  = [];
+    watchRanges = ["전 구간 관망 — 추세 전환 신호 대기"];
+  } else if (_blockLevel === 'BOTTOM') {
+    // BOTTOM: 조건 기반 진입 (시간 고정 X)
+    entryRanges = [];
+    exitRanges  = [];
+    watchRanges = [
+      "장 초반 바닥 신호 확인 (09:30 ~ 10:30)",
+      "오전 중반 양봉 전환 여부 체크 (10:30 ~ 11:30)"
+    ];
+  } else if (queryType === "stock") {
     // 국내 주식 기준 (장 시간 09:00~15:30)
     if (totalScore >= 6 && !hasReversedSignal) {
       // 강한 상승 — 진입 기회 많음
@@ -1666,6 +1994,15 @@ function buildStockMetrics({ totalScore, riskScore, cleanCards, isLeverage, quer
       watchRanges = [
         "장 초반 (09:00 ~ 09:30)",
         "마감 동시호가 (15:20 ~ 15:30)"
+      ];
+    } else if (_blockLevel === 'MEDIUM') {
+      // MEDIUM: 조건형 Timing (사장님 Q2 확정)
+      entryRanges = [];
+      exitRanges  = [];
+      watchRanges = [
+        "장 초반 관망 (09:00 ~ 10:30)",
+        "조건 충족 시 오전 중반 진입 검토 (10:30 ~ 11:30)",
+        "점심 구간 (12:00 ~ 13:00)"
       ];
     } else if (hasMidstreamObstacle || hasReversedSignal) {
       // 눌림 후 회복 구조 — 신중한 진입
@@ -1908,8 +2245,103 @@ function buildStockMetrics({ totalScore, riskScore, cleanCards, isLeverage, quer
     return base;
   }
 
+  const _domain = (queryType === "crypto") ? "stock" : (queryType || "stock");
+  const _revFlags = revFlags || [false, false, false];
+
   // ════════════════════════════════════════════════════════════
-  // [V20.9] 🔥 Critical Interpretation — 핵심 해석 박스 (NEW)
+  // [V23.1 Fix 1 + Fix 3] BLOCK 조기 종료 — 사장님 확정
+  //   핵심: "_blockDecision 있으면 다른 로직 완전 차단 후 즉시 return"
+  //   이거 없으면 Execution이 HARD를 무시하고 "10~20% 진입" 출력
+  //   → 유저 신뢰 0 (진입 금지라며 비중은 10~20%?)
+  // ════════════════════════════════════════════════════════════
+  if (_blockDecision) {
+    // [Fix 3] HARD 우선순위 완전 고정 — Execution도 BLOCK 레벨에 맞게 재구성
+    const _blockExecution = {
+      weight:   _blockLevel === 'HARD'   ? '0% — 진입 자체 금지 (소량도 불가)'
+              : _blockLevel === 'BOTTOM' ? '최대 20% (조건 충족 시만)'
+              : _blockLevel === 'MEDIUM' ? '0% (현재) — 신호 후 소량 검토'
+              :                           '5~10% 주의 진입 (손절 타이트)',
+      stopLoss: _blockLevel === 'HARD'   ? '진입 없음 — 손절 불필요'
+              : _blockLevel === 'BOTTOM' ? '진입 시 -3% 엄수 (타이트)'
+              :                           '-2~3% 이탈 시 즉시 손절',
+      target:   _blockLevel === 'HARD'   ? '진입 없음 — 목표가 불필요'
+              : _blockLevel === 'BOTTOM' ? '1차 신호 후 +3~5% (조건부)'
+              :                           '신호 확인 후 결정'
+    };
+
+    // [Fix 3] Timing도 BLOCK 상태에 맞게 — "죽은 타이밍" 표현
+    // [V23.5] HARD → timing 완전 null (사장님 버그: "HARD인데 타이밍 UI 뜨는" 문제 해결)
+    //   HARD = 타이밍 자체가 없음 → null로 차단 → Client에서 Timing 섹션 숨김
+    const _blockTiming = (_blockLevel === 'HARD')
+      ? null  // ← 완전 null: Client에서 Timing 섹션 렌더링 차단
+      : _blockLevel === 'BOTTOM'
+        ? {
+            entryRanges: [],
+            exitRanges:  [],
+            watchRanges: ['장 초반 바닥 신호 확인 (09:30 ~ 10:30)', '거래량 + 양봉 전환 확인 구간 (10:30 ~ 11:30)']
+          }
+        : {
+            entryRanges: [],
+            exitRanges:  [],
+            watchRanges: ['조건 충족 시 진입 — 고정 시간 없음']
+          };
+
+    // 🔥 핵심: 여기서 return — 다른 Decision/Execution/Timing 로직 완전 차단
+    return {
+      queryType,
+      trend: finalTrend,
+      action: finalAction,
+      riskLevel: finalRisk,
+      entryStrategy, exitStrategy,
+      finalTimingText: _blockDecision.timingNote || '조건 충족 시 진입',
+      entryTimingText: '조건 충족 시',
+      exitTimingText:  '-',
+      totalScore, riskScore,
+      // [V23.4] BLOCK 경로에서도 수치 메트릭 제공
+      volatilityScore: calcScore(cleanCards, 'vol'),
+      cardNarrative, flowSummary, riskChecks, scenarios, roadmap,
+      position: _blockExecution,
+      finalOracle,
+      isLeverage,
+      layers: {
+        decision: {
+          ..._blockDecision,
+          cardEvidence,
+          outcomePrediction,
+          blockLevel: _blockLevel
+        },
+        execution: _blockExecution,
+        timing: _blockTiming,
+        signal: {
+          past:    cardNarrative[0] || '-',
+          current: cardNarrative[1] || '-',
+          future:  cardNarrative[2] || '-',
+          pastImpact: getSignalImpact(cleanCards[0], revFlags[0], '과거'),
+          currentImpact: getSignalImpact(cleanCards[1], revFlags[1], '현재'),
+          futureImpact: getSignalImpact(cleanCards[2], revFlags[2], '미래'),
+          summary: flowSummary,
+          verdict: _blockLevel === 'HARD'
+            ? '현재 카드 강한 억제 — 진입 금지 구간'
+            : _blockLevel === 'BOTTOM'
+              ? '바닥 확인 중 — 조건 충족 시 탐색 가능'
+              : '억제 에너지 존재 — 신호 확인 후 진입'
+        },
+        risk: {
+          level: _blockLevel === 'HARD' ? '높음 (HARD 억제)' : layerRiskLevel,
+          volatility: '증가 가능성 있음',
+          cautions: finalRiskCautions
+        },
+        rules: criticalRules,
+        criticalInterpretation: buildCriticalInterpretation(cleanCards, _revFlags, _domain, stockIntent)
+      }
+    };
+  }
+
+  // ════════════════════════════════════════════════════════════
+  // BLOCK 없는 케이스 — 기존 엔진 계속 실행
+  // ════════════════════════════════════════════════════════════
+
+  // [V20.9] 🔥 Critical Interpretation
   //   다른 어떤 타로앱도 없는 차별화 포인트
   //   5계층 모든 결론을 한 박스에 응축
   // ════════════════════════════════════════════════════════════
@@ -1917,8 +2349,6 @@ function buildStockMetrics({ totalScore, riskScore, cleanCards, isLeverage, quer
   //   문제 해결: 기존 5단계 고정 텍스트 → 외워지는 문제 차단
   //   문제 해결: "Seven of Cups → 하락 압력" 같은 카드 의미 왜곡 차단
   //   결과: 매번 다른 메시지 + 카드 고유 flavor 정확 반영
-  const _domain = (queryType === "crypto") ? "stock" : (queryType || "stock");
-  const _revFlags = revFlags || [false, false, false];
   let criticalInterpretation = buildCriticalInterpretation(cleanCards, _revFlags, _domain, stockIntent);
 
   // [V22.0] 매도 의도 시 — 일부 메시지를 매도 관점으로 보정
@@ -1938,6 +2368,8 @@ function buildStockMetrics({ totalScore, riskScore, cleanCards, isLeverage, quer
     entryTimingText: entryTimingText || '-',
     exitTimingText:  exitTimingText  || '-',
     totalScore, riskScore,
+    // [V23.4] 변동성 수치 (사장님 설계)
+    volatilityScore: calcScore(cleanCards, 'vol'),
     cardNarrative, flowSummary, riskChecks, scenarios, roadmap,
     position,
     finalOracle,
@@ -1945,13 +2377,17 @@ function buildStockMetrics({ totalScore, riskScore, cleanCards, isLeverage, quer
     // [V20.0] 5계층 데이터 (클라이언트 렌더러용)
     layers: {
       decision: {
-        position: decisionPosition,
-        strategy: decisionStrategy,
-        // [V22.3] 신뢰감 강화 4개 필드 (사장님 비전)
-        diagnosis,            // 명확한 단일 진단
-        cardEvidence,         // 카드 의미로 근거 입증
-        outcomePrediction,    // 행동 시 결과 예측
-        entryTriggers         // 1차/2차 실행 트리거
+        // [V23.1] BLOCK 시스템 오버라이드 — 상태 기반 판정 우선 적용
+        //   _blockDecision 있으면 기존 Decision 완전 대체
+        //   없으면 기존 엔진 그대로 사용
+        position:         _blockDecision ? _blockDecision.position  : decisionPosition,
+        strategy:         _blockDecision ? _blockDecision.strategy  : decisionStrategy,
+        diagnosis:        _blockDecision ? _blockDecision.diagnosis : diagnosis,
+        cardEvidence,
+        outcomePrediction,
+        entryTriggers:    _blockDecision ? _blockDecision.entryTriggers : entryTriggers,
+        // BLOCK 레벨 메타데이터 (Client 렌더러에서 활용 가능)
+        blockLevel:       _blockLevel || 'NONE'
       },
       execution: position,  // 기존 position 그대로 (weight/stopLoss/target)
       timing: {
@@ -2270,6 +2706,10 @@ function buildRealEstateMetrics({ totalScore, riskScore, cleanCards, intent, pro
     period,
     urgency,
     caution,
+    // [V23.4] 부동산 수치 메트릭 (사장님 설계)
+    dealConfidence: calcScore(cleanCards, 'base'),
+    entryTiming: calcScore(cleanCards, 'base') > 70 ? 'NOW'
+               : calcScore(cleanCards, 'base') > 50 ? 'LATER' : 'AVOID',
     subtitle: subtitle_override || (intent === "sell" ? "매도" : "매수"),
     // [V2.4] 일일 수비학 타이밍 — 평일 + 9~18시 중개 영업 시간
     dailyActionTiming,
@@ -2282,7 +2722,7 @@ function buildRealEstateMetrics({ totalScore, riskScore, cleanCards, intent, pro
         position: reDecisionPosition,
         strategy: reDecisionStrategy
       },
-      // [V20.10] 📊 Market Layer — 시장 판단 (NEW)
+      // [V20.10 + V23.3] 📊 Market Layer — 시장 판단 + 부동산 특화 변수
       market: {
         flow: netScore >= 5 ? "완만한 상승 흐름"
             : netScore >= 2 ? "안정적 시장 — 거래 가능"
@@ -2294,7 +2734,40 @@ function buildRealEstateMetrics({ totalScore, riskScore, cleanCards, intent, pro
                 : "매수자 우위 시장",
         delay: netScore >= 2 ? "거래 진행 가능성 높음"
              : netScore >= 0 ? "통상적 거래 진행 예상"
-             : "거래 지연 가능성 높음"
+             : "거래 지연 가능성 높음",
+
+        // [V23.3] 부동산 특화 변수 (사장님 설계 확정안)
+        //   타로 에너지 기반 추정값 (실제 KB시세/호가 데이터 아님)
+        //   카드 에너지와 역방향 비율을 기반으로 계산
+
+        // liquidity: 거래 속도 (netScore 기반)
+        //   높을수록 빠른 거래 가능성 → 시장 유동성 에너지
+        liquidity: netScore >= 5 ? "높음 — 빠른 거래 가능 (4~6주)"
+                 : netScore >= 2 ? "보통 — 정상 거래 속도 (6~10주)"
+                 : netScore >= 0 ? "보통 이하 — 거래 지연 가능 (8~12주)"
+                 : netScore >= -3 ? "낮음 — 거래 어려움 (10~16주)"
+                 : "매우 낮음 — 장기 노출 예상 (16주+)",
+
+        // priceGap: 호가 갭 (역방향 카드 비율 기반)
+        //   역방향 많을수록 매도/매수 호가 간격 커짐
+        priceGap: (() => {
+          const revCount = (typeof reversedFlags !== 'undefined')
+            ? reversedFlags.filter(x => x).length : 0;
+          if (revCount >= 2) return "넓음 — 협상 여지 크고 시간 필요";
+          if (revCount === 1) return "보통 — 적정 협상 범위";
+          return "좁음 — 호가 조정 여지 제한적";
+        })(),
+
+        // dealProbability: 거래 성사 가능성 (매수자/매도자 우위 + netScore 조합)
+        dealProbability: intent === "sell"
+          ? (netScore >= 5  ? "높음 — 현재 호가 성사 가능"
+           : netScore >= 2  ? "보통 — 소폭 조정 시 성사 가능"
+           : netScore >= -3 ? "낮음 — 5~8% 조정 필요"
+           : "매우 낮음 — 다음 성수기 대기 권장")
+          : (netScore >= 5  ? "매우 좋음 — 급매 포착 시 즉시 성사"
+           : netScore >= 2  ? "좋음 — 적정가 협상 가능"
+           : netScore >= -3 ? "보통 — 저점 급매 위주 탐색"
+           : "어려움 — 시장 안정 대기 권장")
       },
       execution: {
         weight: intent === "sell" ? `호가 전략: ${priceStrategy}` : `매수 전략: ${strategy}`,
@@ -2417,197 +2890,249 @@ function getNumerologyTime(cleanCards) {
   return { time: mapping[num], num };
 }
 
+// ══════════════════════════════════════════════════════════════════
+// 💘 [V23.3] Love Metrics 전면 재구성 — 사장님 설계 확정안
+//   구조: emotionFlow / attraction / conflict /
+//         blockDecision / actionGuide / timing / risk
+//   LOVE_BLOCK 시스템 연동 (HARD/MEDIUM/SOFT)
+//   LOVE_CARD_FLAVOR 연애 특화 해석 적용
+// ══════════════════════════════════════════════════════════════════
 function buildLoveMetrics({ totalScore, cleanCards, prompt, loveSubType }) {
   const netScore = totalScore;
+  const isCompat = loveSubType === 'compatibility';
 
-  let trend;
-  if      (netScore >= 5) trend = "감정의 고조기 — 관계 확장 에너지";
-  else if (netScore >= 2) trend = "관계가 깊어지는 흐름";
-  else if (netScore >= -1) trend = "감정 탐색기 — 방향성 조율 중";
-  else if (netScore >= -5) trend = "감정의 정체기 — 거리감 구간";
-  else                    trend = "관계 단절 에너지 — 회복 시간 필요";
+  // ─── 현재 카드 LOVE_BLOCK 판정 ───
+  const curCard    = cleanCards[1] || '';
+  const futCard    = cleanCards[2] || '';
+  const pastCard   = cleanCards[0] || '';
+  const curReversed = false; // 기본 정방향 (역방향 플래그는 상위에서 전달)
+  const loveBlockLevel = detectLoveBlock(curCard, curReversed);
 
-  let action;
-  if      (netScore >= 5) action = "적극적 소통 — 감정 표현 유리";
-  else if (netScore >= 2) action = "타이밍 관찰 우선 — 신호 시점 포착";
-  else if (netScore >= -1) action = "자연스러운 기다림";
-  else if (netScore >= -5) action = "거리 두고 내면 성찰";
-  else                    action = "집착 금지 — 시간과 공간 확보";
+  // ─── 감정 흐름 (emotionFlow) ───
+  const emotionFlow = {
+    past: (() => {
+      const f = getLoveCardFlavor(pastCard, false);
+      return { card: pastCard, energy: f,
+        summary: netScore >= 0 ? '안정적 기반 형성' : '불안정한 출발' };
+    })(),
+    present: (() => {
+      const f = getLoveCardFlavor(curCard, curReversed);
+      const blockNote = loveBlockLevel !== 'NONE' ? ` [${loveBlockLevel} 억제]` : '';
+      return { card: curCard, energy: f + blockNote,
+        summary: loveBlockLevel === 'HARD' ? '관계 진입 위험 구간'
+                : loveBlockLevel === 'MEDIUM' ? '감정 조율 중 — 신중 접근'
+                : loveBlockLevel === 'SOFT' ? '균형 잡는 중 — 주의 접근'
+                : netScore >= 2 ? '감정 에너지 상승 중' : '방향성 탐색 중' };
+    })(),
+    future: (() => {
+      const f = getLoveCardFlavor(futCard, false);
+      return { card: futCard, energy: f,
+        summary: CARD_SCORE[futCard] >= 3 ? '긍정적 관계 가능성'
+                : CARD_SCORE[futCard] >= 0 ? '조건부 발전 가능'
+                : '신중한 대기 필요' };
+    })(),
+    overall: netScore >= 5 ? '감정의 고조기 — 관계 확장 에너지'
+           : netScore >= 2 ? '타이밍 관찰 구간 — 가능성 열림'
+           : netScore >= -1 ? '감정 탐색기 — 방향성 조율 중'
+           : netScore >= -5 ? '감정의 정체기 — 거리감 구간'
+           : '관계 단절 에너지 — 회복 시간 필요'
+  };
 
-  let riskLevel;
-  if      (netScore >= 5) riskLevel = "과한 기대 주의";
-  else if (netScore >= 2) riskLevel = "오해의 소지 주의";
-  else if (netScore >= -1) riskLevel = "조급함이 관계를 흐트릴 위험";
-  else if (netScore >= -5) riskLevel = "감정 과잉 경계";
-  else                    riskLevel = "집착·반복 상처 주의";
+  // ─── 끌림 에너지 (attraction) ───
+  const attraction = {
+    level: isCompat
+      ? (netScore >= 5 ? '강한 공명 — 자연스러운 끌림'
+       : netScore >= 2 ? '보완적 끌림 — 서로 다름이 강점'
+       : netScore >= -1 ? '탐색 중 — 끌림과 거부감 공존'
+       : '에너지 불일치 — 노력 필요')
+      : (netScore >= 5 ? '상대 관심 높음 — 표현 유리'
+       : netScore >= 2 ? '호감 존재 — 신호 포착 가능'
+       : netScore >= -1 ? '관심 미확인 — 관찰 필요'
+       : '관심 약함 — 거리 두기 권장'),
+    signal: netScore >= 3 ? '명확한 긍정 신호'
+           : netScore >= 0 ? '모호한 신호 — 확인 필요'
+           : '부정적 신호 우세',
+    mutual: isCompat && netScore >= 2
+  };
 
-  // [V19.11] 요일만 표기 (시간대는 numTime에 이미 포함되므로 중복 제거)
+  // ─── 갈등 포인트 (conflict) ───
+  const conflict = {
+    risk: loveBlockLevel === 'HARD' ? '높음 — 현재 관계 진입 위험'
+        : loveBlockLevel === 'MEDIUM' ? '중간 — 감정 과투입 시 충돌'
+        : netScore >= 0 ? '낮음 — 주의만 하면 무방'
+        : '높음 — 에너지 불일치',
+    pattern: loveBlockLevel === 'HARD'
+      ? ['관계 상처·충격 에너지 현재 작용 중', '진입 시 반복적 상처 위험']
+      : loveBlockLevel === 'MEDIUM'
+        ? ['감정 조율 실패 시 거리 발생', '과도한 기대는 부담으로 작용']
+        : netScore >= 0
+          ? ['조급함이 관계를 흐트릴 위험', '오해의 소지 주의']
+          : ['에너지 불일치 — 상호 이해 부족', '감정 소모 위험'],
+    controlRule: loveBlockLevel !== 'NONE'
+      ? `${loveBlockLevel} 억제 — 상대 반응 이상으로 움직이지 말 것`
+      : '상대 반응 이상으로 움직이지 말 것'
+  };
+
+  // ─── BLOCK 기반 행동 결정 (blockDecision) ───
+  const blockDecision = {
+    level:       loveBlockLevel,
+    allowEntry:  loveBlockLevel !== 'HARD',
+    allowPush:   loveBlockLevel === 'NONE' && netScore >= 3,
+    allowCommit: loveBlockLevel === 'NONE' && netScore >= 5,
+    override:    false,
+    reason: loveBlockLevel === 'HARD'
+      ? `${curCard} — 관계 진입 위험 에너지 감지`
+      : loveBlockLevel === 'MEDIUM'
+        ? `${curCard} — 조율 상태, 밀어붙이면 실패`
+        : loveBlockLevel === 'SOFT'
+          ? `${curCard} — 신중 접근 권고`
+          : '억제 에너지 없음 — 에너지 상태 기반 행동',
+    position: loveBlockLevel === 'HARD'
+      ? 'HARD_BLOCK'
+      : loveBlockLevel === 'MEDIUM'
+        ? 'CONDITIONAL_ENTRY'
+        : loveBlockLevel === 'SOFT'
+          ? 'CAREFUL_ENTRY'
+          : netScore >= 5 ? 'ACTIVE_ENTRY'
+          : netScore >= 2 ? 'CONDITIONAL_ENTRY'
+          : netScore >= -1 ? 'HOLD_OBSERVE'
+          : netScore >= -5 ? 'DISTANCE'
+          : 'RECOVER'
+  };
+
+  // ─── 행동 가이드 (actionGuide) ───
+  const actionGuide = (() => {
+    if (loveBlockLevel === 'HARD') {
+      return {
+        do:    ['자기 내면 회복 우선', '상대와 거리 두기', '감정 정리 시간 갖기'],
+        dont:  ['관계 진입 시도', '감정 표현', '연락 추가'],
+        oneLine: '지금은 나를 먼저 지키는 것이 최선입니다'
+      };
+    }
+    if (loveBlockLevel === 'MEDIUM' || (!blockDecision.allowPush)) {
+      return {
+        do:    ['짧은 안부 메시지 1회', '가벼운 농담', '부담 없는 대화 시도'],
+        dont:  ['감정 고백', '관계 정의 질문', '추가 연락 반복'],
+        oneLine: '반응을 유도하고, 반응이 올 때만 움직여라'
+      };
+    }
+    if (netScore >= 5) {
+      return {
+        do:    ['감정 표현 적극적으로', '만남 제안', '관계 진전 시도 가능'],
+        dont:  ['과한 기대', '집착적 행동', '일방적 주도'],
+        oneLine: '지금이 감정 표현의 최적 타이밍입니다'
+      };
+    }
+    return {
+      do:    ['자연스러운 접근', '공통 관심사 대화', '가벼운 만남 제안'],
+      dont:  ['감정 과투입', '관계 정의 요구', '연속 연락'],
+      oneLine: '자연스럽게 다가가되 상대 반응을 기준으로 움직여라'
+    };
+  })();
+
+  // ─── 타이밍 (CONDITIONAL 기반) ───
   const DAYS_FULL = ["일요일","월요일","화요일","수요일","목요일","금요일","토요일"];
   let seed = 0;
   for (let i = 0; i < (prompt||"").length; i++) seed += prompt.charCodeAt(i);
   cleanCards.forEach(c => { for (let i = 0; i < c.length; i++) seed += c.charCodeAt(i); });
-  const timingDay = DAYS_FULL[Math.abs(seed + Math.abs(netScore)) % 7];
-
-  // [V2.1] 카드 기반 월상 + 수비학 시간 (랜덤 금지, 카드 고정)
   const moon = getMoonPhase(cleanCards);
   const { time: numTime, num: numNum } = getNumerologyTime(cleanCards);
+  const timingDay = DAYS_FULL[Math.abs(seed + Math.abs(netScore)) % 7];
   const finalTimingText = `${timingDay} ${numTime} / ${moon} (수비학 ${numNum})`;
 
-  const posLabels = ["과거","현재","미래"];
-  const cardNarrative = cleanCards.map((c, i) => {
-    const m = cardMeaning(c);
-    return `${posLabels[i] || '?'}(${c}): ${m.flow}`;
-  });
+  const timing = {
+    type: loveBlockLevel === 'HARD' ? 'BLOCKED'
+        : loveBlockLevel !== 'NONE' ? 'CONDITIONAL'
+        : netScore >= 3 ? 'ACTIVE' : 'CONDITIONAL',
+    entryConditions: loveBlockLevel === 'HARD'
+      ? ['자기 회복 완료 후 재검토']
+      : ['상대가 먼저 반응할 때', '대화가 자연스럽게 이어질 때', '관심 신호가 확인될 때'],
+    holdConditions: ['답장이 없을 때', '반응이 애매할 때', '대화 템포가 끊길 때'],
+    numerology: finalTimingText,
+    rule: loveBlockLevel === 'HARD'
+      ? '지금은 진입 타이밍이 아닙니다 — 자기 회복 우선'
+      : '타이밍은 내가 만드는 것이 아니라 상대 반응으로 열린다'
+  };
 
-  const keyCard = cleanCards[2] || "미래 카드";
-  // [V19.2] 궁합 전용 해석
-  const isCompat = loveSubType === 'compatibility';
-  const interpret = isCompat ? (
-    netScore >= 5
-      ? `두 사람의 에너지는 서로를 끌어당기는 강한 공명 상태에 놓여 있습니다. ${keyCard}의 기운은 감정과 방향성이 맞닿아 있음을 시사합니다. 자연스러운 흐름이 관계를 완성시킬 것입니다.`
-      : netScore >= 2
-      ? `두 에너지는 서로 다르지만 보완적인 성격을 띠고 있습니다. ${keyCard}의 기운은 갈등조차 성장의 재료가 될 수 있음을 암시합니다. 이해의 폭이 궁합을 결정합니다.`
-      : netScore >= -1
-      ? `두 사람의 에너지는 조율이 필요한 탐색 구간에 있습니다. ${keyCard}의 기운은 닮음보다 '다름을 수용하는 용기'가 관건임을 알립니다. 시간이 답을 알려줄 것입니다.`
-      : netScore >= -5
-      ? `두 에너지는 현재 결이 엇갈려 있습니다. ${keyCard}의 기운은 무리한 맞춤이 오히려 균열을 키울 수 있음을 경고합니다. 각자의 자리를 지키는 지혜가 필요합니다.`
-      : `두 사람의 에너지는 충돌·소모의 구간에 놓여 있습니다. ${keyCard}의 기운은 관계보다 자기 보호가 우선임을 말합니다. 거리와 휴식이 진짜 성장의 토대가 됩니다.`
-  ) : (
-    netScore >= 5
-      ? `관계는 뚜렷한 상승 기운에 놓여 있습니다. ${keyCard}의 에너지는 지금 당신의 감정 표현이 상대에게 울림을 줄 수 있음을 시사합니다. 자연스러움과 확신이 관계를 여는 열쇠입니다.`
-      : netScore >= 2
-      ? `흐름은 조심스러운 긍정 구간입니다. ${keyCard}의 기운은 큰 결단보다 '작은 신호'가 관계를 움직인다고 말합니다. 여유와 자연스러움이 당신의 강점입니다.`
-      : netScore >= -1
-      ? `에너지는 방향성을 탐색하는 중립 구간에 놓여 있습니다. ${keyCard}의 기운은 서두름보다 관찰과 기다림이 유리함을 암시합니다. 지금은 감정의 결을 다듬는 시기입니다.`
-      : netScore >= -5
-      ? `관계는 일시적 정체기에 접어들어 있습니다. ${keyCard}의 에너지는 상대와 자신 사이에 숨 쉴 공간이 필요함을 알립니다. 멀리서 바라보는 용기가 필요한 구간입니다.`
-      : `관계는 강한 정체·단절 에너지에 놓여 있습니다. ${keyCard}의 기운은 집착보다 자기 회복을 최우선으로 하라 권고합니다. 시간이 최선의 치유입니다.`
-  );
+  // ─── 리스크 (risk) ───
+  const risk = {
+    level: loveBlockLevel === 'HARD' ? '높음'
+         : loveBlockLevel === 'MEDIUM' ? '중간'
+         : netScore >= 0 ? '낮음' : '중~높음',
+    pattern: conflict.pattern,
+    controlRule: conflict.controlRule
+  };
+
+  // ─── 궁합 전용 해석 ───
+  const compatSummary = isCompat ? (
+    netScore >= 5 ? '두 사람의 에너지는 강한 공명 상태 — 자연스러운 흐름이 관계를 완성합니다'
+    : netScore >= 2 ? '서로 다르지만 보완적 — 이해의 폭이 궁합을 결정합니다'
+    : netScore >= -1 ? '탐색 구간 — 시간이 답을 알려줄 것입니다'
+    : netScore >= -5 ? '에너지가 엇갈림 — 무리한 맞춤보다 각자의 자리가 지혜입니다'
+    : '충돌·소모 구간 — 관계보다 자기 보호가 우선입니다'
+  ) : null;
+
+  // ─── 핵심 해석 (criticalInterpretation) ───
+  const criticalInterpretation = loveBlockLevel === 'HARD'
+    ? `⚠️ 현재 ${curCard} 에너지가 감지됩니다.
+지금은 관계 진입보다 자기 회복이 최우선입니다.
+${actionGuide.oneLine}`
+    : loveBlockLevel === 'MEDIUM'
+      ? `💭 ${curCard} 에너지 — 접근은 가능하나 밀어붙이면 실패합니다.
+${actionGuide.oneLine}`
+      : `${emotionFlow.overall}
+${getLoveCardFlavor(futCard, false)}
+${actionGuide.oneLine}`;
 
   return {
-    queryType: "love",
-    loveSubType: loveSubType || "",
-    trend, action, riskLevel,
+    queryType: 'love',
+    loveSubType: loveSubType || '',
+    isCompat,
+    trend: emotionFlow.overall,
+    action: actionGuide.oneLine,
+    riskLevel: risk.level,
     finalTimingText,
     totalScore,
-    cardNarrative,
-    finalOracle: interpret,
-    // ════════════════════════════════════════════════
-    // [V20.10] 연애 5계층 데이터 (Mind Layer 신설)
-    // ════════════════════════════════════════════════
+    // [V23.4] 4차원 수치 메트릭 (사장님 설계)
+    attractionScore:       calcScore(cleanCards, 'love'),
+    conflictIndex:         100 - calcScore(cleanCards, 'base'),
+    reconnectProbability:  calcScore(cleanCards, 'base'),
+    cardNarrative: cleanCards.map((c, i) => `${['과거','현재','미래'][i]}(${c}): ${getLoveCardFlavor(c, false)}`),
+    finalOracle: compatSummary || criticalInterpretation,
     layers: {
+      emotionFlow,
+      attraction,
+      conflict,
+      blockDecision,
+      actionGuide,
+      timing,
+      risk,
+      // 기존 호환성 유지 (Client 렌더러 이전 버전 지원)
       decision: {
-        // 관계 상태 + 핵심 전략
-        position: netScore >= 5 ? "확장 가능 (적극 진행)"
-                 : netScore >= 2 ? "신호 단계 (조심스러운 접근)"
-                 : netScore >= -1 ? "가능성 구간 (확정 아님)"
-                 : netScore >= -5 ? "정체 구간 (거리 필요)"
-                 : "단절 위험 (자기 보호 우선)",
-        strategy: netScore >= 5 ? "감정 표현 적극 → 관계 확장"
-                 : netScore >= 2 ? "타이밍 관찰 → 신호 시점 포착"
-                 : netScore >= -1 ? '먼저 밀지 말고 "반응 유도"'
-                 : netScore >= -5 ? "거리 두기 → 내면 회복"
-                 : "관계 차단 → 자기 보호"
+        position: blockDecision.position,
+        summary:  blockDecision.reason,
+        rules:    actionGuide.do,
+        forbidden: actionGuide.dont,
+        coreMessage: actionGuide.oneLine,
+        blockLevel: loveBlockLevel
       },
-      // 💭 Mind Layer — 상대 심리 분석 (연애 특화)
-      mind: {
-        feeling: netScore >= 5 ? "호감 명확 — 적극 표현 의지"
-               : netScore >= 2 ? "호감 있음 — 그러나 망설임"
-               : netScore >= -1 ? "호감은 있음 (확정) — 그러나 확신 부족"
-               : netScore >= -5 ? "관심 약화 — 거리감 형성"
-               : "관심 거의 없음 — 다른 곳 향함",
-        attitude: netScore >= 5 ? "관계 발전 원함"
-                : netScore >= 2 ? "관망 중 — 기다리는 태도"
-                : netScore >= -1 ? "당신의 반응을 보고 움직이려는 구조"
-                : netScore >= -5 ? "방어적 — 거리 유지"
-                : "회피 — 단절 의도",
-        coreInsight: netScore >= 5 ? "상대도 적극적으로 다가올 준비"
-                   : netScore >= 2 ? "상대는 신중하지만 가능성 열려 있음"
-                   : netScore >= -1 ? "상대는 먼저 행동하지 않습니다"
-                   : netScore >= -5 ? "상대는 잠시 거리를 둡니다"
-                   : "상대는 멀어지는 중입니다"
-      },
-      // ⚡ Action Layer — 행동 전략 + 추천 행동
       action: {
-        rules: netScore >= 5 ? [
-          "감정을 솔직하게 표현하기",
-          "관계 발전 제안하기",
-          "구체적인 약속·계획 잡기"
-        ] : netScore >= 2 ? [
-          "지금은 신호보다 타이밍 관찰이 우선",
-          "상대 반응 자연스럽게 살피기",
-          "급하지 않은 자연스러운 만남 제안"
-        ] : netScore >= -1 ? [
-          "짧은 신호 1회만 보내기",
-          "감정 표현 금지 (과도 금물)",
-          "추가 연락 금지 (반응 전까지)"
-        ] : netScore >= -5 ? [
-          "연락 빈도 줄이기",
-          "내면 정리 시간 갖기",
-          "다른 활동에 집중"
-        ] : [
-          "관계 정리 검토",
-          "자기 회복 우선",
-          "새로운 환경 모색"
-        ],
-        examples: netScore >= 2 ? [
-          "가벼운 안부 톡 1회",
-          "공통 관심사 가벼운 농담",
-          "자연스러운 과거 연결 포인트 언급"
-        ] : netScore >= -1 ? [
-          "가벼운 안부 톡 1회",
-          "짧은 농담 (감정 없음)",
-          "자연스러운 과거 연결"
-        ] : [
-          "당분간 연락 보류",
-          "본인 일에 집중",
-          "감정 정리 시간"
-        ]
+        strategy: netScore >= 2 ? '타이밍 관찰 → 신호 시점 포착' : '자연스러운 기다림',
+        rules: actionGuide.do,
+        examples: actionGuide.dont
       },
-      timing: {
-        entryPoint: netScore >= -1 ? "상대 반응이 온 순간 = 진입 타이밍"
-                  : netScore >= -5 ? "1~2주 시간 두고 재확인"
-                  : "당분간 진입 시점 없음",
-        energyPoints: [
-          `목요일 자정 (전환 에너지)`,
-          `보름달 (감정 결정 시점, 수비학 ${numNum})`
-        ],
-        flow: netScore >= 5 ? "감정 상승 → 확장 가능 구간"
-            : netScore >= 2 ? "감정 형성 → 가능성 열림"
-            : netScore >= -1 ? "감정 정체 → 선택 혼란 구간 진입"
-            : netScore >= -5 ? "감정 하강 → 거리감 구간"
-            : "감정 단절 → 회복 시기 필요"
+      mind: {
+        interest:  netScore >= 0,
+        certainty: netScore >= 3,
+        state:     loveBlockLevel === 'HARD' ? '위험' : loveBlockLevel === 'MEDIUM' ? '관망' : netScore >= 2 ? '긍정' : '탐색',
+        summary:   attraction.signal,
+        core:      blockDecision.reason
       },
-      risk: {
-        level: riskLevel,
-        cautions: netScore >= -1 ? [
-          "감정 과잉 → 관계 부담 증가",
-          "추가 연락 → 주도권 상실",
-          "비현실적 기대 → 실망 위험"
-        ] : [
-          "집착 → 관계 균열 가속",
-          "감정 호소 → 부담 가중",
-          "회복 시간 부족 → 더 큰 상처"
-        ]
-      },
-      rules: netScore >= 5 ? [
-        "감정 표현 적극 (그러나 진정성 유지)",
-        "관계 진전 제안 가능",
-        "지나친 확신은 금물"
-      ] : netScore >= -1 ? [
-        "먼저 깊어지지 말 것",
-        "상대 반응 전 절대 추가 행동 금지",
-        "한 번 던지고 기다리는 구조"
-      ] : [
-        "거리 두기 우선",
-        "추가 접근 금지",
-        "자기 회복 집중"
-      ],
-      // [V22.0] 🔥 Critical Interpretation — 연애 새 시스템 (랜덤 + flavor)
-      criticalInterpretation: buildCriticalInterpretation(cleanCards, [false, false, false], "love")
+      criticalInterpretation
     }
   };
 }
+
 
 // ══════════════════════════════════════════════════════════════════
 // ✨ 일반 운세 메트릭
@@ -2666,6 +3191,11 @@ function buildFortuneMetrics({ totalScore, cleanCards, prompt }) {
     totalScore,
     cardNarrative,
     finalOracle: interpret,
+    // [V23.4] 4차원 수치 메트릭 (사장님 설계)
+    riskScore:          calcScore(cleanCards, 'risk'),
+    opportunityWindow:  calcScore(cleanCards, 'base'),
+    actionType: calcScore(cleanCards, 'risk') > 70 ? 'wait'
+              : calcScore(cleanCards, 'base') > 70 ? 'move' : 'observe',
     // [V22.4] 운세 5계층 데이터 (사장님 안 적용)
     layers: {
       decision: {
@@ -3281,7 +3811,38 @@ export default {
           metrics.stockIntent = stockIntent;  // 클라이언트가 알 수 있도록
         }
         else if (queryType === "love") {
-          metrics = buildLoveMetrics({ totalScore, cleanCards, prompt, loveSubType });
+          // [V23.2] 방법 3 — 충돌 감지 후 분기 (사장님 설계 ⭐⭐⭐)
+          //   문제: 궁합 버튼 + "5월 나의 연애운은?" 질문 → 궁합 템플릿 출력 모순
+          //   해결: hasTargetPerson(prompt)으로 실제 의도 감지 후 자동 교정
+          //
+          //   hasTargetPerson 보완 버전 (경계선 케이스 처리):
+          //   - "그를 좋아해" (그 단독) → fortune (오판 차단)
+          //   - "남자를 만났는데" (맥락 없음) → fortune (오판 차단)
+          //   - "썸 타는 남자랑 잘 맞나요" → compatibility ✅
+          function hasTargetPerson(p) {
+            const targetWords  = ['그 사람','상대','그녀','이 사람','누구','썸'];
+            const genderWords  = ['남자','여자','남친','여친','오빠','언니','형','누나','그이'];
+            const contextWords = ['궁합','맞을까','어울','맞나','관계','우리','같이','함께'];
+
+            const hasTarget  = targetWords.some(k => p.includes(k));
+            const hasGender  = genderWords.some(k => p.includes(k));
+            const hasContext = contextWords.some(k => p.includes(k));
+
+            // "그" 단독 → 약한 신호 → 경계선 차단
+            const hasWeakOnly = p.includes('그') && !hasTarget && !hasContext;
+            if (hasWeakOnly) return false;
+
+            return hasTarget || (hasGender && hasContext);
+          }
+
+          // 모드 자동 교정: 버튼(loveSubType) vs 질문 의도 충돌 해결
+          let finalLoveSubType = loveSubType;
+          if (loveSubType === 'compatibility' && !hasTargetPerson(prompt)) {
+            // 궁합 버튼 눌렀지만 질문에 대상이 없음 → 개인 연애운으로 교정
+            finalLoveSubType = '';  // 일반 연애운 처리
+          }
+
+          metrics = buildLoveMetrics({ totalScore, cleanCards, prompt, loveSubType: finalLoveSubType });
         }
         else {
           metrics = buildFortuneMetrics({ totalScore, cleanCards, prompt });
@@ -3292,10 +3853,20 @@ export default {
           metrics.synergies = synergies.map(s => ({ tag: s.tag, bonus: s.bonus, cards: s.cards }));
           metrics.reversedFlags = reversedFlags;
           // [V21.1] 종목명 주입 — Client에서 이모지 → 종목명 자동 치환에 사용
-          //   AI가 가끔 "📈에 대한 유저님의~" 출력 시 클라이언트가 보정
           const _subj = (queryType === "stock" || queryType === "crypto" || queryType === "realestate")
             ? extractSubject(prompt, queryType) : '';
-          if (_subj) metrics.subjectName = _subj;
+          // [Fix 4] Subject 방어 — 이모지/null/빈값 차단 (사장님 확정)
+          //   extractSubject가 실패하거나 이모지 반환 시 "해당 자산"으로 폴백
+          //   이중 방어: Worker(1차) + Client(2차)
+          const _safeSubj = (_subj && !_subj.match(/[\u{1F300}-\u{1F9FF}\u{2600}-\u{27BF}]/u) && _subj.length >= 2)
+            ? _subj
+            : '';
+          if (_safeSubj) {
+            metrics.subjectName = _safeSubj;
+          } else if (queryType === "stock" || queryType === "crypto") {
+            // 추출 실패 시 "해당 자산" 폴백 (사장님 안)
+            metrics.subjectName = '해당 자산';
+          }
         }
 
         // financeInject — 도메인별 분기
@@ -3340,7 +3911,7 @@ export default {
             : '';
 
           const subjectDirective = subjectName
-            ? `\n🎯 [종목명 강제 언급 — 매우 중요]\n"${subjectName}"이 본 점사의 대상이다.\n\n✅ 절대 규칙:\n  1. "과거" 단락 첫 문장에 반드시 "${subjectName}"을 명시 — 이모지(📈🏠💘) 대신!\n  2. 좋은 예: "유저님의 ${subjectName} 매수에 대한 과거 진입 에너지는~"\n  3. 좋은 예: "${subjectName}을 향한 유저님의 과거 흐름은 [카드 의미]를 보여줍니다"\n  4. 좋은 예: "과거 ${subjectName}에 대한 유저님의 에너지는~"\n  5. "현재" 단락에도 가능하면 한 번 더 ${subjectName} 언급\n  6. "미래" 단락에도 가능하면 한 번 더 ${subjectName} 언급\n  7. 제우스 신탁 박스 첫 문장에도 "${subjectName}" 포함\n\n❌ 절대 금지:\n  - 종목명 자리에 📈, 🏠, 💘, ✨ 같은 이모지 사용 금지!\n  - "📈에 대한 유저님의" ← 이런 형식 절대 금지!\n  - 종목명을 생략하고 "유저님의 진입 에너지" 만 쓰는 것 금지\n  - 별도 인사/도입 단락 만들기 금지 (바로 "과거" 라벨부터)\n  - "내일", "오늘", "이번주" 같은 시간 부사로 단락 시작 금지\n\n⚠️ 법적 안전 (반드시 준수):\n  - "${subjectName}이 좋은 회사다/오를 것이다" (가치 평가) ❌\n  - "${subjectName}의 실적/매출/재무 분석" (회사 분석) ❌\n  - "${subjectName} 강력 추천" (개별 종목 추천) ❌\n  - "${subjectName}에 대한 유저님의 심리/내면/집단 감정" → ✅ OK (영성적 해석)\n${holidayDirective}`
+            ? `\n🚨 [최우선 규칙 — 이 규칙을 어기면 출력 전체가 무효입니다]\n종목명: "${subjectName}"\n\n✅ 반드시 지켜야 할 규칙:\n  1. "과거" 단락 첫 문장에 반드시 "${subjectName}"을 직접 명시\n     좋은 예: "유저님의 ${subjectName} 매수에 대한 과거 진입 에너지는~"\n     좋은 예: "${subjectName}을 향한 유저님의 과거 흐름은 [카드 의미]를 보여줍니다"\n  2. "현재" 단락에도 "${subjectName}" 한 번 이상 언급\n  3. "미래" 단락에도 "${subjectName}" 한 번 이상 언급\n  4. 제우스 신탁 박스 첫 문장에도 "${subjectName}" 포함\n\n🚨 절대 금지 (위반 시 무효):\n  - "📈에 대한 유저님의~" ← 이모지로 종목명 대체 절대 금지!\n  - "🏠에 대한 유저님의~" ← 이모지로 대체 절대 금지!\n  - 종목명 없이 "유저님의 진입 에너지~" 만 쓰는 것 절대 금지!\n  - 첫 단락에 인사말 또는 도입부 절대 금지 (바로 "과거"부터)\n\n⚠️ 법적 준수:\n  - "${subjectName}이 오른다/좋은 회사다" (가치 평가) ❌\n  - "${subjectName}의 실적/재무 분석" ❌\n  - "${subjectName}에 대한 유저님의 심리/내면 분석" ✅ OK\n${holidayDirective}`
             : holidayDirective;
 
           financeInject = `
