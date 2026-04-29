@@ -2287,11 +2287,20 @@ function buildStockMetrics({ totalScore, riskScore, cleanCards, isLeverage, quer
           };
 
     // 🔥 핵심: 여기서 return — 다른 Decision/Execution/Timing 로직 완전 차단
+    // [V23.7 P0-1] executionMode 추가 — 문자열 감지 취약점 제거
+    //   Client가 position 텍스트 대신 이 값으로 판단
+    const _execMode = _blockLevel === 'HARD'   ? 'BLOCKED'
+                    : _blockLevel === 'BOTTOM'  ? 'WATCH'
+                    : _blockLevel === 'MEDIUM'  ? 'WATCH'
+                    : _blockLevel === 'SOFT'    ? 'WATCH'
+                    : 'BLOCKED'; // BLOCK 경로면 무조건 BLOCKED/WATCH
     return {
       queryType,
+      executionMode: _execMode,
       trend: finalTrend,
       action: finalAction,
       riskLevel: finalRisk,
+      riskLevelScore: calcScore(cleanCards, 'risk'),
       entryStrategy, exitStrategy,
       finalTimingText: _blockDecision.timingNote || '조건 충족 시 진입',
       entryTimingText: '조건 충족 시',
@@ -2358,11 +2367,23 @@ function buildStockMetrics({ totalScore, riskScore, cleanCards, isLeverage, quer
     // → 새 시스템 그대로 사용하되 도메인을 stock으로 유지하여 일반 메시지 사용
   }
 
+  // [V23.7 P0-1] executionMode — 일반 경로 (BLOCK 없음)
+  //   position 텍스트 기반 감지 취약점 제거 → 명시적 enum 전달
+  //   isNoEntry: V22.7 positionAdjust=noEntry 케이스
+  const _finalExecMode = (() => {
+    const pos = decisionPosition || '';
+    if (pos.includes('관망') || pos.includes('Wait') || pos.includes('금지')) return 'WATCH';
+    if (pos.includes('매도') || pos.includes('Exit') || pos.includes('Sell')) return 'ACTIVE';
+    return 'ACTIVE';
+  })();
+
   return {
     queryType,
+    executionMode: _finalExecMode,
     trend: finalTrend,
     action: finalAction,
     riskLevel: finalRisk,
+    riskLevelScore: calcScore(cleanCards, 'risk'),
     entryStrategy, exitStrategy,
     finalTimingText: timingDetail,
     entryTimingText: entryTimingText || '-',
@@ -2696,6 +2717,8 @@ function buildRealEstateMetrics({ totalScore, riskScore, cleanCards, intent, pro
 
   return {
     queryType: "realestate",
+    executionMode: netScore >= 0 ? 'ACTIVE' : 'WATCH',
+    riskLevelScore: calcScore(cleanCards, 'risk'),
     intent,
     type: `realestate_${intent === "sell" ? "sell" : "buy"}`,
     trend, action, riskLevel,
@@ -2769,13 +2792,21 @@ function buildRealEstateMetrics({ totalScore, riskScore, cleanCards, intent, pro
            : netScore >= -3 ? "보통 — 저점 급매 위주 탐색"
            : "어려움 — 시장 안정 대기 권장")
       },
-      execution: {
-        weight: intent === "sell" ? `호가 전략: ${priceStrategy}` : `매수 전략: ${strategy}`,
-        stopLoss: caution || "현 호가 유지 가능",
-        target: timing2 || "시즌 내 거래 가능",
-        // [V20.10] 체크리스트형 행동 지침 (NEW)
-        actionItems: intent === "sell" ? (
-          netScore >= 2 ? [
+      // [V23.7 P0-2] 미래 위험 카드 복합 조건
+      //   단일 조건(Tower만) → 과잉 반응 (Sun+World+Tower totalScore=10 케이스)
+      //   복합 조건: 미래 위험 카드 AND totalScore < 3
+      //   데이터 근거: totalScore >= 3이면 과거/현재가 충분히 긍정적
+      //               → Tower 1장이 전체 흐름 뒤집기 불가
+      ...(() => {
+        const FUTURE_DANGER_CARDS = new Set(['The Tower','Ten of Swords','Nine of Swords','The Moon']);
+        const futureCard2    = cleanCards[2] || '';
+        const isFutureDanger = FUTURE_DANGER_CARDS.has(futureCard2) && netScore < 3;
+        const actionItemsRE  = intent === "sell" ? (
+          isFutureDanger ? [
+            "희망가보다 2~3% 낮은 전략적 매도 검토",
+            "시장 상승 기대 금지 — 빠른 거래 성사 우선",
+            "장기 보유 리스크 高 — 이 시즌 내 반드시 정리"
+          ] : netScore >= 2 ? [
             "희망가 유지 + 시즌 활용",
             "초기 반응 양호하면 호가 고수",
             "성수기 진입 적기"
@@ -2789,21 +2820,26 @@ function buildRealEstateMetrics({ totalScore, riskScore, cleanCards, intent, pro
             "다음 성수기 대기 vs 즉시 정리 결단"
           ]
         ) : (
-          netScore >= 2 ? [
-            "급매물 적극 탐색",
-            "시즌 진입 적기",
-            "5~10% 추가 협상 시도"
+          isFutureDanger ? [
+            "신규 매수 대기 — 미래 충격 에너지 감지",
+            "하락 신호 확인 후 저점 급매 선별 진입",
+            "충분한 협상 여지 확보 후 결정"
+          ] : netScore >= 2 ? [
+            "급매물 적극 탐색", "시즌 진입 적기", "5~10% 추가 협상 시도"
           ] : netScore >= -3 ? [
-            "급매 위주 탐색",
-            "조급한 결정 회피",
-            "다음 성수기 대기 권고"
+            "급매 위주 탐색", "조급한 결정 회피", "다음 성수기 대기 권고"
           ] : [
-            "신규 매수 보류",
-            "시장 안정 신호 대기",
-            "현금 유동성 확보 우선"
+            "신규 매수 보류", "시장 안정 신호 대기", "현금 유동성 확보 우선"
           ]
-        )
-      },
+        );
+        return { execution: {
+          weight:   intent === "sell" ? `호가 전략: ${priceStrategy}` : `매수 전략: ${strategy}`,
+          stopLoss: caution || "현 호가 유지 가능",
+          target:   timing2 || "시즌 내 거래 가능",
+          actionItems: actionItemsRE,
+          isFutureDanger
+        }};
+      })(),
       // [V20.10] 🎯 Contract Layer — 계약 성사 구조 (NEW)
       contract: {
         expectedWeeks: netScore >= 5 ? "4~6주"
@@ -3086,6 +3122,9 @@ ${actionGuide.oneLine}`;
 
   return {
     queryType: 'love',
+    executionMode: loveBlockLevel === 'HARD' ? 'BLOCKED'
+                 : loveBlockLevel !== 'NONE' ? 'WATCH' : 'ACTIVE',
+    riskLevelScore: calcScore(cleanCards, 'risk'),
     loveSubType: loveSubType || '',
     isCompat,
     trend: emotionFlow.overall,
@@ -3186,6 +3225,8 @@ function buildFortuneMetrics({ totalScore, cleanCards, prompt }) {
 
   return {
     queryType: "life",
+    executionMode: netScore >= 0 ? 'ACTIVE' : 'WATCH',
+    riskLevelScore: calcScore(cleanCards, 'risk'),
     trend, action, riskLevel,
     finalTimingText,
     totalScore,
