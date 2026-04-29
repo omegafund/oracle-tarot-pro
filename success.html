@@ -13,16 +13,19 @@
         .icon { font-size:3rem; margin-bottom:14px; }
         h2  { font-size:1.2rem; font-weight:900;
               color:#F1C40F; margin-bottom:14px; letter-spacing:0.06em; }
-        p   { font-size:0.88rem; color:rgba(255,255,255,0.65);
+        p   { font-size:0.88rem; color:rgba(255,255,255,0.7);
               line-height:1.7; margin-bottom:24px; }
         .btn { display:inline-block; padding:16px 36px;
                background:linear-gradient(135deg,#D4AF37,#F1C40F);
                color:#000; border-radius:30px; font-weight:900;
                font-size:1rem; cursor:pointer; border:none;
                box-shadow:0 4px 18px rgba(212,175,55,0.5);
-               letter-spacing:0.04em; }
+               letter-spacing:0.04em;
+               text-decoration:none; }
         .hint { margin-top:20px; font-size:0.74rem;
                 color:rgba(255,255,255,0.4); line-height:1.6; }
+        .stat { font-size:0.74rem; color:rgba(255,255,255,0.5);
+                margin-top:14px; }
     </style>
 </head>
 <body>
@@ -30,10 +33,11 @@
     <div class="icon">🔓</div>
     <h2>결제 완료!</h2>
     <p>봉인이 해제되었습니다.<br>
-       앱으로 돌아가 신탁 결과를 확인하세요.</p>
-    <button class="btn" onclick="goBackToApp()">
+       아래 버튼을 눌러 신탁 결과를 확인하세요.</p>
+    <a id="goBtn" class="btn" href="javascript:void(0)" onclick="goBackToApp(event)">
         ← 신탁 결과 보기
-    </button>
+    </a>
+    <div id="stat" class="stat"></div>
     <div class="hint">
         버튼이 작동하지 않으면<br>
         뒤로가기(←) 또는 홈 화면의 ZEUS Oracle 앱을 다시 열어주세요
@@ -53,7 +57,10 @@
     try {
         localStorage.setItem('oracleSessionToken', token);
         localStorage.setItem('oraclePaidAt', String(now));
-    } catch(e) {}
+        document.getElementById('stat').textContent = '✅ 결제 정보 저장 완료';
+    } catch(e) {
+        document.getElementById('stat').textContent = '⚠️ 저장 실패: ' + e.message;
+    }
 
     // Worker 검증 (선택적)
     if (paymentKey) {
@@ -73,19 +80,18 @@
     }
 })();
 
-function goBackToApp() {
+function goBackToApp(e) {
+    if (e && e.preventDefault) e.preventDefault();
     // 1순위: window.close() (Custom Tab일 경우 닫고 PWA로 복귀)
-    try { window.close(); } catch(e) {}
-
+    try { window.close(); } catch(err) {}
     // 2순위: history.back()
     setTimeout(() => {
-        try { window.history.back(); } catch(e) {}
+        try { window.history.back(); } catch(err) {}
     }, 200);
-
     // 3순위: 같은 origin의 index.html로 직접 이동
     setTimeout(() => {
         const base = window.location.href.replace(/\/success\.html.*$/, '');
-        window.location.replace(base + '/index.html?paid=ok');
+        window.location.href = base + '/index.html?paid=ok';
     }, 600);
 }
 </script>
