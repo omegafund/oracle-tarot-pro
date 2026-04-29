@@ -2125,6 +2125,20 @@ function setSituation(btn, type, domain) {
                     if (holdingMsg)  holdingMsg.style.display  = 'none';
                     if (finalBtn)   { finalBtn.style.display = 'inline-block'; finalBtn.style.marginTop = '25px'; }
                     if (shareActions) shareActions.style.display = 'flex';
+
+                } else if (contentEl && selectedCards.length === 3) {
+                    // [V23.7 Fix2] cachedFullText 없음 — 스트림 재호출
+                    //   원인: 스트림 완료 전 결제 버튼 클릭 → pendingOracle에 텍스트 미저장
+                    //   해결: 카드는 있으니 AI 재호출로 결과 생성
+                    const question = qInput?.value || '신탁을 보여주세요';
+                    contentEl.innerHTML = `
+                        <div style="text-align:center; padding:32px 0; color:rgba(212,175,55,0.8);">
+                            <div style="font-size:1.5rem; margin-bottom:12px;">⚡</div>
+                            <div style="font-size:0.88rem; letter-spacing:0.06em;">신탁의 실타래를 다시 엮는 중...</div>
+                        </div>`;
+                    // 재호출
+                    const streamPromise = startStreamFetch(question, selectedCards);
+                    renderStream(streamPromise, selectedCards);
                 }
 
                 // 한 번만 복원 — 성공 후 삭제
@@ -7177,14 +7191,17 @@ function startTossPayment(planKey, method) {
     const paymentMethod = method || '카드';
 
     // 4. Toss 결제 요청
-    const baseUrl = window.location.origin + window.location.pathname.replace(/\/[^/]*$/, '');
+    // [V23.7] successUrl — 현재 페이지와 같은 디렉토리의 success.html
+    //   GitHub Pages: /oracle-tarot-pro/success.html
+    //   로컬: /success.html
+    const currentDir = window.location.href.replace(/\/[^/]*(\?.*)?$/, '');
     toss.requestPayment(paymentMethod, {
         amount:       plan.amount,
         orderId:      orderId,
         orderName:    `제우스 오라클 ${plan.label}`,
         customerName: window._oracleUserName || '유저',
-        successUrl:   baseUrl + '/success.html',
-        failUrl:      baseUrl + '/fail.html'
+        successUrl:   currentDir + '/success.html',
+        failUrl:      currentDir + '/fail.html'
     }).catch(err => {
         // 사용자가 결제 창을 닫았을 때 등
         if (err.code !== 'USER_CANCEL') {
