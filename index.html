@@ -6014,12 +6014,17 @@ window.addEventListener('focus', () => {
 //   결제 버튼 클릭 후 30초간 2초마다 체크
 let _paymentPollTimer = null;
 function _startPaymentPolling() {
+    // 중복 시작 방지 — 기존 타이머 정리
+    if (_paymentPollTimer) {
+        clearInterval(_paymentPollTimer);
+        _paymentPollTimer = null;
+    }
     let count = 0;
     _paymentPollTimer = setInterval(() => {
         count++;
-        _checkAndRestoreAfterPayment();
-        // 복원되거나 30초 지나면 중단
-        if (isPaidUser || count > 15) {
+        try { _checkAndRestoreAfterPayment(); } catch(e) {}
+        // 복원되거나 60초 지나면 중단 (Toss redirect 시간 고려해서 길게)
+        if (isPaidUser || count > 30) {
             clearInterval(_paymentPollTimer);
             _paymentPollTimer = null;
         }
@@ -7304,19 +7309,22 @@ function startTossPayment(planKey, method) {
     const paymentMethod = method || '카드';
 
     // 4. Toss 결제 요청
-    // [V23.7] successUrl — 현재 페이지와 같은 디렉토리의 success.html
-    const currentDir = window.location.href.replace(/\/[^/]*(\?.*)?$/, '');
+    //   [V23.7] 폴링은 결제창 열기 전에 미리 시작 (Toss redirect 후 .then() 안 옴)
+    _startPaymentPolling();
+
+    // [V23.7] successUrl — 현재 origin + 명시적 절대경로
+    //   PWA에서도 정상 동작하도록 origin + 디렉토리 명시
+    const pathDir = window.location.pathname.replace(/\/[^/]*$/, '') || '';
+    const baseUrl = window.location.origin + pathDir;
     toss.requestPayment(paymentMethod, {
         amount:       plan.amount,
         orderId:      orderId,
         orderName:    `제우스 오라클 ${plan.label}`,
         customerName: window._oracleUserName || '유저',
-        successUrl:   currentDir + '/success.html',
-        failUrl:      currentDir + '/fail.html'
-    }).then(() => {
-        // 결제창 열림 → 폴링 시작 (PWA 복귀 감지)
-        _startPaymentPolling();
+        successUrl:   baseUrl + '/success.html',
+        failUrl:      baseUrl + '/fail.html'
     }).catch(err => {
+        // 사용자가 결제 창을 닫았을 때 등
         if (err.code !== 'USER_CANCEL') {
             alert('결제 요청에 실패했습니다: ' + (err.message || err.code));
         }

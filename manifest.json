@@ -1,16 +1,32 @@
 {
-  "name": "ORACLE TAROT PRO",
-  "short_name": "TAROT PRO",
-  "start_url": "index.html",
-  "display": "standalone",
-  "background_color": "#000000",
-  "theme-color": "#D4AF37",
+  "name": "ZEUS Oracle — 운명의 신탁",
+  "short_name": "ZEUS Oracle",
+  "description": "AI 타로 투자 신탁 — 주식·부동산·연애·운세",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "minimal-ui",
+  "orientation": "portrait",
+  "background_color": "#0A0A14",
+  "theme_color": "#D4AF37",
+  "lang": "ko",
   "icons": [
     {
-      "src": "images/icon/icon.png",
+      "src": "https://omegafund.github.io/oracle-tarot-pro/images/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "https://omegafund.github.io/oracle-tarot-pro/images/icon-512.png",
       "sizes": "512x512",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "any"
+    },
+    {
+      "src": "https://omegafund.github.io/oracle-tarot-pro/images/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
     }
   ]
 }
