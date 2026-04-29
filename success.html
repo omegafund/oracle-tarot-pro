@@ -5,68 +5,89 @@
     <title>결제 완료 — ZEUS ORACLE</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <style>
-        body { background:#0A0A14; color:#D4AF37; font-family:'Inter',sans-serif;
+        * { box-sizing:border-box; margin:0; padding:0; }
+        body { background:#0A0A14; color:#D4AF37;
+               font-family:-apple-system,'Inter',sans-serif;
                display:flex; align-items:center; justify-content:center;
-               min-height:100vh; margin:0; text-align:center; }
-        .wrap { padding:32px 20px; }
-        .icon { font-size:3rem; margin-bottom:16px; }
-        h2 { font-size:1.2rem; font-weight:800; letter-spacing:0.1em;
-             margin-bottom:8px; color:#F1C40F; }
-        p  { font-size:0.85rem; color:rgba(255,255,255,0.6); margin-bottom:24px; }
-        .spinner { width:32px; height:32px; border:3px solid rgba(212,175,55,0.2);
-                   border-top-color:#D4AF37; border-radius:50%;
-                   animation:spin 0.8s linear infinite; margin:0 auto 16px; }
-        @keyframes spin { to { transform:rotate(360deg); } }
+               min-height:100vh; text-align:center; padding:20px; }
+        .icon { font-size:3rem; margin-bottom:14px; }
+        h2  { font-size:1.2rem; font-weight:900;
+              color:#F1C40F; margin-bottom:14px; letter-spacing:0.06em; }
+        p   { font-size:0.88rem; color:rgba(255,255,255,0.65);
+              line-height:1.7; margin-bottom:24px; }
+        .btn { display:inline-block; padding:16px 36px;
+               background:linear-gradient(135deg,#D4AF37,#F1C40F);
+               color:#000; border-radius:30px; font-weight:900;
+               font-size:1rem; cursor:pointer; border:none;
+               box-shadow:0 4px 18px rgba(212,175,55,0.5);
+               letter-spacing:0.04em; }
+        .hint { margin-top:20px; font-size:0.74rem;
+                color:rgba(255,255,255,0.4); line-height:1.6; }
     </style>
 </head>
 <body>
-<div class="wrap">
-    <div class="spinner"></div>
-    <div class="icon">⚡</div>
-    <h2>결제 완료 — 봉인 해제 중</h2>
-    <p>잠시 후 신탁 결과로 이동합니다…</p>
+<div>
+    <div class="icon">🔓</div>
+    <h2>결제 완료!</h2>
+    <p>봉인이 해제되었습니다.<br>
+       앱으로 돌아가 신탁 결과를 확인하세요.</p>
+    <button class="btn" onclick="goBackToApp()">
+        ← 신탁 결과 보기
+    </button>
+    <div class="hint">
+        버튼이 작동하지 않으면<br>
+        뒤로가기(←) 또는 홈 화면의 ZEUS Oracle 앱을 다시 열어주세요
+    </div>
 </div>
 <script>
-// [V23.7] Toss 결제 완료 → index.html?paid=ok&paymentKey=...로 리다이렉트
 (function() {
-    const params = new URLSearchParams(window.location.search);
+    const params     = new URLSearchParams(window.location.search);
     const paymentKey = params.get('paymentKey') || '';
     const orderId    = params.get('orderId')    || '';
-    const amount     = params.get('amount')     || '';
+    const amount     = Number(params.get('amount')) || 0;
 
-    // Worker에 결제 검증 요청
-    const WORKER_URL = 'https://tarot-api.omegafund01.workers.dev';
+    // [핵심] 결제 토큰 즉시 저장 (PWA가 visibilitychange/load 시 감지)
+    const now   = Date.now();
+    const token = paymentKey ? ('PAID_' + paymentKey.slice(0, 16) + '_' + now)
+                              : ('PAID_' + now);
+    try {
+        localStorage.setItem('oracleSessionToken', token);
+        localStorage.setItem('oraclePaidAt', String(now));
+    } catch(e) {}
 
-    fetch(WORKER_URL + '/confirm-payment', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ paymentKey, orderId, amount })
-    })
-    .then(r => r.json())
-    .then(data => {
-        if (data.success || data.ok) {
-            // 결제 검증 성공 → 토큰 저장 후 결과 화면으로
-            if (data.token || paymentKey) {
-                localStorage.setItem('oracleSessionToken', data.token || 'PAID_' + Date.now());
+    // Worker 검증 (선택적)
+    if (paymentKey) {
+        fetch('https://tarot-api.omegafund01.workers.dev/verify-toss', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ paymentKey, orderId, amount })
+        })
+        .then(r => r.json())
+        .then(d => {
+            if (d.token) {
+                localStorage.setItem('oracleSessionToken', d.token);
+                localStorage.setItem('oraclePaidAt', String(Date.now()));
             }
-        }
-    })
-    .catch(() => {
-        // 검증 실패해도 토큰은 저장 (결제 완료 플래그)
-        localStorage.setItem('oracleSessionToken', 'PAID_' + Date.now());
-    })
-    .finally(() => {
-        // 항상 결과 화면으로 이동 (paid=ok 파라미터 전달)
-        const base = window.location.pathname.replace('/success.html', '') || '/';
-        window.location.replace(base + '/index.html?paid=ok');
-    });
-
-    // 네트워크 지연 방어 — 3초 후 강제 이동
-    setTimeout(() => {
-        const base = window.location.pathname.replace('/success.html', '') || '/';
-        window.location.replace(base + '/index.html?paid=ok');
-    }, 3000);
+        })
+        .catch(() => {});
+    }
 })();
+
+function goBackToApp() {
+    // 1순위: window.close() (Custom Tab일 경우 닫고 PWA로 복귀)
+    try { window.close(); } catch(e) {}
+
+    // 2순위: history.back()
+    setTimeout(() => {
+        try { window.history.back(); } catch(e) {}
+    }, 200);
+
+    // 3순위: 같은 origin의 index.html로 직접 이동
+    setTimeout(() => {
+        const base = window.location.href.replace(/\/success\.html.*$/, '');
+        window.location.replace(base + '/index.html?paid=ok');
+    }, 600);
+}
 </script>
 </body>
 </html>
