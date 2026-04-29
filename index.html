@@ -2098,47 +2098,51 @@ function setSituation(btn, type, domain) {
                         </div>`).join('');
                 }
                 const rv = document.getElementById('result-view');
-                if (rv) {
-                    rv.style.display = 'flex';
-                    rv.style.opacity = '1';
-                }
+                if (rv) { rv.style.display = 'flex'; rv.style.opacity = '1'; }
+
+                // [V23.7 Fix] holding-message 반드시 숨김 (결제 완료 = 항상 숨겨야 함)
+                const holdingMsg   = document.getElementById('holding-message');
+                const loadingEl    = document.getElementById('ai-loading-text');
+                const progressWrap = document.getElementById('oracle-progress-wrap');
+                const wisdomEl     = document.getElementById('oracle-wisdom-note');
+                const finalBtn     = document.getElementById('final-reset-btn');
+                const shareActions = document.getElementById('share-actions');
+                if (holdingMsg)   holdingMsg.style.display   = 'none';
+                if (loadingEl)    loadingEl.style.display    = 'none';
+                if (progressWrap) progressWrap.style.display = 'none';
+                if (wisdomEl)     wisdomEl.style.display     = 'none';
 
                 // 결과 텍스트 복원
                 const contentEl = document.getElementById('oracle-content');
                 if (contentEl && cachedFullText) {
-                    // [V19.3 버그수정] 연애는 finance 아님
                     const isFinance = (CURRENT_MODE === 'stock' || CURRENT_MODE === 'crypto' || CURRENT_MODE === 'realestate');
                     const seedInput = qInput?.value || '';
                     const investData = isFinance ? buildInvestmentData(selectedCards, seedInput) : null;
                     contentEl.innerHTML = renderText(cachedFullText, selectedCards, investData, true, isFinance);
-
-                    // 로딩/대기문구 숨김 + 공유/저장 + 새 신탁 버튼 노출
-                    const loadingEl   = document.getElementById('ai-loading-text');
-                    const progressWrap = document.getElementById('oracle-progress-wrap');
-                    const holdingMsg  = document.getElementById('holding-message');
-                    const finalBtn    = document.getElementById('final-reset-btn');
-                    const shareActions = document.getElementById('share-actions');
-                    const wisdomEl    = document.getElementById('oracle-wisdom-note');
-                    if (loadingEl)   loadingEl.style.display   = 'none';
-                    if (progressWrap) progressWrap.style.display = 'none';
-                    if (wisdomEl)   wisdomEl.style.display   = 'none';
-                    if (holdingMsg)  holdingMsg.style.display  = 'none';
-                    if (finalBtn)   { finalBtn.style.display = 'inline-block'; finalBtn.style.marginTop = '25px'; }
+                    if (finalBtn)    { finalBtn.style.display = 'inline-block'; finalBtn.style.marginTop = '25px'; }
                     if (shareActions) shareActions.style.display = 'flex';
 
                 } else if (contentEl && selectedCards.length === 3) {
                     // [V23.7 Fix2] cachedFullText 없음 — 스트림 재호출
-                    //   원인: 스트림 완료 전 결제 버튼 클릭 → pendingOracle에 텍스트 미저장
-                    //   해결: 카드는 있으니 AI 재호출로 결과 생성
                     const question = qInput?.value || '신탁을 보여주세요';
                     contentEl.innerHTML = `
                         <div style="text-align:center; padding:32px 0; color:rgba(212,175,55,0.8);">
                             <div style="font-size:1.5rem; margin-bottom:12px;">⚡</div>
                             <div style="font-size:0.88rem; letter-spacing:0.06em;">신탁의 실타래를 다시 엮는 중...</div>
                         </div>`;
-                    // 재호출
                     const streamPromise = startStreamFetch(question, selectedCards);
                     renderStream(streamPromise, selectedCards);
+                } else if (contentEl) {
+                    // [V23.7 Fix3] 카드도 없는 최악 케이스 — 안내 메시지
+                    contentEl.innerHTML = `
+                        <div style="padding:24px; text-align:center; color:rgba(255,255,255,0.7);">
+                            <div style="font-size:1.5rem; margin-bottom:12px;">🔮</div>
+                            <div style="font-size:0.88rem; line-height:1.7;">
+                                결제가 완료되었습니다.<br>
+                                새로운 질문을 입력하여 PRO 신탁을 받으세요.
+                            </div>
+                        </div>`;
+                    if (finalBtn) { finalBtn.style.display = 'inline-block'; finalBtn.style.marginTop = '25px'; }
                 }
 
                 // 한 번만 복원 — 성공 후 삭제
@@ -5737,7 +5741,7 @@ async function shareResult() {
 // ════════════════════════════════════════════════════════════════
 const DAILY_CARD_KEY   = 'zeusDailyCardV1';    // { date:"2025-xx-xx", cardIndex:N }
 const HISTORY_KEY      = 'zeusHistoryV1';      // [{ date, question, queryType, trend, cards }]
-const HISTORY_MAX      = 3;
+const HISTORY_MAX      = 2;
 
 // 오늘 날짜 (YYYY-MM-DD)
 function _todayStr() {
@@ -5835,42 +5839,24 @@ function renderDailyAndHistory() {
                 return `
                 <div class="zeus-history-item" data-trend="${trendEsc}"
                      onclick="zeusToggleHistoryItem(this)"
-                     style="cursor:pointer; border-radius:12px;
+                     style="cursor:pointer; border-radius:8px;
+                            display:flex; align-items:center; gap:8px;
+                            padding:8px 12px;
                             background:rgba(255,255,255,0.03);
                             border:1px solid rgba(212,175,55,0.12);
-                            overflow:hidden;
-                            transition:all 0.25s ease;">
-                    <!-- 상단: 도메인 뱃지 + 날짜 -->
-                    <div style="display:flex; align-items:center; justify-content:space-between;
-                                padding:9px 12px 7px;
-                                border-bottom:1px solid rgba(255,255,255,0.05);">
-                        <div style="display:flex; align-items:center; gap:6px;">
-                            <span style="font-size:0.68rem; font-weight:900;
-                                         letter-spacing:0.12em; color:${domainColor};">
-                                ${emoji} ${domainLabel}
-                            </span>
-                        </div>
-                        <div style="font-size:0.62rem; color:rgba(255,255,255,0.35);
-                                    font-weight:600; letter-spacing:0.04em;">
-                            ${dateTxt}
-                        </div>
+                            transition:all 0.2s ease;">
+                    <span style="font-size:0.68rem; font-weight:900;
+                                 color:${domainColor}; flex-shrink:0;">${emoji}</span>
+                    <div style="flex:1; font-size:0.76rem; color:rgba(255,255,255,0.7);
+                                overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
+                        ${qShort}${qShort.length >= 22 ? '…' : ''}
                     </div>
-                    <!-- 하단: 질문 + 블러 결과 -->
-                    <div style="padding:9px 12px 10px;
-                                display:flex; align-items:center; justify-content:space-between; gap:10px;">
-                        <div style="font-size:0.78rem; color:rgba(255,255,255,0.75);
-                                    flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
-                                    line-height:1.4;">
-                            ${qShort}${qShort.length >= 22 ? '…' : ''}
-                        </div>
-                        <!-- 블러 처리된 결과 -->
-                        <div class="zeus-history-veil"
-                             style="font-size:0.7rem; color:rgba(212,175,55,0.7);
-                                    font-weight:800; white-space:nowrap;
-                                    letter-spacing:0.04em; flex-shrink:0;
-                                    filter:blur(0px); transition:filter 0.3s ease;">
-                            ✦ 보기
-                        </div>
+                    <div style="font-size:0.62rem; color:rgba(255,255,255,0.3);
+                                flex-shrink:0;">${dateTxt}</div>
+                    <div class="zeus-history-veil"
+                         style="font-size:0.65rem; color:rgba(212,175,55,0.6);
+                                font-weight:800; flex-shrink:0; white-space:nowrap;">
+                        ✦
                     </div>
                 </div>`;
             }).join('');
@@ -5884,32 +5870,20 @@ function renderDailyAndHistory() {
 function zeusToggleHistoryItem(el) {
     const veil = el.querySelector('.zeus-history-veil');
     if (!veil) return;
-    const isVeiled = veil.textContent.trim() === '✦ 보기';
-
+    const isVeiled = veil.textContent.trim() === '✦';
     if (isVeiled) {
-        // 결과 노출 — 블러 해제
-        const trend = el.dataset.trend || '신탁 결과 없음';
-        veil.textContent = trend;
-        veil.style.filter   = 'blur(0px)';
-        veil.style.color    = 'rgba(255,255,255,0.9)';
-        veil.style.fontSize = '0.72rem';
+        const trend = el.dataset.trend || '-';
+        veil.textContent  = trend.slice(0, 12) + (trend.length > 12 ? '…' : '');
+        veil.style.color  = 'rgba(255,255,255,0.75)';
         veil.style.fontWeight = '600';
-        veil.style.maxWidth = '120px';
-        veil.style.overflow = 'hidden';
-        veil.style.textOverflow = 'ellipsis';
-        veil.style.whiteSpace = 'nowrap';
-        el.style.background = 'rgba(212,175,55,0.06)';
-        el.style.borderColor = 'rgba(212,175,55,0.25)';
+        el.style.background   = 'rgba(212,175,55,0.06)';
+        el.style.borderColor  = 'rgba(212,175,55,0.25)';
     } else {
-        // 다시 가리기 — 블러
-        veil.textContent    = '✦ 보기';
-        veil.style.filter   = 'blur(0px)';
-        veil.style.color    = 'rgba(212,175,55,0.7)';
-        veil.style.fontSize = '0.7rem';
+        veil.textContent  = '✦';
+        veil.style.color  = 'rgba(212,175,55,0.6)';
         veil.style.fontWeight = '800';
-        veil.style.maxWidth = '';
-        el.style.background = 'rgba(255,255,255,0.03)';
-        el.style.borderColor = 'rgba(212,175,55,0.12)';
+        el.style.background   = 'rgba(255,255,255,0.03)';
+        el.style.borderColor  = 'rgba(212,175,55,0.12)';
     }
 }
 
@@ -7234,37 +7208,42 @@ async function confirmPayment() {
         if (title) title.innerText = "🔓 봉인 해제 완료";
     }
 
-    // 2️⃣ 1.2초 후 모달을 닫고 화면을 '강제로' 다시 그립니다.
+    // 2️⃣ 1.2초 후 모달을 닫고 화면을 강제로 다시 그립니다.
     setTimeout(() => {
         closePayModal();
         const contentEl = document.getElementById('oracle-content');
-        
+
+        // [V23.7] 항상 먼저 holding-message 숨김 (결제 완료 = 무조건 숨겨야 함)
+        const holdingMsg   = document.getElementById('holding-message');
+        const loadingEl    = document.getElementById('ai-loading-text');
+        const progressWrap = document.getElementById('oracle-progress-wrap');
+        const wisdomEl     = document.getElementById('oracle-wisdom-note');
+        const finalBtn     = document.getElementById('final-reset-btn');
+        const shareActions = document.getElementById('share-actions');
+        if (holdingMsg)   holdingMsg.style.display   = 'none';
+        if (loadingEl)    loadingEl.style.display    = 'none';
+        if (progressWrap) progressWrap.style.display = 'none';
+        if (wisdomEl)     wisdomEl.style.display     = 'none';
+
         if (contentEl && cachedFullText) {
-            // [V19.3 버그수정] 연애는 finance 아님
             const isFinance = (CURRENT_MODE === 'stock' || CURRENT_MODE === 'crypto' || CURRENT_MODE === 'realestate');
-            const seedInput = document.getElementById('seed-input')?.value || "";
-
-            // 🔥 [중요] 통합 엔진 buildInvestmentData를 사용하여 데이터를 새로 뽑습니다.
+            const seedInput = document.getElementById('seed-input')?.value || '';
             const investData = isFinance ? buildInvestmentData(selectedCards, seedInput) : null;
-
-            // 🔥 [핵심] isPaidUser가 true이므로 이제 renderText는 잠금 화면을 내보내지 않습니다.
             contentEl.innerHTML = renderText(cachedFullText, selectedCards, investData, true, isFinance);
-
-            // 3️⃣ UI 요소 최종 정리: 대기 문구 숨기고, 새 신탁 버튼 노출
-            const holdingMsg = document.getElementById('holding-message');
-            const finalBtn   = document.getElementById('final-reset-btn');
-            
-            if (holdingMsg) holdingMsg.style.display = 'none';
-            if (finalBtn) {
-                finalBtn.style.display = 'inline-block';
-                finalBtn.style.marginTop = '25px';
-            }
-            // [V19 Phase3] 공유/저장 버튼 노출
-            const shareActions = document.getElementById('share-actions');
-            if (shareActions) shareActions.style.display = 'flex';
-            
-            // 4️⃣ 유저를 결과 하단으로 부드럽게 이동
+            if (finalBtn)    { finalBtn.style.display = 'inline-block'; finalBtn.style.marginTop = '25px'; }
+            if (shareActions)  shareActions.style.display = 'flex';
             contentEl.scrollIntoView({ behavior: 'smooth', block: 'end' });
+
+        } else if (contentEl && selectedCards.length === 3) {
+            // [V23.7] cachedFullText 없음 → 스트림 재호출
+            const question = document.getElementById('seed-input')?.value || '신탁을 보여주세요';
+            contentEl.innerHTML = `
+                <div style="text-align:center; padding:28px 0; color:rgba(212,175,55,0.8);">
+                    <div style="font-size:1.4rem; margin-bottom:10px;">⚡</div>
+                    <div style="font-size:0.86rem; letter-spacing:0.06em;">신탁의 실타래를 다시 엮는 중...</div>
+                </div>`;
+            const streamPromise = startStreamFetch(question, selectedCards);
+            renderStream(streamPromise, selectedCards);
         }
     }, 1200);
 }
