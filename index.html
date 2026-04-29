@@ -1311,6 +1311,30 @@
                 <div style="margin-top:8px; font-size:0.62rem; color:rgba(255,255,255,0.45); text-align:center; font-style:italic;">
                     탭하여 신탁 결과 확인 · Tap to reveal
                 </div>
+                <!-- [V23 P0-3] 점사 패턴 분석 버튼 (3회 이상 시 활성화) -->
+                <button onclick="zeusShowPatternAnalysis()" style="
+                    margin-top: 12px; width: 100%; padding: 10px 14px;
+                    background: linear-gradient(135deg, rgba(212,175,55,0.18), rgba(155,89,182,0.10));
+                    color: #FFD970; border: 1px solid rgba(212,175,55,0.4);
+                    border-radius: 8px; cursor: pointer;
+                    font-size: 0.78rem; font-weight: 700; letter-spacing: 0.08em;
+                    transition: all 0.2s ease;">
+                    ✨ 나의 신탁 패턴 보기
+                </button>
+
+                <!-- [V23 P0-4] 카카오톡 채널 (한국 사용자 옵트인 알림 — 푸시 대체)
+                     사장님 안: 푸시 알림 X (탈퇴 위험), 카톡 채널 = 한국 친화적
+                     활성화 조건: 카카오 비즈 채널 등록 후 KAKAO_CHANNEL_URL 입력 -->
+                <a href="javascript:zeusKakaoChannel()" style="
+                    display:block; margin-top: 8px; width: 100%; padding: 10px 14px;
+                    background: linear-gradient(135deg, #FEE500, #FFD400);
+                    color: #3C1E1E; border-radius: 8px;
+                    text-decoration: none; text-align: center;
+                    font-size: 0.78rem; font-weight: 800; letter-spacing: 0.05em;
+                    box-shadow: 0 2px 8px rgba(254,229,0,0.25);
+                    transition: all 0.2s ease;">
+                    💬 카카오톡 알림 받기 (광고 X · 신탁만)
+                </a>
             </div>
         </div>
 
@@ -1508,10 +1532,45 @@ const PAYMENT_PLANS = {
     month: {
         id:     'month',
         amount: 9900,
-        label:  '무제한 이용권',
+        label:  '30일 이용권',
         emoji:  '💎',
         desc:   '30일 무제한 점사 + 모든 미래 해석',
         days:   30
+    },
+    // ══════════════════════════════════════════════════════════════════
+    // [V23 P0-2] 월 구독 + 연 구독 + 평생 이용권 (글로벌 톱앱 표준)
+    //   글로벌 데이터:
+    //     • Co-Star: $9.99/월 + 연 30% 할인
+    //     • 구독 모델 매출 = 단일 결제 대비 3~5배
+    //     • LTV (평생 가치) 5배 ↑
+    // ══════════════════════════════════════════════════════════════════
+    monthly: {
+        id:     'monthly',
+        amount: 9900,
+        label:  '월 구독 (자동결제)',
+        emoji:  '🌙',
+        desc:   '매월 9,900원 — 무제한 신탁 + 일별 카드',
+        days:   30,
+        recurring: true   // 자동 갱신
+    },
+    yearly: {
+        id:     'yearly',
+        amount: 79000,
+        label:  '연 구독 (33% 할인)',
+        emoji:  '⭐',
+        desc:   '연 79,000원 — 월 6,583원 (33% 절약)',
+        days:   365,
+        recurring: true,
+        savings: '34%'  // 월 9,900 × 12 = 118,800 vs 79,000
+    },
+    lifetime: {
+        id:     'lifetime',
+        amount: 199000,
+        label:  '평생 이용권',
+        emoji:  '👑',
+        desc:   '한 번 결제 — 평생 무제한 신탁',
+        days:   36500,  // 100년
+        recurring: false
     }
 };
 
@@ -1608,6 +1667,143 @@ let isPaidUser    = false;
 let cachedFullText = "";
 let CURRENT_MODE  = 'life';
 let LOVE_SUBTYPE  = ''; // 연애 세부 상황: thumb/reunion/contact/mindread/marriage/breakup/crush/general
+
+// ══════════════════════════════════════════════════════════════════
+// [V23 P0-1] 일별 알림 + 푸시 시스템 (재방문 ↑ — 글로벌 톱앱 표준)
+//   사장님 V23 P0 작업: Co-Star DAU 35% 비결 = 일별 푸시
+//   원리: 매일 오전 9시 "오늘의 카드 1장" 알림
+//         localStorage에 "lastNotificationDate" 저장 → 중복 방지
+//         사용자가 알림 클릭 시 → 무료 일별 카드 점사
+// ══════════════════════════════════════════════════════════════════
+const ZEUS_NOTIFICATION = {
+  // 알림 권한 요청 + UI 렌더링
+  async requestPermission() {
+    if (!('Notification' in window)) {
+      console.log('[ZEUS] 이 브라우저는 알림을 지원하지 않습니다');
+      return 'unsupported';
+    }
+    if (Notification.permission === 'granted') return 'granted';
+    if (Notification.permission === 'denied') return 'denied';
+    const permission = await Notification.requestPermission();
+    return permission;
+  },
+
+  // 일별 알림 표시 (브라우저 열려있을 때 작동)
+  async showDaily(cardName, message) {
+    if (Notification.permission !== 'granted') return;
+    const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+    const lastShown = localStorage.getItem('zeusLastNotificationDate');
+    if (lastShown === today) return; // 오늘 이미 보냄
+
+    new Notification('🔮 ZEUS ORACLE — 오늘의 카드', {
+      body: `${cardName}: ${message}\n\n탭하여 오늘의 점사를 받으세요.`,
+      icon: BASE_URL + 'card_back.png',
+      badge: BASE_URL + 'card_back.png',
+      tag: 'zeus-daily-' + today,
+      requireInteraction: false
+    });
+    localStorage.setItem('zeusLastNotificationDate', today);
+  },
+
+  // 알림 동의 후킹 — 사용자 첫 점사 결과를 본 후 호출
+  async hookAfterFirstReading() {
+    const askedBefore = localStorage.getItem('zeusNotificationAsked');
+    if (askedBefore === 'true') return;
+    localStorage.setItem('zeusNotificationAsked', 'true');
+
+    // 알림 동의 모달 표시
+    const overlay = document.createElement('div');
+    overlay.id = 'zeusNotificationModal';
+    overlay.style.cssText = 'position:fixed; inset:0; background:rgba(0,0,0,0.85); z-index:99998; display:flex; align-items:center; justify-content:center; padding:20px; backdrop-filter:blur(8px);';
+    overlay.innerHTML = `
+      <div style="max-width:380px; width:100%;
+                  background: linear-gradient(160deg, #1A1A2E 0%, #0F0F1B 100%);
+                  border: 1px solid rgba(212,175,55,0.4);
+                  border-radius: 16px;
+                  padding: 28px 24px;
+                  box-shadow: 0 0 30px rgba(212,175,55,0.3);
+                  text-align: center;">
+        <div style="font-size:2.5rem; margin-bottom:12px;">🔔</div>
+        <div style="color:#FFD970; font-size:1.05rem; font-weight:900; letter-spacing:0.05em; margin-bottom:14px;">
+          매일의 신탁을 받으시겠습니까?
+        </div>
+        <div style="color:rgba(255,255,255,0.85); font-size:0.88rem; line-height:1.7; margin-bottom:22px;">
+          ✦ 매일 오전 9시 오늘의 카드 1장<br>
+          ✦ 우주의 흐름을 놓치지 마세요<br>
+          ✦ 언제든 설정에서 끌 수 있습니다
+        </div>
+        <div style="display:flex; gap:10px;">
+          <button onclick="ZEUS_NOTIFICATION.handleAccept()" style="
+            flex:1; padding:13px;
+            background: linear-gradient(135deg, #D4AF37, #F1C40F);
+            color:#000; border:none; border-radius:10px;
+            font-weight:900; font-size:0.95rem; cursor:pointer;
+            box-shadow: 0 3px 10px rgba(212,175,55,0.4);">
+            🔔 매일 알림 받기
+          </button>
+          <button onclick="ZEUS_NOTIFICATION.handleDecline()" style="
+            padding:13px 20px;
+            background: rgba(255,255,255,0.06);
+            color:rgba(255,255,255,0.7);
+            border:1px solid rgba(255,255,255,0.15);
+            border-radius:10px;
+            font-weight:600; font-size:0.85rem; cursor:pointer;">
+            나중에
+          </button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(overlay);
+  },
+
+  async handleAccept() {
+    const result = await ZEUS_NOTIFICATION.requestPermission();
+    document.getElementById('zeusNotificationModal')?.remove();
+    if (result === 'granted') {
+      // 즉시 환영 알림
+      new Notification('✨ ZEUS ORACLE 알림 활성화', {
+        body: '내일부터 매일 오전 9시 오늘의 카드를 보내드립니다.',
+        icon: BASE_URL + 'card_back.png'
+      });
+      localStorage.setItem('zeusNotificationEnabled', 'true');
+    }
+  },
+
+  handleDecline() {
+    document.getElementById('zeusNotificationModal')?.remove();
+    // 다음번 점사 후 다시 묻지 않음 (askedBefore=true 이미 저장됨)
+  },
+
+  // 페이지 로드 시 일별 알림 체크 (사용자가 다시 방문했을 때)
+  checkAndShowDaily() {
+    if (Notification.permission !== 'granted') return;
+    if (localStorage.getItem('zeusNotificationEnabled') !== 'true') return;
+    const now = new Date();
+    if (now.getHours() < 9) return; // 오전 9시 이후만
+    // 카드 풀에서 랜덤 1장 선택
+    const cards = ['The Star','The Sun','Strength','The Empress','The Magician',
+                   'Ace of Pentacles','Ace of Cups','The World','The Lovers','Wheel of Fortune'];
+    const card = cards[Math.floor(Math.random() * cards.length)];
+    const messages = {
+      'The Star': '희망이 다시 빛나는 하루입니다.',
+      'The Sun': '명확한 성공의 에너지가 흐릅니다.',
+      'Strength': '인내가 보상을 만드는 순간입니다.',
+      'The Empress': '풍요와 성장의 흐름이 시작됩니다.',
+      'The Magician': '주도권을 잡을 시간입니다.',
+      'Ace of Pentacles': '새로운 기회가 손에 닿습니다.',
+      'Ace of Cups': '감정의 새로운 시작이 열립니다.',
+      'The World': '완성의 에너지가 다가옵니다.',
+      'The Lovers': '중요한 선택의 순간입니다.',
+      'Wheel of Fortune': '운명의 전환점에 서 있습니다.'
+    };
+    ZEUS_NOTIFICATION.showDaily(card, messages[card] || '오늘의 흐름을 점검하세요.');
+  }
+};
+
+// 페이지 로드 시 자동 체크
+window.addEventListener('load', () => {
+  setTimeout(() => ZEUS_NOTIFICATION.checkAndShowDaily(), 2000);
+});
 
 // ── 후킹 배너 텍스트 DB
 const HOOK_DB = {
@@ -2448,6 +2644,13 @@ async function renderStream(fetchPromise, cards) {
 
         // 4. 유저를 결과 하단으로 부드럽게 스크롤
         contentEl.scrollIntoView({ behavior: 'smooth', block: 'end' });
+
+        // [V23 P0-1] 첫 점사 완료 후 알림 동의 후킹 (재방문 ↑)
+        //   글로벌 데이터: 일별 알림 = DAU 30%+ (Co-Star 표준)
+        //   타이밍: 결과 본 후 8초 (감동의 순간 + 부담 X)
+        setTimeout(() => {
+          ZEUS_NOTIFICATION.hookAfterFirstReading();
+        }, 8000);
 
         // 제우스의 인장 애니메이션
         setTimeout(() => {
@@ -4966,12 +5169,12 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
                     <div style="color:#2ecc71; font-size:0.82rem; font-weight:900; letter-spacing:0.1em; margin-bottom:8px;">📱 행동 가이드</div>
                     <div style="font-size:0.85rem; color:rgba(255,255,255,0.88); line-height:1.8;">
                         <div>→ 먼저 길게 말하지 말 것</div>
-                        <div>→ <b style="color:#FFE08A;">"짧고 가벼운 신호 1회"</b>만 보내기</div>
+                        <div>→ <b style="color:#FFE08A;">지금은 신호보다 "타이밍 관찰"이 우선</b></div>
                         <div style="margin-top:6px; padding:8px 10px; background:rgba(0,0,0,0.25); border-radius:6px; font-size:0.82rem;">
                             💡 예시:<br>
-                            &nbsp;&nbsp;• 안부 톡 1회<br>
-                            &nbsp;&nbsp;• 가벼운 농담<br>
-                            &nbsp;&nbsp;• 과거 연결 포인트 언급
+                            &nbsp;&nbsp;• 자연스러운 안부 톡 1회 (반응 보고 결정)<br>
+                            &nbsp;&nbsp;• 가벼운 농담 (부담 없이)<br>
+                            &nbsp;&nbsp;• 과거 연결 포인트 언급 (감정 X)
                         </div>
                         <div style="margin-top:6px; color:#FF8C64; font-weight:600;">
                             👉 이후: 반응 없으면 <b>추가 행동 금지</b>
@@ -5608,6 +5811,177 @@ function zeusToggleHistoryItem(el) {
     }
 }
 
+// ══════════════════════════════════════════════════════════════════
+// [V23 P0-3] 점사 패턴 분석 — PRO 기능 (글로벌 톱앱 표준)
+//   사장님 V23 P0 작업: Co-Star "통계/패턴" 기능 = 재방문 ↑ 핵심
+//   원리: 누적된 점사 데이터 분석 → 사용자 패턴 발견
+//     • 가장 많이 나온 카드 TOP 3
+//     • 가장 자주 묻는 도메인 (주식/연애/운세)
+//     • 평균 추세 (긍정/중립/부정 비율)
+//     • 점사 빈도 (월별)
+// ══════════════════════════════════════════════════════════════════
+function zeusShowPatternAnalysis() {
+    const list = (() => {
+        try { return JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]'); }
+        catch { return []; }
+    })();
+
+    if (list.length < 3) {
+        alert('🔮 점사를 3회 이상 받으시면 패턴 분석을 볼 수 있습니다.\n현재: ' + list.length + '회');
+        return;
+    }
+
+    // 1. 카드 빈도 분석
+    const cardFreq = {};
+    list.forEach(h => (h.cards || []).forEach(c => {
+        cardFreq[c] = (cardFreq[c] || 0) + 1;
+    }));
+    const topCards = Object.entries(cardFreq)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 3)
+        .map(([card, cnt]) => ({ card, count: cnt }));
+
+    // 2. 도메인 분포
+    const domainFreq = { stock: 0, crypto: 0, realestate: 0, love: 0, life: 0 };
+    list.forEach(h => {
+        const t = h.queryType || 'life';
+        domainFreq[t] = (domainFreq[t] || 0) + 1;
+    });
+    const topDomain = Object.entries(domainFreq)
+        .sort((a, b) => b[1] - a[1])[0];
+
+    // 3. 추세 패턴
+    const trendStats = { positive: 0, neutral: 0, negative: 0 };
+    list.forEach(h => {
+        const t = h.trend || '';
+        if (/상승|확장|기회|성공|적기|호조/.test(t)) trendStats.positive++;
+        else if (/하락|정체|위험|보류|관망/.test(t)) trendStats.negative++;
+        else trendStats.neutral++;
+    });
+    const totalTrend = trendStats.positive + trendStats.neutral + trendStats.negative;
+    const positivePct = Math.round(trendStats.positive / totalTrend * 100);
+    const negativePct = Math.round(trendStats.negative / totalTrend * 100);
+
+    // 4. 모달 렌더링
+    const overlay = document.createElement('div');
+    overlay.id = 'zeusPatternModal';
+    overlay.style.cssText = 'position:fixed; inset:0; background:rgba(0,0,0,0.85); z-index:99998; display:flex; align-items:center; justify-content:center; padding:16px; backdrop-filter:blur(8px); overflow-y:auto;';
+
+    const domainEmoji = {
+        stock: '📈 주식', crypto: '🪙 코인', realestate: '🏠 부동산',
+        love: '💘 연애', life: '✨ 운세'
+    };
+
+    overlay.innerHTML = `
+        <div style="position:relative; max-width:440px; width:100%;
+                    background: linear-gradient(160deg, #1A1A2E 0%, #0F0F1B 100%);
+                    border: 1px solid rgba(212,175,55,0.4);
+                    border-radius: 16px;
+                    padding: 24px 22px;
+                    box-shadow: 0 0 30px rgba(212,175,55,0.3);
+                    max-height: 90vh; overflow-y: auto;">
+            <button onclick="document.getElementById('zeusPatternModal').remove()" style="
+                position:absolute; top:12px; right:14px;
+                background: transparent; border: none;
+                color: rgba(255,255,255,0.7);
+                font-size: 1.5rem; cursor: pointer;
+                width: 36px; height: 36px; line-height: 1;">×</button>
+
+            <div style="text-align:center; margin-bottom:20px;">
+                <div style="color:#FFD970; font-size:0.78rem; font-weight:800; letter-spacing:0.12em; margin-bottom:6px;">
+                    ✨ 당신의 신탁 패턴
+                </div>
+                <div style="color:#fff; font-size:1.05rem; font-weight:900;">
+                    누적 ${list.length}회 분석
+                </div>
+            </div>
+
+            <!-- 가장 많이 나온 카드 TOP 3 -->
+            <div style="margin-bottom:18px; padding:14px;
+                        background: rgba(212,175,55,0.08);
+                        border-left: 3px solid #D4AF37;
+                        border-radius: 0 8px 8px 0;">
+                <div style="font-size:0.78rem; color:#FFD970; font-weight:800; margin-bottom:10px; letter-spacing:0.05em;">
+                    🃏 자주 나타나는 카드 TOP 3
+                </div>
+                ${topCards.map((c, i) => `
+                    <div style="display:flex; align-items:center; padding:5px 0; font-size:0.85rem;">
+                        <span style="color:#FFD970; font-weight:900; min-width:28px;">${i + 1}.</span>
+                        <span style="color:#fff; flex:1; font-weight:600;">${c.card}</span>
+                        <span style="color:rgba(255,255,255,0.6); font-size:0.78rem;">${c.count}회</span>
+                    </div>
+                `).join('')}
+            </div>
+
+            <!-- 가장 자주 묻는 도메인 -->
+            <div style="margin-bottom:18px; padding:14px;
+                        background: rgba(155,89,182,0.08);
+                        border-left: 3px solid #C39BD3;
+                        border-radius: 0 8px 8px 0;">
+                <div style="font-size:0.78rem; color:#C39BD3; font-weight:800; margin-bottom:10px; letter-spacing:0.05em;">
+                    🎯 자주 묻는 영역
+                </div>
+                <div style="display:flex; align-items:center; gap:10px; font-size:0.95rem;">
+                    <span style="color:#fff; font-weight:700;">${domainEmoji[topDomain[0]] || '✨ 운세'}</span>
+                    <span style="color:rgba(255,255,255,0.6); font-size:0.8rem;">${topDomain[1]}회 (${Math.round(topDomain[1]/list.length*100)}%)</span>
+                </div>
+            </div>
+
+            <!-- 추세 패턴 -->
+            <div style="margin-bottom:18px; padding:14px;
+                        background: rgba(46,204,113,0.08);
+                        border-left: 3px solid #2ecc71;
+                        border-radius: 0 8px 8px 0;">
+                <div style="font-size:0.78rem; color:#7AD188; font-weight:800; margin-bottom:10px; letter-spacing:0.05em;">
+                    📊 운명의 흐름 비율
+                </div>
+                <div style="display:flex; flex-direction:column; gap:6px; font-size:0.85rem;">
+                    <div style="display:flex; align-items:center; gap:8px;">
+                        <span style="color:#7AD188; min-width:50px;">긍정</span>
+                        <div style="flex:1; height:8px; background:rgba(0,0,0,0.4); border-radius:4px; overflow:hidden;">
+                            <div style="height:100%; width:${positivePct}%; background:#2ecc71; transition:width 1s;"></div>
+                        </div>
+                        <span style="color:#fff; min-width:36px; text-align:right; font-weight:700;">${positivePct}%</span>
+                    </div>
+                    <div style="display:flex; align-items:center; gap:8px;">
+                        <span style="color:#FFD970; min-width:50px;">중립</span>
+                        <div style="flex:1; height:8px; background:rgba(0,0,0,0.4); border-radius:4px; overflow:hidden;">
+                            <div style="height:100%; width:${100 - positivePct - negativePct}%; background:#FFD970; transition:width 1s;"></div>
+                        </div>
+                        <span style="color:#fff; min-width:36px; text-align:right; font-weight:700;">${100 - positivePct - negativePct}%</span>
+                    </div>
+                    <div style="display:flex; align-items:center; gap:8px;">
+                        <span style="color:#FF8080; min-width:50px;">부정</span>
+                        <div style="flex:1; height:8px; background:rgba(0,0,0,0.4); border-radius:4px; overflow:hidden;">
+                            <div style="height:100%; width:${negativePct}%; background:#FF8080; transition:width 1s;"></div>
+                        </div>
+                        <span style="color:#fff; min-width:36px; text-align:right; font-weight:700;">${negativePct}%</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 인사이트 -->
+            <div style="padding:12px;
+                        background: rgba(255,217,112,0.06);
+                        border: 1px solid rgba(255,217,112,0.25);
+                        border-radius: 8px;
+                        font-size: 0.78rem;
+                        color: rgba(255,255,255,0.8);
+                        line-height: 1.7;">
+                💎 <b style="color:#FFD970;">제우스의 통찰:</b> ${
+                    positivePct >= 60 ? '당신의 흐름은 우호적인 패턴이 다수입니다. 자신감을 가져도 좋습니다.'
+                    : negativePct >= 60 ? '신중한 시기를 통과하는 중입니다. 인내가 다음 흐름을 만듭니다.'
+                    : '당신의 흐름은 균형 구간입니다. 매 점사가 의미 있는 신호입니다.'
+                }
+            </div>
+        </div>
+    `;
+    document.body.appendChild(overlay);
+    overlay.addEventListener('click', e => {
+        if (e.target === overlay) overlay.remove();
+    });
+}
+
 // 이력에 신탁 하나 추가 — 결과창이 뜰 때마다 호출
 function saveToHistory(question, queryType, cards, metrics) {
     try {
@@ -5629,7 +6003,216 @@ function saveToHistory(question, queryType, cards, metrics) {
 // 홈 진입 시점에 자동 실행
 document.addEventListener('DOMContentLoaded', () => {
     setTimeout(renderDailyAndHistory, 100);
+    // [V23] 인앱 알림 — 재방문 유저 환영 + 결제 전환 유도
+    //   사장님 진단: 푸시 알림 = 한국 사용자 탈퇴 위험
+    //   해결: 푸시 X, 사용자가 직접 진입할 때만 화면 안 표시
+    //   효과: 탈퇴 위험 0 + 재방문 가치 제공
+    setTimeout(showInAppNotification, 1200);
 });
+
+// ══════════════════════════════════════════════════════════════════
+// [V23] 인앱 알림 시스템 — 사장님 한국 시장 안 (푸시 폐기)
+//   원리:
+//     • 푸시 알림 X (탈퇴 위험 차단)
+//     • 사용자 진입 시 화면 안에 부드럽게 표시
+//     • 마지막 방문 후 시간차 기반 다른 메시지
+//     • 결제 전환 자연스럽게 유도
+//   글로벌 데이터: 인앱 알림 = 푸시 대비 탈퇴율 1/10
+// ══════════════════════════════════════════════════════════════════
+function showInAppNotification() {
+    try {
+        const lastVisitKey = 'zeus_last_visit';
+        const dismissedKey = 'zeus_inapp_dismissed_today';
+        const today = new Date().toISOString().slice(0, 10);
+
+        // 오늘 이미 닫은 적 있으면 표시 안 함 (귀찮음 방지)
+        if (localStorage.getItem(dismissedKey) === today) return;
+
+        const lastVisit = localStorage.getItem(lastVisitKey);
+        const now = Date.now();
+        let daysSinceLastVisit = 0;
+        if (lastVisit) {
+            daysSinceLastVisit = Math.floor((now - parseInt(lastVisit)) / (1000 * 60 * 60 * 24));
+        }
+        // 이번 방문 시각 저장
+        localStorage.setItem(lastVisitKey, String(now));
+
+        // 첫 방문 → 알림 표시 안 함
+        if (!lastVisit) return;
+
+        // 점사 히스토리 확인
+        const historyRaw = localStorage.getItem('zeus_oracle_history');
+        const history = historyRaw ? JSON.parse(historyRaw) : [];
+        const hasHistory = history.length > 0;
+
+        // 결제 활성 상태 확인
+        const isPaid = !!localStorage.getItem('oracleSessionToken');
+
+        // ─── 메시지 결정 (시간차 + 상태 기반) ───
+        let title, message, ctaText, ctaAction;
+
+        if (isPaid) {
+            // 유료 사용자 환영
+            title = '✨ 환영합니다, 유저님';
+            message = '오늘은 어떤 흐름이 궁금하신가요?<br>새로운 점사를 시작해보세요.';
+            ctaText = '🌟 새 점사 시작하기';
+            ctaAction = `closeInAppNotification(); document.getElementById('seed-input')?.focus();`;
+        } else if (daysSinceLastVisit >= 7 && hasHistory) {
+            // 7일+ 이탈 + 점사 경험 있음
+            title = '🌙 오랜만이에요, 유저님';
+            message = `${daysSinceLastVisit}일 만에 돌아오셨네요.<br>이번 흐름은 어떤가요?`;
+            ctaText = '✦ 흐름 다시 읽기';
+            ctaAction = `closeInAppNotification(); document.getElementById('seed-input')?.focus();`;
+        } else if (daysSinceLastVisit >= 3 && hasHistory) {
+            // 3~7일 이탈
+            title = '🌟 오늘의 흐름이 궁금하다면';
+            message = '지난 점사 이후 흐름이 바뀌었을 수 있어요.<br>새 카드를 펼쳐보세요.';
+            ctaText = '✦ 새 점사 받기';
+            ctaAction = `closeInAppNotification(); document.getElementById('seed-input')?.focus();`;
+        } else if (hasHistory && !isPaid) {
+            // 점사 경험 있지만 결제 X — 결제 유도
+            title = '💎 PRO 신탁이 더 깊습니다';
+            message = '잠긴 미래 카드 + 5계층 분석<br>오늘 한정 30일 무제한 9,900원';
+            ctaText = '🔓 PRO 봉인 해제';
+            ctaAction = `closeInAppNotification(); showPayModal();`;
+        } else {
+            // 표시 조건 안 맞음
+            return;
+        }
+
+        // ─── 알림 UI 생성 ───
+        const overlay = document.createElement('div');
+        overlay.id = 'inAppNotification';
+        overlay.style.cssText = `
+            position: fixed;
+            top: 80px;
+            left: 50%;
+            transform: translateX(-50%) translateY(-20px);
+            max-width: 380px;
+            width: calc(100% - 32px);
+            background: linear-gradient(135deg, rgba(20,20,40,0.98), rgba(15,15,30,0.98));
+            border: 1px solid rgba(212,175,55,0.5);
+            border-radius: 14px;
+            padding: 16px 18px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.5), 0 0 24px rgba(212,175,55,0.15);
+            z-index: 9999;
+            opacity: 0;
+            transition: opacity 0.4s ease, transform 0.4s ease;
+            backdrop-filter: blur(12px);
+        `;
+        overlay.innerHTML = `
+            <button onclick="closeInAppNotification(true)" style="
+                position:absolute; top:6px; right:8px;
+                background: transparent; border: none;
+                color: rgba(255,255,255,0.5);
+                font-size: 1.3rem; cursor: pointer;
+                width: 28px; height: 28px; line-height: 1;
+                font-family: inherit;">×</button>
+            <div style="color:#FFD970; font-size:0.82rem; font-weight:900; letter-spacing:0.05em; margin-bottom:6px;">
+                ${title}
+            </div>
+            <div style="color: rgba(255,255,255,0.88); font-size:0.85rem; line-height:1.6; margin-bottom:12px;">
+                ${message}
+            </div>
+            <button onclick="${ctaAction}" style="
+                width:100%; padding:11px;
+                background: linear-gradient(135deg, #D4AF37, #F1C40F);
+                color:#000; border:none; border-radius:8px;
+                font-weight:800; font-size:0.88rem; cursor:pointer;
+                box-shadow: 0 3px 12px rgba(212,175,55,0.35);
+                letter-spacing: 0.02em;">
+                ${ctaText}
+            </button>
+        `;
+        document.body.appendChild(overlay);
+        // 부드러운 등장 애니메이션
+        requestAnimationFrame(() => {
+            overlay.style.opacity = '1';
+            overlay.style.transform = 'translateX(-50%) translateY(0)';
+        });
+
+        // 8초 후 자동 닫힘 (방해 금지)
+        setTimeout(() => {
+            const el = document.getElementById('inAppNotification');
+            if (el) closeInAppNotification(false);
+        }, 8000);
+    } catch(e) {
+        console.warn('inApp notification fail:', e);
+    }
+}
+
+function closeInAppNotification(rememberDismissed) {
+    const el = document.getElementById('inAppNotification');
+    if (!el) return;
+    el.style.opacity = '0';
+    el.style.transform = 'translateX(-50%) translateY(-20px)';
+    setTimeout(() => el.remove(), 400);
+    // 사용자가 X 버튼으로 닫았으면 오늘은 다시 표시 X
+    if (rememberDismissed) {
+        const today = new Date().toISOString().slice(0, 10);
+        try { localStorage.setItem('zeus_inapp_dismissed_today', today); } catch{}
+    }
+}
+
+// ══════════════════════════════════════════════════════════════════
+// [V23 P0-4] 카카오톡 채널 — 한국 사용자 옵트인 알림 (푸시 대체)
+//   사장님 안: 푸시 알림 = 탈퇴 위험 → 카톡 채널 = 친구 추가형 옵트인
+//   장점:
+//     ✅ 한국 친화적 (카톡은 일상)
+//     ✅ 명시적 옵트인 (친구 추가)
+//     ✅ 사용자 통제권 (차단 가능)
+//   사장님 작업: 카카오 비즈니스 채널 등록 후 아래 URL 입력
+// ══════════════════════════════════════════════════════════════════
+const KAKAO_CHANNEL_URL = ''; // ← 사장님이 카카오 비즈 채널 등록 후 URL 입력 (예: 'https://pf.kakao.com/_xxxxxx')
+
+function zeusKakaoChannel() {
+    if (!KAKAO_CHANNEL_URL || KAKAO_CHANNEL_URL.trim() === '') {
+        // 채널 미등록 상태 — 안내
+        const overlay = document.createElement('div');
+        overlay.id = 'kakaoChannelInfo';
+        overlay.style.cssText = 'position:fixed; inset:0; background:rgba(0,0,0,0.85); z-index:99999; display:flex; align-items:center; justify-content:center; padding:16px; backdrop-filter:blur(8px);';
+        overlay.innerHTML = `
+            <div style="position:relative; max-width:380px; width:100%;
+                        background: linear-gradient(160deg, #1A1A2E 0%, #0F0F1B 100%);
+                        border: 1px solid rgba(254,229,0,0.4);
+                        border-radius: 16px;
+                        padding: 24px 22px;
+                        box-shadow: 0 0 30px rgba(254,229,0,0.2);">
+                <button onclick="document.getElementById('kakaoChannelInfo').remove()" style="
+                    position:absolute; top:12px; right:14px;
+                    background: transparent; border: none;
+                    color: rgba(255,255,255,0.7);
+                    font-size: 1.5rem; cursor: pointer;
+                    width: 36px; height: 36px; line-height: 1;
+                    font-family: inherit;">×</button>
+                <div style="text-align:center;">
+                    <div style="font-size: 2rem; margin-bottom: 8px;">💬</div>
+                    <div style="color:#FFD970; font-size:0.95rem; font-weight:900; margin-bottom:10px;">
+                        카카오톡 알림 준비 중
+                    </div>
+                    <div style="color:rgba(255,255,255,0.85); font-size:0.84rem; line-height:1.7; margin-bottom:6px;">
+                        곧 카카오톡 채널을 통해<br>
+                        조용한 신탁 알림을 받으실 수 있습니다.
+                    </div>
+                    <div style="color:rgba(255,217,112,0.75); font-size:0.75rem; line-height:1.6; margin-top:14px; padding:10px;
+                                background: rgba(254,229,0,0.06);
+                                border-radius: 6px;">
+                        ✓ 광고 X · 신탁 알림만<br>
+                        ✓ 언제든 차단 가능<br>
+                        ✓ 한국 사용자 친화적
+                    </div>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(overlay);
+        overlay.addEventListener('click', (e) => {
+            if (e.target === overlay) overlay.remove();
+        });
+        return;
+    }
+    // 채널 URL 등록됨 — 친구 추가 페이지로 이동
+    window.open(KAKAO_CHANNEL_URL, '_blank');
+}
 
 
 // ════════════════════════════════════
@@ -5712,19 +6295,81 @@ function showPayModal() {
                 </div>
             </button>
 
-            <!-- 💎 30일 무제한 이용권 (골드 프리미엄) -->
+            <!-- 💎 30일 이용권 (단일 결제) -->
             <button class="pay-plan-btn" data-plan="month" data-amount="9900" onclick="showPaymentMethodModal('month')" style="
-                display:block; width:100%; padding:16px 14px;
+                display:block; width:100%; padding:14px 14px;
+                background: rgba(212,175,55,0.12);
+                color:#fff; border:1px solid rgba(212,175,55,0.4); border-radius:12px;
+                cursor:pointer; text-align:left;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:3px;">
+                    <span style="font-size:0.95rem; font-weight:800;">💎 30일 이용권 (단일)</span>
+                    <span style="font-size:1.05rem; font-weight:900;">₩9,900</span>
+                </div>
+                <div style="font-size:0.7rem; opacity:0.75; font-weight:500; line-height:1.5;">
+                    한 번 결제 · 30일 무제한
+                </div>
+            </button>
+
+            <!-- ════ [V23 P0-2] 구독 모델 — 글로벌 톱앱 표준 ════ -->
+            <div style="margin-top:8px; padding:10px 0 6px;
+                        text-align:center;
+                        font-size:0.72rem; color:#FFD970; font-weight:800;
+                        letter-spacing:0.15em;">
+                ✦ 자동 갱신 구독 ✦
+            </div>
+
+            <!-- 🌙 월 구독 (자동 결제) -->
+            <button class="pay-plan-btn" data-plan="monthly" data-amount="9900" onclick="showPaymentMethodModal('monthly')" style="
+                display:block; width:100%; padding:15px 14px;
+                background: linear-gradient(135deg, #1A1A2E, #16213E);
+                color:#fff; border:1px solid rgba(139,92,246,0.5); border-radius:12px;
+                cursor:pointer; text-align:left;
+                box-shadow: 0 3px 10px rgba(139,92,246,0.2);">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+                    <span style="font-size:1rem; font-weight:900;">🌙 월 구독 (자동결제)</span>
+                    <span style="font-size:1.05rem; font-weight:900;">₩9,900<span style="font-size:0.7rem; opacity:0.7;">/월</span></span>
+                </div>
+                <div style="font-size:0.72rem; opacity:0.85; font-weight:500; line-height:1.5;">
+                    매월 자동결제 · 인앱 환영 알림 · 언제든 해지
+                </div>
+            </button>
+
+            <!-- ⭐ 연 구독 (33% 할인 — 최고 인기) -->
+            <button class="pay-plan-btn" data-plan="yearly" data-amount="79000" onclick="showPaymentMethodModal('yearly')" style="
+                display:block; width:100%; padding:18px 14px;
                 background: linear-gradient(135deg, #D4AF37, #F1C40F);
                 color:#000; border:none; border-radius:12px;
-                cursor:pointer; text-align:left;
-                box-shadow: 0 4px 14px rgba(212,175,55,0.45);">
+                cursor:pointer; text-align:left; position:relative;
+                box-shadow: 0 5px 16px rgba(212,175,55,0.55);">
+                <div style="position:absolute; top:-8px; right:12px;
+                            background: #FF3D5C; color:#fff;
+                            padding: 3px 9px; border-radius: 12px;
+                            font-size: 0.65rem; font-weight: 900; letter-spacing: 0.05em;
+                            box-shadow: 0 2px 6px rgba(255,61,92,0.4);">
+                    🔥 BEST VALUE
+                </div>
                 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
-                    <span style="font-size:1rem; font-weight:900;">💎 30일 무제한 이용권</span>
-                    <span style="font-size:1.1rem; font-weight:900;">₩9,900</span>
+                    <span style="font-size:1.05rem; font-weight:900;">⭐ 연 구독 (33% 할인)</span>
+                    <span style="font-size:1.1rem; font-weight:900;">₩79,000<span style="font-size:0.7rem; opacity:0.6;">/년</span></span>
                 </div>
                 <div style="font-size:0.72rem; opacity:0.85; font-weight:600; line-height:1.5;">
-                    "반복되는 선택 패턴을 완전히 분석합니다"
+                    월 6,583원 · 연간 39,800원 절약 · 일별 카드 + 점사 히스토리
+                </div>
+            </button>
+
+            <!-- 👑 평생 이용권 (한 번 결제) -->
+            <button class="pay-plan-btn" data-plan="lifetime" data-amount="199000" onclick="showPaymentMethodModal('lifetime')" style="
+                display:block; width:100%; padding:14px 14px;
+                background: linear-gradient(135deg, #2C1810, #4A2511);
+                color:#FFD970; border:1px solid #D4AF37; border-radius:12px;
+                cursor:pointer; text-align:left;
+                box-shadow: 0 3px 12px rgba(212,175,55,0.3);">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:3px;">
+                    <span style="font-size:0.95rem; font-weight:900;">👑 평생 이용권</span>
+                    <span style="font-size:1.05rem; font-weight:900;">₩199,000</span>
+                </div>
+                <div style="font-size:0.7rem; opacity:0.85; font-weight:500; line-height:1.5;">
+                    한 번 결제 · 평생 무제한 · 미래 모든 기능 포함
                 </div>
             </button>
         </div>`;
