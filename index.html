@@ -1299,42 +1299,39 @@
                 <div id="daily-card-name" style="font-size:0.92rem; color:#fff; font-weight:800; text-align:center; line-height:1.2; margin:0;">-</div>
                 <div id="daily-card-message" style="font-size:0.74rem; color:rgba(255,255,255,0.78); line-height:1.5; text-align:center; font-style:italic; margin:0;">-</div>
             </div>
-            <!-- 최근 신탁 — 중앙정렬 -->
+            <!-- 최근 신탁 — 재설계 V23.7 -->
             <div id="history-list-wrap" style="display:none; max-width:440px; margin:0 auto;">
-                <div style="font-size:0.72rem; letter-spacing:0.15em; color:#D4AF37; font-weight:800; margin-bottom:10px; text-align:center; line-height:1.4;">
-                    RECENT READINGS
-                    <div style="font-size:0.64rem; opacity:0.75; letter-spacing:0.12em; margin-top:2px;">
-                        📜 최근 신탁
+                <div style="display:flex; align-items:center; justify-content:space-between;
+                            margin-bottom:12px; padding:0 2px;">
+                    <div style="font-size:0.68rem; letter-spacing:0.18em; color:rgba(212,175,55,0.8);
+                                font-weight:800; text-transform:uppercase;">
+                        ✦ Recent Readings
+                    </div>
+                    <div style="font-size:0.62rem; color:rgba(255,255,255,0.35); letter-spacing:0.06em;">
+                        탭하여 결과 확인
                     </div>
                 </div>
-                <div id="history-list" style="display:flex; flex-direction:column; gap:6px;"></div>
-                <div style="margin-top:8px; font-size:0.62rem; color:rgba(255,255,255,0.45); text-align:center; font-style:italic;">
-                    탭하여 신탁 결과 확인 · Tap to reveal
+                <div id="history-list" style="display:flex; flex-direction:column; gap:8px;"></div>
+                <!-- 패턴 분석 + 카카오 — 최하단 조용하게 -->
+                <div style="margin-top:14px; display:flex; gap:8px;">
+                    <button onclick="zeusShowPatternAnalysis()" style="
+                        flex:1; padding:9px 0;
+                        background:rgba(212,175,55,0.08);
+                        color:rgba(212,175,55,0.75); border:1px solid rgba(212,175,55,0.2);
+                        border-radius:8px; cursor:pointer;
+                        font-size:0.68rem; font-weight:700; letter-spacing:0.06em;">
+                        ✦ 패턴 분석
+                    </button>
+                    <a href="javascript:zeusKakaoChannel()" style="
+                        flex:1; padding:9px 0;
+                        background:rgba(254,229,0,0.10);
+                        color:rgba(254,229,0,0.8); border:1px solid rgba(254,229,0,0.2);
+                        border-radius:8px; cursor:pointer;
+                        font-size:0.68rem; font-weight:700; letter-spacing:0.04em;
+                        text-decoration:none; text-align:center; display:block;">
+                        💬 카카오 알림
+                    </a>
                 </div>
-                <!-- [V23 P0-3] 점사 패턴 분석 버튼 (3회 이상 시 활성화) -->
-                <button onclick="zeusShowPatternAnalysis()" style="
-                    margin-top: 12px; width: 100%; padding: 10px 14px;
-                    background: linear-gradient(135deg, rgba(212,175,55,0.18), rgba(155,89,182,0.10));
-                    color: #FFD970; border: 1px solid rgba(212,175,55,0.4);
-                    border-radius: 8px; cursor: pointer;
-                    font-size: 0.78rem; font-weight: 700; letter-spacing: 0.08em;
-                    transition: all 0.2s ease;">
-                    ✨ 나의 신탁 패턴 보기
-                </button>
-
-                <!-- [V23 P0-4] 카카오톡 채널 (한국 사용자 옵트인 알림 — 푸시 대체)
-                     사장님 안: 푸시 알림 X (탈퇴 위험), 카톡 채널 = 한국 친화적
-                     활성화 조건: 카카오 비즈 채널 등록 후 KAKAO_CHANNEL_URL 입력 -->
-                <a href="javascript:zeusKakaoChannel()" style="
-                    display:block; margin-top: 8px; width: 100%; padding: 10px 14px;
-                    background: linear-gradient(135deg, #FEE500, #FFD400);
-                    color: #3C1E1E; border-radius: 8px;
-                    text-decoration: none; text-align: center;
-                    font-size: 0.78rem; font-weight: 800; letter-spacing: 0.05em;
-                    box-shadow: 0 2px 8px rgba(254,229,0,0.25);
-                    transition: all 0.2s ease;">
-                    💬 카카오톡 알림 받기 (광고 X · 신탁만)
-                </a>
             </div>
         </div>
 
@@ -5808,26 +5805,58 @@ function renderDailyAndHistory() {
                 const emoji = h.queryType === 'stock' || h.queryType === 'crypto' ? '📈'
                             : h.queryType === 'realestate' ? '🏠'
                             : h.queryType === 'love' ? '💘' : '✨';
-                const trendTxt = h.trend || '-';
+                const domainLabel = h.queryType === 'stock' || h.queryType === 'crypto' ? 'STOCK'
+                            : h.queryType === 'realestate' ? 'REAL ESTATE'
+                            : h.queryType === 'love' ? 'LOVE' : 'FORTUNE';
+                const domainColor = h.queryType === 'stock' || h.queryType === 'crypto'
+                            ? 'rgba(46,204,113,0.8)'
+                            : h.queryType === 'realestate' ? 'rgba(52,152,219,0.8)'
+                            : h.queryType === 'love' ? 'rgba(255,123,172,0.8)'
+                            : 'rgba(155,89,182,0.8)';
+                const trendTxt = h.trend || '신탁 확인';
                 const dateTxt  = h.date ? h.date.slice(5).replace('-','/') : '';
-                const qShort   = (h.question || '').slice(0, 20);
-                // 결과는 data-attribute에 보관 — 클릭 시에만 노출
+                const qShort   = (h.question || '').slice(0, 22);
                 const trendEsc = trendTxt.replace(/"/g, '&quot;');
+
                 return `
                 <div class="zeus-history-item" data-trend="${trendEsc}"
                      onclick="zeusToggleHistoryItem(this)"
-                     style="display:flex; align-items:center; gap:8px; cursor:pointer;
-                            background:rgba(0,0,0,0.35); border:1px solid rgba(212,175,55,0.15);
-                            border-radius:8px; padding:8px 10px; font-size:0.76rem;
-                            transition: all 0.25s ease;">
-                    <div style="color:var(--gold); font-weight:700; min-width:36px;">${dateTxt}</div>
-                    <div style="flex:1; color:rgba(255,255,255,0.85); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
-                        ${emoji} ${qShort}${qShort.length>=20?'…':''}
+                     style="cursor:pointer; border-radius:12px;
+                            background:rgba(255,255,255,0.03);
+                            border:1px solid rgba(212,175,55,0.12);
+                            overflow:hidden;
+                            transition:all 0.25s ease;">
+                    <!-- 상단: 도메인 뱃지 + 날짜 -->
+                    <div style="display:flex; align-items:center; justify-content:space-between;
+                                padding:9px 12px 7px;
+                                border-bottom:1px solid rgba(255,255,255,0.05);">
+                        <div style="display:flex; align-items:center; gap:6px;">
+                            <span style="font-size:0.68rem; font-weight:900;
+                                         letter-spacing:0.12em; color:${domainColor};">
+                                ${emoji} ${domainLabel}
+                            </span>
+                        </div>
+                        <div style="font-size:0.62rem; color:rgba(255,255,255,0.35);
+                                    font-weight:600; letter-spacing:0.04em;">
+                            ${dateTxt}
+                        </div>
                     </div>
-                    <div class="zeus-history-veil"
-                         style="color:rgba(212,175,55,0.85); font-size:0.7rem; white-space:nowrap;
-                                font-weight:700; letter-spacing:0.05em;">
-                        ✦ 신탁 보기
+                    <!-- 하단: 질문 + 블러 결과 -->
+                    <div style="padding:9px 12px 10px;
+                                display:flex; align-items:center; justify-content:space-between; gap:10px;">
+                        <div style="font-size:0.78rem; color:rgba(255,255,255,0.75);
+                                    flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+                                    line-height:1.4;">
+                            ${qShort}${qShort.length >= 22 ? '…' : ''}
+                        </div>
+                        <!-- 블러 처리된 결과 -->
+                        <div class="zeus-history-veil"
+                             style="font-size:0.7rem; color:rgba(212,175,55,0.7);
+                                    font-weight:800; white-space:nowrap;
+                                    letter-spacing:0.04em; flex-shrink:0;
+                                    filter:blur(0px); transition:filter 0.3s ease;">
+                            ✦ 보기
+                        </div>
                     </div>
                 </div>`;
             }).join('');
@@ -5837,19 +5866,36 @@ function renderDailyAndHistory() {
     bar.style.display = 'block';
 }
 
-// [V21.0] 최근 신탁 토글 — 클릭 시 결과 노출/숨김 (사생활 보호)
+// [V23.7] 최근 신탁 토글 — 블러 처리 + 결과 노출/숨김
 function zeusToggleHistoryItem(el) {
     const veil = el.querySelector('.zeus-history-veil');
     if (!veil) return;
-    const isVeiled = veil.textContent.includes('신탁 보기');
+    const isVeiled = veil.textContent.trim() === '✦ 보기';
+
     if (isVeiled) {
-        veil.textContent = el.dataset.trend || '-';
-        veil.style.color = 'rgba(255,255,255,0.85)';
+        // 결과 노출 — 블러 해제
+        const trend = el.dataset.trend || '신탁 결과 없음';
+        veil.textContent = trend;
+        veil.style.filter   = 'blur(0px)';
+        veil.style.color    = 'rgba(255,255,255,0.9)';
+        veil.style.fontSize = '0.72rem';
+        veil.style.fontWeight = '600';
+        veil.style.maxWidth = '120px';
+        veil.style.overflow = 'hidden';
+        veil.style.textOverflow = 'ellipsis';
+        veil.style.whiteSpace = 'nowrap';
         el.style.background = 'rgba(212,175,55,0.06)';
+        el.style.borderColor = 'rgba(212,175,55,0.25)';
     } else {
-        veil.textContent = '✦ 신탁 보기';
-        veil.style.color = 'rgba(212,175,55,0.85)';
-        el.style.background = 'rgba(0,0,0,0.35)';
+        // 다시 가리기 — 블러
+        veil.textContent    = '✦ 보기';
+        veil.style.filter   = 'blur(0px)';
+        veil.style.color    = 'rgba(212,175,55,0.7)';
+        veil.style.fontSize = '0.7rem';
+        veil.style.fontWeight = '800';
+        veil.style.maxWidth = '';
+        el.style.background = 'rgba(255,255,255,0.03)';
+        el.style.borderColor = 'rgba(212,175,55,0.12)';
     }
 }
 
