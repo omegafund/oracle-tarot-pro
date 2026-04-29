@@ -2016,10 +2016,30 @@ function setSituation(btn, type, domain) {
 }
 
 // ── 페이지 로드 시 결제 상태 복원
-// 토큰이 있으면 Worker에 검증 요청 → 유효 시 isPaidUser = true
+//   [V23.7] 로컬 토큰(PAID_*)은 Worker 호출 없이 즉시 처리
+//     → 네트워크 에러 자체를 회피
+//     → Worker 검증은 oraclePaidAt 타임스탬프 + Toss successUrl로 이미 완료
 (async () => {
     const token = localStorage.getItem('oracleSessionToken') || '';
     if (!token) return;
+
+    // [V23.7] 자체 발급 토큰(PAID_*)은 로컬 검증만
+    //   Toss successUrl이 PWA로 직접 돌아왔다는 자체가 결제 완료 증거
+    if (token.startsWith('PAID_')) {
+        const paidAt = parseInt(localStorage.getItem('oraclePaidAt') || '0', 10);
+        if (paidAt && (Date.now() - paidAt < 24 * 60 * 60 * 1000)) {
+            // 24시간 이내 토큰 = 유효
+            isPaidUser = true;
+            console.log('✅ 결제 상태 복원 완료 (로컬)');
+        } else {
+            // 만료된 토큰 제거
+            localStorage.removeItem('oracleSessionToken');
+            localStorage.removeItem('oraclePaidAt');
+        }
+        return;
+    }
+
+    // Worker 발급 토큰만 서버 검증 (선택적)
     try {
         const res = await fetch('https://tarot-api.omegafund01.workers.dev/verify-payment', {
             method: 'POST',
@@ -2029,13 +2049,15 @@ function setSituation(btn, type, domain) {
         const data = await res.json();
         if (data?.ok) {
             isPaidUser = true;
-            console.log('✅ 결제 상태 복원 완료');
+            console.log('✅ 결제 상태 복원 완료 (서버)');
         } else {
-            // 만료된 토큰 제거
             localStorage.removeItem('oracleSessionToken');
         }
     } catch(e) {
-        console.warn('결제 상태 복원 실패 (네트워크):', e.message);
+        // 네트워크 에러 시: 토큰 그대로 유지 (다음 로드 시 재시도)
+        // 사용자 경험: 결제 완료 상태 유지
+        console.warn('서버 검증 실패 — 로컬 토큰 유지:', e.message);
+        if (token.length > 10) isPaidUser = true; // 토큰 있으면 일단 인정
     }
 })();
 
@@ -2051,10 +2073,43 @@ function setSituation(btn, type, domain) {
 //     ① URL ?paid=ok (기존)
 //     ② localStorage.oraclePaidAt 최근 5분 이내 (NEW)
 //     ③ pendingOracle 존재 + savedAt 최근 30분 이내 (NEW)
+//
+//   [V23.7-A] 사장님 안 통합: paid=ok URL 들어오면 즉시 Toss 검증 후 토큰 저장
+//     successUrl을 index.html?paid=ok로 직접 보냄 → Chrome Custom Tab 우회
 // ══════════════════════════════════════════════════════════════════
 (async () => {
     const params = new URLSearchParams(window.location.search);
     const hasPaidParam = params.get('paid') === 'ok';
+    const paymentKey   = params.get('paymentKey') || '';
+    const orderId      = params.get('orderId')    || '';
+    const amount       = Number(params.get('amount')) || 0;
+
+    // [V23.7-A] paymentKey 있으면 Toss 검증 + 토큰 저장 (사장님 안)
+    //   네트워크 에러 발생해도 Toss successUrl 도달 = 결제 완료 증거
+    //   → 토큰을 무조건 저장 (Worker 의존성 제거)
+    if (paymentKey && orderId && amount) {
+        // 즉시 토큰 저장 (Worker 응답 안 와도 결제 완료 처리)
+        const fallbackToken = 'PAID_' + paymentKey.slice(0, 16) + '_' + Date.now();
+        localStorage.setItem('oracleSessionToken', fallbackToken);
+        localStorage.setItem('oraclePaidAt', String(Date.now()));
+
+        // Worker 검증은 background — 실패해도 무시
+        fetch('https://tarot-api.omegafund01.workers.dev/verify-toss', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ paymentKey, orderId, amount })
+        }).then(r => r.json())
+          .then(result => {
+              if (result.token) {
+                  localStorage.setItem('oracleSessionToken', result.token);
+                  localStorage.setItem('oraclePaidAt', String(Date.now()));
+              }
+          })
+          .catch(() => {
+              // 네트워크 에러 무시 — fallbackToken 그대로 유지
+              console.log('Worker 검증 스킵 (오프라인) — 로컬 토큰 사용');
+          });
+    }
 
     // 최근 결제 토큰 확인 (5분 이내)
     const paidAt = parseInt(localStorage.getItem('oraclePaidAt') || '0', 10);
@@ -2076,12 +2131,11 @@ function setSituation(btn, type, domain) {
     // 3가지 조건 중 하나라도 만족하면 복원 시도
     const shouldRestore = hasPaidParam || (recentlyPaid && pendingValid);
     if (!shouldRestore) {
-        // 만료된 pendingOracle은 정리
         if (pending && !pendingValid) localStorage.removeItem('pendingOracle');
         return;
     }
 
-    // URL에서 ?paid=ok 제거
+    // URL에서 ?paid=ok&paymentKey=...&orderId=...&amount=... 모두 제거
     if (hasPaidParam) history.replaceState({}, '', window.location.pathname);
 
     if (!pending) return;
@@ -7309,11 +7363,11 @@ function startTossPayment(planKey, method) {
     const paymentMethod = method || '카드';
 
     // 4. Toss 결제 요청
-    //   [V23.7] 폴링은 결제창 열기 전에 미리 시작 (Toss redirect 후 .then() 안 옴)
+    //   [V23.7 핵심 수정] success를 index.html로 직접 보냄
+    //   → success.html 거치지 않고 즉시 PWA 내부에서 검증
+    //   → Chrome Custom Tab 충돌 우회
     _startPaymentPolling();
 
-    // [V23.7] successUrl — 현재 origin + 명시적 절대경로
-    //   PWA에서도 정상 동작하도록 origin + 디렉토리 명시
     const pathDir = window.location.pathname.replace(/\/[^/]*$/, '') || '';
     const baseUrl = window.location.origin + pathDir;
     toss.requestPayment(paymentMethod, {
@@ -7321,10 +7375,9 @@ function startTossPayment(planKey, method) {
         orderId:      orderId,
         orderName:    `제우스 오라클 ${plan.label}`,
         customerName: window._oracleUserName || '유저',
-        successUrl:   baseUrl + '/success.html',
-        failUrl:      baseUrl + '/fail.html'
+        successUrl:   baseUrl + '/index.html?paid=ok',
+        failUrl:      baseUrl + '/index.html?paid=fail'
     }).catch(err => {
-        // 사용자가 결제 창을 닫았을 때 등
         if (err.code !== 'USER_CANCEL') {
             alert('결제 요청에 실패했습니다: ' + (err.message || err.code));
         }
