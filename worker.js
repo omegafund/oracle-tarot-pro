@@ -1067,11 +1067,14 @@ function buildStockMetrics({ totalScore, riskScore, cleanCards, isLeverage, quer
     else { entryStrategy = "조건부 분할 매도"; exitStrategy = "추세 확인 후 결정"; }
   } else {
     // ━━ 매수 의도 (기본) ━━
+    // [V22.6] 사장님 진단 — 매수 의도에서 "손절/전량" 단어 회피
+    //   원인: 기존 단어가 Client/UI에서 매도로 오인되는 위험
+    //   해결: 매수 의도면 "방어선/관망/회피" 등 매수 관점 단어만 사용
     entryStrategy = "관망 및 대기"; exitStrategy = "추세 확인 후 대응";
-    if (trend === "강한 상승") { entryStrategy = "초기 진입 + 눌림목 추가매수"; exitStrategy = "목표가 도달 시 분할 매도"; }
-    else if (trend === "상승") { entryStrategy = "분할 진입 (2~3회)"; exitStrategy = "단기 고점 일부 차익실현"; }
-    else if (trend === "하락") { entryStrategy = "신규 진입 금지"; exitStrategy = "반등 시 비중 축소"; }
-    else if (trend === "강한 하락") { entryStrategy = "절대 진입 금지"; exitStrategy = "즉시 손절 또는 전량 정리"; }
+    if (trend === "강한 상승") { entryStrategy = "초기 진입 + 눌림목 추가매수"; exitStrategy = "목표가 도달 시 분할 차익 실현"; }
+    else if (trend === "상승") { entryStrategy = "분할 진입 (2~3회)"; exitStrategy = "단기 고점 일부 차익 실현"; }
+    else if (trend === "하락") { entryStrategy = "🚫 신규 매수 금지"; exitStrategy = "반등 신호 대기"; }
+    else if (trend === "강한 하락") { entryStrategy = "🚫 절대 매수 금지 — 관망 유지"; exitStrategy = "방어선 -5% 엄수 (이탈 시 재평가)"; }
   }
 
   // ══════════════════════════════════════════════════════════════════
@@ -1276,7 +1279,10 @@ function buildStockMetrics({ totalScore, riskScore, cleanCards, isLeverage, quer
     finalTrend = "중립 (전환 직전)";
   }
   if (finalAction.includes("관망") || finalAction === "관망") {
-    finalAction = "🚫 진입 금지 → 관망 유지";
+    // [V22.6] 의도별 차별화 — UI에서 매수/매도 혼동 차단
+    finalAction = stockIntent === 'sell'
+      ? "🚫 매도 보류 → 반등 대기"
+      : "🚫 매수 금지 → 관망 유지";
   }
   if (!finalRisk || finalRisk === "중립") {
     finalRisk = "보통 (방향 미확정)";
@@ -3186,7 +3192,18 @@ export default {
         }
         else if (queryType === "stock" || queryType === "crypto") {
           // [V19.9] 주식/코인 매도/매수 intent 자동 감지
-          const stockIntent = detectStockIntent(prompt);
+          // [V22.6] 사장님 안: stockSubType이 명시적으로 buy_timing/sell_timing이면 우선 적용
+          //   유저가 홈뷰에서 직접 [매수 타이밍] / [매도 타이밍] 버튼 눌렀음
+          //   → 자동 감지보다 100% 신뢰
+          let stockIntent;
+          if (stockSubType === 'buy_timing') {
+            stockIntent = 'buy';
+          } else if (stockSubType === 'sell_timing') {
+            stockIntent = 'sell';
+          } else {
+            // 자동 감지 (자연어 분석)
+            stockIntent = detectStockIntent(prompt);
+          }
           metrics = buildStockMetrics({ totalScore, riskScore, cleanCards, isLeverage, queryType, prompt, intent: stockIntent, reversedFlags });
           metrics.stockIntent = stockIntent;  // 클라이언트가 알 수 있도록
         }
@@ -3881,9 +3898,18 @@ function extractSubject(prompt, queryType) {
       }
     }
 
-    // [V22.4] 2순위: 한글+한글 띄어쓰기 패턴 (사전에 없는 새 종목)
+    // [V22.4+V22.6] 2순위: 한글+한글 띄어쓰기 패턴 (사전에 없는 새 종목)
+    //   "대한 광통신 매수" → "대한광통신" (두 단어 합침)
+    //   "동국제강 매수" → "동국제강" (두 번째가 동사면 제외)
     const m2 = p.match(/^([가-힣]{2,6})\s+([가-힣]{2,8})\s+(?:다음주|이번주|언제|매수|매도|매입|살|팔|사려|사고|살까|팔려|팔까|팔고|팔아|진입|타이밍|적기|시점|단타|장투|들어가|뽑|익절|손절|청산|어떨|어때|좋을)/);
     if (m2) {
+      // [V22.6] 두 번째 단어가 매매 동사/명사면 종목명에서 제외
+      const VERBS_OR_KEYWORDS = ['매수','매도','매입','매각','진입','청산','손절','익절','단타','장투','스윙','관망','보유','이번','지금','다음','오늘','내일','종목','주식','코인','타이밍','시점','적기'];
+      if (VERBS_OR_KEYWORDS.includes(m2[2])) {
+        // "동국제강 매수" → "동국제강"
+        return m2[1].trim();
+      }
+      // 정상 두 단어 종목 — "대한 광통신" → "대한광통신"
       return (m2[1] + m2[2]).trim();
     }
 
