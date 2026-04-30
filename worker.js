@@ -361,11 +361,29 @@ function detectRiskGate(cardNames, intent) {
 // ══════════════════════════════════════════════════════════════════
 function buildExitTriggers(intent, riskLevel) {
   if (intent === 'sell') {
-    // 매도 의도일 땐 별도 다른 흐름
+    // ════════════════════════════════════════════════════════════
+    // [V24.7] 사장님 진단: "버티면 해결" 구조 아님 — 탈출 전략 필수
+    //   기존: "추세 확정 후 청산"만 있음 → 결과적으로 손실 방치
+    //   해결: 4단계 단계적 탈출 — 선제적 비중 축소 + 손절 + 시간 손절
+    // ════════════════════════════════════════════════════════════
+    if (riskLevel === 'EXTREME' || riskLevel === 'HIGH') {
+      // 게이트 발동 + sell intent — 명확한 탈출 전략
+      return [
+        { stage: '0차 (즉시)',  action: '선제적 비중 축소 — 보유분의 30% 즉시 정리 (시장가)' },
+        { stage: '1차 손절',    action: '평균 단가 -5% 이탈 시 → 추가 30% 정리 (감정적 보유 차단)' },
+        { stage: '2차 손절',    action: '평균 단가 -10% 이탈 시 → 잔여 100% 전량 정리 (손실 확대 방지)' },
+        { stage: '시간 손절',   action: '5거래일 내 반등 +3% 미달성 시 → 잔여 분할 정리 (기회비용 차단)' },
+        { stage: '반등 대응',   action: '반등 +3~5% 도달 시 → 잔여분 30~50% 분할 청산 (욕심 차단)' },
+        { stage: '최종 청산',   action: '20일선 이탈 + 거래량 +50% 음봉 → 잔여 전량 즉시 시장가 청산' }
+      ];
+    }
+    // 일반 sell — 약간 더 여유 있는 탈출
     return [
-      { stage: '하락 가속',  action: '추가 음봉 + 거래량 +50% 시 → 잔량 즉시 시장가 청산' },
-      { stage: '추세 확정',  action: '20일선 이탈 + 종가 마감 → 잔여 포지션 100% 정리' },
-      { stage: '바닥 탐색',  action: '추세 하락 확정 후 매도 완료 → 다음 사이클까지 관망' }
+      { stage: '0차 (즉시)',  action: '비중 축소 — 보유분의 20% 즉시 정리 (방어 우선)' },
+      { stage: '1차 손절',    action: '평균 단가 -5% 이탈 시 → 추가 30% 정리' },
+      { stage: '2차 손절',    action: '평균 단가 -10% 이탈 시 → 잔여 전량 정리' },
+      { stage: '시간 손절',   action: '7거래일 내 반등 미확인 시 → 잔여 분할 정리' },
+      { stage: '반등 대응',   action: '반등 +5% 도달 시 → 잔여분 50% 분할 청산' }
     ];
   }
   // 매수 의도 (기본) — 진입 안 한 상태이지만 기존 보유분 대응 + 하락 회피 룰
@@ -2456,6 +2474,24 @@ function buildStockMetrics({ totalScore, riskScore, cleanCards, isLeverage, quer
   }
   const finalRiskCautions = riskCautions.slice(0, 3);
 
+  // [V24.6+V24.7 PATCH] sell intent + 게이트 발동 시 — 능동 탈출 행동 지침
+  //   사장님 진단: "기다리면 해결" 구조 아님 — 손실 방어 전략 필수
+  //   해결: 선제적 비중 축소 + 손절 트리거 + 시간 손절 명시
+  if (riskGate.triggered && stockIntent === 'sell') {
+    const _isStrongSell = totalScore <= -3 || volGate.isHighVolatility || volGate.hasExtremeCard;
+    criticalRules = _isStrongSell
+      ? [
+          '선제적 비중 축소 — 보유분 30% 즉시 정리 (방치 금지)',
+          '손절선 사전 설정 — 평균 단가 -5% / -10% 단계 손절',
+          '시간 손절 — 5거래일 내 반등 미달성 시 잔여 분할 정리'
+        ]
+      : [
+          '선제적 비중 축소 — 보유분 20% 즉시 정리 (방어 우선)',
+          '단계적 탈출 — 반등 시 추가 정리, 손절선 동시 운용',
+          '추가 매수로 평단 낮추기 절대 금지'
+        ];
+  }
+
   // ════════════════════════════════════════════════════════════
   // [V20.9] Signal 한 줄 임팩트 해석 — 카드별 행동 결과형
   //   기존: "직관·새 아이디어의 정체·지연 — 본래 흐름이 가로막힌 상태" (장황)
@@ -2783,24 +2819,46 @@ function buildStockMetrics({ totalScore, riskScore, cleanCards, isLeverage, quer
       gateAwareCriticalClosing: `점수가 아닌 카드의 본질 의미를 따르십시오 — 게이트 발동 구간에서는 인내가 최고의 전략입니다.`
     };
   } else if (_gateTriggered && stockIntent === 'sell') {
+    // ════════════════════════════════════════════════════════════
+    // [V24.7] 사장님 진단: "버티면 해결" 구조 아님 — 탈출 전략 필수
+    //   기존: "청산 보류 — 반등 신호 대기" → 손실 방치 위험
+    //   해결: "단계적 탈출 (Exit Strategy)" — 선제적 비중 축소 + 손절 + 시간 손절
+    //   원칙: sell intent = 이미 출구 모색 중인 사용자. "기다려라"는 답이 아님.
+    //
+    // 케이스별 전략 강도:
+    //   • 단순 게이트 (예: 다수결만 발동) → 경량 탈출 (선제 20% 축소)
+    //   • 게이트 + 하락 score (totalScore≤-3) → 강한 탈출 (선제 30% 축소 + 시간 손절)
+    // ════════════════════════════════════════════════════════════
+    const _isStrongSell = totalScore <= -3 || volGate.isHighVolatility || volGate.hasExtremeCard;
     _uncOverride = {
-      execMode: 'WATCH',
-      decisionPosition: volGate.isHighVolatility
-        ? '청산 보류 (변동성 우세)'
-        : '청산 보류 (관망 카드 우세)',
-      decisionStrategy: '바닥 확인 전 추가 매도 자제 — 반등 신호 대기',
-      diagnosis: `${_gateReason} — 청산 타이밍 신호 검증 필요`,
-      verdict: '게이트 발동 — 청산 전 시장 반응 확인 필요',
-      timingNote: '반등 신호 미확인 — 즉시 청산보다 분할 청산 권장',
+      execMode: 'EXIT',  // [V24.7] WATCH → EXIT — 능동적 탈출
+      decisionPosition: _isStrongSell
+        ? '단계적 탈출 (선제 비중 축소 + 손절 트리거)'
+        : '방어적 분할 청산 (선제 축소 + 반등 대응)',
+      decisionStrategy: _isStrongSell
+        ? '선제 30% 축소 → 손절 트리거 발동 시 추가 정리 → 5거래일 시간 손절'
+        : '선제 20% 축소 → 반등 +5% 시 추가 정리 → 7거래일 시간 손절',
+      diagnosis: `${_gateReason} — 카드 조합이 회복보다 정리를 가리키는 구간`,
+      verdict: _isStrongSell
+        ? '게이트 발동 + 하락 신호 — 선제적 탈출 전략 필수 (방치 금지)'
+        : '게이트 발동 — 분할 청산 + 손절 트리거 동시 운용',
+      timingNote: '즉시 일부 정리 → 손절·반등 트리거 대기 (방치 아님)',
       entryTriggers: null,
-      // [V24.3] 매도 의도일 때도 exit 시나리오 제공
-      exitTriggers: buildExitTriggers('sell', riskGate.level),
-      // [V24.5] sell 의도 시도 동일 narrative 덮어쓰기
-      cardEvidence: `현재 카드 조합은 청산 타이밍 신호로도 신뢰도가 낮습니다.\n바닥 확인 전 일괄 청산은 손실을 키울 수 있어, 분할 정리가 안전합니다.`,
-      outcomePrediction: `👉 지금 일괄 청산하면 '바닥 직전 매도' 위험이 있고\n👉 반등 신호 확인 + 분할 청산이 손실을 줄이는 구조입니다`,
-      gateAwareInterpretation:
-        `청산 타이밍 카드 조합이 명확하지 않은 구간입니다.\n게이트 발동은 추가 매도보다 흐름 확인이 우선임을 가리킵니다.\n반등 신호 미확인 시 분할 청산으로 리스크를 분산하십시오.`,
-      gateAwareCriticalClosing: `위기 구간일수록 점진적 정리가 일괄 매도보다 안전합니다.`
+      // [V24.7] 핵심: exitTriggers를 명확한 6단계 탈출 전략으로
+      exitTriggers: buildExitTriggers('sell', _isStrongSell ? 'HIGH' : riskGate.level),
+      // [V24.5+V24.7] sell narrative — "기다려라"가 아니라 "방어 행동하라"
+      cardEvidence: _isStrongSell
+        ? `Five of Swords 같은 '이미 진 싸움' 카드와 역방향 회복 카드 조합은\n버티는 전략이 아닌 단계적 탈출을 가리킵니다. 손절 트리거 사전 설정 필수입니다.`
+        : `현재 카드 조합은 회복 신뢰도가 낮습니다.\n선제적 비중 축소로 방어선을 만들고, 반등 시 추가 정리 + 손절선 동시 운용이 안전합니다.`,
+      outcomePrediction: _isStrongSell
+        ? `👉 지금 아무 행동 안 하면 '시간 + 추가 하락'에 이중 노출되고\n👉 선제 30% 축소 + 손절 트리거 운용이 손실 한도 통제에 유리합니다`
+        : `👉 지금 일괄 청산하면 '바닥 직전 매도' 위험, 무대응하면 '추가 하락 방치' 위험이고\n👉 분할 정리 + 손절선 동시 운용이 양쪽 리스크를 모두 줄입니다`,
+      gateAwareInterpretation: _isStrongSell
+        ? `Five of Swords + 역방향 회복 카드 — 카드 의미가 명확히 '정리'를 가리킵니다.\n"바닥 매도 회피"라는 이유로 무대응하는 것은 카드 메시지를 거스르는 손실 방치입니다.\n선제 비중 축소 + 손절 트리거 + 시간 손절을 동시 운용해 손실 한도를 통제하십시오.`
+        : `현재 카드 조합은 회복보다 정리를 가리킵니다.\n일괄 청산도 무대응도 정답이 아닙니다 — 분할 정리 + 손절선 동시 운용이 핵심입니다.\n반등 신호 도달 시 추가 정리, 손절 도달 시 즉시 잔여 정리하십시오.`,
+      gateAwareCriticalClosing: _isStrongSell
+        ? `'기다리면 해결'이 아닌 카드 조합입니다 — 선제적 탈출이 손실을 통제합니다.`
+        : `방치는 전략이 아닙니다 — 분할 정리 + 손절 트리거가 진짜 방어입니다.`
     };
   }
   // ══════════════════════════════════════════════════════════════
@@ -2810,15 +2868,30 @@ function buildStockMetrics({ totalScore, riskScore, cleanCards, isLeverage, quer
   //   문제: 게이트 발동(0% 비중)인데 매수 권유 톤 → 자기모순
   //   해결: 신중 메시지 3줄로 완전 교체
   if (_uncOverride) {
-    const _gateGeneralMsg = volGate.isHighVolatility
-      ? `${volGate.extremeCardName || '변동성 카드'}의 단독 변동성 신호가 진입 신뢰도를 낮추고 있습니다.`
-      : (riskGate.decisionMajority?.majorityCaution
-          ? `3장 중 ${riskGate.decisionMajority.cautionCount}장이 신중·관망 카드 — 점수 합산보다 본질 의미가 우선합니다.`
-          : `관망 카드 가중치가 진입 신뢰도를 흐리고 있습니다.`);
-    const _gateFlavorMsg = `객관적 트리거(거래량·이평선·추세) 충족 전까지 0% 포지션을 유지하십시오.`;
-    const _gateClosing = _uncOverride.gateAwareCriticalClosing
-      || `점수가 아닌 카드의 본질 의미를 따르십시오 — 게이트 발동 구간에서는 인내가 최고의 전략입니다.`;
-    criticalInterpretation = `${_gateGeneralMsg}\n${_gateFlavorMsg}\n${_gateClosing}`;
+    // [V24.7] sell intent + 게이트 발동 시 — 능동 탈출 메시지로
+    if (stockIntent === 'sell') {
+      const _isStrongSell = totalScore <= -3 || volGate.isHighVolatility || volGate.hasExtremeCard;
+      const _sellGeneralMsg = _isStrongSell
+        ? `현재 카드 조합은 회복보다 정리를 가리킵니다 — '버티면 해결' 구조 아님.`
+        : `현재 카드 조합은 회복 신뢰도가 낮습니다 — 분할 정리 + 손절선 동시 운용 필수.`;
+      const _sellFlavorMsg = _isStrongSell
+        ? `선제 30% 즉시 정리 + 손절 트리거(-5%/-10%) + 5거래일 시간 손절을 동시 운용하십시오.`
+        : `선제 20% 즉시 정리 + 반등 시 추가 정리 + 손절선 운용으로 양쪽 리스크 통제.`;
+      const _sellClosing = _uncOverride.gateAwareCriticalClosing
+        || `방치는 전략이 아닙니다 — 단계적 탈출이 진짜 방어입니다.`;
+      criticalInterpretation = `${_sellGeneralMsg}\n${_sellFlavorMsg}\n${_sellClosing}`;
+    } else {
+      // buy intent (기존)
+      const _gateGeneralMsg = volGate.isHighVolatility
+        ? `${volGate.extremeCardName || '변동성 카드'}의 단독 변동성 신호가 진입 신뢰도를 낮추고 있습니다.`
+        : (riskGate.decisionMajority?.majorityCaution
+            ? `3장 중 ${riskGate.decisionMajority.cautionCount}장이 신중·관망 카드 — 점수 합산보다 본질 의미가 우선합니다.`
+            : `관망 카드 가중치가 진입 신뢰도를 흐리고 있습니다.`);
+      const _gateFlavorMsg = `객관적 트리거(거래량·이평선·추세) 충족 전까지 0% 포지션을 유지하십시오.`;
+      const _gateClosing = _uncOverride.gateAwareCriticalClosing
+        || `점수가 아닌 카드의 본질 의미를 따르십시오 — 게이트 발동 구간에서는 인내가 최고의 전략입니다.`;
+      criticalInterpretation = `${_gateGeneralMsg}\n${_gateFlavorMsg}\n${_gateClosing}`;
+    }
   }
 
   return {
@@ -2882,15 +2955,38 @@ function buildStockMetrics({ totalScore, riskScore, cleanCards, isLeverage, quer
         volatilityComposite: volGate.composite,
         riskGateLevel:    riskGate.level
       },
-      execution: _uncOverride ? {
-        weight:    '0% (트리거 미충족)',
-        stopLoss:  '진입 후 평균 단가 -5%',
-        target:    '추세 확정 후 재설정'
-      } : position,
+      execution: _uncOverride ? (() => {
+        const _isStrongSell = stockIntent === 'sell' && (totalScore <= -3 || volGate.isHighVolatility || volGate.hasExtremeCard);
+        if (stockIntent === 'sell') {
+          return {
+            // [V24.7] 사장님 진단: "0% 매도"는 방치 — 선제적 비중 축소 필수
+            weight:    _isStrongSell
+              ? '선제 30% 즉시 정리 + 손절 트리거 운용'
+              : '선제 20% 즉시 정리 + 반등 시 추가 정리',
+            stopLoss:  _isStrongSell
+              ? '평균 단가 -5% / -10% 단계별 손절 + 5거래일 시간 손절'
+              : '평균 단가 -5% / -10% 단계별 손절 + 7거래일 시간 손절',
+            target:    _isStrongSell
+              ? '반등 +3~5% 시 잔여 30~50% 정리 / 20일선 이탈 시 전량 청산'
+              : '반등 +5% 시 잔여 50% 정리 / 20일선 이탈 시 전량 청산',
+            note:      '⚠️ "기다림"이 아닌 "단계적 탈출" — 손절 트리거 사전 설정 필수'
+          };
+        }
+        // buy intent (기존)
+        return {
+          weight:    '0% (트리거 미충족)',
+          stopLoss:  '진입 후 평균 단가 -5%',
+          target:    '추세 확정 후 재설정',
+          note:      '⚠️ 관망 카드 우세 — 객관적 트리거 충족 전 진입 자제'
+        };
+      })() : position,
       timing: _uncOverride ? {
         entryRanges: [],
         exitRanges:  [],
-        watchRanges: ['진입 트리거 미충족 — 객관적 신호 확인 후 진입']
+        // [V24.6+V24.7 PATCH] sell intent 시 — 명확한 행동 지시
+        watchRanges: [stockIntent === 'sell'
+          ? '선제 비중 축소 후 손절·반등 트리거 동시 모니터링'
+          : '진입 트리거 미충족 — 객관적 신호 확인 후 진입']
       } : {
         entryRanges,
         exitRanges,
@@ -2919,16 +3015,33 @@ function buildStockMetrics({ totalScore, riskScore, cleanCards, isLeverage, quer
         volatility: volGate.isHighVolatility
           ? `높음 (변동성 지수 ${volGate.composite}점)`
           : (hasReversedSignal || hasMidstreamObstacle ? "증가 가능성 있음" : (totalScore <= -3 ? "높음" : "보통")),
+        // [V24.6 PATCH 8] cautions — sell intent 시 buy 전용 표현 차단
+        //   사장님 진단: 매도 케이스에 "진입 자제" / "진입 트리거 무효화" 등이 노출
+        //   해결: sell 분기와 buy 분기 분리
         cautions: _uncOverride
-          ? [
-              ...finalRiskCautions,
-              volGate.isHighVolatility
-                ? '변동성·전환 카드 우세 — 급락 가능성 동시 대비'
-                : '관망 카드 우세 — 객관적 트리거 확인 전 진입 자제',
-              '전저점 이탈 시 모든 진입 트리거 무효화 — 다음 점사까지 관망',
-              '추세 하락 확정(20일선 이탈) 시 신규 진입 완전 배제',
-              '평균 단가 기준 손절선 사전 설정 필수'
-            ]
+          ? (stockIntent === 'sell'
+              ? (() => {
+                  // [V24.7] 사장님 진단: cautions도 능동 탈출 톤으로
+                  const _isStrong = totalScore <= -3 || volGate.isHighVolatility || volGate.hasExtremeCard;
+                  return [
+                    ...finalRiskCautions,
+                    _isStrong
+                      ? '"기다리면 해결" 구조 아님 — 선제 비중 축소 필수'
+                      : '무대응 = 추가 하락 방치 — 분할 정리로 방어선 구축',
+                    '손절선 사전 설정 — 감정적 보유 차단을 위한 트리거 자동화',
+                    '시간 손절 운용 — N거래일 내 반등 미달성 시 잔여 정리',
+                    '추가 매수로 평단 낮추기 절대 금지'
+                  ];
+                })()
+              : [
+                  ...finalRiskCautions,
+                  volGate.isHighVolatility
+                    ? '변동성·전환 카드 우세 — 급락 가능성 동시 대비'
+                    : '관망 카드 우세 — 객관적 트리거 확인 전 진입 자제',
+                  '전저점 이탈 시 모든 진입 트리거 무효화 — 다음 점사까지 관망',
+                  '추세 하락 확정(20일선 이탈) 시 신규 진입 완전 배제',
+                  '평균 단가 기준 손절선 사전 설정 필수'
+                ])
           : finalRiskCautions
       },
       rules: criticalRules,

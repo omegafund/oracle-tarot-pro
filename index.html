@@ -4148,7 +4148,21 @@ function buildInvestmentData(cards, question) {
         netScore >= 3 ? 'mid'    :
         netScore >= 0 ? 'neutral': 'weak';
     const interpretLang = interpretByType[queryType] || interpretByType.stock;
-    const interpretText = interpretLang[regimeKey];
+    let interpretText = interpretLang[regimeKey];
+
+    // [V24.5 PATCH 6] 클라이언트 fallback — 게이트 발동 시 interpretText 교체
+    //   사장님 진단: netScore≥7 → "강한 상승 에너지" 텍스트와 게이트(0%) 모순
+    //   해결: riskGate 발동 시 게이트 인지 텍스트로 완전 교체
+    if (typeof riskGate !== 'undefined' && riskGate.triggered) {
+        const _vol = riskGate.volatility || {};
+        const _dm  = riskGate.decisionMajority || {};
+        const _gateMsg = _vol.hasExtremeCard && _vol.extremeCardName
+            ? `${_vol.extremeCardName}의 단독 변동성 신호가 점사 신뢰도를 낮추고 있는 구간입니다.`
+            : (_dm.majorityCaution
+                ? `3장 중 ${_dm.cautionCount}장이 신중·관망 카드 — 점수 합산보다 본질 의미가 우선합니다.`
+                : `관망 카드 가중치가 진입 신뢰도를 흐리고 있습니다.`);
+        interpretText = `${_gateMsg}\n점수 합산만으로는 긍정 시그널처럼 보일 수 있으나, 카드의 본질 의미와 게이트 발동 사실이 진입 보류를 권하고 있습니다.\n객관적 트리거가 충족될 때까지 0% 포지션을 유지하고, 하락 시나리오를 동시에 점검하십시오.`;
+    }
 
     return {
         type: (queryType === 'realestate') ? `realestate_${ctx.intent}` : queryType,
