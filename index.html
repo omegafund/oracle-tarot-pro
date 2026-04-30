@@ -289,6 +289,33 @@
             font-weight: 400;
             font-style: italic;
         }
+        /* [V24.14] 입력창 시선 유도 — 사장님 진단: "타이틀 너무 많아 커서 못 찾음" */
+        .input-attention-pulse + .beveled-border,
+        .input-system-wrapper:has(.input-attention-pulse) .beveled-border {
+            animation: input-pulse 1.5s ease-in-out 3;
+        }
+        @keyframes input-pulse {
+            0%, 100% {
+                box-shadow: 0 0 0 0 rgba(212,175,55,0.0);
+                border-color: rgba(212,175,55,0.4);
+            }
+            50% {
+                box-shadow: 0 0 24px 4px rgba(212,175,55,0.55);
+                border-color: rgba(212,175,55,1);
+            }
+        }
+        /* fallback (Safari 구버전 :has 미지원) */
+        .input-attention-pulse {
+            animation: input-glow 1.5s ease-in-out 3;
+        }
+        @keyframes input-glow {
+            0%, 100% {
+                background: transparent;
+            }
+            50% {
+                background: rgba(212,175,55,0.06);
+            }
+        }
         .cards-stage {
             display: flex;
             justify-content: space-between;
@@ -1361,7 +1388,7 @@
             <div class="beveled-border"></div>
             <div class="beveled-inner"></div>
             <textarea id="seed-input" class="gold-input" placeholder="Whisper your question to the cards…
-마음의 질문을 깊게 새기소서" oninput="onQuestionInput(this.value)"></textarea>
+마음의 질문을 깊게 새기소서" oninput="onQuestionInput(this.value)" autofocus></textarea>
         </div>
 
         <!-- [V18.2] 상황 선택 UI — 연애/주식/부동산 3도메인 자동 노출 -->
@@ -3622,8 +3649,13 @@ function getCardBasedTiming(cards, queryType, intent, qRaw) {
 // 🔥 운세 질문용 — 카드 power 기반 기운 강한 시간대 산출
 //    [V23.8-D] 요일/특정 시각 고정 제거 → 시간대 흐름 (사장님 안)
 //    이유: 화요일·금요일 등 요일 고정 시 사용자 시점과 어긋날 위험
+//    [V24.14] 도메인/subtype 컨텍스트 인식 — 사장님 진단:
+//       "정형화된 텍스트라서 궁합/연애/운세 다 똑같이 나온다"
+//       "결혼 케이스에 '명상이나 집중을 권합니다'는 부적절"
+//    해결: loveSubType별 6가지 분기 (marriage/breakup/reunion/compatibility/
+//          mindread/일반)로 적절한 메시지 출력
 // ════════════════════════════════════
-function getLuckyTiming(cards, qRaw) {
+function getLuckyTiming(cards, qRaw, loveSubType = '') {
     const totalPower = calcCardPower(cards);
     let seed = 0;
     for (let i = 0; i < qRaw.length; i++) seed += qRaw.charCodeAt(i);
@@ -3655,12 +3687,79 @@ function getLuckyTiming(cards, qRaw) {
     const bestZone2 = weeklyZones[(Math.abs(seed) + 3) % weeklyZones.length];
     const bestTime  = pick(timeZones);
 
+    // ══════════════════════════════════════════════════════════════
+    // [V24.14] 도메인별 분기 — 사장님 진단 핵심
+    //   기존: 4가지 점수 분기 × 단일 메시지 풀 → 결혼/이별/짝사랑 모두 같음
+    //   해결: loveSubType별 적절한 컨텍스트 메시지 우선 적용
+    // ══════════════════════════════════════════════════════════════
+
+    // ── [결혼 분기] — 진지한 진행 중인 관계 ──
+    if (loveSubType === 'marriage') {
+        if (totalPower >= 8) {
+            return `✨ 결혼 진행에 가장 우호적인 흐름: <strong>${bestZone} · ${bestTime}</strong> — 두 분의 합의가 가장 잘 이뤄질 수 있는 구간입니다. 양가 상견례나 중요 결정은 이 시기에.`;
+        } else if (totalPower >= 3) {
+            return `✨ 결혼 준비에 유리한 흐름: <strong>${bestZone}</strong> 또는 <strong>${bestZone2}</strong> · 특히 <strong>${bestTime}</strong>에 두 분의 진솔한 대화가 가장 깊어집니다.`;
+        } else if (totalPower >= 0) {
+            return `✨ 결혼 합의의 분기점: <strong>${pick2(moonPhases)}</strong> 이후 ${bestZone}부터 의구심이 정리됩니다. <strong>${bestTime}</strong>에 본질적 합의를 위한 대화 권장.`;
+        } else {
+            return `✨ 결혼 결정 보류 시기: 현재 두 분의 에너지가 충돌 구간입니다. <strong>${bestZone2}</strong>의 <strong>${pick2(timeZones)}</strong> 이후 본질적 합의 가능성 검토. 무리한 일정 강행은 삼가세요.`;
+        }
+    }
+
+    // ── [이별 분기] — 정리/회복 단계 ──
+    if (loveSubType === 'breakup') {
+        if (totalPower >= 3) {
+            return `✨ 정리 흐름이 가장 안정적인 시기: <strong>${bestZone}</strong> · <strong>${bestTime}</strong>에 자기 회복과 새로운 시야가 열립니다. 새 챕터로의 전환 권장.`;
+        } else if (totalPower >= 0) {
+            return `✨ 감정 정리의 분기점: <strong>${pick2(moonPhases)}</strong> 이후 ${bestZone}부터 마음이 가라앉습니다. <strong>${bestTime}</strong>에 자기 돌봄과 휴식 권장.`;
+        } else {
+            return `✨ 회복 우선 시기: 현재 감정의 깊은 흐름 구간입니다. <strong>${bestZone2}</strong>의 <strong>${pick2(timeZones)}</strong>에 충분한 자기 시간을 가지세요. 충동적 재연락 절대 금지.`;
+        }
+    }
+
+    // ── [재회 분기] — 끊긴 관계 회복 시도 ──
+    if (loveSubType === 'reunion') {
+        if (totalPower >= 5) {
+            return `✨ 재회 시도에 우호적인 흐름: <strong>${bestZone}</strong> · 특히 <strong>${bestTime}</strong>에 부담 없는 안부 시도가 자연스럽게 받아들여질 수 있습니다.`;
+        } else if (totalPower >= 0) {
+            return `✨ 관망 우선 시기: <strong>${pick2(moonPhases)}</strong> 이후 ${bestZone}까지 상대 반응을 살피며 인내. <strong>${bestTime}</strong>에 자기 마음 정리 권장.`;
+        } else {
+            return `✨ 재회 보류 시기: 현재 두 분의 에너지가 어긋난 구간입니다. <strong>${bestZone2}</strong>까지 자기 회복에 집중. 충동적 시도는 결과를 더 멀어지게 합니다.`;
+        }
+    }
+
+    // ── [궁합 분기] — 본질적 호환성 점검 ──
+    if (loveSubType === 'compatibility') {
+        if (totalPower >= 5) {
+            return `✨ 본질적 합이 잘 드러나는 시기: <strong>${bestZone}</strong> · <strong>${bestTime}</strong>에 두 분의 가치관과 미래관이 잘 맞물립니다. 깊은 대화 권장.`;
+        } else if (totalPower >= 0) {
+            return `✨ 차이를 인정하는 분기점: <strong>${pick2(moonPhases)}</strong> 이후 ${bestZone}부터 두 분의 다른 점이 객관적으로 보입니다. <strong>${bestTime}</strong>에 솔직한 점검 권장.`;
+        } else {
+            return `✨ 호환성 신중 검토 시기: 현재 두 분의 본질적 차이가 두드러지는 구간입니다. <strong>${bestZone2}</strong> 이후 차이를 받아들일 수 있는지 시간을 두고 평가하세요.`;
+        }
+    }
+
+    // ── [속마음 분기] — 상대 마음 알기 ──
+    if (loveSubType === 'mindread') {
+        if (totalPower >= 3) {
+            return `✨ 상대 마음의 신호가 잘 보이는 시기: <strong>${bestZone}</strong> · <strong>${bestTime}</strong>에 행동 패턴에서 진심이 드러납니다. 객관적 관찰 권장.`;
+        } else if (totalPower >= 0) {
+            return `✨ 신호 모으기 시기: <strong>${pick2(moonPhases)}</strong> 이후 ${bestZone}까지 상대 행동을 차분히 관찰. <strong>${bestTime}</strong>에 단서 종합 권장.`;
+        } else {
+            return `✨ 추측 자제 시기: 현재 신호가 모호한 구간입니다. <strong>${bestZone2}</strong>까지 더 많은 단서를 모으고 단정 짓지 마세요.`;
+        }
+    }
+
+    // ══════════════════════════════════════════════════════════════
+    // ── [기본 분기] — 일반 운세 (subtype 미지정 또는 crush/contact/thumb/general) ──
+    // 기존 메시지 유지 — 일반 운세에는 적합
+    // ══════════════════════════════════════════════════════════════
     if (totalPower >= 8) {
         return `✨ 기운이 가장 강한 시기: <strong>${bestZone} · ${bestTime}</strong> — 카드 에너지가 매우 높습니다. 중요한 결정이나 만남은 이 흐름에 맞추는 것이 최적입니다.`;
     } else if (totalPower >= 3) {
         return `✨ 기운이 강한 흐름: <strong>${bestZone}</strong> 또는 <strong>${bestZone2}</strong> · 특히 <strong>${bestTime}</strong>에 긍정 에너지가 집중됩니다.`;
     } else if (totalPower >= 0) {
-        return `✨ 기운의 전환점: <strong>${pick2(moonPhases)}</strong> 이후 ${bestZone}부터 에너지가 서서히 회복됩니다. <strong>${bestTime}</strong>에 명상이나 집중을 권합니다.`;
+        return `✨ 기운의 전환점: <strong>${pick2(moonPhases)}</strong> 이후 ${bestZone}부터 에너지가 서서히 회복됩니다. <strong>${bestTime}</strong>에 자기 점검과 흐름 관찰 권장.`;
     } else {
         return `✨ 기운 회복 시기: 현재 카드 에너지가 낮습니다. <strong>${bestZone2}</strong>의 <strong>${pick2(timeZones)}</strong> 이후 행동에 나서는 것이 유리합니다. 무리한 결정은 삼가세요.`;
     }
@@ -4383,10 +4482,42 @@ function buildFortuneIndicators(cards, qRaw, loveSubType = '') {
         : ["내면 성찰","에너지 충전","무리한 행동 자제","현재에 집중"];
     const action = lang ? pick(lang.actions) : pick(generalActions);
 
-    // ⚡ 타이밍
-    const moonTimings = ["보름달이 뜨는 날 밤","초승달이 뜨는 새벽","그믐 전날 저녁"];
-    const dayTimings  = ["금요일 저녁 7시 이후","수요일 오전 10시","토요일 새벽 2시","화요일 정오"];
-    const timingBase  = pick(totalPower >= 3 ? dayTimings : moonTimings);
+    // ⚡ 타이밍 — [V24.14] 도메인별 분기
+    //   사장님 진단: "정형화된 텍스트라 모든 도메인 동일"
+    //   해결: loveSubType별 적절한 시간 표현 풀 사용
+    let timingBase;
+    if (loveSubType === 'marriage') {
+        // 결혼 — 진지한 흐름·시기 표현
+        const marriageTimings = totalPower >= 3
+            ? ['이번 주 후반 진솔한 대화 흐름', '주말 충분한 시간 흐름', '다가오는 보름 무렵 합의 기운', '다음 주 초반 진전 흐름']
+            : ['그믐 전후 의구심 정리 시기', '주말 차분한 대화 흐름', '다가오는 보름 무렵 점검 기운'];
+        timingBase = pick(marriageTimings);
+    } else if (loveSubType === 'breakup') {
+        // 이별 — 회복·정리 시기 표현
+        const breakupTimings = totalPower >= 0
+            ? ['주말 자기 회복 흐름', '다가오는 보름 무렵 마음 정리', '다음 주 초반 새 시야 흐름']
+            : ['그믐 전후 깊은 정리 시기', '주말 충분한 휴식 흐름', '다가오는 보름 무렵 회복 시기'];
+        timingBase = pick(breakupTimings);
+    } else if (loveSubType === 'reunion') {
+        // 재회 — 신중한 시도 시기 표현
+        const reunionTimings = totalPower >= 3
+            ? ['주 후반 자연스러운 흐름', '주말 부담 없는 시간', '다음 주 초반 안정 흐름']
+            : ['그믐 전후 자기 정리 시기', '다가오는 보름 무렵 관망', '다음 주 초반 신중 흐름'];
+        timingBase = pick(reunionTimings);
+    } else if (loveSubType === 'compatibility') {
+        // 궁합 — 본질 점검 시기
+        const compatTimings = ['주말 본질 대화 흐름', '다가오는 보름 무렵 차이 점검', '다음 주 초반 진솔한 시간', '주 후반 솔직한 흐름'];
+        timingBase = pick(compatTimings);
+    } else if (loveSubType === 'mindread') {
+        // 속마음 — 관찰 시기
+        const mindreadTimings = ['주 후반 신호 모이는 흐름', '주말 객관적 관찰 시기', '다가오는 보름 무렵 단서 정리', '다음 주 초반 패턴 명확'];
+        timingBase = pick(mindreadTimings);
+    } else {
+        // 일반 운세 / crush / contact / thumb / general — 기존 로직 유지
+        const moonTimings = ["보름달이 뜨는 날 밤","초승달이 뜨는 새벽","그믐 전날 저녁"];
+        const dayTimings  = ["금요일 저녁 7시 이후","수요일 오전 10시","토요일 새벽 2시","화요일 정오"];
+        timingBase = pick(totalPower >= 3 ? dayTimings : moonTimings);
+    }
     const timing = `${timingBase} (수비학 ${compNum}번 — ${numMeaning.split(' — ')[0]})`;
 
     // 🛡️ 주의
@@ -5952,7 +6083,8 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
         <div style="line-height: 1.8; color: rgba(255,255,255,0.95); font-size: 0.96rem; margin-bottom: 20px;">${formatChunk(oracleContent)}</div>
         ${!isFinanceQuery ? (() => {
             const qRaw2 = (document.getElementById('seed-input')?.value || '').toLowerCase();
-            const lucky = getLuckyTiming(cards, qRaw2);
+            // [V24.14] LOVE_SUBTYPE 전달 — 도메인별 적합 메시지 출력
+            const lucky = getLuckyTiming(cards, qRaw2, LOVE_SUBTYPE);
             const fi    = buildFortuneIndicators(cards, qRaw2, LOVE_SUBTYPE);
 
             // [V18.2 방호벽] 연애 키워드 감지 시에만 연애 전용 블록 렌더링
@@ -6638,6 +6770,26 @@ document.addEventListener('DOMContentLoaded', () => {
     //   해결: 푸시 X, 사용자가 직접 진입할 때만 화면 안 표시
     //   효과: 탈퇴 위험 0 + 재방문 가치 제공
     setTimeout(showInAppNotification, 1200);
+
+    // [V24.14] 입력창 자동 포커스 — 사장님 진단:
+    //   "홈뷰에 타이틀이 너무 많아서 커서가 갈 길을 못 찾는다"
+    //   해결:
+    //     ① 페이지 로드 후 입력창에 자동 포커스 (커서 깜박임)
+    //     ② 모바일 키보드 자동 호출은 막고 (UX 좋음 — 사용자 결정권)
+    //        커서만 보이게 → preventScroll: true
+    //     ③ 1.5초 후 가벼운 시각적 강조 펄스 (사용자 시선 유도)
+    setTimeout(() => {
+        const seedInput = document.getElementById('seed-input');
+        if (!seedInput) return;
+        // 모바일에서 키보드 강제 호출은 사용자 경험 나쁨 → 데스크톱에만 적용
+        const isMobile = /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent);
+        if (!isMobile) {
+            try { seedInput.focus({ preventScroll: true }); } catch(e) {}
+        }
+        // 시각적 강조 — 모바일/데스크톱 모두 펄스 (커서 위치 인지)
+        seedInput.classList.add('input-attention-pulse');
+        setTimeout(() => seedInput.classList.remove('input-attention-pulse'), 4500);
+    }, 800);
 });
 
 // ══════════════════════════════════════════════════════════════════
@@ -7098,7 +7250,13 @@ function showPayModal() {
                         5️⃣ <b style="color:#7ad188;">즉시 결과창에서 PRO 신탁 봉인 해제!</b>
                     </div>
 
-                    <!-- [V22.1] 자동 토큰 발급 폼 — 명확한 단계 표시 -->
+                    <!-- [V22.1+V24.14] 자동 토큰 발급 폼 — 사장님 진단:
+                         "입금자명 입력란이 너무 어둡고 표시가 안 난다 — 수백 번 테스트해도 구별 안 감"
+                         해결: ① 강한 노란 배경 박스로 입력창 영역 자체 강조
+                               ② 입력창 배경 흰색 → 텍스트 검정 (가장 강한 대비)
+                               ③ 위에 "👤 입금자 이름" 라벨 명시 추가
+                               ④ placeholder 더 크고 진하게
+                               ⑤ 포커스 시 강한 골드 펄스 -->
                     <div style="margin-top:14px; padding:16px;
                                 background: rgba(46,204,113,0.08);
                                 border: 2px solid rgba(46,204,113,0.5);
@@ -7107,26 +7265,52 @@ function showPayModal() {
                         <div style="font-size:0.88rem; color:#7ad188; font-weight:900; margin-bottom:12px; text-align:center; letter-spacing:0.05em;">
                             ✅ 송금 완료 후 즉시 활성화
                         </div>
-                        <div style="font-size:0.74rem; color:rgba(255,255,255,0.7); margin-bottom:10px; text-align:center; font-style:italic;">
-                            (입금 완료 후 아래 본인 이름 입력)
+
+                        <!-- [V24.14] 입력 영역 강조 박스 -->
+                        <div style="margin-top:8px; padding:14px 12px;
+                                    background: linear-gradient(135deg, rgba(255,215,0,0.18), rgba(255,200,50,0.08));
+                                    border: 2px dashed rgba(255,215,0,0.7);
+                                    border-radius: 10px;
+                                    box-shadow: 0 0 18px rgba(255,215,0,0.25);">
+                            <!-- 명확한 라벨 -->
+                            <div style="display:flex; align-items:center; justify-content:center; gap:8px;
+                                        font-size:0.95rem; color:#FFE066; font-weight:900;
+                                        margin-bottom:10px; letter-spacing:0.04em;">
+                                <span style="font-size:1.3rem;">👤</span>
+                                <span>여기에 입금자 이름을 입력하세요</span>
+                            </div>
+                            <div style="font-size:0.72rem; color:rgba(255,224,102,0.85); text-align:center;
+                                        margin-bottom:10px; font-style:italic;">
+                                (송금 시 사용한 본인 실명과 정확히 일치해야 합니다)
+                            </div>
+                            <input type="text" id="zeusSenderName"
+                                   placeholder="예: 홍길동"
+                                   maxlength="30"
+                                   autocomplete="name"
+                                   style="width:100%; padding:16px 14px;
+                                          background: #FFFEF5;
+                                          border: 3px solid #FFD700;
+                                          border-radius: 8px;
+                                          color: #000;
+                                          font-size: 1.15rem;
+                                          font-weight: 700;
+                                          text-align: center;
+                                          letter-spacing: 0.08em;
+                                          box-shadow: inset 0 2px 6px rgba(0,0,0,0.1), 0 0 16px rgba(255,215,0,0.4);
+                                          outline: none;
+                                          transition: all 0.2s;"
+                                   onfocus="this.style.boxShadow='inset 0 2px 6px rgba(0,0,0,0.1), 0 0 28px rgba(255,215,0,0.85)'; this.style.borderColor='#FFA500';"
+                                   onblur="this.style.boxShadow='inset 0 2px 6px rgba(0,0,0,0.1), 0 0 16px rgba(255,215,0,0.4)'; this.style.borderColor='#FFD700';" />
                         </div>
-                        <input type="text" id="zeusSenderName"
-                               placeholder="실제 송금한 본인 이름을 입력하세요"
-                               maxlength="30"
-                               style="width:100%; padding:12px;
-                                      background:rgba(0,0,0,0.5);
-                                      border:1px solid rgba(46,204,113,0.5);
-                                      border-radius:6px; color:#fff; font-size:0.92rem;
-                                      margin-bottom:10px;
-                                      text-align: center;
-                                      letter-spacing: 0.05em;" />
+
                         <button onclick="zeusClaimSubmit('${cfg.amount === 990 ? 'trial' : cfg.amount === 3900 ? 'day' : 'month'}')" style="
                                 width:100%; padding:15px;
                                 background: linear-gradient(135deg, #2ecc71, #27ae60);
                                 color:#fff; border:none; border-radius:8px;
                                 font-weight:900; font-size:1rem; cursor:pointer;
                                 box-shadow: 0 4px 16px rgba(46,204,113,0.4);
-                                letter-spacing: 0.03em;">
+                                letter-spacing: 0.03em;
+                                margin-top:12px;">
                             ✅ 송금 완료 신고 → PRO 신탁 즉시 열기
                         </button>
                         <div id="zeusClaimResult" style="margin-top:12px; font-size:0.84rem;"></div>
@@ -7195,33 +7379,62 @@ function zeusClaimResetTracking() {
 // 계좌번호 복사 (행동 기록)
 function zeusClaimCopyAccount(accNum) {
     const cleaned = String(accNum).replace(/[^0-9\-]/g, '');
-    if (navigator.clipboard) {
-        navigator.clipboard.writeText(cleaned).then(() => {
-            window._zeusClaimActions.accountCopied = true;
-            const hint = document.getElementById('zeusCopyHint');
-            if (hint) {
-                hint.textContent = '✅ 복사 완료';
-                hint.style.color = '#7ad188';
+    // [V24.14] 복사 성공 후 입금자 입력란으로 자동 시선 유도
+    //   사장님 진단: "복사 후 입금자 입력란이 어디 있는지 못 찾음"
+    //   해결: 복사 즉시 스크롤 + 입력창 펄스 강조 + 포커스
+    const _afterCopy = () => {
+        window._zeusClaimActions.accountCopied = true;
+        const hint = document.getElementById('zeusCopyHint');
+        if (hint) {
+            hint.textContent = '✅ 복사 완료 — 아래 입금자 이름 입력';
+            hint.style.color = '#7ad188';
+            hint.style.fontWeight = '900';
+        }
+        // 입금자 입력란으로 자동 스크롤 + 강한 시각 강조
+        setTimeout(() => {
+            const senderInput = document.getElementById('zeusSenderName');
+            if (!senderInput) return;
+            senderInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            // 강한 펄스 애니메이션 — 사용자 눈에 안 띌 수 없게
+            const wrapper = senderInput.parentElement;
+            if (wrapper) {
+                wrapper.style.transition = 'all 0.3s';
+                let pulseCount = 0;
+                const pulseInterval = setInterval(() => {
+                    if (pulseCount >= 6) {
+                        clearInterval(pulseInterval);
+                        wrapper.style.boxShadow = '0 0 18px rgba(255,215,0,0.25)';
+                        return;
+                    }
+                    wrapper.style.boxShadow = (pulseCount % 2 === 0)
+                        ? '0 0 36px 8px rgba(255,165,0,0.85), 0 0 18px rgba(255,215,0,0.6)'
+                        : '0 0 18px rgba(255,215,0,0.25)';
+                    pulseCount++;
+                }, 350);
             }
-        }).catch(() => {
+            // 모바일 키보드는 강제 호출 안 함 (사용자 결정권 유지)
+            const isMobile = /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent);
+            if (!isMobile) {
+                try { senderInput.focus({ preventScroll: true }); } catch(e) {}
+            }
+        }, 300);
+    };
+
+    if (navigator.clipboard) {
+        navigator.clipboard.writeText(cleaned).then(_afterCopy).catch(() => {
             // fallback
             const ta = document.createElement('textarea');
             ta.value = cleaned; document.body.appendChild(ta); ta.select();
             try { document.execCommand('copy'); } catch {}
             ta.remove();
-            window._zeusClaimActions.accountCopied = true;
-            const hint = document.getElementById('zeusCopyHint');
-            if (hint) {
-                hint.textContent = '✅ 복사 완료';
-                hint.style.color = '#7ad188';
-            }
+            _afterCopy();
         });
     } else {
         const ta = document.createElement('textarea');
         ta.value = cleaned; document.body.appendChild(ta); ta.select();
         try { document.execCommand('copy'); } catch {}
         ta.remove();
-        window._zeusClaimActions.accountCopied = true;
+        _afterCopy();
     }
 }
 
