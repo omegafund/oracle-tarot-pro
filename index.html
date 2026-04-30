@@ -5512,34 +5512,144 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
                     <div style="margin-top:8px; font-size:0.82rem; color:rgba(46,204,113,0.85); font-style:italic; font-weight:600;">↳ ${flowArrow}</div>
                 </div>
 
-                <!-- [V19.5] 💭 상대 심리 — 차별화 핵심 (3단계 구조) -->
+                <!-- [V19.5+V24.13] 💭 상대 심리 — subtype 차별화 -->
                 <div style="margin-bottom:14px; padding-bottom:12px; border-bottom:1px solid rgba(46,204,113,0.2);">
-                    <div style="color:#2ecc71; font-size:0.82rem; font-weight:900; letter-spacing:0.1em; margin-bottom:8px;">💭 상대 심리</div>
+                    <div style="color:#2ecc71; font-size:0.82rem; font-weight:900; letter-spacing:0.1em; margin-bottom:8px;">💭 ${
+                        loveSubType === 'marriage' ? '관계 본질 점검'
+                      : loveSubType === 'breakup'  ? '이별 후 심리'
+                      : loveSubType === 'reunion'  ? '재회 가능성'
+                      : loveSubType === 'compatibility' ? '본질적 호환성'
+                      : '상대 심리'
+                    }</div>
                     <div style="font-size:0.85rem; color:rgba(255,255,255,0.88); line-height:1.8;">
-                        <div>→ <b>호감은 있음</b> (명확)</div>
-                        <div>→ 하지만 "지금 시작해도 되나" <b>계산 중</b></div>
-                        <div>→ 당신 반응을 보고 <b>결정하려는 상태</b></div>
+                        ${(() => {
+                            if (loveSubType === 'marriage') {
+                                return `
+                                    <div>→ 두 사람 <b>본질적 합의</b>가 핵심</div>
+                                    <div>→ 가치관·미래관 <b>일치 여부</b> 중요</div>
+                                    <div>→ 결혼은 <b>신중한 진행</b> 권장</div>`;
+                            }
+                            if (loveSubType === 'breakup') {
+                                return `
+                                    <div>→ <b>감정 정리</b> 시간 필요</div>
+                                    <div>→ 충동적 재연락 <b>위험</b></div>
+                                    <div>→ <b>자기 회복</b>이 우선</div>`;
+                            }
+                            if (loveSubType === 'reunion') {
+                                return `
+                                    <div>→ 재회 에너지 <b>${(fi._server?.totalScore ?? 0) >= 0 ? '존재' : '약함'}</b></div>
+                                    <div>→ 상대 반응이 <b>핵심 신호</b></div>
+                                    <div>→ <b>가벼운 시작</b>이 안전</div>`;
+                            }
+                            if (loveSubType === 'compatibility') {
+                                return `
+                                    <div>→ 두 사람 <b>본질적 차이</b> 인정 필요</div>
+                                    <div>→ <b>장기 호환성</b> 평가 우선</div>
+                                    <div>→ 노력의 <b>방향성</b>이 핵심</div>`;
+                            }
+                            // 기본 (crush/contact/thumb/general/mindread)
+                            return `
+                                <div>→ <b>호감은 있음</b> (명확)</div>
+                                <div>→ 하지만 "지금 시작해도 되나" <b>계산 중</b></div>
+                                <div>→ 당신 반응을 보고 <b>결정하려는 상태</b></div>`;
+                        })()}
                     </div>
+                    ${loveSubType === 'marriage' ? `
+                    <div style="margin-top:8px; padding:8px 12px; background:rgba(212,175,55,0.1); border-left:3px solid #D4AF37; border-radius:0 6px 6px 0; font-size:0.88rem; color:#FFE08A; font-weight:700;">
+                        👉 핵심: <b>"본질적 합의가 결혼의 핵심"</b>
+                    </div>` : loveSubType === 'breakup' ? `
+                    <div style="margin-top:8px; padding:8px 12px; background:rgba(212,175,55,0.1); border-left:3px solid #D4AF37; border-radius:0 6px 6px 0; font-size:0.88rem; color:#FFE08A; font-weight:700;">
+                        👉 핵심: <b>"정리는 자기 회복의 시작"</b>
+                    </div>` : loveSubType === 'reunion' ? `
+                    <div style="margin-top:8px; padding:8px 12px; background:rgba(212,175,55,0.1); border-left:3px solid #D4AF37; border-radius:0 6px 6px 0; font-size:0.88rem; color:#FFE08A; font-weight:700;">
+                        👉 핵심: <b>"가볍게 시작하고 반응을 읽어라"</b>
+                    </div>` : loveSubType === 'compatibility' ? `
+                    <div style="margin-top:8px; padding:8px 12px; background:rgba(212,175,55,0.1); border-left:3px solid #D4AF37; border-radius:0 6px 6px 0; font-size:0.88rem; color:#FFE08A; font-weight:700;">
+                        👉 핵심: <b>"본질을 알면 노력 방향이 보인다"</b>
+                    </div>` : `
                     <div style="margin-top:8px; padding:8px 12px; background:rgba(212,175,55,0.1); border-left:3px solid #D4AF37; border-radius:0 6px 6px 0; font-size:0.88rem; color:#FFE08A; font-weight:700;">
                         👉 핵심: <b>"상대는 먼저 안 움직입니다"</b>
-                    </div>
+                    </div>`}
                 </div>
 
-                <!-- [V19.5] 📱 행동 가이드 — 실전형 (구체 예시) -->
+                <!-- [V19.5+V24.13] 📱 행동 가이드 — subtype 차별화 -->
                 <div style="margin-bottom:14px; padding-bottom:12px; border-bottom:1px solid rgba(46,204,113,0.2);">
-                    <div style="color:#2ecc71; font-size:0.82rem; font-weight:900; letter-spacing:0.1em; margin-bottom:8px;">📱 행동 가이드</div>
+                    <div style="color:#2ecc71; font-size:0.82rem; font-weight:900; letter-spacing:0.1em; margin-bottom:8px;">📱 ${
+                        loveSubType === 'marriage' ? '결혼 진행 가이드'
+                      : loveSubType === 'breakup' ? '정리 가이드'
+                      : loveSubType === 'reunion' ? '재회 가이드'
+                      : loveSubType === 'compatibility' ? '관계 가이드'
+                      : '행동 가이드'
+                    }</div>
                     <div style="font-size:0.85rem; color:rgba(255,255,255,0.88); line-height:1.8;">
-                        <div>→ 먼저 길게 말하지 말 것</div>
-                        <div>→ <b style="color:#FFE08A;">지금은 신호보다 "타이밍 관찰"이 우선</b></div>
-                        <div style="margin-top:6px; padding:8px 10px; background:rgba(0,0,0,0.25); border-radius:6px; font-size:0.82rem;">
-                            💡 예시:<br>
-                            &nbsp;&nbsp;• 자연스러운 안부 톡 1회 (반응 보고 결정)<br>
-                            &nbsp;&nbsp;• 가벼운 농담 (부담 없이)<br>
-                            &nbsp;&nbsp;• 과거 연결 포인트 언급 (감정 X)
-                        </div>
-                        <div style="margin-top:6px; color:#FF8C64; font-weight:600;">
-                            👉 이후: 반응 없으면 <b>추가 행동 금지</b>
-                        </div>
+                        ${(() => {
+                            if (loveSubType === 'marriage') {
+                                return `
+                                    <div>→ <b>솔직한 대화</b>가 핵심</div>
+                                    <div>→ <b style="color:#FFE08A;">의구심을 직면하고 진심 합의</b></div>
+                                    <div style="margin-top:6px; padding:8px 10px; background:rgba(0,0,0,0.25); border-radius:6px; font-size:0.82rem;">
+                                        💡 점검 항목:<br>
+                                        &nbsp;&nbsp;• 가치관·미래관 일치 여부<br>
+                                        &nbsp;&nbsp;• 양가 가족 합의 가능성<br>
+                                        &nbsp;&nbsp;• 경제적·실무적 준비
+                                    </div>
+                                    <div style="margin-top:6px; color:#FF8C64; font-weight:600;">
+                                        👉 의구심 누적 시: <b>시간 두고 재점검 필요</b>
+                                    </div>`;
+                            }
+                            if (loveSubType === 'breakup') {
+                                return `
+                                    <div>→ <b>감정 거리 두기</b> 우선</div>
+                                    <div>→ <b style="color:#FFE08A;">자기 회복에 집중</b></div>
+                                    <div style="margin-top:6px; padding:8px 10px; background:rgba(0,0,0,0.25); border-radius:6px; font-size:0.82rem;">
+                                        💡 권장 행동:<br>
+                                        &nbsp;&nbsp;• 일상 루틴 회복<br>
+                                        &nbsp;&nbsp;• 새로운 관심사 탐색<br>
+                                        &nbsp;&nbsp;• 자기 돌봄 시간 확보
+                                    </div>
+                                    <div style="margin-top:6px; color:#FF8C64; font-weight:600;">
+                                        👉 충동적 재연락은 <b>정리 과정 역행</b>
+                                    </div>`;
+                            }
+                            if (loveSubType === 'reunion') {
+                                return `
+                                    <div>→ <b>가벼운 시작</b>으로 접근</div>
+                                    <div>→ <b style="color:#FFE08A;">상대 반응이 진입 신호</b></div>
+                                    <div style="margin-top:6px; padding:8px 10px; background:rgba(0,0,0,0.25); border-radius:6px; font-size:0.82rem;">
+                                        💡 예시:<br>
+                                        &nbsp;&nbsp;• 부담 없는 안부 메시지 1회<br>
+                                        &nbsp;&nbsp;• 좋은 추억 자연스럽게<br>
+                                        &nbsp;&nbsp;• 답장 보고 다음 단계 결정
+                                    </div>
+                                    <div style="margin-top:6px; color:#FF8C64; font-weight:600;">
+                                        👉 답 없으면: <b>추가 시도 자제</b>
+                                    </div>`;
+                            }
+                            if (loveSubType === 'compatibility') {
+                                return `
+                                    <div>→ <b>본질적 차이</b> 객관 점검</div>
+                                    <div>→ <b style="color:#FFE08A;">장기 호환성에 집중</b></div>
+                                    <div style="margin-top:6px; padding:8px 10px; background:rgba(0,0,0,0.25); border-radius:6px; font-size:0.82rem;">
+                                        💡 점검 영역:<br>
+                                        &nbsp;&nbsp;• 가치관·생활 패턴<br>
+                                        &nbsp;&nbsp;• 갈등 해결 방식<br>
+                                        &nbsp;&nbsp;• 미래 비전 일치도
+                                    </div>`;
+                            }
+                            // 기본
+                            return `
+                                <div>→ 먼저 길게 말하지 말 것</div>
+                                <div>→ <b style="color:#FFE08A;">지금은 신호보다 "타이밍 관찰"이 우선</b></div>
+                                <div style="margin-top:6px; padding:8px 10px; background:rgba(0,0,0,0.25); border-radius:6px; font-size:0.82rem;">
+                                    💡 예시:<br>
+                                    &nbsp;&nbsp;• 자연스러운 안부 톡 1회 (반응 보고 결정)<br>
+                                    &nbsp;&nbsp;• 가벼운 농담 (부담 없이)<br>
+                                    &nbsp;&nbsp;• 과거 연결 포인트 언급 (감정 X)
+                                </div>
+                                <div style="margin-top:6px; color:#FF8C64; font-weight:600;">
+                                    👉 이후: 반응 없으면 <b>추가 행동 금지</b>
+                                </div>`;
+                        })()}
                     </div>
                 </div>
 
@@ -5548,8 +5658,50 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
                     const im = fi._server?.layers?.actionGuide?.immediate
                             || fi._server?.actionGuide?.immediate
                             || (() => {
-                                // 폴백 — Worker 데이터 없으면 score 기반 자체 생성
+                                // [V24.13] 폴백 — Worker 데이터 없으면 subtype + score 기반 자체 생성
                                 const tp = fi._server?.totalScore ?? 0;
+                                // 결혼 케이스
+                                if (loveSubType === 'marriage') {
+                                    if (tp >= 3) return {
+                                        today:     '결혼 준비 항목 중 1개 구체적 진행 또는 합의',
+                                        forbidden: '감정적 갈등 키우기 / 사소한 일로 큰 다툼',
+                                        decision:  '합의 잘 되면 → 다음 항목 / 갈등 시 → 대화로 즉시 해결'
+                                    };
+                                    return {
+                                        today:     '결혼에 대한 서로의 진심 1가지 솔직히 공유',
+                                        forbidden: '회피 / 갈등 누적 / 일방적 결정',
+                                        decision:  '합의 → 진행 / 우려 남으면 → 대화 더 필요'
+                                    };
+                                }
+                                // 이별 케이스
+                                if (loveSubType === 'breakup') return {
+                                    today:     '감정 거리 두기 — 연락 자제',
+                                    forbidden: '충동적 연락 / 미련 표현 / SNS 모니터링',
+                                    decision:  tp >= 0 ? '시간 후 재평가 → 회복되면 새 관계 시야 열기'
+                                                       : '완전한 정리가 더 큰 자유를 줍니다'
+                                };
+                                // 재회 케이스
+                                if (loveSubType === 'reunion') {
+                                    if (tp < -3) return {
+                                        today:     '연락 시도 자제 — 자기 시간 확보',
+                                        forbidden: '충동 연락 / 감정 호소 / 반복 시도',
+                                        decision:  '자기 회복 후 자연스러운 기회 기다리기'
+                                    };
+                                    return {
+                                        today:     '부담 없는 안부 메시지 1회',
+                                        forbidden: '감정 표현 / 과거 다툼 언급 / 답 없는데 추가 연락',
+                                        decision:  '답장 오면 → 천천히 진행 / 무응답 → 48시간 후 재평가'
+                                    };
+                                }
+                                // 궁합 케이스
+                                if (loveSubType === 'compatibility') return {
+                                    today:     '서로의 가치관 1가지 솔직하게 공유',
+                                    forbidden: '표면적 평가 / 단점 무시 / 일방적 기대',
+                                    decision:  tp >= 3 ? '본질적 합 — 노력이 의미 있음'
+                                             : tp >= 0 ? '조건부 합 — 차이 인정 필요'
+                                                       : '본질적 차이 — 신중 검토 필요'
+                                };
+                                // 기본 (crush/contact/thumb/general/mindread)
                                 if (tp >= 5) return {
                                     today:     '진솔한 메시지 또는 만남 제안 (구체적으로)',
                                     forbidden: '집착적 연락 / 일방적 결정 통보 / 과도한 기대 표현',
@@ -5593,12 +5745,24 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
                     </div>`;
                 })()}
 
-                <!-- [V19.5] ⚡ 타이밍 — 조건형 + 수비학 병기 -->
+                <!-- [V19.5+V24.13] ⚡ 타이밍 — subtype 차별화 -->
                 <div style="margin-bottom:14px; padding-bottom:12px; border-bottom:1px solid rgba(46,204,113,0.2);">
-                    <div style="color:#2ecc71; font-size:0.82rem; font-weight:900; letter-spacing:0.1em; margin-bottom:8px;">⚡ 진입 타이밍</div>
+                    <div style="color:#2ecc71; font-size:0.82rem; font-weight:900; letter-spacing:0.1em; margin-bottom:8px;">⚡ ${
+                        loveSubType === 'marriage' ? '결혼 진행 타이밍'
+                      : loveSubType === 'breakup' ? '정리 타이밍'
+                      : loveSubType === 'reunion' ? '재회 타이밍'
+                      : loveSubType === 'compatibility' ? '관계 점검 타이밍'
+                      : '진입 타이밍'
+                    }</div>
                     <div style="font-size:0.85rem; color:rgba(255,255,255,0.92); line-height:1.8;">
                         <div style="padding:8px 12px; background:rgba(46,204,113,0.1); border-left:3px solid #2ecc71; border-radius:0 6px 6px 0; margin-bottom:6px;">
-                            <b style="color:#2ecc71;">👉 상대 반응이 왔을 때 = 진입 타이밍</b>
+                            <b style="color:#2ecc71;">${
+                                loveSubType === 'marriage' ? '👉 본질적 합의가 이뤄질 때 = 진행 타이밍'
+                              : loveSubType === 'breakup' ? '👉 감정 정리가 끝났을 때 = 다음 단계'
+                              : loveSubType === 'reunion' ? '👉 상대가 자연스럽게 답할 때 = 재회 신호'
+                              : loveSubType === 'compatibility' ? '👉 차이를 이해하고 합의 가능할 때 = 진전 가능'
+                              : '👉 상대 반응이 왔을 때 = 진입 타이밍'
+                            }</b>
                         </div>
                         <div style="font-size:0.8rem; color:rgba(255,255,255,0.7); margin-top:6px;">
                             🌙 수비학적 기운이 강한 시점: <i>${fi.timing || '-'}</i>
@@ -5606,13 +5770,20 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
                     </div>
                 </div>
 
-                <!-- [V19.5] 관계 흐름 + 행동 (가능성 표현) -->
+                <!-- [V19.5+V24.13] 관계 흐름 + 행동 (subtype 차별화) -->
                 <div style="display:flex; flex-direction:column; gap:8px; font-size:0.92rem; margin-bottom:12px;">
                     <div><span style="color:#2ecc71; font-weight:bold;">📈 관계 흐름:</span> <b>${fi.trend || '-'}</b> <span style="font-size:0.78rem; color:rgba(46,204,113,0.7); font-style:italic;">(가능성 구간 · 확정 아님)</span></div>
-                    <div><span style="color:#2ecc71; font-weight:bold;">🧭 행동:</span> <b>먼저 밀지 말고 "반응 유도"</b></div>
+                    <div><span style="color:#2ecc71; font-weight:bold;">🧭 행동:</span> <b>${
+                        loveSubType === 'marriage' ? '솔직한 대화로 진심 합의'
+                      : loveSubType === 'breakup'  ? '감정 정리 + 자기 회복 우선'
+                      : loveSubType === 'reunion'  ? '가벼운 시작 — 상대 반응이 신호'
+                      : loveSubType === 'compatibility' ? '본질적 차이 인정 + 노력 방향 정리'
+                      : loveSubType === 'mindread' ? '상대 행동 패턴 객관 관찰'
+                      : '먼저 밀지 말고 "반응 유도"'
+                    }</b></div>
                 </div>
 
-                <!-- [V19.5] 리스크 박스 — 행동 기반 구체화 -->
+                <!-- [V19.5+V24.13] 리스크 박스 — subtype 차별화 -->
                 <div style="margin-bottom:14px; padding:12px 14px;
                             background: linear-gradient(135deg, rgba(255,140,100,0.12), rgba(46,204,113,0.05));
                             border: 1px solid rgba(255,140,100,0.45);
@@ -5620,11 +5791,44 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
                             border-radius: 8px;
                             box-shadow: inset 0 0 12px rgba(255,140,100,0.08);">
                     <div style="color:#FFB090; font-size:0.78rem; font-weight:900; letter-spacing:0.1em; margin-bottom:6px;">
-                        🛡️ 관계 리스크
+                        🛡️ ${loveSubType === 'marriage' ? '결혼 진행 리스크'
+                          : loveSubType === 'breakup' ? '이별 정리 리스크'
+                          : loveSubType === 'reunion' ? '재회 시도 리스크'
+                          : loveSubType === 'compatibility' ? '궁합·호환성 리스크'
+                          : '관계 리스크'}
                     </div>
                     <div style="color:rgba(255,255,255,0.95); font-size:0.88rem; font-weight:500; line-height:1.7;">
-                        <div>👉 과도한 감정 표현 — 상대 부담 증가</div>
-                        <div>👉 답 없는 상태에서 추가 연락 — 주도권 상실</div>
+                        ${(() => {
+                            if (loveSubType === 'marriage') {
+                                return `
+                                    <div>👉 의구심 누적 방치 — 결혼 후 갈등 폭발 위험</div>
+                                    <div>👉 사소한 갈등 확대 — 본질 합의 흐려짐</div>`;
+                            }
+                            if (loveSubType === 'breakup') {
+                                return `
+                                    <div>👉 충동적 재연락 — 정리 과정 역행</div>
+                                    <div>👉 미련 표현 — 자기 회복 지연</div>`;
+                            }
+                            if (loveSubType === 'reunion') {
+                                return `
+                                    <div>👉 감정 호소 — 상대 부담 증가</div>
+                                    <div>👉 과거 갈등 재언급 — 회복 가능성 차단</div>`;
+                            }
+                            if (loveSubType === 'compatibility') {
+                                return `
+                                    <div>👉 표면적 끌림만 보기 — 장기 호환성 놓침</div>
+                                    <div>👉 한쪽만 노력 — 관계 균형 붕괴</div>`;
+                            }
+                            if (loveSubType === 'mindread') {
+                                return `
+                                    <div>👉 추측만으로 결정 — 오판 위험</div>
+                                    <div>👉 SNS 과도 분석 — 감정 소모</div>`;
+                            }
+                            // 기본 (crush/contact/thumb/general)
+                            return `
+                                <div>👉 과도한 감정 표현 — 상대 부담 증가</div>
+                                <div>👉 답 없는 상태에서 추가 연락 — 주도권 상실</div>`;
+                        })()}
                     </div>
                 </div>
             </div>`;
