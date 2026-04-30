@@ -3041,32 +3041,55 @@ function buildLoveMetrics({ totalScore, cleanCards, prompt, loveSubType }) {
   };
 
   // ─── 행동 가이드 (actionGuide) ───
+  // [V23.8-C] 즉시 행동 트리거(immediate) 추가
+  //   사장님 진단: "그래서 지금 뭐 해야 해?" — 사용자 막판 막힘 해결
+  //   설계: today / forbidden / decisionRule (Co-Star/CHANI 표준)
   const actionGuide = (() => {
     if (loveBlockLevel === 'HARD') {
       return {
         do:    ['자기 내면 회복 우선', '상대와 거리 두기', '감정 정리 시간 갖기'],
         dont:  ['관계 진입 시도', '감정 표현', '연락 추가'],
-        oneLine: '지금은 나를 먼저 지키는 것이 최선입니다'
+        oneLine: '지금은 나를 먼저 지키는 것이 최선입니다',
+        immediate: {
+          today:      '오늘은 연락 시도 없이 자기 회복에 집중',
+          forbidden:  '감정 표현·관계 정의 시도·반복 연락',
+          decision:   '48시간 후 감정이 가라앉으면 다시 점검'
+        }
       };
     }
     if (loveBlockLevel === 'MEDIUM' || (!blockDecision.allowPush)) {
       return {
         do:    ['짧은 안부 메시지 1회', '가벼운 농담', '부담 없는 대화 시도'],
         dont:  ['감정 고백', '관계 정의 질문', '추가 연락 반복'],
-        oneLine: '반응을 유도하고, 반응이 올 때만 움직여라'
+        oneLine: '반응을 유도하고, 반응이 올 때만 움직여라',
+        immediate: {
+          today:      '가벼운 안부 메시지 1회 시도 (짧게)',
+          forbidden:  '감정 표현 / 긴 메시지 / 답 없는 상태에서 추가 연락',
+          decision:   '답장 오면 → 대화 이어가기 / 반응 없으면 → 48시간 관망'
+        }
       };
     }
     if (netScore >= 5) {
       return {
         do:    ['감정 표현 적극적으로', '만남 제안', '관계 진전 시도 가능'],
         dont:  ['과한 기대', '집착적 행동', '일방적 주도'],
-        oneLine: '지금이 감정 표현의 최적 타이밍입니다'
+        oneLine: '지금이 감정 표현의 최적 타이밍입니다',
+        immediate: {
+          today:      '진솔한 메시지 또는 만남 제안 (구체적으로)',
+          forbidden:  '집착적 연락 / 일방적 결정 통보 / 과도한 기대 표현',
+          decision:   '긍정 반응 → 다음 단계 진전 / 미온적이면 → 24시간 여유'
+        }
       };
     }
     return {
       do:    ['자연스러운 접근', '공통 관심사 대화', '가벼운 만남 제안'],
       dont:  ['감정 과투입', '관계 정의 요구', '연속 연락'],
-      oneLine: '자연스럽게 다가가되 상대 반응을 기준으로 움직여라'
+      oneLine: '자연스럽게 다가가되 상대 반응을 기준으로 움직여라',
+      immediate: {
+        today:      '공통 관심사 기반 대화 1회 (자연스럽게)',
+        forbidden:  '감정 과투입 / 관계 정의 요구 / 연속 연락',
+        decision:   '대화 이어지면 → 천천히 / 어색하면 → 24시간 후 재시도'
+      }
     };
   })();
 
