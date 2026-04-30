@@ -3172,6 +3172,74 @@ function detectUncertaintyGateClient(cards) {
     };
 }
 
+// ══════════════════════════════════════════════════════════════
+// [V24.3] VOLATILITY GATE (Client Fallback)
+//   서버 detectVolatilityGate와 동등 로직 — risk + power 기반 클라이언트 추정
+//   (클라이언트 CARD_DB는 worker의 4차원 데이터 없이 risk/power만 보유)
+//   사장님 진단: Death/Five of Wands처럼 변동성 높은 카드 조합 차단
+// ══════════════════════════════════════════════════════════════
+function detectVolatilityGateClient(cards) {
+    let totalRisk = 0, count = 0;
+    cards.forEach(c => {
+        const base = (c.name || '').split(' (')[0];
+        const data = CARD_DB[base];
+        if (!data) return;
+        totalRisk += (data.risk ?? 2);  // 클라이언트 risk 0~5 스케일
+        count++;
+    });
+    const missing = cards.length - count;
+    totalRisk += missing * 2;
+    const avgRisk = totalRisk / cards.length;
+    // 평균 risk 3.0 이상 = HIGH (Five of Wands+Death = (2+3+3)/3 = 2.67이지만 3 이상이면 차단)
+    // critical 카드 1개 이상 포함 시 즉시 HIGH
+    const hasCritical = cards.some(c => {
+        const base = (c.name || '').split(' (')[0];
+        return CARD_DB[base]?.critical === true;
+    });
+    const isHigh = avgRisk >= 3.0 || hasCritical;
+    return {
+        avgRisk: Math.round(avgRisk * 10) / 10,
+        isHighVolatility: isHigh,
+        hasCritical,
+        level: avgRisk >= 4 ? 'EXTREME' : avgRisk >= 3 ? 'HIGH' : avgRisk >= 2.5 ? 'MEDIUM' : 'LOW'
+    };
+}
+
+function detectRiskGateClient(cards) {
+    const unc = detectUncertaintyGateClient(cards);
+    const vol = detectVolatilityGateClient(cards);
+    const triggered = unc.isHighUncertainty || vol.isHighVolatility;
+    const levelRank = { 'LOW': 0, 'MEDIUM': 1, 'HIGH': 2, 'EXTREME': 3 };
+    const maxLevel = (levelRank[unc.level] >= levelRank[vol.level]) ? unc.level : vol.level;
+    const riskLabelKo =
+        maxLevel === 'EXTREME' ? '매우 높음 (변동성·전환 카드 우세)'
+      : maxLevel === 'HIGH'    ? '높음 (변동성 또는 불확실성 우세)'
+      : maxLevel === 'MEDIUM'  ? '보통~높음 (주의)'
+                               : '보통';
+    return { triggered, uncertainty: unc, volatility: vol, level: maxLevel, riskLabelKo };
+}
+
+// 하락 시나리오 트리거 (클라이언트)
+function buildExitTriggersClient(intent, riskLevel) {
+    if (intent === 'sell') {
+        return [
+            { stage: '하락 가속',  action: '추가 음봉 + 거래량 +50% 시 → 잔량 즉시 시장가 청산' },
+            { stage: '추세 확정',  action: '20일선 이탈 + 종가 마감 → 잔여 포지션 100% 정리' }
+        ];
+    }
+    if (riskLevel === 'EXTREME' || riskLevel === 'HIGH') {
+        return [
+            { stage: '하락 1차',   action: '전저점 이탈 시 → 신규 진입 완전 배제' },
+            { stage: '하락 가속',  action: '거래량 +50% 동반 음봉 발생 시 → 24시간 추가 관망 강제' },
+            { stage: '추세 확정',  action: '20일선 이탈 + 음봉 마감 → 다음 점사까지 관망 유지' },
+            { stage: '바닥 신호',  action: 'Doji 또는 망치형 + 거래량 +30% 양봉 출현 시 → 재진입 검토' }
+        ];
+    }
+    return [
+        { stage: '하락 회피', action: '전저점 -3% 이탈 시 → 진입 트리거 무효화' }
+    ];
+}
+
 // ==================================================================
 // 🔥 [V16.5] ZEUS 단일 통합 엔진 (Single Truth Engine)
 // ==================================================================
@@ -3768,21 +3836,27 @@ function buildInvestmentData(cards, question) {
     const netScore = adjPower + zeus.score; 
 
     // ══════════════════════════════════════════════════════════
-    // [V24.0] UNCERTAINTY GATE — 클라이언트 fallback 게이트
-    //   서버 응답이 없거나 V24 미반영 서버일 때 클라이언트가 자체 판단
+    // [V24.0+V24.3] RISK GATE — 클라이언트 fallback 통합 게이트
+    //   uncertainty + volatility OR 조건
+    //   사장님 진단(V24.3): Death/Five of Wands 같은 변동성 카드도 차단
     // ══════════════════════════════════════════════════════════
-    const uncGate = detectUncertaintyGateClient(cards);
+    const riskGate = detectRiskGateClient(cards);
+    const uncGate = riskGate.uncertainty;  // 하위 호환
+    const volGate = riskGate.volatility;
     // ══════════════════════════════════════════════════════════
 
     let trend, action, riskLabel, period;
 
     // ══════════════════════════════════════════════════════════
-    // [V24.0] uncertainty 우세 시 — 모든 분기 무시하고 강제 관망
+    // [V24.0+V24.3] 게이트 발동 시 — 모든 분기 무시하고 강제 관망 + 하락 시나리오
     // ══════════════════════════════════════════════════════════
-    if (uncGate.isHighUncertainty) {
-        trend = "방향성 검증 필요 — 관망 카드 우세";
+    if (riskGate.triggered) {
+        trend = volGate.isHighVolatility
+            ? "방향성 검증 필요 — 변동성·전환 카드 우세"
+            : "방향성 검증 필요 — 관망 카드 우세";
         action = ctx.intent === 'sell' ? "청산 보류 — 분할 청산 검증" : "검증 후 진입";
-        riskLabel = "높음 (불확실성 우세)";
+        // [V24.3] 리스크 라벨은 riskGate.riskLabelKo로 — '보통' 디폴트 차단
+        riskLabel = riskGate.riskLabelKo;
         period = "관망 구간 — 객관적 트리거 충족 시 진입";
     } else
     // 사용자 제안: 중앙 집중형 점수 모델
@@ -3819,7 +3893,7 @@ function buildInvestmentData(cards, question) {
 
     // ── 포지션(권장 비중) 숫자 — 중앙 점수 모델 기반
     // [V24.0] 비중도 uncertainty 우세 시 0% 강제
-    const posNum = uncGate.isHighUncertainty ? 0 :
+    const posNum = riskGate.triggered ? 0 :
         netScore >= 7 ? (queryType === 'crypto' ? 25 : 30) :
         netScore >= 3 ? (queryType === 'crypto' ? 15 : 20) :
         netScore >= 0 ? 0 : 0;
@@ -3830,13 +3904,13 @@ function buildInvestmentData(cards, question) {
     const stopPct   = (queryType === 'crypto') ? '-8% (평균 단가 기준)'
                                                 : '-5% (평균 단가 기준)';
     const targetStr =
-        uncGate.isHighUncertainty ? '추세 확정 후 재설정' :
+        riskGate.triggered ? '추세 확정 후 재설정' :
         netScore >= 7 ? '+10~15%' :
         netScore >= 3 ? '+6~10%'  :
         netScore >= 0 ? '+3~6%'   : '-';
 
     // ── 진입 가능 여부 — uncertainty 게이트 반영
-    const canEnter  = !uncGate.isHighUncertainty && netScore >= 3;
+    const canEnter  = !riskGate.triggered && netScore >= 3;
 
     // ── 레버리지/고변동 자산 감지
     const q         = (question || '').toLowerCase();
