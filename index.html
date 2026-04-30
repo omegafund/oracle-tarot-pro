@@ -4498,6 +4498,20 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
             } else {
                 // stock / crypto
                 const exec = layers.execution || {};
+                // [V23.7 P0-1] executionMode 기반 0% 동기화
+                //   Worker가 BLOCKED/WATCH 보내면 무조건 0% 강제
+                //   문자열 감지 X → 명시적 enum
+                const _execMode = (d._server?.executionMode) || (d.executionMode) ||
+                    (layers.decision?.blockLevel === 'HARD'   ? 'BLOCKED' :
+                     layers.decision?.blockLevel === 'BOTTOM' ? 'WATCH'   :
+                     layers.decision?.blockLevel === 'MEDIUM' ? 'WATCH'   : null);
+                const isWatchMode   = _execMode === 'BLOCKED' || _execMode === 'WATCH';
+                const displayWeight = isWatchMode
+                    ? '0% — 신호 확인 전까지 비중 할당 금지'
+                    : (exec.weight || '-');
+                const displayStop   = isWatchMode ? '진입 없음' : (exec.stopLoss || '-');
+                const displayTarget = isWatchMode ? '진입 없음' : (exec.target  || '-');
+
                 executionHTML = `
                 <div style="margin-bottom:14px; padding:12px 14px;
                             background: rgba(46,204,113,0.06);
@@ -4507,9 +4521,9 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
                         ⚡ 실전 매매 전략 (Execution Layer)
                     </div>
                     <div style="font-size:0.88rem; color:rgba(255,255,255,0.92); line-height:1.85;">
-                        <div>💰 ${isSell ? '매도 비중' : '권장 비중'}: <b>${exec.weight || '-'}</b></div>
-                        <div>🛑 ${isSell ? '손실 한도' : '손절 기준'}: ${exec.stopLoss || '-'}</div>
-                        <div>🎯 ${isSell ? '익절 구간' : '목표 구간'}: ${exec.target || '-'}</div>
+                        <div>💰 ${isSell ? '매도 비중' : '권장 비중'}: <b style="${isWatchMode ? 'color:#FF8080;' : ''}">${displayWeight}</b></div>
+                        <div>🛑 ${isSell ? '손실 한도' : '손절 기준'}: ${displayStop}</div>
+                        <div>🎯 ${isSell ? '익절 구간' : '목표 구간'}: ${displayTarget}</div>
                     </div>
                 </div>`;
             }
@@ -4880,21 +4894,7 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
                 <div style="margin-top:12px; padding:12px 14px; background:rgba(0,0,0,0.4); border-left:3px solid var(--gold); line-height:1.8; font-size:0.9rem; color:rgba(255,255,255,0.92);">
                     ${finalOracleHTML}
                 </div>
-                <!-- [V19.3] 법적 면책 강화 — AI 환각 방지 고지 -->
-                <div style="margin-top:14px; padding:10px 12px;
-                            background: rgba(255,165,0,0.06);
-                            border: 1px solid rgba(255,165,0,0.3);
-                            border-left: 3px solid rgba(255,165,0,0.7);
-                            border-radius: 6px;
-                            font-size:0.74rem; color:rgba(255,255,255,0.82); line-height:1.6;">
-                    ⚠️ <b>중요 고지</b>: 본 신탁은 타로 카드 에너지에 기반한 <b>유저님의 투자 심리 분석</b>이며,
-                    특정 종목의 실제 재무 상태·경영 현황·미래 성과를 의미하지 않습니다.
-                    AI 서술은 영성적 해석이며 실제 기업 상황과 <b>무관</b>합니다.
-                    투자 판단은 반드시 객관적 재무 정보와 전문가 상담을 통해 이루어져야 합니다.
-                </div>
-                <div style="margin-top:10px; padding-top:8px; font-size:0.72rem; color:rgba(255,255,255,0.6); text-align:center;">
-                    본 신탁은 참고용 콘텐츠입니다.
-                </div>
+                <!-- [V23.7] 면책은 PRO Hook 뒤 최하단으로 이동됨 -->
             </div>`;
         }
 
@@ -4944,20 +4944,6 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
                     <!-- 해석 텍스트 -->
                     <div style="margin-top:12px; padding:12px 14px; background:rgba(0,0,0,0.4); border-left:3px solid var(--gold); line-height:1.8; font-size:0.9rem; color:rgba(255,255,255,0.92);">
                         ${finalOracleHTML}
-                    </div>
-                    <!-- 법적 면책 -->
-                    <div style="margin-top:14px; padding:10px 12px;
-                                background: rgba(255,165,0,0.06);
-                                border: 1px solid rgba(255,165,0,0.3);
-                                border-left: 3px solid rgba(255,165,0,0.7);
-                                border-radius: 6px;
-                                font-size:0.74rem; color:rgba(255,255,255,0.82); line-height:1.6;">
-                        ⚠️ <b>중요 고지</b>: 본 신탁은 타로 카드 에너지에 기반한 <b>유저님의 부동산 심리 분석</b>이며,
-                        특정 지역·매물의 실제 시세·거래 현황을 의미하지 않습니다.
-                        실제 거래 판단은 반드시 공인중개사 및 시장 조사를 통해 이루어져야 합니다.
-                    </div>
-                    <div style="margin-top:10px; padding-top:8px; font-size:0.72rem; color:rgba(255,255,255,0.6); text-align:center;">
-                        본 신탁은 참고용 콘텐츠입니다.
                     </div>
                 </div>`;
             }
@@ -5037,21 +5023,6 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
                 <!-- 해석 텍스트 -->
                 <div style="margin-top:12px; padding:12px 14px; background:rgba(0,0,0,0.4); border-left:3px solid var(--gold); line-height:1.8; font-size:0.9rem; color:rgba(255,255,255,0.92);">
                     ${finalOracleHTML}
-                </div>
-
-                <!-- [V19.3] 법적 면책 강화 -->
-                <div style="margin-top:14px; padding:10px 12px;
-                            background: rgba(255,165,0,0.06);
-                            border: 1px solid rgba(255,165,0,0.3);
-                            border-left: 3px solid rgba(255,165,0,0.7);
-                            border-radius: 6px;
-                            font-size:0.74rem; color:rgba(255,255,255,0.82); line-height:1.6;">
-                    ⚠️ <b>중요 고지</b>: 본 신탁은 타로 카드 에너지에 기반한 <b>유저님의 부동산 심리 분석</b>이며,
-                    특정 지역·매물의 실제 시세·거래 현황을 의미하지 않습니다.
-                    실제 거래 판단은 반드시 공인중개사 및 시장 조사를 통해 이루어져야 합니다.
-                </div>
-                <div style="margin-top:10px; padding-top:8px; font-size:0.72rem; color:rgba(255,255,255,0.6); text-align:center;">
-                    본 신탁은 참고용 콘텐츠입니다.
                 </div>
             </div>`;
         }
@@ -5251,10 +5222,6 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
                         <div>👉 답 없는 상태에서 추가 연락 — 주도권 상실</div>
                     </div>
                 </div>
-
-                <div style="margin-top:14px; padding-top:10px; border-top:1px solid rgba(46,204,113,0.4); font-size:0.76rem; color:rgba(255,255,255,0.75); text-align:center; font-weight:500;">
-                    ※ 본 신탁은 타로 에너지 해석 기반 참고 정보입니다.
-                </div>
             </div>`;
         }
 
@@ -5445,6 +5412,12 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
         })() : ''}
         ${investBlock}
         ${_zeusProHook}
+        <!-- [V23.7] 면책 고지 통일 — 모든 도메인 최하단 단일 위치 -->
+        <div style="margin-top:18px; padding:10px 14px; font-size:0.70rem;
+                    color:rgba(255,255,255,0.45); text-align:center;
+                    line-height:1.6; letter-spacing:0.01em;">
+            ※ 본 신탁은 타로 에너지 기반의 영성 가이드이며, 실제 투자 및 법적 결정의 책임은 사용자에게 있습니다.
+        </div>
     </div>`;
 
         return publicSections + futureCardHTML + oracleHTML;
@@ -5719,7 +5692,7 @@ async function shareResult() {
 // ════════════════════════════════════════════════════════════════
 const DAILY_CARD_KEY   = 'zeusDailyCardV1';    // { date:"2025-xx-xx", cardIndex:N }
 const HISTORY_KEY      = 'zeusHistoryV1';      // [{ date, question, queryType, trend, cards }]
-const HISTORY_MAX      = 3;
+const HISTORY_MAX      = 2;
 
 // 오늘 날짜 (YYYY-MM-DD)
 function _todayStr() {
@@ -5803,9 +5776,9 @@ function renderDailyAndHistory() {
                             : h.queryType === 'love' ? '💘' : '✨';
                 const trendTxt = h.trend || '-';
                 const dateTxt  = h.date ? h.date.slice(5).replace('-','/') : '';
-                const qShort   = (h.question || '').slice(0, 20);
-                // 결과는 data-attribute에 보관 — 클릭 시에만 노출
+                const qShort   = (h.question || '').slice(0, 24);
                 const trendEsc = trendTxt.replace(/"/g, '&quot;');
+                // [V23.7] 한 줄 디자인 유지 — 제목/날짜만 보이고 결과는 탭으로
                 return `
                 <div class="zeus-history-item" data-trend="${trendEsc}"
                      onclick="zeusToggleHistoryItem(this)"
@@ -5813,14 +5786,17 @@ function renderDailyAndHistory() {
                             background:rgba(0,0,0,0.35); border:1px solid rgba(212,175,55,0.15);
                             border-radius:8px; padding:8px 10px; font-size:0.76rem;
                             transition: all 0.25s ease;">
-                    <div style="color:var(--gold); font-weight:700; min-width:36px;">${dateTxt}</div>
-                    <div style="flex:1; color:rgba(255,255,255,0.85); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
-                        ${emoji} ${qShort}${qShort.length>=20?'…':''}
+                    <div style="color:var(--gold); font-weight:700; min-width:36px;
+                                font-size:0.7rem; letter-spacing:0.04em;">${dateTxt}</div>
+                    <div style="flex:1; color:rgba(255,255,255,0.85);
+                                overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
+                        ${emoji} ${qShort}${qShort.length>=24?'…':''}
                     </div>
                     <div class="zeus-history-veil"
-                         style="color:rgba(212,175,55,0.85); font-size:0.7rem; white-space:nowrap;
-                                font-weight:700; letter-spacing:0.05em;">
-                        ✦ 신탁 보기
+                         style="color:rgba(212,175,55,0.7); font-size:0.65rem;
+                                font-weight:800; letter-spacing:0.04em;
+                                white-space:nowrap; flex-shrink:0;">
+                        ✦
                     </div>
                 </div>`;
             }).join('');
@@ -5830,19 +5806,24 @@ function renderDailyAndHistory() {
     bar.style.display = 'block';
 }
 
-// [V21.0] 최근 신탁 토글 — 클릭 시 결과 노출/숨김 (사생활 보호)
+// [V23.7] 최근 신탁 토글 — 클릭 시 결과 노출/숨김 (한 줄 디자인)
 function zeusToggleHistoryItem(el) {
     const veil = el.querySelector('.zeus-history-veil');
     if (!veil) return;
-    const isVeiled = veil.textContent.includes('신탁 보기');
+    const isVeiled = veil.textContent.trim() === '✦';
     if (isVeiled) {
-        veil.textContent = el.dataset.trend || '-';
+        const trend = el.dataset.trend || '-';
+        veil.textContent = trend.slice(0, 10) + (trend.length > 10 ? '…' : '');
         veil.style.color = 'rgba(255,255,255,0.85)';
+        veil.style.fontWeight = '600';
         el.style.background = 'rgba(212,175,55,0.06)';
+        el.style.borderColor = 'rgba(212,175,55,0.3)';
     } else {
-        veil.textContent = '✦ 신탁 보기';
-        veil.style.color = 'rgba(212,175,55,0.85)';
+        veil.textContent = '✦';
+        veil.style.color = 'rgba(212,175,55,0.7)';
+        veil.style.fontWeight = '800';
         el.style.background = 'rgba(0,0,0,0.35)';
+        el.style.borderColor = 'rgba(212,175,55,0.15)';
     }
 }
 
@@ -7005,12 +6986,30 @@ function closePaymentMethodModal() {
 function renderMetrics(metrics) {
     if (!metrics) return '';
 
+    // [V23.7 P1-2] riskLevelScore 수치 기반 고위험 경고 배너
+    const rls = metrics.riskLevelScore;
+    const riskWarningHTML = (rls !== undefined && rls > 70) ? `
+    <div style="margin-bottom:8px; padding:8px 14px;
+                background: rgba(231,76,60,0.15);
+                border: 1px solid rgba(231,76,60,0.5);
+                border-radius: 8px; text-align:center;
+                font-size:0.78rem; font-weight:800; color:#FF8080;
+                letter-spacing:0.04em;">
+        ⚠️ 고위험 구간 (리스크 ${rls}%) — 신중한 포지션 관리 필요
+    </div>` : '';
+
     // 표시할 항목 구성
     const items = [];
     if (metrics.attractionScore      !== undefined) items.push({ icon: '💘', label: '매력도',    value: metrics.attractionScore + '%' });
     if (metrics.conflictIndex        !== undefined) items.push({ icon: '⚔️', label: '갈등지수',  value: metrics.conflictIndex + '%' });
     if (metrics.reconnectProbability !== undefined) items.push({ icon: '🔁', label: '재연결 가능성', value: metrics.reconnectProbability + '%' });
-    if (metrics.riskScore            !== undefined) items.push({ icon: '⚠️', label: '리스크',    value: metrics.riskScore + '%' });
+    // [V23.7] riskLevelScore 우선 표시 (있으면), 없으면 기존 riskScore
+    if (rls !== undefined) {
+        const riskColor = rls > 70 ? '#FF8080' : rls > 40 ? '#F39C12' : '#2ecc71';
+        items.push({ icon: '⚠️', label: '리스크', value: rls + '%', color: riskColor });
+    } else if (metrics.riskScore !== undefined) {
+        items.push({ icon: '⚠️', label: '리스크', value: metrics.riskScore + '%' });
+    }
     if (metrics.opportunityWindow    !== undefined) items.push({ icon: '🎯', label: '기회지수',  value: metrics.opportunityWindow + '%' });
     if (metrics.actionType) {
         const actionLabel = { wait: '⏸ 대기', move: '🚀 행동', observe: '👁 관찰' };
@@ -7023,9 +7022,9 @@ function renderMetrics(metrics) {
         items.push({ icon: '⏱', label: '진입', value: timingLabel[metrics.entryTiming] || metrics.entryTiming });
     }
 
-    if (!items.length) return '';
+    if (!items.length && !riskWarningHTML) return '';
 
-    return `
+    return riskWarningHTML + `
     <div style="margin:16px 0 8px; padding:14px 16px;
                 background: linear-gradient(135deg, rgba(212,175,55,0.08), rgba(0,0,0,0.3));
                 border: 1px solid rgba(212,175,55,0.25);
@@ -7042,7 +7041,7 @@ function renderMetrics(metrics) {
             <div>
                 <div style="font-size:0.62rem; color:rgba(255,215,112,0.75);
                             letter-spacing:0.08em; font-weight:700;">${it.label}</div>
-                <div style="font-size:0.88rem; color:#fff; font-weight:800;">${it.value}</div>
+                <div style="font-size:0.88rem; color:${it.color || '#fff'}; font-weight:800;">${it.value}</div>
             </div>
         </div>`).join('')}
     </div>`;
