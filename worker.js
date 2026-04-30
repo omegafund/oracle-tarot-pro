@@ -3054,8 +3054,9 @@ function buildStockMetrics({ totalScore, riskScore, cleanCards, isLeverage, quer
 // ══════════════════════════════════════════════════════════════════
 // 🏠 부동산 메트릭
 // ══════════════════════════════════════════════════════════════════
-function buildRealEstateMetrics({ totalScore, riskScore, cleanCards, intent, prompt }) {
+function buildRealEstateMetrics({ totalScore, riskScore, cleanCards, intent, prompt, reversedFlags }) {
   const netScore = totalScore;
+  const revFlags = reversedFlags || [false, false, false];
 
   // ══════════════════════════════════════════════════════════════
   // [V24.0+V24.3] RISK GATE — 부동산도 통합 게이트 적용
@@ -3064,6 +3065,48 @@ function buildRealEstateMetrics({ totalScore, riskScore, cleanCards, intent, pro
   const riskGate = detectRiskGate(cleanCards, intent);
   const uncGate = riskGate.uncertainty;
   const volGate = riskGate.volatility;
+  // ══════════════════════════════════════════════════════════════
+
+  // ══════════════════════════════════════════════════════════════
+  // [V24.9] URGENCY DETECTION — 시간 지연·꼬임 카드 감지
+  //   사장님 진단: "Temperance 역방향 = 시간 지나면 꼬임 → 시즌 추천 부적절"
+  //   원리: 미래 자리에 시간 지연/꼬임 카드가 있으면 "즉시 실행" 모드
+  //   대상 카드:
+  //     • Temperance 역방향: 조화 붕괴 → 시간 끌면 협상 깨짐
+  //     • Eight of Wands 역: 가속 지연 → 늦어지면 모멘텀 소멸
+  //     • Wheel of Fortune 역: 운명 정체 → 기회 창 좁아짐
+  //     • The Hanged Man (정/역): 정체 → 결단 시급
+  //     • Eight of Wands 정방향: 빠른 전개 → 빠른 행동이 정답
+  //     • Five of Swords (정/역): 손실 확대 위험
+  //     • Ten of Cups 역방향: 회복 시나리오 폐기
+  // ══════════════════════════════════════════════════════════════
+  const URGENCY_CARDS_REV = ['Temperance', 'Eight of Wands', 'Wheel of Fortune', 'Ten of Cups', 'Justice'];
+  const URGENCY_CARDS_BOTH = ['The Hanged Man', 'Five of Swords', 'Ten of Wands'];
+  const URGENCY_CARDS_FWD = ['Eight of Wands']; // 정방향도 빠른 행동
+  
+  let isUrgent = false;
+  let urgencyCardName = null;
+  let urgencyReason = null;
+  
+  cleanCards.forEach((c, i) => {
+    if (isUrgent) return;
+    const rev = revFlags[i];
+    if (rev && URGENCY_CARDS_REV.includes(c)) {
+      isUrgent = true;
+      urgencyCardName = `${c} [역방향]`;
+      urgencyReason = i === 2 
+        ? `미래 카드 ${c} 역방향 — 시간 지연 시 협상·균형 붕괴 위험`
+        : `${c} 역방향 — 지연·꼬임 신호`;
+    } else if (URGENCY_CARDS_BOTH.includes(c)) {
+      isUrgent = true;
+      urgencyCardName = c + (rev ? ' [역방향]' : '');
+      urgencyReason = `${c} — 시간이 변수가 되는 카드 (즉시 행동 권장)`;
+    } else if (!rev && URGENCY_CARDS_FWD.includes(c)) {
+      isUrgent = true;
+      urgencyCardName = c;
+      urgencyReason = `${c} — 빠른 전개 신호 (모멘텀 활용)`;
+    }
+  });
   // ══════════════════════════════════════════════════════════════
 
   let seed = 0;
@@ -3208,25 +3251,53 @@ function buildRealEstateMetrics({ totalScore, riskScore, cleanCards, intent, pro
 
   let timingLabel, timing2, strategy, period, urgency, caution;
   if (intent === "sell") {
-    // [V2.2] 시즌 라벨 + 주 단위 계약 예상 (매도 적기보다 앞서지 않도록)
-    timingLabel = `매도 적기: ${sellSeasonObj.label}`;
-    timing2     = `계약 예상: ${weeksEst} 내 체결 가능`;
-    strategy    = `매물 전략: ${priceStrategy}`;
-    period      = `거래 소요 예상: 카드 에너지 기준 ${weeksEst} 내 계약 가능성`;
-    urgency     = netScore >= 3 ? "🟢 지금 바로 매물 등록이 최적 — 에너지가 정점에 있습니다"
-                : netScore >= 0 ? "🟡 준비 후 이번 시즌 내 등록 권장"
-                : "🔴 현재 에너지 약세 — 다음 성수기 준비 시작";
-    caution     = netScore < 0 ? "⚠️ 주의: 현재 하락 압력 감지 — 호가 조정이 거래 성사의 핵심" : null;
+    // ══════════════════════════════════════════════════════════════
+    // [V24.9] URGENCY 모드 — 시간 지연 카드 감지 시 시즌 추천 무효화
+    //   사장님 진단:
+    //     ① "Temperance 역방향 = 시간 지나면 꼬임"인데 "6~7월 매도 적기" 추천
+    //     ② "8~12주 소요"는 카드 신호 무시한 길이
+    //   해결:
+    //     ① URGENCY 발동 시 → 시즌 → "즉시 실행 구간"
+    //     ② 기간 → "2~4주 (빠르면) / 6주 결론 (늦어도)"
+    // ══════════════════════════════════════════════════════════════
+    if (isUrgent) {
+      timingLabel = `매도 적기: 즉시 — 시간 지연 시 조건 악화 신호 (${urgencyCardName})`;
+      timing2     = `계약 예상: 2~4주 (빠르면) / 6주 내 결론 (늦어도)`;
+      strategy    = `매물 전략: 즉시 시세 호가로 등록 → 2주 반응 없으면 -3~5% 조정 → 4~6주 내 결론 (버티기 금지)`;
+      period      = `거래 소요 예상: 2~4주 빠른 체결 또는 6주 내 결론 (이후는 가격 협상력 약화 구간)`;
+      urgency     = `🔴 즉시 실행 권장 — ${urgencyReason}`;
+      caution     = `⚠️ 시간이 변수 — 늦어질수록 조건 악화 (${urgencyCardName} 신호). 6주 넘기면 가격 인하 압박 강해짐`;
+    } else {
+      // [V2.2] 시즌 라벨 + 주 단위 계약 예상 (매도 적기보다 앞서지 않도록)
+      timingLabel = `매도 적기: ${sellSeasonObj.label}`;
+      timing2     = `계약 예상: ${weeksEst} 내 체결 가능`;
+      strategy    = `매물 전략: ${priceStrategy}`;
+      period      = `거래 소요 예상: 카드 에너지 기준 ${weeksEst} 내 계약 가능성`;
+      urgency     = netScore >= 3 ? "🟢 지금 바로 매물 등록이 최적 — 에너지가 정점에 있습니다"
+                  : netScore >= 0 ? "🟡 준비 후 이번 시즌 내 등록 권장"
+                  : "🔴 현재 에너지 약세 — 다음 성수기 준비 시작";
+      caution     = netScore < 0 ? "⚠️ 주의: 현재 하락 압력 감지 — 호가 조정이 거래 성사의 핵심" : null;
+    }
   } else {
-    // [V2.2] 매수도 동일 원칙: 시즌 + 주 단위
-    timingLabel = `매수 적기: ${buySeasonObj.label}`;
-    timing2     = `진입 검토 기간: 카드 에너지 기준 ${weeksEst} 내 결정 권장`;
-    strategy    = `접근 전략: ${netScore >= 3 ? '적극 탐색, 정상 매물도 검토 가능' : netScore >= 0 ? '급매 위주 탐색' : '하락장 활용 — 급매 집중 탐색'}`;
-    period      = `보유 전략: 카드 에너지 기준 최소 ${netScore >= 3 ? '1~2년' : '2~3년'} 중장기 보유 권장`;
-    urgency     = netScore >= 3 ? "🟢 상승장 진입 — 이사철 전 선점 유리"
-                : netScore >= 0 ? "🟡 신중한 탐색 구간 — 급매 물건 위주"
-                : "🟢 하락장 — 매수자 유리한 구간 (저점 탐색 기회)";
-    caution     = netScore < -3 ? "⚠️ 주의: 하락 심화 — 추가 조정 가능성 있으므로 서두르지 말 것" : null;
+    // [V24.9] 매수도 URGENCY 적용 — 시간 지연 카드는 양쪽 모두 위험
+    if (isUrgent) {
+      timingLabel = `매수 적기: 즉시 검토 구간 — 시간 지연 시 기회 소멸 (${urgencyCardName})`;
+      timing2     = `진입 검토 기간: 2~4주 내 결정 권장`;
+      strategy    = `접근 전략: 급매·우량 매물 즉시 탐색 — 시간 끌면 조건 악화 신호`;
+      period      = `보유 전략: 진입 후 최소 1~2년 (빠른 진입 + 중기 보유)`;
+      urgency     = `🔴 즉시 행동 권장 — ${urgencyReason}`;
+      caution     = `⚠️ 시간이 변수 — ${urgencyCardName} 신호. 4주 내 결단 필요`;
+    } else {
+      // [V2.2] 매수도 동일 원칙: 시즌 + 주 단위
+      timingLabel = `매수 적기: ${buySeasonObj.label}`;
+      timing2     = `진입 검토 기간: 카드 에너지 기준 ${weeksEst} 내 결정 권장`;
+      strategy    = `접근 전략: ${netScore >= 3 ? '적극 탐색, 정상 매물도 검토 가능' : netScore >= 0 ? '급매 위주 탐색' : '하락장 활용 — 급매 집중 탐색'}`;
+      period      = `보유 전략: 카드 에너지 기준 최소 ${netScore >= 3 ? '1~2년' : '2~3년'} 중장기 보유 권장`;
+      urgency     = netScore >= 3 ? "🟢 상승장 진입 — 이사철 전 선점 유리"
+                  : netScore >= 0 ? "🟡 신중한 탐색 구간 — 급매 물건 위주"
+                  : "🟢 하락장 — 매수자 유리한 구간 (저점 탐색 기회)";
+      caution     = netScore < -3 ? "⚠️ 주의: 하락 심화 — 추가 조정 가능성 있으므로 서두르지 말 것" : null;
+    }
   }
 
   const interpretSell =
@@ -3247,7 +3318,16 @@ function buildRealEstateMetrics({ totalScore, riskScore, cleanCards, intent, pro
 
   // Decision Layer
   let reDecisionPosition, reDecisionStrategy;
-  if (intent === "sell") {
+  if (isUrgent) {
+    // [V24.9] URGENCY 발동 시 — 즉시 실행형 포지션
+    if (intent === "sell") {
+      reDecisionPosition = `즉시 실행형 매도 (Urgent Sell — ${urgencyCardName})`;
+      reDecisionStrategy = "즉시 시세 호가 등록 → 2주 반응 없으면 -3~5% 조정 → 4~6주 내 결론";
+    } else {
+      reDecisionPosition = `즉시 검토형 매수 (Urgent Search — ${urgencyCardName})`;
+      reDecisionStrategy = "급매·우량 매물 즉시 탐색 + 4주 내 결단 (시간 끌기 금지)";
+    }
+  } else if (intent === "sell") {
     if (netScore >= 5) {
       reDecisionPosition = "적극 매도 (Strong Sell)";
       reDecisionStrategy = "희망가 견고 유지 → 시즌 내 거래 성사";
@@ -3298,23 +3378,51 @@ function buildRealEstateMetrics({ totalScore, riskScore, cleanCards, intent, pro
     reLayerRiskLevel = "중~높음";
   }
 
-  const reCriticalRules = intent === "sell"
-    ? [
-        "호가 집착 금지 — 시장 반응 우선 확인",
-        "급매 무리한 가격 인하 신중히 — 손해 최소화",
-        "공인중개사 의견 적극 수렴"
-      ]
-    : [
-        "충동 계약 절대 금지 — 시세 검증 필수",
-        "융자·세금 계산 사전 완료",
-        "현장 임장 최소 2회 이상 권장"
-      ];
+  // [V24.9] URGENCY 발동 시 — 능동 실행 행동 지침
+  let reCriticalRules;
+  if (isUrgent) {
+    reCriticalRules = intent === "sell"
+      ? [
+          "즉시 시세 호가로 매물 등록 — 망설임이 가격 협상력 약화",
+          "2주 반응 없으면 -3~5% 즉시 조정 (버티기 금지)",
+          "4~6주 내 결론 — 그 이후는 '안 팔리는 물건' 전환 위험"
+        ]
+      : [
+          "급매·우량 매물 즉시 탐색 — 4주 내 결단",
+          "시간 지연 카드 신호 — 신중함이 기회 소멸로 전환될 위험",
+          "융자·세금 계산은 병행 진행 (탐색 늦추지 말 것)"
+        ];
+  } else {
+    reCriticalRules = intent === "sell"
+      ? [
+          "호가 집착 금지 — 시장 반응 우선 확인",
+          "급매 무리한 가격 인하 신중히 — 손해 최소화",
+          "공인중개사 의견 적극 수렴"
+        ]
+      : [
+          "충동 계약 절대 금지 — 시세 검증 필수",
+          "융자·세금 계산 사전 완료",
+          "현장 임장 최소 2회 이상 권장"
+        ];
+  }
 
   const reCautions = [];
-  if (netScore <= -3) reCautions.push("하락 압력 — 추가 조정 가능성");
-  if (netScore <= 0) reCautions.push("거래 지연 — 인내 필요");
-  reCautions.push("실거래가·시세 변동 점검");
-  reCautions.push("규제·세금 변수 사전 확인");
+  if (isUrgent) {
+    // [V24.9] URGENCY 발동 시 — 시간 지연 경고 우선
+    reCautions.push(`시간 지연 카드 감지 (${urgencyCardName}) — "기다림 = 손해" 구조`);
+    if (intent === "sell") {
+      reCautions.push("6주 넘기면 가격 인하 압박 강해짐 — 즉시 등록 + 단계 조정 필수");
+      reCautions.push("버티기 전략 = 장기 미거래 전환 (실거래가 하락 위험)");
+    } else {
+      reCautions.push("4주 넘기면 우량 매물 소진 가능성 — 탐색 가속 필요");
+      reCautions.push("시세 검증과 결단을 병행 — 분석 마비 경계");
+    }
+  } else {
+    if (netScore <= -3) reCautions.push("하락 압력 — 추가 조정 가능성");
+    if (netScore <= 0) reCautions.push("거래 지연 — 인내 필요");
+    reCautions.push("실거래가·시세 변동 점검");
+    reCautions.push("규제·세금 변수 사전 확인");
+  }
 
   // ══════════════════════════════════════════════════════════════
   // [V24.0] 부동산 entryTiming — uncertainty 게이트 통합
@@ -3509,8 +3617,22 @@ function buildRealEstateMetrics({ totalScore, riskScore, cleanCards, intent, pro
         cautions: reCautions.slice(0, 3)
       },
       rules: reCriticalRules,
-      // [V22.0] 🔥 Critical Interpretation — 부동산 새 시스템 (랜덤 + flavor)
-      criticalInterpretation: buildCriticalInterpretation(cleanCards, [false, false, false], "realestate", intent)
+      // [V22.0+V24.9] 🔥 Critical Interpretation — 부동산
+      //   기존: revFlags 무시 ([false, false, false]) → 역방향 의미 손실
+      //   해결: revFlags 전달 + URGENCY 발동 시 즉시 실행 메시지로 교체
+      criticalInterpretation: (() => {
+        const baseCrit = buildCriticalInterpretation(cleanCards, revFlags, "realestate", intent);
+        if (!isUrgent) return baseCrit;
+        // URGENCY 발동 시 — 능동 실행 메시지로 교체
+        const urgencyGeneral = intent === 'sell'
+          ? `${urgencyCardName} — 시간 지연 시 조건 악화 신호. "기다리면 좋아진다" 구조 아닙니다.`
+          : `${urgencyCardName} — 시간 지연 시 기회 소멸 신호. 신중함이 망설임으로 변할 위험.`;
+        const urgencyFlavor = intent === 'sell'
+          ? `즉시 시세 호가로 등록 → 2주 반응 없으면 -3~5% 조정 → 4~6주 내 결론.`
+          : `즉시 급매·우량 매물 탐색 → 4주 내 결단 → 시간 끌기 금지.`;
+        const urgencyClosing = `버티기 금지 — 카드는 '지금'을 가리키고 있습니다.`;
+        return `${urgencyGeneral}\n${urgencyFlavor}\n${urgencyClosing}`;
+      })()
     }
   };
 }
@@ -4535,7 +4657,7 @@ export default {
           } else {
             intent = "hold";
           }
-          metrics = buildRealEstateMetrics({ totalScore, riskScore, cleanCards, intent, prompt });
+          metrics = buildRealEstateMetrics({ totalScore, riskScore, cleanCards, intent, prompt, reversedFlags });
         }
         else if (queryType === "stock" || queryType === "crypto") {
           // [V19.9] 주식/코인 매도/매수 intent 자동 감지
