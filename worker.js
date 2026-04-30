@@ -3109,6 +3109,35 @@ function buildRealEstateMetrics({ totalScore, riskScore, cleanCards, intent, pro
   });
   // ══════════════════════════════════════════════════════════════
 
+  // ══════════════════════════════════════════════════════════════
+  // [V24.11] SPLIT 모드 — 시간 분리형 (저점 통과 V-shape) 감지
+  //   사장님 진단:
+  //     "Five of Pentacles + Page of Pentacles[역] + Empress 같은 흐름"
+  //     "지금 팔면 손해, 기다리면 정상가" — 단일 전략은 부적절
+  //   원리: past/current ≤ 0 + future ≥ 3 → 시간 분리형 V-shape
+  //         (현재는 매도 환경 약함, 미래는 수요 회복 → 두 전략 동시 제시)
+  //   조건:
+  //     1. URGENCY 미발동 (URGENCY 우선)
+  //     2. 미래 카드 점수 ≥ 3 (강한 긍정 — Empress, Sun, World, Star 급)
+  //     3. 현재 또는 과거 점수 ≤ 0 (현재 매도 환경 약함)
+  //     4. 미래 - 현재 점수차 ≥ 3 (분명한 반등 신호)
+  //   효과: SPLIT 발동 시 두 가지 전략(빠른 매도 vs 최적 매도) 동시 제시
+  // ══════════════════════════════════════════════════════════════
+  const _pastScore    = (CARD_SCORE[cleanCards[0]] ?? 0) * (revFlags[0] ? -1 : 1);
+  const _currentScore = (CARD_SCORE[cleanCards[1]] ?? 0) * (revFlags[1] ? -1 : 1);
+  const _futureScore  = (CARD_SCORE[cleanCards[2]] ?? 0) * (revFlags[2] ? -1 : 1);
+
+  const isSplit = !isUrgent
+    && _futureScore >= 3
+    && (_pastScore <= 0 || _currentScore <= 0)
+    && (_futureScore - _currentScore) >= 3;
+
+  let splitFutureCardName = null;
+  if (isSplit) {
+    splitFutureCardName = cleanCards[2] + (revFlags[2] ? ' [역방향]' : '');
+  }
+  // ══════════════════════════════════════════════════════════════
+
   let seed = 0;
   for (let i = 0; i < (prompt||"").length; i++) seed += prompt.charCodeAt(i);
   cleanCards.forEach(c => { for (let i = 0; i < c.length; i++) seed += c.charCodeAt(i); });
@@ -3259,6 +3288,12 @@ function buildRealEstateMetrics({ totalScore, riskScore, cleanCards, intent, pro
     //   해결:
     //     ① URGENCY 발동 시 → 시즌 → "즉시 실행 구간"
     //     ② 기간 → "2~4주 (빠르면) / 6주 결론 (늦어도)"
+    //
+    // [V24.11] SPLIT 모드 — 시간 분리형 (V-shape 저점 통과)
+    //   사장님 진단:
+    //     "지금 팔면 손해, 기다리면 정상가" — 두 전략 동시 제시 필요
+    //   조건: 미래 카드 강한 긍정(≥3) + 현재/과거 약세 + 반등 폭 ≥3
+    //   출력: 빠른 매도(현실 타협) vs 최적 매도(수요 회복 대기) 두 가지
     // ══════════════════════════════════════════════════════════════
     if (isUrgent) {
       timingLabel = `매도 적기: 즉시 — 시간 지연 시 조건 악화 신호 (${urgencyCardName})`;
@@ -3267,6 +3302,14 @@ function buildRealEstateMetrics({ totalScore, riskScore, cleanCards, intent, pro
       period      = `거래 소요 예상: 2~4주 빠른 체결 또는 6주 내 결론 (이후는 가격 협상력 약화 구간)`;
       urgency     = `🔴 즉시 실행 권장 — ${urgencyReason}`;
       caution     = `⚠️ 시간이 변수 — 늦어질수록 조건 악화 (${urgencyCardName} 신호). 6주 넘기면 가격 인하 압박 강해짐`;
+    } else if (isSplit) {
+      // [V24.11] SPLIT — 두 전략 동시 제시
+      timingLabel = `매도 타이밍: 분리형 (현재 정체 → ${splitFutureCardName} 수요 회복)`;
+      timing2     = `전략 A (빠른 매도): 4~8주 / 전략 B (최적 매도): 8~12주 (수요 회복 대기)`;
+      strategy    = `🅰 빠른 매도: 시세 -3~5% 조정 + 4~8주 거래 / 🅱 최적 매도: 가격 유지 또는 -1~2% + 수요 회복 대기 (카드 추천)`;
+      period      = `초반 정체 (2~6주) → 이후 수요 유입 → 빠른 거래 가능 구간`;
+      urgency     = `🟢 선택형 전략 권장 — 미래 카드(${splitFutureCardName})가 가격 방어 가능 신호. "지금 팔면 손해, 기다리면 정상가"`;
+      caution     = `⚠️ 단일 전략 금지 — 자금 일정에 따라 A/B 선택. 수요 회복 신호(거래량 증가·실거래가 회복) 모니터링 필수`;
     } else {
       // [V2.2] 시즌 라벨 + 주 단위 계약 예상 (매도 적기보다 앞서지 않도록)
       timingLabel = `매도 적기: ${sellSeasonObj.label}`;
@@ -3287,6 +3330,14 @@ function buildRealEstateMetrics({ totalScore, riskScore, cleanCards, intent, pro
       period      = `보유 전략: 진입 후 최소 1~2년 (빠른 진입 + 중기 보유)`;
       urgency     = `🔴 즉시 행동 권장 — ${urgencyReason}`;
       caution     = `⚠️ 시간이 변수 — ${urgencyCardName} 신호. 4주 내 결단 필요`;
+    } else if (isSplit) {
+      // [V24.11] 매수도 SPLIT 적용 — 미래에 수요 유입이면 매수자에게는 가격 상승 위험
+      timingLabel = `매수 타이밍: 분리형 (현재 저점 매물 vs 미래 수요 유입 - ${splitFutureCardName})`;
+      timing2     = `전략 A (저점 매수): 현재 4~6주 내 / 전략 B (확신 매수): 시장 회복 신호 후`;
+      strategy    = `🅰 저점 매수: 현재 약세 활용 — 급매 적극 탐색 / 🅱 확신 매수: 거래량 회복 후 정상가 진입`;
+      period      = `보유 전략: 진입 시점 무관 1~2년 중기 보유 권장`;
+      urgency     = `🟢 선택형 매수 — ${splitFutureCardName} 수요 회복 시 매수 경쟁 심화 가능`;
+      caution     = `⚠️ 미래 수요 유입 신호 — 저점 매수 기회는 4~6주 내 사라질 수 있음`;
     } else {
       // [V2.2] 매수도 동일 원칙: 시즌 + 주 단위
       timingLabel = `매수 적기: ${buySeasonObj.label}`;
@@ -3326,6 +3377,15 @@ function buildRealEstateMetrics({ totalScore, riskScore, cleanCards, intent, pro
     } else {
       reDecisionPosition = `즉시 검토형 매수 (Urgent Search — ${urgencyCardName})`;
       reDecisionStrategy = "급매·우량 매물 즉시 탐색 + 4주 내 결단 (시간 끌기 금지)";
+    }
+  } else if (isSplit) {
+    // [V24.11] SPLIT 발동 시 — 선택형 전략
+    if (intent === "sell") {
+      reDecisionPosition = `선택형 매도 (Sell Timing Split — 미래 ${splitFutureCardName})`;
+      reDecisionStrategy = "🅰 빠른 매도 (-3~5% / 4~8주) 또는 🅱 최적 매도 (가격 유지 + 수요 회복 대기)";
+    } else {
+      reDecisionPosition = `선택형 매수 (Buy Timing Split — 미래 ${splitFutureCardName})`;
+      reDecisionStrategy = "🅰 저점 매수 (현재 약세 활용 4~6주) 또는 🅱 확신 매수 (수요 회복 후 정상가)";
     }
   } else if (intent === "sell") {
     if (netScore >= 5) {
@@ -3392,6 +3452,19 @@ function buildRealEstateMetrics({ totalScore, riskScore, cleanCards, intent, pro
           "시간 지연 카드 신호 — 신중함이 기회 소멸로 전환될 위험",
           "융자·세금 계산은 병행 진행 (탐색 늦추지 말 것)"
         ];
+  } else if (isSplit) {
+    // [V24.11] SPLIT 발동 시 — 선택형 행동 지침
+    reCriticalRules = intent === "sell"
+      ? [
+          `🅰 자금 일정 급함 → -3~5% 할인 + 4~8주 내 거래 (현실 타협)`,
+          `🅱 자금 여유 있음 → 가격 유지 + 수요 회복 대기 (카드 추천 — 정상가 가능)`,
+          `수요 회복 신호 모니터링: 주변 실거래 회복 / 거래량 증가 / 매물 감소`
+        ]
+      : [
+          `🅰 저점 매수 가능: 현재 약세 — 4~6주 내 급매 적극 탐색`,
+          `🅱 확신 매수 가능: 거래량 회복 후 진입 — 단 가격 상승 위험`,
+          `미래 수요 유입 신호 — 저점 매수 기회 창은 4~6주 (한정)`
+        ];
   } else {
     reCriticalRules = intent === "sell"
       ? [
@@ -3416,6 +3489,17 @@ function buildRealEstateMetrics({ totalScore, riskScore, cleanCards, intent, pro
     } else {
       reCautions.push("4주 넘기면 우량 매물 소진 가능성 — 탐색 가속 필요");
       reCautions.push("시세 검증과 결단을 병행 — 분석 마비 경계");
+    }
+  } else if (isSplit) {
+    // [V24.11] SPLIT 발동 시 — 선택 지침
+    reCautions.push(`타이밍 분리형 — 단일 전략 부적절 (미래 ${splitFutureCardName} 수요 회복 신호)`);
+    if (intent === "sell") {
+      reCautions.push("🅰/🅱 선택 기준: 자금 일정 + 손실 감내 가능 여부");
+      reCautions.push("'지금 팔면 손해, 기다리면 정상가' — 양 옵션 모두 합리적");
+      reCautions.push("수요 회복 신호 미확인 시 가격 방어 우선 (전략 B)");
+    } else {
+      reCautions.push("저점 기회 창 4~6주 — 시장 회복 시 가격 상승 위험");
+      reCautions.push("실거래가·거래량 회복 모니터링으로 매수 시점 결정");
     }
   } else {
     if (netScore <= -3) reCautions.push("하락 압력 — 추가 조정 가능성");
@@ -3622,16 +3706,31 @@ function buildRealEstateMetrics({ totalScore, riskScore, cleanCards, intent, pro
       //   해결: revFlags 전달 + URGENCY 발동 시 즉시 실행 메시지로 교체
       criticalInterpretation: (() => {
         const baseCrit = buildCriticalInterpretation(cleanCards, revFlags, "realestate", intent);
-        if (!isUrgent) return baseCrit;
-        // URGENCY 발동 시 — 능동 실행 메시지로 교체
-        const urgencyGeneral = intent === 'sell'
-          ? `${urgencyCardName} — 시간 지연 시 조건 악화 신호. "기다리면 좋아진다" 구조 아닙니다.`
-          : `${urgencyCardName} — 시간 지연 시 기회 소멸 신호. 신중함이 망설임으로 변할 위험.`;
-        const urgencyFlavor = intent === 'sell'
-          ? `즉시 시세 호가로 등록 → 2주 반응 없으면 -3~5% 조정 → 4~6주 내 결론.`
-          : `즉시 급매·우량 매물 탐색 → 4주 내 결단 → 시간 끌기 금지.`;
-        const urgencyClosing = `버티기 금지 — 카드는 '지금'을 가리키고 있습니다.`;
-        return `${urgencyGeneral}\n${urgencyFlavor}\n${urgencyClosing}`;
+        if (isUrgent) {
+          // URGENCY 발동 시 — 능동 실행 메시지로 교체
+          const urgencyGeneral = intent === 'sell'
+            ? `${urgencyCardName} — 시간 지연 시 조건 악화 신호. "기다리면 좋아진다" 구조 아닙니다.`
+            : `${urgencyCardName} — 시간 지연 시 기회 소멸 신호. 신중함이 망설임으로 변할 위험.`;
+          const urgencyFlavor = intent === 'sell'
+            ? `즉시 시세 호가로 등록 → 2주 반응 없으면 -3~5% 조정 → 4~6주 내 결론.`
+            : `즉시 급매·우량 매물 탐색 → 4주 내 결단 → 시간 끌기 금지.`;
+          const urgencyClosing = `버티기 금지 — 카드는 '지금'을 가리키고 있습니다.`;
+          return `${urgencyGeneral}\n${urgencyFlavor}\n${urgencyClosing}`;
+        }
+        if (isSplit) {
+          // [V24.11] SPLIT 발동 시 — 선택형 메시지
+          const splitGeneral = intent === 'sell'
+            ? `타이밍 분리형 구조 — 현재는 거래 정체, 미래(${splitFutureCardName})에 수요 회복 신호.`
+            : `타이밍 분리형 구조 — 현재 저점 매물 가능, 미래(${splitFutureCardName}) 수요 유입 시 가격 상승 위험.`;
+          const splitFlavor = intent === 'sell'
+            ? `🅰 빠른 매도(-3~5%, 4~8주) 또는 🅱 최적 매도(가격 유지, 수요 회복 대기) 선택.`
+            : `🅰 저점 매수(현재 4~6주 내) 또는 🅱 확신 매수(거래량 회복 후) 선택.`;
+          const splitClosing = intent === 'sell'
+            ? `"지금 팔면 손해, 기다리면 정상가" — 자금 일정에 따라 선택하십시오.`
+            : `"지금 사면 저점, 기다리면 안전" — 리스크 감내에 따라 선택하십시오.`;
+          return `${splitGeneral}\n${splitFlavor}\n${splitClosing}`;
+        }
+        return baseCrit;
       })()
     }
   };
