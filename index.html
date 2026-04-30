@@ -2077,36 +2077,14 @@ function setSituation(btn, type, domain) {
         if (qInput && pending.question) qInput.value = pending.question;
 
         // ══════════════════════════════════════════════════════════
-        // [V24.1 P1-1 BUGFIX] 토큰 검증 후에만 isPaidUser=true
-        //   기존: ?paid=ok URL만으로 즉시 isPaidUser=true 설정 (백도어)
-        //   영향: pendingOracle만 있으면 ?paid=ok 직접 입력으로 무료 접근 가능
-        //   해결: localStorage 토큰을 서버에 검증한 결과로만 isPaidUser 결정
+        // [V24.2 ROLLBACK] P1-1 패치 철회 — 정상 결제 유저 차단 버그
+        //   사장님 진단: success.html 외부 파일 타이밍 이슈로 토큰 검증이
+        //                실패하면 정상 결제 유저까지 홈뷰로 돌아가는 회귀 발생
+        //   결정: 신뢰 기반 흐름 유지 — pendingOracle 30분 만료 + ?paid=ok 신호로 충분
+        //   트레이드오프: 이론적 백도어는 남지만, 정상 유저 UX가 우선
         // ══════════════════════════════════════════════════════════
-        const _sessionToken = localStorage.getItem('oracleSessionToken') || '';
-        let _verified = false;
-        if (_sessionToken && !_sessionToken.startsWith('PAID_')) {
-            // PAID_ 접두어는 계좌이체 임시 토큰 → 서버 검증 불가, 별도 처리
-            try {
-                const _vRes = await fetch('https://tarot-api.omegafund01.workers.dev/verify-payment', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ paymentKey: _sessionToken })
-                });
-                const _vData = await _vRes.json();
-                _verified = !!(_vData && _vData.ok);
-            } catch(e) {
-                console.warn('토큰 검증 실패(네트워크):', e.message);
-                _verified = false;
-            }
-        }
-        if (!_verified) {
-            // 검증 실패 시 안내 후 정상 종료 (백도어 차단)
-            console.warn('⚠️ ?paid=ok 핸들러: 유효 토큰 미발견 — 무료 권한 부여하지 않음');
-            localStorage.removeItem('pendingOracle');
-            return;
-        }
 
-        // 결제 완료 플래그 확정 (토큰 검증 통과 후)
+        // 결제 완료 플래그 확정
         isPaidUser = true;
 
         // 결과창으로 즉시 전환 (홈뷰 숨기고 결과뷰 노출)
