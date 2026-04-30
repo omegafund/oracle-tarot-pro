@@ -3177,46 +3177,101 @@ function detectUncertaintyGateClient(cards) {
 //   서버 detectVolatilityGate와 동등 로직 — risk + power 기반 클라이언트 추정
 //   (클라이언트 CARD_DB는 worker의 4차원 데이터 없이 risk/power만 보유)
 //   사장님 진단: Death/Five of Wands처럼 변동성 높은 카드 조합 차단
+// [V24.4 룰 A] 단일 카드 극값 게이트 추가 (risk≥4 또는 critical 카드)
 // ══════════════════════════════════════════════════════════════
 function detectVolatilityGateClient(cards) {
     let totalRisk = 0, count = 0;
+    let maxRisk = 0;
+    let extremeCardName = null;
     cards.forEach(c => {
         const base = (c.name || '').split(' (')[0];
         const data = CARD_DB[base];
         if (!data) return;
-        totalRisk += (data.risk ?? 2);  // 클라이언트 risk 0~5 스케일
+        const r = data.risk ?? 2;
+        totalRisk += r;
         count++;
+        if (r > maxRisk) maxRisk = r;
+        // [V24.4 룰 A] 단일 카드 극값 (risk≥4 또는 unc≥4)
+        const u = data.uncertainty ?? 2;
+        if ((r >= 4 || u >= 4) && !extremeCardName) {
+            extremeCardName = base;
+        }
     });
     const missing = cards.length - count;
     totalRisk += missing * 2;
     const avgRisk = totalRisk / cards.length;
-    // 평균 risk 3.0 이상 = HIGH (Five of Wands+Death = (2+3+3)/3 = 2.67이지만 3 이상이면 차단)
-    // critical 카드 1개 이상 포함 시 즉시 HIGH
+
     const hasCritical = cards.some(c => {
         const base = (c.name || '').split(' (')[0];
         return CARD_DB[base]?.critical === true;
     });
-    const isHigh = avgRisk >= 3.0 || hasCritical;
+    // [V24.4] 단일 극값 카드 존재 시 즉시 HIGH
+    const hasExtremeCard = !!extremeCardName;
+    const isHigh = avgRisk >= 3.0 || hasCritical || hasExtremeCard;
+
+    let level;
+    if (avgRisk >= 4) level = 'EXTREME';
+    else if (avgRisk >= 3 || hasCritical) level = 'HIGH';
+    else if (hasExtremeCard) level = 'HIGH';  // [V24.4] 단일 극값 시 최소 HIGH
+    else if (avgRisk >= 2.5) level = 'MEDIUM';
+    else level = 'LOW';
+
     return {
         avgRisk: Math.round(avgRisk * 10) / 10,
+        maxRisk,
+        extremeCardName,
+        hasExtremeCard,
         isHighVolatility: isHigh,
         hasCritical,
-        level: avgRisk >= 4 ? 'EXTREME' : avgRisk >= 3 ? 'HIGH' : avgRisk >= 2.5 ? 'MEDIUM' : 'LOW'
+        level
     };
+}
+
+// [V24.4 룰 B] CARD_DECISION_MAP 다수결 — 클라이언트는 CARD_DB의 score 기반 추정
+//   서버 CARD_DECISION_MAP을 클라이언트에 복제할 수 없어 score>=2면 BUY, <=-2면 SELL, 그 외 HOLD
+function _classifyCardDecisionClient(cardName) {
+    const base = (cardName || '').split(' (')[0];
+    const data = CARD_DB[base];
+    if (!data) return 'HOLD';
+    if (data.score >= 3) return 'BUY';
+    if (data.score <= -2) return 'SELL';
+    return 'HOLD';
 }
 
 function detectRiskGateClient(cards) {
     const unc = detectUncertaintyGateClient(cards);
     const vol = detectVolatilityGateClient(cards);
-    const triggered = unc.isHighUncertainty || vol.isHighVolatility;
+
+    // [V24.4 룰 B] CARD_DECISION_MAP 다수결
+    let buyCount = 0, holdCount = 0, sellCount = 0;
+    cards.forEach(c => {
+        const d = _classifyCardDecisionClient(c.name);
+        if (d === 'BUY') buyCount++;
+        else if (d === 'SELL') sellCount++;
+        else holdCount++;
+    });
+    const cautionCount = holdCount + sellCount;
+    const majorityCaution = cautionCount >= 2;
+
+    const triggered = unc.isHighUncertainty || vol.isHighVolatility || majorityCaution;
     const levelRank = { 'LOW': 0, 'MEDIUM': 1, 'HIGH': 2, 'EXTREME': 3 };
-    const maxLevel = (levelRank[unc.level] >= levelRank[vol.level]) ? unc.level : vol.level;
+    let maxLevel = (levelRank[unc.level] >= levelRank[vol.level]) ? unc.level : vol.level;
+    if (majorityCaution && levelRank[maxLevel] < 2) maxLevel = 'HIGH';
+
     const riskLabelKo =
         maxLevel === 'EXTREME' ? '매우 높음 (변동성·전환 카드 우세)'
       : maxLevel === 'HIGH'    ? '높음 (변동성 또는 불확실성 우세)'
       : maxLevel === 'MEDIUM'  ? '보통~높음 (주의)'
                                : '보통';
-    return { triggered, uncertainty: unc, volatility: vol, level: maxLevel, riskLabelKo };
+
+    return {
+        triggered,
+        uncertainty: unc,
+        volatility: vol,
+        decisionMajority: { buy: buyCount, hold: holdCount, sell: sellCount, cautionCount, majorityCaution },
+        level: maxLevel,
+        riskLabelKo
+    };
 }
 
 // 하락 시나리오 트리거 (클라이언트)
@@ -3979,11 +4034,20 @@ function buildInvestmentData(cards, question) {
         return { name: base, ...d };
     });
     const powers = cardDataArr.map(c => c.power);
-    const flowSummary = powers[2] > powers[0]
-        ? "과거 → 미래 에너지 상승 흐름 (진입 에너지 강화 중)"
-        : powers[2] < powers[0]
-        ? "과거 → 미래 에너지 하강 흐름 (에너지 소진 주의)"
-        : "에너지 균형 흐름 (방향성 확인 후 대응)";
+    // [V24.4 룰 C] past/current/future 3점 서사 패턴 검증
+    //   사장님 진단: past<current>future인데 "에너지 상승 흐름"으로 잘못 표시
+    //   해결: 5가지 패턴으로 정확 분류 (피크/저점/일관)
+    const flowSummary = (() => {
+        const p0 = powers[0], p1 = powers[1], p2 = powers[2];
+        const PEAK_THRESHOLD = 0; // [V24.4] 사장님 룰: future < current 시 즉시 피크 감지
+        if (p0 < p1 && p1 < p2) return "과거 → 미래 일관 상승 흐름 (진입 에너지 누적 중)";
+        if (p0 > p1 && p1 > p2) return "과거 → 미래 일관 하락 흐름 (에너지 소진 가속)";
+        if (p0 < p1 && p1 > p2 + PEAK_THRESHOLD) return "현재 피크 통과 — 모멘텀 약화 흐름 (추격 매수 주의)";
+        if (p0 > p1 && p1 < p2 - PEAK_THRESHOLD) return "저점 통과 — 회복 흐름 (반등 신호 확인 필요)";
+        if (p2 > p0) return "과거 → 미래 에너지 상승 흐름 (현재 변동성 주의)";
+        if (p2 < p0) return "과거 → 미래 에너지 하강 흐름 (에너지 소진 주의)";
+        return "에너지 균형 흐름 (방향성 확인 후 대응)";
+    })();
 
     // ② 카드별 리스크 체크
     const riskChecks = cardDataArr.map(c => {

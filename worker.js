@@ -206,54 +206,115 @@ function detectUncertaintyGate(cardNames) {
 //                risk/vol이 높은 조합은 기존 게이트로 못 잡음
 //   해결: risk + vol 평균이 임계값 초과 시 별도 게이트 발동
 //   이 게이트는 uncertainty와 독립적으로 작동 — OR 조건
+//
+// [V24.4 룰 A] 단일 카드 극값 게이트 추가
+//   사장님 진단: Wheel of Fortune 한 장(vol=80, unc=75)이 들어와도
+//                Ten of Cups 같은 낮은 vol 카드가 평균을 희석해서 통과됨
+//   해결: 한 장이라도 vol≥75 또는 uncertainty≥70이면 즉시 발동
+//         (평균 무시 — Tower/Death/WoF 같은 game-changer 카드 단독 차단)
 // ══════════════════════════════════════════════════════════════════
 function detectVolatilityGate(cardNames) {
   let totalRisk = 0, totalVol = 0, count = 0;
+  let maxVol = 0, maxUnc = 0;
+  let extremeCardName = null;
+
   cardNames.forEach(name => {
     const e = CARD_SCORE_MULTI[name];
     if (!e) return;
     totalRisk += (e.risk ?? 50);
     totalVol  += (e.vol ?? 50);
     count++;
+
+    // [V24.4 룰 A] 단일 카드 극값 추적
+    const vol = e.vol ?? 50;
+    const unc = e.uncertainty ?? 50;
+    if (vol > maxVol) maxVol = vol;
+    if (unc > maxUnc) maxUnc = unc;
+    if ((vol >= 75 || unc >= 70) && !extremeCardName) {
+      extremeCardName = name;  // 첫 극값 카드 기록
+    }
   });
+
   // 미정의 카드는 50으로 보정
   const missing = cardNames.length - count;
   totalRisk += missing * 50;
   totalVol  += missing * 50;
   const avgRisk = totalRisk / cardNames.length;
   const avgVol  = totalVol  / cardNames.length;
-  const composite = (avgRisk + avgVol) / 2;  // 0~100 통합 변동성 지수
+  const composite = (avgRisk + avgVol) / 2;
+
+  // [V24.4 룰 A] 단일 카드 극값 트리거
+  const hasExtremeCard = (maxVol >= 75 || maxUnc >= 70);
 
   // 임계값:
-  //   composite >= 70 → EXTREME (Tower, Ten of Swords 단독 카드 수준)
-  //   composite >= 55 → HIGH    (Five of Wands + Death 등 고변동 조합)
+  //   composite >= 70 → EXTREME
+  //   composite >= 55 → HIGH
   //   composite >= 45 → MEDIUM
   //   else → LOW
-  const isHigh = composite >= 55;
+  //   [V24.4] 또는 단일 카드 극값 → 최소 HIGH
+  const isHighByAvg = composite >= 55;
+  const isHigh = isHighByAvg || hasExtremeCard;
+
+  let level;
+  if (composite >= 70) level = 'EXTREME';
+  else if (composite >= 55) level = 'HIGH';
+  else if (hasExtremeCard) level = 'HIGH';  // [V24.4] 단일 극값 시 최소 HIGH
+  else if (composite >= 45) level = 'MEDIUM';
+  else level = 'LOW';
+
+  let reason = null;
+  if (hasExtremeCard) {
+    reason = `단일 극값 카드 감지 (${extremeCardName}: vol=${CARD_SCORE_MULTI[extremeCardName]?.vol}, unc=${CARD_SCORE_MULTI[extremeCardName]?.uncertainty}) — game-changer 카드 단독 게이트`;
+  } else if (isHighByAvg) {
+    reason = `변동성·리스크 카드 합산 평균 ${Math.round(composite)}점 (임계값 55) — 급변 가능성 높음`;
+  }
+
   return {
     avgRisk:    Math.round(avgRisk),
     avgVol:     Math.round(avgVol),
     composite:  Math.round(composite),
+    maxVol,
+    maxUnc,
+    extremeCardName,
+    hasExtremeCard,
     isHighVolatility: isHigh,
-    level:      composite >= 70 ? 'EXTREME'
-              : composite >= 55 ? 'HIGH'
-              : composite >= 45 ? 'MEDIUM' : 'LOW',
-    reason:     isHigh ? `변동성·리스크 카드 합산 평균 ${Math.round(composite)}점 (임계값 55) — 급변 가능성 높음` : null
+    level,
+    reason
   };
 }
 
 // ══════════════════════════════════════════════════════════════════
 // [V24.3] 통합 리스크 게이트 — uncertainty + volatility OR 조건
 //   둘 중 하나라도 발동 시 진입 차단 + 하락 시나리오 안내
+//
+// [V24.4 룰 B] CARD_DECISION_MAP 다수결 추가
+//   사장님 진단: 3장 중 HOLD가 2장인데 score 합산만으로 "적극 매수" 권유
+//                Wheel of Fortune (HOLD) + Page of Cups (HOLD) + Ten of Cups (BUY) 케이스
+//   해결: HOLD/SELL이 2장 이상이면 score 무시하고 강제 관망
+//         타로 카드의 본질 의미(decision_map)가 합산 점수보다 우선
 // ══════════════════════════════════════════════════════════════════
-function detectRiskGate(cardNames) {
+function detectRiskGate(cardNames, intent) {
   const unc = detectUncertaintyGate(cardNames);
   const vol = detectVolatilityGate(cardNames);
-  const triggered = unc.isHighUncertainty || vol.isHighVolatility;
 
-  // 리스크 등급 통합 — 두 게이트 중 더 높은 쪽
+  // [V24.4 룰 B] CARD_DECISION_MAP 다수결 검사
+  let buyCount = 0, holdCount = 0, sellCount = 0;
+  cardNames.forEach(name => {
+    const d = CARD_DECISION_MAP[name] || 'HOLD';
+    if (d === 'BUY') buyCount++;
+    else if (d === 'SELL') sellCount++;
+    else holdCount++;
+  });
+  const cautionCount = holdCount + sellCount;  // HOLD + SELL = 신중 카드
+  const majorityCaution = cautionCount >= 2;   // 3장 중 2장 이상이 신중 카드
+
+  const triggered = unc.isHighUncertainty || vol.isHighVolatility || majorityCaution;
+
+  // 리스크 등급 통합 — 모든 게이트 중 가장 높은 쪽
   const levelRank = { 'LOW': 0, 'MEDIUM': 1, 'HIGH': 2, 'EXTREME': 3 };
-  const maxLevel = (levelRank[unc.level] >= levelRank[vol.level]) ? unc.level : vol.level;
+  let maxLevel = (levelRank[unc.level] >= levelRank[vol.level]) ? unc.level : vol.level;
+  // [V24.4] 다수결 신중 카드 우세 시 최소 HIGH
+  if (majorityCaution && levelRank[maxLevel] < 2) maxLevel = 'HIGH';
 
   // 리스크 레이블 한글화 — 기존 "보통" 디폴트 오류 차단
   const riskLabelKo =
@@ -262,13 +323,34 @@ function detectRiskGate(cardNames) {
   : maxLevel === 'MEDIUM'  ? '보통~높음 (주의)'
                            : '보통';
 
+  // [V24.4] 발동 사유 우선순위: 단일 극값 > 다수결 > 평균 > 불확실성
+  let primaryReason;
+  if (vol.hasExtremeCard) {
+    primaryReason = vol.reason;
+  } else if (majorityCaution) {
+    primaryReason = `CARD_DECISION_MAP 다수결: HOLD ${holdCount}장 + SELL ${sellCount}장 = ${cautionCount}장 신중 카드 우세 (BUY ${buyCount}장)`;
+  } else if (vol.isHighVolatility) {
+    primaryReason = vol.reason;
+  } else if (unc.isHighUncertainty) {
+    primaryReason = unc.reason;
+  } else {
+    primaryReason = '리스크 정상';
+  }
+
   return {
     triggered,
     uncertainty: unc,
     volatility:  vol,
+    decisionMajority: {
+      buy: buyCount,
+      hold: holdCount,
+      sell: sellCount,
+      cautionCount,
+      majorityCaution
+    },
     level:       maxLevel,
     riskLabelKo,
-    primaryReason: vol.isHighVolatility ? vol.reason : (unc.reason || '리스크 정상')
+    primaryReason
   };
 }
 
@@ -1450,7 +1532,7 @@ function buildStockMetrics({ totalScore, riskScore, cleanCards, isLeverage, quer
   //   사장님 진단: Five of Wands+Death = 변동성 명백한데 기존 게이트는 못 잡음
   //   해결: risk+vol 평균 ≥ 55 시 별도 게이트 발동 (uncertainty와 OR 조건)
   // ══════════════════════════════════════════════════════════════
-  const riskGate = detectRiskGate(cleanCards);
+  const riskGate = detectRiskGate(cleanCards, stockIntent);
   const uncGate = riskGate.uncertainty;  // 하위 호환 — 기존 코드가 uncGate 참조
   const volGate = riskGate.volatility;
   // ══════════════════════════════════════════════════════════════
@@ -1727,9 +1809,33 @@ function buildStockMetrics({ totalScore, riskScore, cleanCards, isLeverage, quer
   });
   const flowSummary = (() => {
     // 역방향 반영하여 실제 점수 계산
-    const firstScore = (CARD_SCORE[cleanCards[0]] ?? 0) * (revFlags[0] ? -1 : 1);
-    const lastScore  = (CARD_SCORE[cleanCards[2]] ?? 0) * (revFlags[2] ? -1 : 1);
-    if (lastScore > firstScore) return "과거 → 미래 에너지 상승 흐름 (진입 에너지 강화 중)";
+    const firstScore  = (CARD_SCORE[cleanCards[0]] ?? 0) * (revFlags[0] ? -1 : 1);
+    const middleScore = (CARD_SCORE[cleanCards[1]] ?? 0) * (revFlags[1] ? -1 : 1);
+    const lastScore   = (CARD_SCORE[cleanCards[2]] ?? 0) * (revFlags[2] ? -1 : 1);
+
+    // [V24.4 룰 C] past/current/future 3점 서사 패턴 검증
+    //   사장님 진단: past<current>future인데 "에너지 상승 흐름"으로 잘못 표시되는 버그
+    //   해결: 5가지 패턴으로 정확히 분류
+    const PEAK_DROP_THRESHOLD = 0; // [V24.4] 사장님 룰: future < current 시 즉시 피크 감지 // 1점 이상 하락 시 피크 통과로 간주
+
+    // 패턴 1: 일관 상승 (past < current < future)
+    if (firstScore < middleScore && middleScore < lastScore) {
+      return "과거 → 미래 일관 상승 흐름 (진입 에너지 누적 중)";
+    }
+    // 패턴 2: 일관 하락 (past > current > future)
+    if (firstScore > middleScore && middleScore > lastScore) {
+      return "과거 → 미래 일관 하락 흐름 (에너지 소진 가속)";
+    }
+    // 패턴 3: 피크 통과 (past < current > future) — 가장 위험
+    if (firstScore < middleScore && middleScore > lastScore + PEAK_DROP_THRESHOLD) {
+      return "현재 피크 통과 — 모멘텀 약화 흐름 (추격 매수 주의)";
+    }
+    // 패턴 4: 저점 통과 (past > current < future)
+    if (firstScore > middleScore && middleScore < lastScore - PEAK_DROP_THRESHOLD) {
+      return "저점 통과 — 회복 흐름 (반등 신호 확인 필요)";
+    }
+    // 패턴 5: 단순 상승/하락 (피크/저점 아닌 경우)
+    if (lastScore > firstScore) return "과거 → 미래 에너지 상승 흐름 (현재 변동성 주의)";
     if (lastScore < firstScore) return "과거 → 미래 에너지 하강 흐름 (에너지 소진 주의)";
     return "에너지 균형 흐름 (방향성 확인 후 대응)";
   })();
@@ -2783,7 +2889,7 @@ function buildRealEstateMetrics({ totalScore, riskScore, cleanCards, intent, pro
   // [V24.0+V24.3] RISK GATE — 부동산도 통합 게이트 적용
   //   부동산은 변동성보다 불확실성이 주요 — 그래도 isHighVolatility는 OR 조건으로
   // ══════════════════════════════════════════════════════════════
-  const riskGate = detectRiskGate(cleanCards);
+  const riskGate = detectRiskGate(cleanCards, intent);
   const uncGate = riskGate.uncertainty;
   const volGate = riskGate.volatility;
   // ══════════════════════════════════════════════════════════════
@@ -3560,7 +3666,7 @@ function buildFortuneMetrics({ totalScore, cleanCards, prompt }) {
   // [V24.0+V24.3] RISK GATE — 운세도 통합 게이트
   //   해석: 게이트 발동 → "결단보다 정리/관찰" 톤으로 보정
   // ══════════════════════════════════════════════════════════════
-  const riskGate = detectRiskGate(cleanCards);
+  const riskGate = detectRiskGate(cleanCards, 'buy');
   const uncGate = riskGate.uncertainty;
   const volGate = riskGate.volatility;
   // ══════════════════════════════════════════════════════════════
