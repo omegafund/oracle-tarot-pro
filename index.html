@@ -488,6 +488,372 @@
         }
 
         /* ── 상황 선택 UI */
+        /* ══════════════════════════════════════════════════════════
+         * [V25.0] 4-CATEGORY MAIN MENU — 사장님 안 (자동 분류 폐기)
+         *   원리: 사용자가 카테고리를 직접 선택 → 자연어 분류 0%
+         *   효과: 분류 버그 100% 차단 + UX 명확 + 점사 품질 자동 향상
+         * ══════════════════════════════════════════════════════════ */
+        .category-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            max-width: 480px;
+            margin: 18px auto 14px;
+            padding: 0 14px;
+        }
+        .cat-card {
+            position: relative;
+            background: linear-gradient(135deg, rgba(212,175,55,0.06), rgba(155,89,182,0.04));
+            border: 1.5px solid rgba(212,175,55,0.35);
+            border-radius: 14px;
+            padding: 14px 10px;
+            cursor: pointer;
+            transition: all 0.25s ease;
+            text-align: center;
+            min-height: 110px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            gap: 4px;
+            overflow: hidden;
+        }
+        .cat-card::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: radial-gradient(circle at center, rgba(212,175,55,0.0), transparent 70%);
+            transition: background 0.3s;
+            pointer-events: none;
+        }
+        .cat-card:hover, .cat-card.active {
+            border-color: var(--gold);
+            background: linear-gradient(135deg, rgba(212,175,55,0.16), rgba(155,89,182,0.08));
+            box-shadow: 0 4px 18px rgba(212,175,55,0.25);
+            transform: translateY(-2px);
+        }
+        .cat-card:hover::before, .cat-card.active::before {
+            background: radial-gradient(circle at center, rgba(212,175,55,0.2), transparent 65%);
+        }
+        .cat-icon {
+            font-size: 1.85rem;
+            line-height: 1;
+            margin-bottom: 4px;
+            filter: drop-shadow(0 0 6px rgba(212,175,55,0.3));
+        }
+        .cat-title {
+            font-size: 0.95rem;
+            font-weight: 800;
+            color: var(--gold);
+            letter-spacing: 0.04em;
+        }
+        .cat-sub {
+            font-size: 0.66rem;
+            color: rgba(255,255,255,0.55);
+            font-weight: 500;
+            line-height: 1.4;
+            margin-top: 2px;
+            font-style: italic;
+        }
+        .cat-badge {
+            position: absolute;
+            top: 6px;
+            right: 6px;
+            background: rgba(46,204,113,0.85);
+            color: #fff;
+            font-size: 0.55rem;
+            padding: 2px 6px;
+            border-radius: 5px;
+            letter-spacing: 0.05em;
+            font-weight: 800;
+        }
+        .cat-badge.premium {
+            background: rgba(212,175,55,0.85);
+            color: #1a1a2e;
+        }
+
+        /* ── 서브타입 패널 (카테고리 클릭 후 펼침) ── */
+        .subtype-panel {
+            max-width: 480px;
+            margin: 0 auto 18px;
+            padding: 14px 16px;
+            background: linear-gradient(135deg, rgba(212,175,55,0.08), rgba(155,89,182,0.05));
+            border: 1px solid rgba(212,175,55,0.5);
+            border-radius: 14px;
+            display: none;
+            animation: subtypeFadeIn 0.35s ease;
+        }
+        .subtype-panel.show { display: block; }
+        @keyframes subtypeFadeIn {
+            from { opacity: 0; transform: translateY(-6px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+        .subtype-prompt {
+            text-align: center;
+            font-size: 0.84rem;
+            color: var(--gold);
+            font-weight: 700;
+            margin-bottom: 12px;
+            letter-spacing: 0.04em;
+        }
+        .subtype-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            justify-content: center;
+        }
+        .sub-btn {
+            background: rgba(0,0,0,0.4);
+            border: 1px solid rgba(212,175,55,0.4);
+            color: rgba(255,255,255,0.92);
+            padding: 9px 14px;
+            border-radius: 22px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            letter-spacing: 0.02em;
+        }
+        .sub-btn:hover, .sub-btn.active {
+            background: linear-gradient(135deg, rgba(212,175,55,0.3), rgba(155,89,182,0.15));
+            border-color: var(--gold);
+            color: var(--gold);
+            transform: scale(1.04);
+        }
+        .sub-btn.featured {
+            background: linear-gradient(135deg, rgba(212,175,55,0.18), rgba(255,200,80,0.08));
+            border-color: rgba(212,175,55,0.7);
+        }
+        .subtype-back {
+            display: block;
+            margin: 12px auto 0;
+            background: transparent;
+            border: 1px solid rgba(255,255,255,0.15);
+            color: rgba(255,255,255,0.55);
+            padding: 7px 18px;
+            border-radius: 18px;
+            font-size: 0.74rem;
+            cursor: pointer;
+        }
+        .subtype-back:hover {
+            background: rgba(255,255,255,0.05);
+            color: rgba(255,255,255,0.85);
+        }
+
+        /* ── 입력창 동적 안내 메시지 ── */
+        .input-context-hint {
+            text-align: center;
+            font-size: 0.74rem;
+            color: rgba(212,175,55,0.85);
+            margin: 0 auto 8px;
+            max-width: 480px;
+            padding: 0 14px;
+            font-weight: 600;
+            letter-spacing: 0.02em;
+            animation: subtypeFadeIn 0.3s ease;
+        }
+        .input-context-hint.hidden { display: none; }
+
+        @media (max-width: 380px) {
+            .cat-card { min-height: 100px; padding: 12px 8px; }
+            .cat-icon { font-size: 1.65rem; }
+            .cat-title { font-size: 0.88rem; }
+            .cat-sub { font-size: 0.62rem; }
+            .sub-btn { padding: 8px 12px; font-size: 0.8rem; }
+        }
+
+        /* ══════════════════════════════════════════════════════════
+         * [V25.0] 4-CATEGORY MAIN MENU — 사장님 안 (자동 분류 폐기)
+         *   원리: 사용자가 카테고리를 직접 선택 → 자연어 분류 0%
+         *   효과: 분류 버그 100% 차단 + UX 명확 + 점사 정확도 자동 향상
+         *   배치: 오늘의 카드 + 최근 신탁 보존 → 그 아래 추가
+         * ══════════════════════════════════════════════════════════ */
+        .category-section-label {
+            text-align: center;
+            font-size: 0.78rem;
+            letter-spacing: 0.18em;
+            color: var(--gold);
+            font-weight: 800;
+            margin: 22px auto 6px;
+            line-height: 1.5;
+        }
+        .category-section-label .ko {
+            display: block;
+            font-size: 0.72rem;
+            opacity: 0.78;
+            letter-spacing: 0.1em;
+            margin-top: 3px;
+            font-weight: 700;
+        }
+        .category-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            max-width: 480px;
+            margin: 0 auto 14px;
+            padding: 0 14px;
+        }
+        .cat-card {
+            position: relative;
+            background: linear-gradient(135deg, rgba(212,175,55,0.06), rgba(155,89,182,0.04));
+            border: 1.5px solid rgba(212,175,55,0.35);
+            border-radius: 14px;
+            padding: 14px 10px;
+            cursor: pointer;
+            transition: all 0.25s ease;
+            text-align: center;
+            min-height: 110px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            gap: 4px;
+            overflow: hidden;
+        }
+        .cat-card::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: radial-gradient(circle at center, rgba(212,175,55,0.0), transparent 70%);
+            transition: background 0.3s;
+            pointer-events: none;
+        }
+        .cat-card:hover, .cat-card.active {
+            border-color: var(--gold);
+            background: linear-gradient(135deg, rgba(212,175,55,0.18), rgba(155,89,182,0.08));
+            box-shadow: 0 4px 18px rgba(212,175,55,0.25);
+            transform: translateY(-2px);
+        }
+        .cat-card:hover::before, .cat-card.active::before {
+            background: radial-gradient(circle at center, rgba(212,175,55,0.2), transparent 65%);
+        }
+        .cat-icon {
+            font-size: 1.85rem;
+            line-height: 1;
+            margin-bottom: 4px;
+            filter: drop-shadow(0 0 6px rgba(212,175,55,0.3));
+        }
+        .cat-title {
+            font-size: 0.95rem;
+            font-weight: 800;
+            color: var(--gold);
+            letter-spacing: 0.04em;
+        }
+        .cat-sub {
+            font-size: 0.66rem;
+            color: rgba(255,255,255,0.55);
+            font-weight: 500;
+            line-height: 1.4;
+            margin-top: 2px;
+            font-style: italic;
+        }
+        .cat-badge {
+            position: absolute;
+            top: 6px;
+            right: 6px;
+            background: rgba(46,204,113,0.85);
+            color: #fff;
+            font-size: 0.55rem;
+            padding: 2px 6px;
+            border-radius: 5px;
+            letter-spacing: 0.05em;
+            font-weight: 800;
+        }
+        .cat-badge.premium {
+            background: rgba(212,175,55,0.85);
+            color: #1a1a2e;
+        }
+
+        /* ── 서브타입 패널 (카테고리 클릭 후 펼침) ── */
+        .subtype-panel {
+            max-width: 480px;
+            margin: 0 auto 14px;
+            padding: 14px 16px;
+            background: linear-gradient(135deg, rgba(212,175,55,0.08), rgba(155,89,182,0.05));
+            border: 1px solid rgba(212,175,55,0.5);
+            border-radius: 14px;
+            display: none;
+            animation: subtypeFadeIn 0.35s ease;
+        }
+        .subtype-panel.show { display: block; }
+        @keyframes subtypeFadeIn {
+            from { opacity: 0; transform: translateY(-6px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+        .subtype-prompt {
+            text-align: center;
+            font-size: 0.84rem;
+            color: var(--gold);
+            font-weight: 700;
+            margin-bottom: 12px;
+            letter-spacing: 0.04em;
+        }
+        .subtype-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            justify-content: center;
+        }
+        .sub-btn {
+            background: rgba(0,0,0,0.4);
+            border: 1px solid rgba(212,175,55,0.4);
+            color: rgba(255,255,255,0.92);
+            padding: 9px 14px;
+            border-radius: 22px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            letter-spacing: 0.02em;
+        }
+        .sub-btn:hover, .sub-btn.active {
+            background: linear-gradient(135deg, rgba(212,175,55,0.3), rgba(155,89,182,0.15));
+            border-color: var(--gold);
+            color: var(--gold);
+            transform: scale(1.04);
+        }
+        .sub-btn.featured {
+            background: linear-gradient(135deg, rgba(212,175,55,0.18), rgba(255,200,80,0.08));
+            border-color: rgba(212,175,55,0.7);
+        }
+        .subtype-back {
+            display: block;
+            margin: 12px auto 0;
+            background: transparent;
+            border: 1px solid rgba(255,255,255,0.15);
+            color: rgba(255,255,255,0.55);
+            padding: 7px 18px;
+            border-radius: 18px;
+            font-size: 0.74rem;
+            cursor: pointer;
+        }
+        .subtype-back:hover {
+            background: rgba(255,255,255,0.05);
+            color: rgba(255,255,255,0.85);
+        }
+
+        /* ── 입력창 동적 안내 메시지 ── */
+        .input-context-hint {
+            text-align: center;
+            font-size: 0.78rem;
+            color: rgba(212,175,55,0.9);
+            margin: 6px auto 4px;
+            max-width: 480px;
+            padding: 0 14px;
+            font-weight: 700;
+            letter-spacing: 0.02em;
+            animation: subtypeFadeIn 0.3s ease;
+        }
+        .input-context-hint.hidden { display: none; }
+
+        @media (max-width: 380px) {
+            .cat-card { min-height: 100px; padding: 12px 8px; }
+            .cat-icon { font-size: 1.65rem; }
+            .cat-title { font-size: 0.88rem; }
+            .cat-sub { font-size: 0.62rem; }
+            .sub-btn { padding: 8px 12px; font-size: 0.8rem; }
+        }
+
         .situation-bar {
             width: 100%;
             margin: 14px 0 8px;
@@ -1384,6 +1750,60 @@
             </div>
         </div>
 
+        <!-- ════════════════════════════════════════════════════════ -->
+        <!-- [V25.0] 4-CATEGORY MAIN MENU                              -->
+        <!--   사장님 안: 자동 분류 폐기 → 사용자 명시 선택            -->
+        <!--   효과: '결혼하면 잘살까요?' → 주식 오분류 같은 버그 0    -->
+        <!--   배치: 오늘의 카드 + 최근 신탁 보존 → 그 아래            -->
+        <!-- ════════════════════════════════════════════════════════ -->
+        <div class="category-section-label" id="cat-section-label">
+            ✦ CHOOSE YOUR ORACLE ✦
+            <span class="ko">무엇을 점사 받으시겠습니까?</span>
+        </div>
+
+        <div class="category-grid" id="category-grid">
+            <!-- 💘 연애 — 과금 핵심 -->
+            <div class="cat-card" data-cat="love" onclick="selectCategory('love', this)">
+                <span class="cat-badge premium">PRO</span>
+                <div class="cat-icon">💘</div>
+                <div class="cat-title">연애·관계운</div>
+                <div class="cat-sub">상대 마음 / 재회 / 결혼<br>궁합 / 짝사랑</div>
+            </div>
+
+            <!-- 📈 투자 — 신뢰 기반 재방문 -->
+            <div class="cat-card" data-cat="stock" onclick="selectCategory('stock', this)">
+                <div class="cat-icon">📈</div>
+                <div class="cat-title">투자 신탁</div>
+                <div class="cat-sub">주식 / 코인<br>매수 · 매도 타이밍</div>
+            </div>
+
+            <!-- 🏠 부동산 — 고가 상품 가능 -->
+            <div class="cat-card" data-cat="realestate" onclick="selectCategory('realestate', this)">
+                <span class="cat-badge premium">PRO</span>
+                <div class="cat-icon">🏠</div>
+                <div class="cat-title">부동산</div>
+                <div class="cat-sub">매도 타이밍 / 가격 전략<br>매수 결정</div>
+            </div>
+
+            <!-- ✨ 일반 — 유입용 (오늘의 흐름) -->
+            <div class="cat-card" data-cat="general" onclick="selectCategory('general', this)">
+                <span class="cat-badge">FREE</span>
+                <div class="cat-icon">✨</div>
+                <div class="cat-title">일반 운세</div>
+                <div class="cat-sub">오늘의 흐름<br>전반 운세</div>
+            </div>
+        </div>
+
+        <!-- ── 서브타입 패널 (카테고리 클릭 시 펼침) ── -->
+        <div class="subtype-panel" id="subtype-panel">
+            <div class="subtype-prompt" id="subtype-prompt">무엇을 보시겠습니까?</div>
+            <div class="subtype-row" id="subtype-row"></div>
+            <button class="subtype-back" onclick="resetCategory()">← 카테고리 다시 선택</button>
+        </div>
+
+        <!-- ── 입력창 동적 안내 (카테고리 선택 후 표시) ── -->
+        <div class="input-context-hint hidden" id="input-context-hint"></div>
+
         <div class="input-system-wrapper">
             <div class="beveled-border"></div>
             <div class="beveled-inner"></div>
@@ -1988,94 +2408,241 @@ let RE_SUBTYPE    = '';
 // 현재 어느 도메인 바가 열려있는지 추적 (꼬임 방지용 가드)
 let ACTIVE_DOMAIN_BAR = ''; // '' | 'love' | 'stock' | 'realestate'
 
+// ══════════════════════════════════════════════════════════════════
+// [V25.0] 4-CATEGORY SYSTEM — 사장님 안 (자동 분류 폐기)
+// ══════════════════════════════════════════════════════════════════
+//   기존 V24.x: onQuestionInput에서 키워드/패턴으로 자동 도메인 감지
+//   문제: '결혼하면 잘살까요?' → '살까' 매칭 → 주식 오분류 (5회 이상 누적 버그)
+//   해결: 사용자가 카테고리 명시 선택 → 분류 코드 0줄 → 버그 0건
+//
+// 함수 변경:
+//   • onQuestionInput: 자동 분류 제거 (단순 입력 추적만)
+//   • selectCategory: 신규 — 4-카테고리 카드 클릭 시
+//   • selectSubtype: 신규 — 서브타입 버튼 클릭 시
+//   • resetCategory: 신규 — '카테고리 다시 선택' 버튼
+//
+// 데이터 흐름:
+//   사용자 카테고리 클릭 → ACTIVE_DOMAIN_BAR 설정 → 서브타입 패널 노출
+//   → 서브타입 클릭 → LOVE_SUBTYPE/STOCK_SUBTYPE/RE_SUBTYPE 설정
+//   → 입력창 안내 메시지 + 자동 포커스
+//   → 사용자 질문 입력 → 점사 (분류 0회 호출)
+// ══════════════════════════════════════════════════════════════════
+
 function onQuestionInput(val) {
-    const lower  = val.toLowerCase();
-    const bar    = document.getElementById('situation-bar');
-    const banner = document.getElementById('hook-banner');
-    const labelEl = document.getElementById('situation-label');
-    const loveTabs  = document.getElementById('situation-tabs-love');
-    const stockTabs = document.getElementById('situation-tabs-stock');
-    const reTabs    = document.getElementById('situation-tabs-realestate');
-
-    const hasLove  = LOVE_KEYWORDS_V2.some(k => lower.includes(k));
-    const hasStockKw = STOCK_KEYWORDS_V2.some(k => lower.includes(k));
-    // [V22.2] 키워드 + 패턴 매칭 결합 (사장님 진단 핵심)
-    const hasStockPattern = _zeusDetectStockPattern(val);
-    const hasStock = hasStockKw || hasStockPattern;
-    const hasRE    = RE_KEYWORDS_V2.some(k => lower.includes(k));
-
-    // ══════════════════════════════════════════════════════════════
-    // [V24.12] 명시 키워드 우선 룰 — 도메인 충돌 시 안전 분기
-    //   사장님 진단: "결혼하면 잘살까요?" → '살까' 매칭으로 주식 오분류 발생
-    //   해결: 명시적 도메인 단어가 있으면 다른 도메인 키워드 무시
+    // [V25.0] 자동 분류 제거 — 카테고리는 사용자가 직접 선택
+    //   기존의 100줄 자동 분류 코드 → 빈 함수로 대체
+    //   서브타입은 selectSubtype()에서 직접 설정
     //
-    //   강한 LOVE 단어: 결혼/연애/이별/짝사랑/애인/남친/여친/썸/고백
-    //   강한 STOCK 단어: 주식/매수/매도/종목/코스피/주가/투자
-    //   강한 RE 단어: 부동산/아파트/전세/월세/분양/청약 (단, '주택'은 약함)
-    //
-    //   우선순위: 강한 LOVE > 강한 STOCK > 강한 RE > 일반 분류
-    // ══════════════════════════════════════════════════════════════
-    const STRONG_LOVE_KW = ['결혼','연애','이별','짝사랑','애인','남친','여친','썸','고백',
-                            '데이트','커플','짝남','짝녀','연인','궁합','사귀','첫사랑'];
-    const STRONG_STOCK_KW = ['주식','코스피','코스닥','나스닥','종목','주가','매수','매도',
-                             '단타','스윙','장투','상한가','하한가','코인','비트코인','이더리움'];
-    const STRONG_RE_KW = ['부동산','아파트','오피스텔','상가','전세','월세','분양','청약','재건축','재개발','집값'];
+    // (역호환성: situation-bar는 더 이상 자동 노출되지 않음)
+    return;
+}
 
-    const hasStrongLove  = STRONG_LOVE_KW.some(k => lower.includes(k));
-    const hasStrongStock = STRONG_STOCK_KW.some(k => lower.includes(k));
-    const hasStrongRE    = STRONG_RE_KW.some(k => lower.includes(k));
-
-    // 우선순위: 강한 명시 키워드 우선 → 일반 키워드는 모호한 경우만 사용
-    let domain = '';
-    if (hasStrongLove) {
-        // "결혼하면 잘살까요?"처럼 명백한 연애 질문 → 주식 키워드 무시
-        domain = 'love';
-    } else if (hasStrongRE) {
-        domain = 'realestate';
-    } else if (hasStrongStock) {
-        domain = 'stock';
-    } else {
-        // 명시 키워드 없을 때만 약한 키워드로 분류
-        // 우선순위: realestate > stock > love (기존 유지 — 부동산/주식이 더 구체적)
-        domain = hasRE ? 'realestate' : hasStock ? 'stock' : hasLove ? 'love' : '';
+// ══ 카테고리 정의 (4개) ══
+const CATEGORY_CONFIG = {
+    love: {
+        domain: 'love',
+        label: '💘 연애·관계운',
+        prompt: '어떤 관계를 보시겠습니까?',
+        subtypes: [
+            { type: 'compatibility', icon: '💞', label: '궁합',     featured: true,
+              hint: '두 사람의 본질적 호환성을 점사합니다',
+              placeholder: '예: 김민수 이지은 궁합 봐주세요' },
+            { type: 'marriage',      icon: '💍', label: '결혼',
+              hint: '결혼 진행에 대한 본질적 합의·타이밍을 점사합니다',
+              placeholder: '예: 박지훈 김서연 결혼하면 잘살까요?' },
+            { type: 'thumb',         icon: '💫', label: '썸',
+              hint: '썸 단계의 진전 가능성과 타이밍을 점사합니다',
+              placeholder: '예: 회사 동기랑 썸 타는데 어떻게 될까요?' },
+            { type: 'crush',         icon: '💕', label: '짝사랑',
+              hint: '짝사랑 상대의 마음과 진전 가능성을 점사합니다',
+              placeholder: '예: 짝사랑하는 사람 마음 알 수 있을까요?' },
+            { type: 'mindread',      icon: '🔮', label: '상대 마음',
+              hint: '상대의 진심과 본심을 점사합니다',
+              placeholder: '예: 그 사람이 나를 어떻게 생각하는지 궁금해요' },
+            { type: 'reunion',       icon: '💑', label: '재회',
+              hint: '재회 가능성과 시도 타이밍을 점사합니다',
+              placeholder: '예: 헤어진 사람 다시 만날 수 있을까요?' },
+            { type: 'contact',       icon: '📱', label: '연락',
+              hint: '연락 시점과 상대 반응을 점사합니다',
+              placeholder: '예: 지금 연락해도 괜찮을까요?' },
+            { type: 'breakup',       icon: '💔', label: '이별',
+              hint: '관계 정리·회복 흐름을 점사합니다',
+              placeholder: '예: 헤어지는 게 맞을까요?' },
+            { type: 'general',       icon: '💗', label: '연애운',
+              hint: '전반적인 연애 흐름을 점사합니다',
+              placeholder: '예: 나의 내일 연애운은?' }
+        ]
+    },
+    stock: {
+        domain: 'stock',
+        label: '📈 투자 신탁',
+        prompt: '어떤 투자 결정을 보시겠습니까?',
+        subtypes: [
+            { type: 'buy_timing',  icon: '💰', label: '매수 타이밍', featured: true,
+              hint: '진입 타이밍과 매수 전략을 점사합니다',
+              placeholder: '예: 삼성전자 지금 매수 타이밍 어떨까요?' },
+            { type: 'sell_timing', icon: '📤', label: '매도 타이밍',
+              hint: '청산 타이밍과 매도 전략을 점사합니다',
+              placeholder: '예: 보유 중인 종목 언제 팔까요?' },
+            { type: 'short_term',  icon: '⚡', label: '단타 분석',
+              hint: '단기 변동성과 매매 타이밍을 점사합니다',
+              placeholder: '예: 이 종목 단타로 들어갈만 한가요?' },
+            { type: 'long_term',   icon: '🏦', label: '중장기 투자',
+              hint: '중장기 보유 가치와 흐름을 점사합니다',
+              placeholder: '예: 장기로 보유해도 괜찮은 종목인가요?' },
+            { type: 'risk_check',  icon: '🛡️', label: '리스크 체크',
+              hint: '하락 위험과 손절 라인을 점사합니다',
+              placeholder: '예: 지금 추가 매수해도 안전한가요?' }
+        ]
+    },
+    realestate: {
+        domain: 'realestate',
+        label: '🏠 부동산 신탁',
+        prompt: '어떤 부동산 결정을 보시겠습니까?',
+        subtypes: [
+            { type: 'sell',  icon: '📤', label: '매도 분석', featured: true,
+              hint: '매도 타이밍과 가격 전략을 점사합니다',
+              placeholder: '예: 자양 현대 아파트 언제 팔까요?' },
+            { type: 'buy',   icon: '💰', label: '매수 분석',
+              hint: '매수 타이밍과 진입 전략을 점사합니다',
+              placeholder: '예: 지금 송파 아파트 매수해도 될까요?' },
+            { type: 'hold',  icon: '🏛️', label: '보유 전략',
+              hint: '보유 vs 정리 의사결정을 점사합니다',
+              placeholder: '예: 보유 중인 부동산 계속 들고 갈까요?' }
+        ]
+    },
+    general: {
+        domain: 'life',
+        label: '✨ 일반 운세',
+        prompt: '오늘의 흐름을 점사합니다',
+        subtypes: [
+            { type: 'today',   icon: '🌅', label: '오늘 운세', featured: true,
+              hint: '오늘의 흐름과 주의 포인트를 점사합니다',
+              placeholder: '예: 오늘 어떤 흐름인가요?' },
+            { type: 'general', icon: '✨', label: '전반 운세',
+              hint: '근래 전반적인 운세 흐름을 점사합니다',
+              placeholder: '예: 요즘 내 흐름이 어떤가요?' }
+        ]
     }
-    // ══════════════════════════════════════════════════════════════
+};
 
-    // 모든 탭 그룹 숨기기
-    loveTabs.style.display  = 'none';
-    stockTabs.style.display = 'none';
-    reTabs.style.display    = 'none';
+// ══ 카테고리 선택 ══
+function selectCategory(catKey, btnEl) {
+    const cfg = CATEGORY_CONFIG[catKey];
+    if (!cfg) return;
 
-    if (!domain) {
-        bar.style.display = 'none';
-        banner.style.display = 'none';
-        LOVE_SUBTYPE = ''; STOCK_SUBTYPE = ''; RE_SUBTYPE = '';
-        ACTIVE_DOMAIN_BAR = '';
-        document.querySelectorAll('.sit-btn').forEach(b => b.classList.remove('active'));
-        return;
-    }
+    // 기존 active 해제 + 현재 카드 active
+    document.querySelectorAll('.cat-card').forEach(c => c.classList.remove('active'));
+    if (btnEl) btnEl.classList.add('active');
 
-    // 도메인 바뀌면 이전 선택 리셋
-    if (ACTIVE_DOMAIN_BAR !== domain) {
-        LOVE_SUBTYPE = ''; STOCK_SUBTYPE = ''; RE_SUBTYPE = '';
-        banner.style.display = 'none';
-        document.querySelectorAll('.sit-btn').forEach(b => b.classList.remove('active'));
-    }
-    ACTIVE_DOMAIN_BAR = domain;
+    // ACTIVE_DOMAIN_BAR + 도메인별 SUBTYPE 초기화
+    ACTIVE_DOMAIN_BAR = cfg.domain;
+    LOVE_SUBTYPE = ''; STOCK_SUBTYPE = ''; RE_SUBTYPE = '';
 
-    // 바 노출 + 해당 도메인 탭만 표시 + 라벨 문구 도메인화
-    bar.style.display = 'block';
-    if (domain === 'love') {
-        loveTabs.style.display = 'flex';
-        if (labelEl) labelEl.textContent = '✦ 연애 상황을 선택하면 더 정확한 신탁을 받을 수 있습니다 ✦';
-    } else if (domain === 'stock') {
-        stockTabs.style.display = 'flex';
-        if (labelEl) labelEl.textContent = '✦ 투자 전략을 선택하면 더 정밀한 신탁을 받을 수 있습니다 ✦';
-    } else if (domain === 'realestate') {
-        reTabs.style.display = 'flex';
-        if (labelEl) labelEl.textContent = '✦ 부동산 전략을 선택하면 더 정밀한 신탁을 받을 수 있습니다 ✦';
+    // 서브타입 패널 동적 생성
+    const panel  = document.getElementById('subtype-panel');
+    const prompt = document.getElementById('subtype-prompt');
+    const row    = document.getElementById('subtype-row');
+    if (!panel || !prompt || !row) return;
+
+    prompt.textContent = cfg.prompt;
+    row.innerHTML = cfg.subtypes.map(s => `
+        <button class="sub-btn${s.featured ? ' featured' : ''}"
+                data-subtype="${s.type}"
+                onclick="selectSubtype('${catKey}','${s.type}', this, ${JSON.stringify(s.placeholder).replace(/"/g, '&quot;')})">
+            ${s.icon} ${s.label}
+        </button>
+    `).join('');
+    panel.classList.add('show');
+
+    // 부드러운 스크롤 (서브타입이 보이도록)
+    setTimeout(() => panel.scrollIntoView({ behavior: 'smooth', block: 'center' }), 80);
+
+    // 입력창 hint 초기화
+    const hint = document.getElementById('input-context-hint');
+    if (hint) {
+        hint.textContent = `${cfg.label} — 세부 옵션을 선택하세요`;
+        hint.classList.remove('hidden');
     }
 }
+
+// ══ 서브타입 선택 ══
+function selectSubtype(catKey, subType, btnEl, placeholder) {
+    const cfg = CATEGORY_CONFIG[catKey];
+    if (!cfg) return;
+    const subData = cfg.subtypes.find(s => s.type === subType);
+    if (!subData) return;
+
+    // 기존 active 해제 + 현재 버튼 active
+    document.querySelectorAll('.sub-btn').forEach(b => b.classList.remove('active'));
+    if (btnEl) btnEl.classList.add('active');
+
+    // 도메인별 SUBTYPE 전역 변수 설정 — 점사 엔진과 호환
+    if (catKey === 'love') {
+        LOVE_SUBTYPE = subType;
+        STOCK_SUBTYPE = ''; RE_SUBTYPE = '';
+    } else if (catKey === 'stock') {
+        STOCK_SUBTYPE = subType;
+        LOVE_SUBTYPE = ''; RE_SUBTYPE = '';
+    } else if (catKey === 'realestate') {
+        RE_SUBTYPE = subType;
+        LOVE_SUBTYPE = ''; STOCK_SUBTYPE = '';
+    } else {
+        // general → 모두 빈 값
+        LOVE_SUBTYPE = ''; STOCK_SUBTYPE = ''; RE_SUBTYPE = '';
+    }
+
+    // 입력창 안내 + placeholder + 포커스
+    const hint = document.getElementById('input-context-hint');
+    if (hint) {
+        hint.innerHTML = `${cfg.label} · <b>${subData.icon} ${subData.label}</b> — ${subData.hint}`;
+        hint.classList.remove('hidden');
+    }
+
+    const seedInput = document.getElementById('seed-input');
+    if (seedInput) {
+        if (placeholder) seedInput.placeholder = placeholder;
+        // 입력창으로 부드럽게 스크롤 + 시각 펄스
+        setTimeout(() => {
+            seedInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            seedInput.classList.add('input-attention-pulse');
+            setTimeout(() => seedInput.classList.remove('input-attention-pulse'), 4500);
+            // 모바일 키보드 강제 X (사용자 결정권)
+            const isMobile = /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent);
+            if (!isMobile) {
+                try { seedInput.focus({ preventScroll: true }); } catch(e) {}
+            }
+        }, 150);
+    }
+}
+
+// ══ 카테고리 다시 선택 ══
+function resetCategory() {
+    document.querySelectorAll('.cat-card').forEach(c => c.classList.remove('active'));
+    document.querySelectorAll('.sub-btn').forEach(b => b.classList.remove('active'));
+    const panel = document.getElementById('subtype-panel');
+    if (panel) panel.classList.remove('show');
+    const hint = document.getElementById('input-context-hint');
+    if (hint) hint.classList.add('hidden');
+
+    // SUBTYPE 모두 초기화
+    ACTIVE_DOMAIN_BAR = '';
+    LOVE_SUBTYPE = ''; STOCK_SUBTYPE = ''; RE_SUBTYPE = '';
+
+    // placeholder 원복
+    const seedInput = document.getElementById('seed-input');
+    if (seedInput) {
+        seedInput.placeholder = 'Whisper your question to the cards…\n마음의 질문을 깊게 새기소서';
+    }
+
+    // 카테고리 카드로 스크롤
+    const grid = document.getElementById('category-grid');
+    if (grid) setTimeout(() => grid.scrollIntoView({ behavior: 'smooth', block: 'center' }), 80);
+}
+
+// ══════════════════════════════════════════════════════════════════
+// [V25.0 끝] 4-카테고리 시스템
+// ══════════════════════════════════════════════════════════════════
 
 function setSituation(btn, type, domain) {
     // 도메인별 서브타입 저장 — 방호벽: 연애 서브타입과 주식/부동산 서브타입을 분리 관리
@@ -2585,7 +3152,10 @@ async function startStreamFetch(userQuestion, cards) {
                 queryMode:     CURRENT_MODE,
                 loveSubType:   LOVE_SUBTYPE,
                 stockSubType:  STOCK_SUBTYPE,
-                reSubType:     RE_SUBTYPE
+                reSubType:     RE_SUBTYPE,
+                // [V25.0] 사용자가 명시 선택한 도메인 — 자동 분류 우회
+                //   서버는 이 값이 있으면 classifyQueryType 호출 없이 그대로 사용
+                explicitDomain: (typeof ACTIVE_DOMAIN_BAR !== 'undefined') ? ACTIVE_DOMAIN_BAR : ''
             }),
             signal: controller.signal,
             // [V22.4] Wi-Fi/보안망 우회 옵션 (사장님 진단)
