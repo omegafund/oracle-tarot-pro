@@ -1719,71 +1719,51 @@
             <span class="sub-title">Tarot Oracle · 운명의 신탁</span>
         </div>
 
-        <!-- [V19 Phase4] 오늘의 카드 + 최근 신탁 이력 — [V19.4] 공백 제거 -->
-        <div id="daily-history-bar" style="display:none; max-width:480px; margin:10px auto 18px; padding:0 14px; text-align:center;">
-            <!-- 오늘의 카드 — 중앙정렬 세로 레이아웃 -->
-            <div id="daily-card-wrap" style="
+        <!-- ════════════════════════════════════════════════════════ -->
+        <!-- [V25.4] 홈뷰 재구성 — 사장님 안 (시선 분산 차단)            -->
+        <!--                                                           -->
+        <!-- 새 구조 (위→아래):                                         -->
+        <!--   ① 상단:  오늘의 카드 (작고 얇게)                          -->
+        <!--   ② 핵심:  ✦ CHOOSE YOUR ORACLE ✦ + 4-카테고리 (크게)      -->
+        <!--           → 서브타입 → 입력창 → Begin                      -->
+        <!--   ③ 보조:  최근 신탁 / 패턴 분석 / 카카오 알림 (하단 이동)   -->
+        <!--                                                           -->
+        <!-- 효과:                                                      -->
+        <!--   • 첫 화면 시선 100%가 4-카테고리로 집중                   -->
+        <!--   • 보조 기능은 화면 아래로 → 필요 시 스크롤 접근            -->
+        <!--   • 모바일 한 화면에 핵심 흐름 끝까지 보임                   -->
+        <!-- ════════════════════════════════════════════════════════ -->
+
+        <!-- [V25.4] 상단: 오늘의 카드 — 슬림 가로 레이아웃 -->
+        <div id="daily-card-slim" style="display:none; max-width:480px; margin:6px auto 12px; padding:0 14px;">
+            <div style="
                 display:flex;
-                flex-direction:column;
                 align-items:center;
-                gap:6px;
-                background:linear-gradient(135deg, rgba(212,175,55,0.1), rgba(80,200,120,0.05));
-                border:1px solid rgba(212,175,55,0.35);
-                border-radius:14px;
-                padding:12px 14px;
-                margin:0 auto 10px;
-                max-width:340px;
-                box-shadow: 0 2px 12px rgba(212,175,55,0.08);">
-                <div style="font-size:0.7rem; letter-spacing:0.18em; color:var(--gold); font-weight:900; text-align:center; line-height:1.3;">
-                    TODAY'S CARD
-                    <div style="font-size:0.62rem; opacity:0.75; letter-spacing:0.15em; margin-top:2px;">
-                        ✦ 오늘의 카드 ✦
+                gap:12px;
+                background:linear-gradient(135deg, rgba(212,175,55,0.08), rgba(80,200,120,0.04));
+                border:1px solid rgba(212,175,55,0.28);
+                border-radius:10px;
+                padding:8px 12px;
+                box-shadow: 0 1px 6px rgba(212,175,55,0.06);">
+                <!-- 좌: 라벨 -->
+                <div style="flex-shrink:0; text-align:left;">
+                    <div style="font-size:0.6rem; letter-spacing:0.15em; color:var(--gold); font-weight:900; line-height:1.2;">
+                        TODAY
+                    </div>
+                    <div style="font-size:0.55rem; opacity:0.6; letter-spacing:0.12em; margin-top:1px;">
+                        오늘의 카드
                     </div>
                 </div>
-                <!-- [V19.4] img 기본 숨김 (display:none) → JS에서 src 성공 시에만 표시 -->
+                <!-- 카드 이미지 (선택적) -->
                 <img id="daily-card-img" alt=""
-                     style="display:none; width:52px; height:76px; object-fit:cover; border-radius:5px; border:1px solid var(--gold); box-shadow: 0 0 8px rgba(212,175,55,0.3); margin:0;"
+                     style="display:none; width:32px; height:48px; object-fit:cover; border-radius:3px; border:1px solid rgba(212,175,55,0.5); flex-shrink:0;"
                      onload="this.style.display='block'"
                      onerror="this.style.display='none'">
-                <div id="daily-card-name" style="font-size:0.92rem; color:#fff; font-weight:800; text-align:center; line-height:1.2; margin:0;">-</div>
-                <div id="daily-card-message" style="font-size:0.74rem; color:rgba(255,255,255,0.78); line-height:1.5; text-align:center; font-style:italic; margin:0;">-</div>
-            </div>
-            <!-- 최근 신탁 — 중앙정렬 -->
-            <div id="history-list-wrap" style="display:none; max-width:440px; margin:0 auto;">
-                <div style="font-size:0.72rem; letter-spacing:0.15em; color:#D4AF37; font-weight:800; margin-bottom:10px; text-align:center; line-height:1.4;">
-                    RECENT READINGS
-                    <div style="font-size:0.64rem; opacity:0.75; letter-spacing:0.12em; margin-top:2px;">
-                        📜 최근 신탁
-                    </div>
+                <!-- 우: 카드명 + 메시지 한 줄 -->
+                <div style="flex:1; min-width:0; text-align:left;">
+                    <div id="daily-card-name" style="font-size:0.78rem; color:#fff; font-weight:800; line-height:1.2; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">-</div>
+                    <div id="daily-card-message" style="font-size:0.66rem; color:rgba(255,255,255,0.65); line-height:1.4; font-style:italic; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-top:1px;">-</div>
                 </div>
-                <div id="history-list" style="display:flex; flex-direction:column; gap:6px;"></div>
-                <div style="margin-top:8px; font-size:0.62rem; color:rgba(255,255,255,0.45); text-align:center; font-style:italic;">
-                    탭하여 신탁 결과 확인 · Tap to reveal
-                </div>
-                <!-- [V23 P0-3] 점사 패턴 분석 버튼 (3회 이상 시 활성화) -->
-                <button onclick="zeusShowPatternAnalysis()" style="
-                    margin-top: 12px; width: 100%; padding: 10px 14px;
-                    background: linear-gradient(135deg, rgba(212,175,55,0.18), rgba(155,89,182,0.10));
-                    color: #FFD970; border: 1px solid rgba(212,175,55,0.4);
-                    border-radius: 8px; cursor: pointer;
-                    font-size: 0.78rem; font-weight: 700; letter-spacing: 0.08em;
-                    transition: all 0.2s ease;">
-                    ✨ 나의 신탁 패턴 보기
-                </button>
-
-                <!-- [V23 P0-4] 카카오톡 채널 (한국 사용자 옵트인 알림 — 푸시 대체)
-                     사장님 안: 푸시 알림 X (탈퇴 위험), 카톡 채널 = 한국 친화적
-                     활성화 조건: 카카오 비즈 채널 등록 후 KAKAO_CHANNEL_URL 입력 -->
-                <a href="javascript:zeusKakaoChannel()" style="
-                    display:block; margin-top: 8px; width: 100%; padding: 10px 14px;
-                    background: linear-gradient(135deg, #FEE500, #FFD400);
-                    color: #3C1E1E; border-radius: 8px;
-                    text-decoration: none; text-align: center;
-                    font-size: 0.78rem; font-weight: 800; letter-spacing: 0.05em;
-                    box-shadow: 0 2px 8px rgba(254,229,0,0.25);
-                    transition: all 0.2s ease;">
-                    💬 카카오톡 알림 받기 (광고 X · 신탁만)
-                </a>
             </div>
         </div>
 
@@ -1791,7 +1771,7 @@
         <!-- [V25.0] 4-CATEGORY MAIN MENU                              -->
         <!--   사장님 안: 자동 분류 폐기 → 사용자 명시 선택            -->
         <!--   효과: '결혼하면 잘살까요?' → 주식 오분류 같은 버그 0    -->
-        <!--   배치: 오늘의 카드 + 최근 신탁 보존 → 그 아래            -->
+        <!--   배치: V25.4에서 최상단 핵심 영역으로 승격                -->
         <!-- ════════════════════════════════════════════════════════ -->
         <div class="category-section-label" id="cat-section-label">
             ✦ CHOOSE YOUR ORACLE ✦
@@ -1937,6 +1917,49 @@
         <div class="disclaimer-text" style="font-size:0.7rem; line-height:1.6; padding:8px 16px;">
             ✦ For reflection &amp; entertainment only ✦<br>
             <span style="opacity:0.7; font-size:0.65rem;">영성적 참고용 콘텐츠입니다 · Not financial / legal / medical advice</span>
+        </div>
+
+        <!-- ════════════════════════════════════════════════════════ -->
+        <!-- [V25.4] 보조 영역 — 최근 신탁 + 패턴 + 알림                -->
+        <!--   사장님 안: 핵심(4-카테고리) 시선 분산 차단 위해 하단 이동 -->
+        <!-- ════════════════════════════════════════════════════════ -->
+        <div id="secondary-area" style="max-width:480px; margin:24px auto 16px; padding:0 14px;">
+            <!-- 최근 신탁 -->
+            <div id="history-list-wrap" style="display:none; margin:0 auto;">
+                <div style="font-size:0.7rem; letter-spacing:0.15em; color:rgba(212,175,55,0.85); font-weight:700; margin-bottom:8px; text-align:center; line-height:1.4; padding-top:14px; border-top:1px solid rgba(212,175,55,0.2);">
+                    📜 RECENT READINGS
+                    <div style="font-size:0.6rem; opacity:0.65; letter-spacing:0.1em; margin-top:1px;">
+                        최근 신탁
+                    </div>
+                </div>
+                <div id="history-list" style="display:flex; flex-direction:column; gap:6px;"></div>
+                <div style="margin-top:6px; font-size:0.6rem; color:rgba(255,255,255,0.4); text-align:center; font-style:italic;">
+                    탭하여 신탁 결과 확인
+                </div>
+
+                <!-- 신탁 패턴 분석 — 보조 버튼 (작게) -->
+                <button onclick="zeusShowPatternAnalysis()" style="
+                    margin-top: 10px; width: 100%; padding: 8px 12px;
+                    background: linear-gradient(135deg, rgba(212,175,55,0.12), rgba(155,89,182,0.06));
+                    color: #FFD970; border: 1px solid rgba(212,175,55,0.3);
+                    border-radius: 6px; cursor: pointer;
+                    font-size: 0.72rem; font-weight: 600; letter-spacing: 0.06em;
+                    transition: all 0.2s ease;">
+                    ✨ 나의 신탁 패턴 보기
+                </button>
+
+                <!-- 카카오톡 알림 — 보조 버튼 (작게) -->
+                <a href="javascript:zeusKakaoChannel()" style="
+                    display:block; margin-top: 6px; width: 100%; padding: 8px 12px;
+                    background: linear-gradient(135deg, rgba(254,229,0,0.85), rgba(255,212,0,0.85));
+                    color: #3C1E1E; border-radius: 6px;
+                    text-decoration: none; text-align: center;
+                    font-size: 0.72rem; font-weight: 700; letter-spacing: 0.04em;
+                    box-shadow: 0 1px 4px rgba(254,229,0,0.18);
+                    transition: all 0.2s ease;">
+                    💬 카카오톡 알림 받기 (광고 X)
+                </a>
+            </div>
         </div>
     </div>
 
@@ -7151,10 +7174,12 @@ function _dailyMessageFor(cardIndex) {
 
 // 홈 진입 시 오늘의 카드 + 이력 렌더링
 function renderDailyAndHistory() {
-    const bar = document.getElementById('daily-history-bar');
-    if (!bar) return;
+    // [V25.4] daily-history-bar 통합 컨테이너 폐기 → 분리 컨테이너 사용
+    //   • 상단: daily-card-slim (오늘의 카드 — 작고 얇게)
+    //   • 하단: secondary-area > history-list-wrap (최근 신탁)
+    const slimBar = document.getElementById('daily-card-slim');
 
-    // 1) 오늘의 카드
+    // 1) 오늘의 카드 (슬림 버전)
     try {
         const idx = _getOrSetDailyCard();
         const card = CARDS[idx];
@@ -7165,6 +7190,7 @@ function renderDailyAndHistory() {
             if (img) img.src = `${BASE_URL}${card.file}`;
             if (name) name.textContent = card.name;
             if (msg)  msg.textContent  = _dailyMessageFor(idx);
+            if (slimBar) slimBar.style.display = 'block';
         }
     } catch(e) { console.warn('daily card render fail:', e); }
 
@@ -7211,8 +7237,8 @@ function renderDailyAndHistory() {
             }).join('');
         }
     } catch(e) { console.warn('history render fail:', e); }
-
-    bar.style.display = 'block';
+    // [V25.4] daily-history-bar 통합 컨테이너 폐기 — 마지막 표시 처리 제거
+    //   (slimBar는 1번 블록에서 이미 표시 처리, history-list-wrap은 2번 블록에서 처리)
 }
 
 // [V23.7] 최근 신탁 토글 — 클릭 시 결과 노출/숨김 (한 줄 디자인)
