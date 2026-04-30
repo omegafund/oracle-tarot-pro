@@ -4,6 +4,25 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>ZEUS · Tarot Oracle</title>
+
+    <!-- ════════════════════════════════════════════════════════════ -->
+    <!-- [V24.10] 파비콘 명시 선언 — 사장님 진단                       -->
+    <!--   기존: HTML에 <link rel="icon"> 없음 → 브라우저 자동 추측      -->
+    <!--   증상: 배너 뜰 때는 아이콘 / 안 뜨면 지구본 (타이밍 의존)      -->
+    <!--   해결: 명시적 link 태그 + 캐시 무효화(?v=) + 다중 형식 지원    -->
+    <!--                                                              -->
+    <!-- 📌 사장님이 GitHub repo 루트에 업로드해야 하는 파일들:          -->
+    <!--   • favicon.ico        (32x32 또는 16x16, 전통 형식)         -->
+    <!--   • favicon-32x32.png  (모던 브라우저용)                      -->
+    <!--   • apple-touch-icon.png (180x180, iOS Safari 홈화면용)      -->
+    <!--                                                              -->
+    <!-- 만약 파일명이 다르면 아래 href만 수정하면 됩니다.              -->
+    <!-- ════════════════════════════════════════════════════════════ -->
+    <link rel="icon" type="image/x-icon" href="./favicon.ico?v=24.10">
+    <link rel="icon" type="image/png" sizes="32x32" href="./favicon-32x32.png?v=24.10">
+    <link rel="apple-touch-icon" sizes="180x180" href="./apple-touch-icon.png?v=24.10">
+    <meta name="theme-color" content="#D4AF37">
+
     <!-- [V21.0] 글로벌 럭셔리 폰트 (Co-Star/Sanctuary 수준) -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -2013,8 +2032,14 @@ function setSituation(btn, type, domain) {
 // ── 페이지 로드 시 결제 상태 복원
 // 토큰이 있으면 Worker에 검증 요청 → 유효 시 isPaidUser = true
 (async () => {
-    const token = localStorage.getItem('oracleSessionToken') || '';
+    let token = localStorage.getItem('oracleSessionToken') || '';
     if (!token) return;
+    // [V24.8] 손상된 토큰 사전 검증 — 비-ASCII 포함 시 즉시 폐기
+    if (/[^\x20-\x7E]/.test(token) || token.length > 512) {
+        console.warn('⚠️ 손상된 토큰 감지 (페이지 로드) — 자동 정리');
+        localStorage.removeItem('oracleSessionToken');
+        return;
+    }
     try {
         const res = await fetch('https://tarot-api.omegafund01.workers.dev/verify-payment', {
             method: 'POST',
@@ -2421,7 +2446,27 @@ function showResultView(question, streamPromise) {
 async function startStreamFetch(userQuestion, cards) {
     const cardNames     = cards.map(c => c.name).join(', ');
     const cardPositions = cards.map((c, i) => `${['과거','현재','미래'][i]}: ${c.name}`).join(', ');
-    const sessionToken  = localStorage.getItem('oracleSessionToken') || '';
+    // ══════════════════════════════════════════════════════════════
+    // [V24.8] sessionToken sanitize — ISO-8859-1 헤더 위반 방지
+    //   사장님 진단: "Failed to read 'headers' property: String contains non ISO-8859-1"
+    //   원인: localStorage에 이전 버전의 깨진 토큰(한글 포함)이 잔존
+    //   해결: 인쇄 가능 ASCII(0x20~0x7E)만 허용 — 비정상 토큰 자동 폐기
+    //   부수효과: 손상된 토큰 자동 복구 → 사용자가 캐시 정리할 필요 없음
+    // ══════════════════════════════════════════════════════════════
+    let sessionToken = localStorage.getItem('oracleSessionToken') || '';
+    if (sessionToken && /[^\x20-\x7E]/.test(sessionToken)) {
+        // 토큰에 비-ASCII 문자(한글 등) 발견 — 손상된 데이터
+        console.warn('⚠️ 손상된 oracleSessionToken 감지 (비-ASCII 포함) — 자동 정리');
+        localStorage.removeItem('oracleSessionToken');
+        sessionToken = '';
+    }
+    // 추가 안전장치: 길이 비정상 시도 폐기 (정상 토큰은 약 20~256자)
+    if (sessionToken.length > 512) {
+        console.warn('⚠️ 비정상 토큰 길이 감지 — 자동 정리');
+        localStorage.removeItem('oracleSessionToken');
+        sessionToken = '';
+    }
+    // ══════════════════════════════════════════════════════════════
 
     // [V19] 새 점사 시작 시 이전 서버 metrics 초기화 (잔여값 방지)
     window._serverMetrics = null;
