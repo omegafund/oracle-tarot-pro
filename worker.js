@@ -17,8 +17,13 @@
 // ══════════════════════════════════════════════════════════════════
 
 // ⚙️ 전역 설정 (기존 유지)
-const MASTER_KEY = "DEV-ZEUS-2026";
-const TEST_MODE  = true;
+// [V24.1 P0-2 BUGFIX] TEST_MODE/MASTER_KEY 하드코딩 제거
+//   기존: TEST_MODE=true 하드코딩 → 누구나 "TEST-PAY..." paymentKey로 무료 접근 가능
+//   기존: MASTER_KEY="DEV-ZEUS-2026" 하드코딩 → 키 노출 시 영구 무료 접근
+//   해결: 두 값 모두 Cloudflare 환경변수로 이전. 미설정 시 안전한 기본값(차단).
+//   배포 시: wrangler secret put MASTER_KEY / wrangler secret put ENABLE_TEST_MODE 로 설정
+//   프로덕션: ENABLE_TEST_MODE 미설정 또는 "false" → 자동 차단
+const _DEFAULT_MASTER_KEY = "__NEVER_MATCH_PAYMENTKEY__"; // 환경변수 미설정 시 안전한 기본값
 const CURRENT_YEAR = new Date().getFullYear();
 
 function corsHeaders() {
@@ -61,31 +66,139 @@ const CARD_SCORE = {
 };
 
 // ══════════════════════════════════════════════════════════════════
-// 🎯 [V23.4] CARD_SCORE_MULTI — 4차원 수치 테이블 (사장님 설계)
-//   변수명: CARD_SCORE_MULTI (기존 CARD_SCORE 숫자와 충돌 없음)
-//   차원: base(기본) / love(연애) / risk(리스크) / vol(변동성)
+// 🎯 [V24.0] CARD_SCORE_MULTI — 5차원 수치 테이블 (78장 완전판)
+//   변수명: CARD_SCORE_MULTI
+//   차원: base(기본) / love(연애) / risk(리스크) / vol(변동성) / uncertainty(불확실성)
 //   범위: 0~100 (백분율 직관적 표시)
-//   커버: 16장 (핵심 메이저 + 주요 마이너)
-//   미정의 카드: calcScore에서 자동 제외 (count에 미포함)
+//   커버: 78장 전체 (메이저 22장 + 마이너 56장)
+//
+// [V24.0] 핵심 추가: uncertainty 차원
+//   - 기존 시스템의 가장 큰 결함: "관망/기다림" 카드(High Priestess, Moon, Hermit, Hanged Man)가
+//     base 점수만으로는 "긍정적 신호"로 잘못 분류되던 문제 해결
+//   - uncertainty가 높은 카드는 점수가 양수여도 진입 차단 트리거로 작동 (게이팅)
 // ══════════════════════════════════════════════════════════════════
 const CARD_SCORE_MULTI = {
-  "The Fool":          { base: 60, love: 70, risk: 65, vol: 70 },
-  "The Magician":      { base: 80, love: 75, risk: 55, vol: 60 },
-  "The High Priestess":{ base: 65, love: 60, risk: 70, vol: 50 },
-  "The Empress":       { base: 90, love: 95, risk: 40, vol: 40 },
-  "The Emperor":       { base: 85, love: 70, risk: 45, vol: 50 },
-  "The Lovers":        { base: 85, love: 95, risk: 50, vol: 60 },
-  "The Hermit":        { base: 40, love: 35, risk: 80, vol: 30 },
-  "The Moon":          { base: 30, love: 40, risk: 90, vol: 70 },
-  "The Star":          { base: 90, love: 90, risk: 35, vol: 40 },
-  "The Sun":           { base: 95, love: 95, risk: 30, vol: 50 },
-  "Ten of Swords":     { base: 10, love: 20, risk: 95, vol: 90 },
-  "Nine of Swords":    { base: 20, love: 25, risk: 90, vol: 80 },
-  "Three of Wands":    { base: 75, love: 70, risk: 55, vol: 60 },
-  "Ace of Pentacles":  { base: 85, love: 65, risk: 45, vol: 55 },
-  "Queen of Wands":    { base: 80, love: 85, risk: 50, vol: 65 },
-  "Six of Cups":       { base: 65, love: 80, risk: 55, vol: 45 }
+  // ═════ 메이저 아르카나 22장 ═════
+  "The Fool":           { base: 65, love: 70, risk: 65, vol: 75, uncertainty: 70 },
+  "The Magician":       { base: 80, love: 75, risk: 50, vol: 55, uncertainty: 25 },
+  "The High Priestess": { base: 55, love: 60, risk: 65, vol: 45, uncertainty: 90 }, // ★ 관망 카드
+  "The Empress":        { base: 88, love: 95, risk: 35, vol: 35, uncertainty: 20 },
+  "The Emperor":        { base: 82, love: 70, risk: 40, vol: 35, uncertainty: 20 },
+  "The Hierophant":     { base: 65, love: 60, risk: 40, vol: 30, uncertainty: 35 },
+  "The Lovers":         { base: 78, love: 95, risk: 50, vol: 60, uncertainty: 55 }, // 선택의 기로
+  "The Chariot":        { base: 82, love: 65, risk: 50, vol: 65, uncertainty: 30 },
+  "Strength":           { base: 78, love: 80, risk: 35, vol: 40, uncertainty: 25 },
+  "The Hermit":         { base: 40, love: 35, risk: 75, vol: 30, uncertainty: 85 }, // ★ 관망 카드
+  "Wheel of Fortune":   { base: 75, love: 65, risk: 60, vol: 80, uncertainty: 75 }, // 변동/전환점
+  "Justice":            { base: 65, love: 60, risk: 45, vol: 35, uncertainty: 40 },
+  "The Hanged Man":     { base: 30, love: 35, risk: 70, vol: 40, uncertainty: 88 }, // ★ 관망 카드
+  "Death":              { base: 35, love: 30, risk: 70, vol: 75, uncertainty: 50 }, // 전환=불확실
+  "Temperance":         { base: 70, love: 75, risk: 35, vol: 30, uncertainty: 40 },
+  "The Devil":          { base: 18, love: 25, risk: 88, vol: 75, uncertainty: 35 },
+  "The Tower":          { base: 8,  love: 15, risk: 95, vol: 95, uncertainty: 20 }, // 명확한 부정
+  "The Star":           { base: 90, love: 90, risk: 30, vol: 40, uncertainty: 25 },
+  "The Moon":           { base: 30, love: 40, risk: 80, vol: 70, uncertainty: 92 }, // ★ 가장 큰 관망
+  "The Sun":            { base: 95, love: 95, risk: 25, vol: 40, uncertainty: 15 },
+  "Judgement":          { base: 80, love: 70, risk: 45, vol: 55, uncertainty: 45 },
+  "The World":          { base: 92, love: 88, risk: 28, vol: 35, uncertainty: 18 },
+
+  // ═════ Wands (지팡이) 14장 — 행동·열정 ═════
+  "Ace of Wands":       { base: 80, love: 75, risk: 50, vol: 60, uncertainty: 45 },
+  "Two of Wands":       { base: 70, love: 60, risk: 50, vol: 45, uncertainty: 60 },
+  "Three of Wands":     { base: 78, love: 70, risk: 50, vol: 55, uncertainty: 40 },
+  "Four of Wands":      { base: 75, love: 80, risk: 35, vol: 35, uncertainty: 25 },
+  "Five of Wands":      { base: 40, love: 35, risk: 65, vol: 70, uncertainty: 65 },
+  "Six of Wands":       { base: 85, love: 75, risk: 40, vol: 45, uncertainty: 25 },
+  "Seven of Wands":     { base: 60, love: 50, risk: 60, vol: 60, uncertainty: 50 },
+  "Eight of Wands":     { base: 85, love: 75, risk: 50, vol: 75, uncertainty: 30 }, // 빠른 전개
+  "Nine of Wands":      { base: 50, love: 45, risk: 60, vol: 50, uncertainty: 55 },
+  "Ten of Wands":       { base: 30, love: 35, risk: 70, vol: 50, uncertainty: 45 },
+  "Page of Wands":      { base: 60, love: 65, risk: 55, vol: 60, uncertainty: 65 }, // 호기심·탐색
+  "Knight of Wands":    { base: 78, love: 70, risk: 55, vol: 75, uncertainty: 50 },
+  "Queen of Wands":     { base: 80, love: 85, risk: 45, vol: 55, uncertainty: 30 },
+  "King of Wands":      { base: 82, love: 75, risk: 45, vol: 50, uncertainty: 25 },
+
+  // ═════ Cups (컵) 14장 — 감정·관계 ═════
+  "Ace of Cups":        { base: 75, love: 90, risk: 35, vol: 45, uncertainty: 40 },
+  "Two of Cups":        { base: 75, love: 92, risk: 35, vol: 40, uncertainty: 30 },
+  "Three of Cups":      { base: 75, love: 85, risk: 35, vol: 45, uncertainty: 30 },
+  "Four of Cups":       { base: 40, love: 40, risk: 60, vol: 40, uncertainty: 75 }, // 권태/관망
+  "Five of Cups":       { base: 25, love: 30, risk: 75, vol: 55, uncertainty: 60 },
+  "Six of Cups":        { base: 65, love: 80, risk: 50, vol: 45, uncertainty: 55 },
+  "Seven of Cups":      { base: 35, love: 40, risk: 70, vol: 60, uncertainty: 88 }, // ★ 환상/혼란
+  "Eight of Cups":      { base: 40, love: 35, risk: 60, vol: 60, uncertainty: 60 },
+  "Nine of Cups":       { base: 82, love: 80, risk: 35, vol: 40, uncertainty: 25 },
+  "Ten of Cups":        { base: 88, love: 95, risk: 30, vol: 35, uncertainty: 20 },
+  "Page of Cups":       { base: 60, love: 75, risk: 45, vol: 50, uncertainty: 55 },
+  "Knight of Cups":     { base: 70, love: 80, risk: 50, vol: 55, uncertainty: 50 },
+  "Queen of Cups":      { base: 75, love: 88, risk: 40, vol: 40, uncertainty: 35 },
+  "King of Cups":       { base: 75, love: 80, risk: 40, vol: 35, uncertainty: 30 },
+
+  // ═════ Swords (검) 14장 — 사고·갈등 ═════
+  "Ace of Swords":      { base: 78, love: 60, risk: 50, vol: 55, uncertainty: 30 },
+  "Two of Swords":      { base: 40, love: 40, risk: 60, vol: 40, uncertainty: 88 }, // ★ 결정 보류
+  "Three of Swords":    { base: 18, love: 15, risk: 80, vol: 65, uncertainty: 35 },
+  "Four of Swords":     { base: 50, love: 45, risk: 50, vol: 30, uncertainty: 60 },
+  "Five of Swords":     { base: 30, love: 30, risk: 70, vol: 65, uncertainty: 50 },
+  "Six of Swords":      { base: 60, love: 55, risk: 55, vol: 50, uncertainty: 50 },
+  "Seven of Swords":    { base: 25, love: 25, risk: 75, vol: 70, uncertainty: 65 },
+  "Eight of Swords":    { base: 30, love: 30, risk: 70, vol: 50, uncertainty: 70 },
+  "Nine of Swords":     { base: 18, love: 25, risk: 88, vol: 75, uncertainty: 60 },
+  "Ten of Swords":      { base: 10, love: 18, risk: 95, vol: 90, uncertainty: 25 }, // 명확한 바닥
+  "Page of Swords":     { base: 40, love: 40, risk: 65, vol: 60, uncertainty: 65 },
+  "Knight of Swords":   { base: 65, love: 50, risk: 65, vol: 80, uncertainty: 45 },
+  "Queen of Swords":    { base: 65, love: 55, risk: 50, vol: 45, uncertainty: 35 },
+  "King of Swords":     { base: 70, love: 60, risk: 50, vol: 40, uncertainty: 30 },
+
+  // ═════ Pentacles (펜타클) 14장 — 물질·재산 ═════
+  "Ace of Pentacles":   { base: 85, love: 70, risk: 35, vol: 40, uncertainty: 25 },
+  "Two of Pentacles":   { base: 60, love: 55, risk: 55, vol: 60, uncertainty: 55 },
+  "Three of Pentacles": { base: 70, love: 65, risk: 40, vol: 35, uncertainty: 30 },
+  "Four of Pentacles":  { base: 45, love: 40, risk: 55, vol: 35, uncertainty: 50 },
+  "Five of Pentacles":  { base: 20, love: 25, risk: 80, vol: 55, uncertainty: 50 },
+  "Six of Pentacles":   { base: 70, love: 70, risk: 40, vol: 35, uncertainty: 30 },
+  "Seven of Pentacles": { base: 60, love: 55, risk: 50, vol: 35, uncertainty: 65 }, // 인내/대기
+  "Eight of Pentacles": { base: 75, love: 60, risk: 35, vol: 30, uncertainty: 25 },
+  "Nine of Pentacles":  { base: 82, love: 70, risk: 35, vol: 35, uncertainty: 25 },
+  "Ten of Pentacles":   { base: 88, love: 75, risk: 30, vol: 30, uncertainty: 20 },
+  "Page of Pentacles":  { base: 60, love: 55, risk: 45, vol: 40, uncertainty: 50 },
+  "Knight of Pentacles":{ base: 65, love: 55, risk: 40, vol: 30, uncertainty: 35 },
+  "Queen of Pentacles": { base: 75, love: 75, risk: 40, vol: 35, uncertainty: 30 },
+  "King of Pentacles":  { base: 82, love: 70, risk: 35, vol: 30, uncertainty: 25 }
 };
+
+// ══════════════════════════════════════════════════════════════════
+// [V24.0] UNCERTAINTY GATE — 관망 카드 우세 시 진입 차단 게이트
+//   사용처: 주식/부동산/연애 buildXxxMetrics에서 우선 호출
+//   규칙: 3장 합산 uncertainty ≥ HIGH_UNCERTAINTY_THRESHOLD → 강제 관망
+// ══════════════════════════════════════════════════════════════════
+const HIGH_UNCERTAINTY_THRESHOLD = 200;  // 3장 합산 (각 0~100, 평균 ~67)
+
+function calcUncertaintySum(cardNames) {
+  let sum = 0, count = 0;
+  cardNames.forEach(name => {
+    const entry = CARD_SCORE_MULTI[name];
+    if (!entry) return;
+    sum += entry.uncertainty ?? 50;
+    count++;
+  });
+  // 미정의 카드는 50으로 보정 (안전한 디폴트)
+  const missing = cardNames.length - count;
+  return sum + (missing * 50);
+}
+
+function detectUncertaintyGate(cardNames) {
+  const uncSum = calcUncertaintySum(cardNames);
+  const isHigh = uncSum >= HIGH_UNCERTAINTY_THRESHOLD;
+  return {
+    sum:        uncSum,
+    isHighUncertainty: isHigh,
+    level:      uncSum >= 240 ? 'EXTREME'
+              : uncSum >= 200 ? 'HIGH'
+              : uncSum >= 150 ? 'MEDIUM' : 'LOW',
+    reason:     isHigh ? '관망 카드 합산 가중치가 임계값 초과 — 신호 신뢰도 낮음' : null
+  };
+}
 
 // ══════════════════════════════════════════════════════════════════
 // [V23.4] calcScore — 카드 배열에서 도메인별 점수 계산
@@ -1227,6 +1340,15 @@ function buildStockMetrics({ totalScore, riskScore, cleanCards, isLeverage, quer
   // [V19.9] intent 기본값 매수 (대부분의 주식 점사는 매수)
   const stockIntent = intent || "buy";
   const revFlags = reversedFlags || [false, false, false];
+
+  // ══════════════════════════════════════════════════════════════
+  // [V24.0] UNCERTAINTY GATE — 관망 카드 우세 시 강제 관망
+  //   사장님 진단: "High Priestess(관망 카드)인데 매수 권유" 모순 차단
+  //   규칙: 3장 합산 uncertainty ≥ 200 → 진입 차단, '검증 후 진입' 모드
+  // ══════════════════════════════════════════════════════════════
+  const uncGate = detectUncertaintyGate(cleanCards);
+  // ══════════════════════════════════════════════════════════════
+
   let trend = "중립";
   if      (totalScore >= 6)  trend = "강한 상승";
   else if (totalScore >= 2)  trend = "상승";
@@ -2378,23 +2500,68 @@ function buildStockMetrics({ totalScore, riskScore, cleanCards, isLeverage, quer
     return 'ACTIVE';
   })();
 
+  // ══════════════════════════════════════════════════════════════
+  // [V24.0] UNCERTAINTY GATE OVERRIDE
+  //   기존 엔진이 매수 권유로 결정해도, uncertainty 합산이 임계값 초과면
+  //   강제로 '검증 후 진입' 모드로 변환
+  // ══════════════════════════════════════════════════════════════
+  let _uncOverride = null;
+  if (uncGate.isHighUncertainty && stockIntent === 'buy') {
+    _uncOverride = {
+      // 진입 차단으로 표시 변경
+      execMode: 'WATCH',
+      decisionPosition: '검증 후 진입 (관망 카드 우세)',
+      decisionStrategy: '관망 카드 합산 가중치 임계값 초과 — 객관적 트리거 충족 시에만 진입',
+      diagnosis: `현재 카드 조합의 불확실성 점수 합계 ${uncGate.sum}점 (임계값 200) — 신호 신뢰도 미달 구간`,
+      verdict: '관망 카드 우세 — 추세 검증 전 진입 보류 권장',
+      timingNote: '진입 트리거 충족 시 — 고정 시간 없음',
+      entryTriggers: [
+        { stage: '0차', action: '현재 진입 보류 — 0% 포지션 유지' },
+        { stage: '1차 신호', action: '일봉 5일선 회복 + 거래량 평균 대비 +30% 동시 충족 시 시범 진입 (15%)' },
+        { stage: '2차 확정', action: '추세 확인 (3거래일 양봉 우위) 후 추가 진입 (15~25%)' },
+        { stage: '청산', action: '평균 단가 -5% 이탈 또는 추세 변경 시 즉시 정리' }
+      ]
+    };
+  } else if (uncGate.isHighUncertainty && stockIntent === 'sell') {
+    _uncOverride = {
+      execMode: 'WATCH',
+      decisionPosition: '청산 보류 (관망 카드 우세)',
+      decisionStrategy: '바닥 확인 전 추가 매도 자제 — 반등 신호 대기',
+      diagnosis: `불확실성 점수 ${uncGate.sum}점 — 청산 타이밍 신호 검증 필요`,
+      verdict: '관망 카드 우세 — 청산 전 시장 반응 확인 필요',
+      timingNote: '반등 신호 미확인 — 즉시 청산보다 분할 청산 권장',
+      entryTriggers: null
+    };
+  }
+  // ══════════════════════════════════════════════════════════════
+
   return {
     queryType,
-    executionMode: _finalExecMode,
+    executionMode: _uncOverride ? _uncOverride.execMode : _finalExecMode,
     trend: finalTrend,
-    action: finalAction,
-    riskLevel: finalRisk,
+    action: _uncOverride ? _uncOverride.decisionStrategy : finalAction,
+    riskLevel: _uncOverride ? '높음 (불확실성 우세)' : finalRisk,
     riskLevelScore: calcScore(cleanCards, 'risk'),
     entryStrategy, exitStrategy,
-    finalTimingText: timingDetail,
-    entryTimingText: entryTimingText || '-',
+    finalTimingText: _uncOverride ? _uncOverride.timingNote : timingDetail,
+    entryTimingText: _uncOverride ? '트리거 충족 시' : (entryTimingText || '-'),
     exitTimingText:  exitTimingText  || '-',
     totalScore, riskScore,
+    // [V24.0] 불확실성 메트릭 노출
+    uncertaintyScore: uncGate.sum,
+    uncertaintyLevel: uncGate.level,
     // [V23.4] 변동성 수치 (사장님 설계)
     volatilityScore: calcScore(cleanCards, 'vol'),
     cardNarrative, flowSummary, riskChecks, scenarios, roadmap,
-    position,
-    finalOracle,
+    position: _uncOverride ? {
+      weight:    '0% (관망 — 트리거 미충족)',
+      stopLoss:  '진입 후: 평균 단가 -5% (분할 매수 시)',
+      target:    '추세 확정 후 재설정',
+      note:      '⚠️ 관망 카드 우세 — 객관적 트리거 충족 전 진입 자제'
+    } : position,
+    finalOracle: _uncOverride
+      ? `${finalOracle}\n\n⚠️ [불확실성 게이트] ${_uncOverride.diagnosis} — 객관적 진입 트리거 충족 후 진입을 권장합니다.`
+      : finalOracle,
     isLeverage,
     // [V20.0] 5계층 데이터 (클라이언트 렌더러용)
     layers: {
@@ -2402,17 +2569,32 @@ function buildStockMetrics({ totalScore, riskScore, cleanCards, isLeverage, quer
         // [V23.1] BLOCK 시스템 오버라이드 — 상태 기반 판정 우선 적용
         //   _blockDecision 있으면 기존 Decision 완전 대체
         //   없으면 기존 엔진 그대로 사용
-        position:         _blockDecision ? _blockDecision.position  : decisionPosition,
-        strategy:         _blockDecision ? _blockDecision.strategy  : decisionStrategy,
-        diagnosis:        _blockDecision ? _blockDecision.diagnosis : diagnosis,
+        position:         _uncOverride ? _uncOverride.decisionPosition
+                          : (_blockDecision ? _blockDecision.position  : decisionPosition),
+        strategy:         _uncOverride ? _uncOverride.decisionStrategy
+                          : (_blockDecision ? _blockDecision.strategy  : decisionStrategy),
+        diagnosis:        _uncOverride ? _uncOverride.diagnosis
+                          : (_blockDecision ? _blockDecision.diagnosis : diagnosis),
         cardEvidence,
         outcomePrediction,
-        entryTriggers:    _blockDecision ? _blockDecision.entryTriggers : entryTriggers,
+        entryTriggers:    _uncOverride ? _uncOverride.entryTriggers
+                          : (_blockDecision ? _blockDecision.entryTriggers : entryTriggers),
         // BLOCK 레벨 메타데이터 (Client 렌더러에서 활용 가능)
-        blockLevel:       _blockLevel || 'NONE'
+        blockLevel:       _blockLevel || 'NONE',
+        // [V24.0] 불확실성 게이트 메타데이터
+        uncertaintyGate:  _uncOverride ? 'TRIGGERED' : 'PASSED',
+        uncertaintySum:   uncGate.sum
       },
-      execution: position,  // 기존 position 그대로 (weight/stopLoss/target)
-      timing: {
+      execution: _uncOverride ? {
+        weight:    '0% (트리거 미충족)',
+        stopLoss:  '진입 후 평균 단가 -5%',
+        target:    '추세 확정 후 재설정'
+      } : position,
+      timing: _uncOverride ? {
+        entryRanges: [],
+        exitRanges:  [],
+        watchRanges: ['진입 트리거 미충족 — 객관적 신호 확인 후 진입']
+      } : {
         entryRanges,
         exitRanges,
         watchRanges
@@ -2426,17 +2608,20 @@ function buildStockMetrics({ totalScore, riskScore, cleanCards, isLeverage, quer
         currentImpact: getSignalImpact(cleanCards[1], revFlags[1], '현재'),
         futureImpact: getSignalImpact(cleanCards[2], revFlags[2], '미래'),
         summary: flowSummary,
-        verdict: hasMidstreamObstacle ? "초반 상승은 유효, 후반은 불안정" :
+        verdict: _uncOverride ? _uncOverride.verdict :
+                 (hasMidstreamObstacle ? "초반 상승은 유효, 후반은 불안정" :
                  hasReversedSignal ? "추세 유효, 단기 변동성 주의" :
                  totalScore >= 6 ? "강한 상승 흐름 — 추세 추종 유효" :
                  totalScore >= 2 ? "완만한 상승 — 분할 접근 유효" :
                  totalScore <= -3 ? "하락 압력 — 진입 자제 권장" :
-                 "방향성 모색 구간 — 신호 확인 후 대응"
+                 "방향성 모색 구간 — 신호 확인 후 대응")
       },
       risk: {
-        level: layerRiskLevel,
+        level: _uncOverride ? '높음 (불확실성 우세)' : layerRiskLevel,
         volatility: hasReversedSignal || hasMidstreamObstacle ? "증가 가능성 있음" : (totalScore <= -3 ? "높음" : "보통"),
-        cautions: finalRiskCautions
+        cautions: _uncOverride
+          ? [...finalRiskCautions, '관망 카드 우세 — 객관적 트리거 확인 전 진입 자제', '평균 단가 기준 손절선 사전 설정 필수']
+          : finalRiskCautions
       },
       rules: criticalRules,
       // [V20.10] 🔥 Critical Interpretation — 핵심 해석 박스
@@ -2450,6 +2635,12 @@ function buildStockMetrics({ totalScore, riskScore, cleanCards, isLeverage, quer
 // ══════════════════════════════════════════════════════════════════
 function buildRealEstateMetrics({ totalScore, riskScore, cleanCards, intent, prompt }) {
   const netScore = totalScore;
+
+  // ══════════════════════════════════════════════════════════════
+  // [V24.0] UNCERTAINTY GATE — 부동산도 동일 게이트 적용
+  // ══════════════════════════════════════════════════════════════
+  const uncGate = detectUncertaintyGate(cleanCards);
+  // ══════════════════════════════════════════════════════════════
 
   let seed = 0;
   for (let i = 0; i < (prompt||"").length; i++) seed += prompt.charCodeAt(i);
@@ -2583,29 +2774,13 @@ function buildRealEstateMetrics({ totalScore, riskScore, cleanCards, intent, pro
                   : riskScore >= 4 ? "높음 (시장 변동성)"
                   : "보통 (입지 리스크)";
 
-  // [V2.4] 부동산 일일 수비학 타이밍 — 평일 + 9~18시 중개 사무소 영업 시간
-  const DAYS_RE = ["일","월","화","수","목","금","토"];
-  let reSeed = Math.abs(netScore);
-  for (let i = 0; i < (prompt||'').length; i++) reSeed += prompt.charCodeAt(i);
-  cleanCards.forEach(c => { for (let i = 0; i < c.length; i++) reSeed += c.charCodeAt(i); });
-
-  let reDayIdx = reSeed % 7;
-  let reHour   = (reSeed * 7) % 24;
-  let reMin    = Math.floor(((reSeed * 13) % 60) / 10) * 10;
-
-  // 평일 강제 (월~금만)
-  if (reDayIdx === 0 || reDayIdx === 6) reDayIdx = 1 + (reSeed % 5);
-  // 중개사무소 영업시간 (9~18시)
-  if (reHour < 9 || reHour >= 18) reHour = 9 + (reSeed % 9);
-
-  // [V23.8] 부동산 시간대 구간 표현 — 요일/분 고정 제거
-  //   사용자 컨트롤 가능한 영역(중개사무소 방문) → 시간대 표기 OK
-  const reHourZone = reHour <= 10 ? '오전 임장 집중 시간대 (09:30~10:30)'
-                   : reHour <= 12 ? '오전 상담 최적 시간대 (10:30~12:00)'
-                   : reHour <= 14 ? '점심 후 매물 확인 시간대 (13:00~14:00)'
-                   : reHour <= 16 ? '오후 계약 상담 시간대 (14:00~16:00)'
-                   : '마감 전 의사결정 시간대 (16:00~18:00)';
-  const dailyActionTiming = reHourZone;
+  // ══════════════════════════════════════════════════════════════
+  // [V24.0] 부동산 시간대 — 카드와 분리, 일반 임장/계약 시간으로 고정
+  //   사장님 진단: "카드 점수가 시간대를 결정하는 건 근거 없음"
+  //   해결: 모든 카드 조합에서 동일한 일반 시간대 표기
+  //         (시간대는 부동산 거래의 일반 상식이지 점사 결과가 아님)
+  // ══════════════════════════════════════════════════════════════
+  const dailyActionTiming = '평일 오전 10시~12시 (중개사무소 집중 시간대) 또는 오후 2시~5시 (계약 상담 시간대) 권장';
 
   let timingLabel, timing2, strategy, period, urgency, caution;
   if (intent === "sell") {
@@ -2675,23 +2850,23 @@ function buildRealEstateMetrics({ totalScore, riskScore, cleanCards, intent, pro
     }
   }
 
-  // Timing Layer — 부동산 시간 구간
-  // [V22.7] 사장님 진단 — 매수 의도인데 "📉 매도 추천 구간" 라벨 표시되는 버그 수정
-  //   원인: Client 렌더러가 exitRanges 데이터 = 매도 라벨로 자동 표시
-  //   해결: 매수 의도 시 exitRanges는 비우고 watchRanges에 "협상 시간" 추가
+  // ══════════════════════════════════════════════════════════════
+  // [V24.0] 부동산 시간 구간 — 일반 거래 상식으로 고정
+  //   매수/매도 의도와 무관하게 동일한 일반 시간대 표기
+  //   카드 점수가 결정하는 건 시기(시즌)와 긴박도일 뿐, 시간대가 아님
+  // ══════════════════════════════════════════════════════════════
   const reEntryRanges = intent === "sell"
-    ? ["오전 매물 접수 (09:30 ~ 11:30)", "오후 상담 집중 (14:00 ~ 16:00)"]
-    : ["오전 임장 골드타임 (09:30 ~ 11:30)", "오후 검토 (14:00 ~ 16:00)"];
+    ? ["오전 매물 등록 시간대 (10:00~12:00) — 중개사 집중 시간"]
+    : ["오전 임장 시간대 (10:00~12:00) — 자연광 채광 확인 가능"];
 
-  // [V22.7] 매수 의도 시 exitRanges 비움 (매도 라벨 표시 차단)
+  // 매도 의도일 때만 계약 체결 시간 표시, 매수 의도면 비움 (V22.7 호환)
   const reExitRanges = intent === "sell"
-    ? ["계약 체결 적기 (오후 13:00 ~ 17:00 — 의사결정 시간)"]
-    : [];  // 매수 의도면 빈 배열 → Client에서 "📉 매도 추천 구간" 라벨 자체가 안 뜸
+    ? ["계약 체결 적기 (오후 14:00~17:00) — 중개사 의사결정 시간"]
+    : [];
 
-  // [V22.7] 매수 의도 시 watchRanges에 "협상 시간" 추가 (의미 보존)
   const reWatchRanges = intent === "sell"
-    ? ["점심 시간 (12:00 ~ 13:00)", "저녁 이후 (18:00 이후 — 불리)"]
-    : ["계약 협상 시간 (오후 14:00 ~ 17:00)", "점심 시간 (12:00 ~ 13:00)", "저녁 이후 (18:00 이후 — 불리)"];
+    ? ["점심 시간 (12:00~13:00) — 상담 비추천", "저녁 이후 (18:00 이후) — 영업 종료"]
+    : ["계약 협상 시간 (오후 14:00~17:00)", "점심 시간 (12:00~13:00) — 상담 비추천", "저녁 이후 (18:00 이후) — 영업 종료"];
 
   // Risk 보정
   let reLayerRiskLevel = riskLevel;
@@ -2717,9 +2892,22 @@ function buildRealEstateMetrics({ totalScore, riskScore, cleanCards, intent, pro
   reCautions.push("실거래가·시세 변동 점검");
   reCautions.push("규제·세금 변수 사전 확인");
 
+  // ══════════════════════════════════════════════════════════════
+  // [V24.0] 부동산 entryTiming — uncertainty 게이트 통합
+  //   기존: dealConfidence(base 점수) 단일로 결정
+  //   개선: uncertainty 높으면 무조건 'AVOID' (검증 후 진입)
+  // ══════════════════════════════════════════════════════════════
+  const _baseScore = calcScore(cleanCards, 'base');
+  const _entryTiming = uncGate.isHighUncertainty ? 'AVOID'
+                     : _baseScore > 70 ? 'NOW'
+                     : _baseScore > 50 ? 'LATER' : 'AVOID';
+  const _reUncCaution = uncGate.isHighUncertainty
+    ? `⚠️ 관망 카드 우세 (불확실성 ${uncGate.sum}점) — ${intent === 'sell' ? '매물 등록 전 시장 추가 관찰 권장' : '취득 결정 전 추가 임장·시세 검증 필수'}`
+    : null;
+
   return {
     queryType: "realestate",
-    executionMode: netScore >= 0 ? 'ACTIVE' : 'WATCH',
+    executionMode: uncGate.isHighUncertainty ? 'WATCH' : (netScore >= 0 ? 'ACTIVE' : 'WATCH'),
     riskLevelScore: calcScore(cleanCards, 'risk'),
     intent,
     type: `realestate_${intent === "sell" ? "sell" : "buy"}`,
@@ -2729,23 +2917,31 @@ function buildRealEstateMetrics({ totalScore, riskScore, cleanCards, intent, pro
     timing2,
     strategy,
     period,
-    urgency,
-    caution,
-    // [V23.4] 부동산 수치 메트릭 (사장님 설계)
-    dealConfidence: calcScore(cleanCards, 'base'),
-    entryTiming: calcScore(cleanCards, 'base') > 70 ? 'NOW'
-               : calcScore(cleanCards, 'base') > 50 ? 'LATER' : 'AVOID',
+    urgency: _reUncCaution || urgency,
+    caution: _reUncCaution || caution,
+    // [V23.4 + V24.0] 부동산 수치 메트릭 — 불확실성 반영
+    dealConfidence: _baseScore,
+    entryTiming: _entryTiming,
+    uncertaintyScore: uncGate.sum,
+    uncertaintyLevel: uncGate.level,
     subtitle: subtitle_override || (intent === "sell" ? "매도" : "매수"),
-    // [V2.4] 일일 수비학 타이밍 — 평일 + 9~18시 중개 영업 시간
+    // [V24.0] 시간대는 일반론으로 고정 — 카드 점수와 분리
     dailyActionTiming,
     totalScore, riskScore,
     cardNarrative,
-    finalOracle: intent === "sell" ? interpretSell : interpretBuy,
+    finalOracle: uncGate.isHighUncertainty
+      ? `${intent === "sell" ? interpretSell : interpretBuy}\n\n⚠️ [불확실성 게이트] 관망 카드 우세 — 결정 전 추가 검증을 권장합니다.`
+      : (intent === "sell" ? interpretSell : interpretBuy),
     // [V20.0] 5계층 데이터
     layers: {
       decision: {
-        position: reDecisionPosition,
-        strategy: reDecisionStrategy
+        position: uncGate.isHighUncertainty
+          ? `${reDecisionPosition} → 검증 후 진행 권장`
+          : reDecisionPosition,
+        strategy: uncGate.isHighUncertainty
+          ? `${reDecisionStrategy} · 불확실성 점수 ${uncGate.sum}점 — 추가 검증 후 진행`
+          : reDecisionStrategy,
+        uncertaintyGate: uncGate.isHighUncertainty ? 'TRIGGERED' : 'PASSED'
       },
       // [V20.10 + V23.3] 📊 Market Layer — 시장 판단 + 부동산 특화 변수
       market: {
@@ -3213,15 +3409,27 @@ ${actionGuide.oneLine}`;
 // ══════════════════════════════════════════════════════════════════
 function buildFortuneMetrics({ totalScore, cleanCards, prompt }) {
   const netScore = totalScore;
+
+  // ══════════════════════════════════════════════════════════════
+  // [V24.0] UNCERTAINTY GATE — 운세도 동일 게이트
+  //   해석: 불확실성 우세 → "결단보다 정리/관찰" 톤으로 보정
+  // ══════════════════════════════════════════════════════════════
+  const uncGate = detectUncertaintyGate(cleanCards);
+  // ══════════════════════════════════════════════════════════════
+
   // [V23.8] 운세 trend — 5단계 → 더 세밀하게
-  const trend = netScore >= 10 ? "기운의 폭발적 확장 — 결단의 정점"
+  const trend = uncGate.isHighUncertainty
+              ? "방향 모색 — 결정 전 정리 단계"
+              : netScore >= 10 ? "기운의 폭발적 확장 — 결단의 정점"
               : netScore >= 5  ? "기운의 확장 — 결단의 황금 구간"
               : netScore >= 2  ? "긍정 수렴 — 방향성 명확화 중"
               : netScore >= -1 ? "정체 해소 직전 — 방향 수렴 구간"
               : netScore >= -5 ? "내면 정리기 — 선택 준비 단계"
               : "강한 하강 — 자기 보호 우선";
 
-  const action = netScore >= 10 ? "과감한 실행 — 우주가 길을 열어줌"
+  const action = uncGate.isHighUncertainty
+               ? "결정 보류 — 정보 수집과 내면 정리 우선"
+               : netScore >= 10 ? "과감한 실행 — 우주가 길을 열어줌"
                : netScore >= 5  ? "과감한 결단 유리"
                : netScore >= 2  ? "유연한 수용 + 적극 시도"
                : netScore >= -1 ? "관망 → 선택 전환 준비"
@@ -3278,29 +3486,37 @@ function buildFortuneMetrics({ totalScore, cleanCards, prompt }) {
 
   return {
     queryType: "life",
-    executionMode: netScore >= 0 ? 'ACTIVE' : 'WATCH',
+    executionMode: uncGate.isHighUncertainty ? 'WATCH' : (netScore >= 0 ? 'ACTIVE' : 'WATCH'),
     riskLevelScore: calcScore(cleanCards, 'risk'),
     trend, action, riskLevel,
     finalTimingText,
     totalScore,
     cardNarrative,
-    finalOracle: interpret,
-    // [V23.4] 4차원 수치 메트릭 (사장님 설계)
+    finalOracle: uncGate.isHighUncertainty
+      ? `${interpret}\n\n⚠️ [불확실성 우세] 지금은 '결단의 시기'가 아니라 '정보 수집과 내면 정리의 시기'입니다.`
+      : interpret,
+    // [V23.4 + V24.0] 수치 메트릭 — 불확실성 반영
     riskScore:          calcScore(cleanCards, 'risk'),
     opportunityWindow:  calcScore(cleanCards, 'base'),
-    actionType: calcScore(cleanCards, 'risk') > 70 ? 'wait'
+    uncertaintyScore:   uncGate.sum,
+    uncertaintyLevel:   uncGate.level,
+    actionType: uncGate.isHighUncertainty ? 'wait'
+              : calcScore(cleanCards, 'risk') > 70 ? 'wait'
               : calcScore(cleanCards, 'base') > 70 ? 'move' : 'observe',
-    // [V22.4] 운세 5계층 데이터 (사장님 안 적용)
+    // [V22.4 + V24.0] 운세 5계층 데이터
     layers: {
       decision: {
-        position: netScore >= 5 ? "결단의 황금 구간"
+        position: uncGate.isHighUncertainty ? "정보 수집·정리 단계"
+                 : netScore >= 5 ? "결단의 황금 구간"
                  : netScore >= 2 ? "긍정 수렴 — 행동 준비"
                  : netScore >= -1 ? "정체 해소 직전 — 선택 준비"
                  : netScore >= -5 ? "내면 정리기"
                  : "자기 보호 우선",
-        strategy: netScore >= 2 ? "내부 기준 우선 → 미루던 결정 정리"
+        strategy: uncGate.isHighUncertainty ? "결정 보류 → 추가 정보 수집·내면 정리 우선"
+                : netScore >= 2 ? "내부 기준 우선 → 미루던 결정 정리"
                 : netScore >= -1 ? "관망 → 선택 전환 준비"
-                : "내면 정돈 → 다음 선택 준비"
+                : "내면 정돈 → 다음 선택 준비",
+        uncertaintyGate: uncGate.isHighUncertainty ? 'TRIGGERED' : 'PASSED'
       },
       timing: {
         primary: netScore >= 0 ? "1차: 주중 전환점 (내부 정렬 구간)" : "1차: 그믐 전후 (정리 시작)",
@@ -3363,8 +3579,13 @@ export default {
     if (url.pathname === "/verify-payment" && request.method === "POST") {
       try {
         const { paymentKey } = await request.json();
-        const isValid = (paymentKey === MASTER_KEY) ||
-                        (TEST_MODE && paymentKey?.startsWith("TEST-PAY"));
+        // [V24.1 P0-2 BUGFIX] 환경변수 기반 검증으로 변경
+        const _MASTER_KEY = env.MASTER_KEY || _DEFAULT_MASTER_KEY;
+        const _TEST_MODE  = (env.ENABLE_TEST_MODE === "true");
+        const isValid = (paymentKey === _MASTER_KEY) ||
+                        (_TEST_MODE && paymentKey?.startsWith("TEST-PAY")) ||
+                        // [V24.1] 정상 발급된 HMAC 토큰도 통과 (페이지 재방문 시 토큰 검증용)
+                        (await verifyToken(paymentKey, env.TOKEN_SECRET || "default_secret"));
         if (!isValid) {
           return new Response(JSON.stringify({ ok: false, error: "결제 미확인" }), {
             headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" }
@@ -3405,13 +3626,16 @@ export default {
         }
 
         // 1. orderId 파싱 → plan 추출 및 검증
-        const m = String(orderId).match(/^zeus_(trial|day|month)_(\d+)_(.+)$/);
+        // [V24.1 P0-1 BUGFIX] 정규식 수정 — monthly/yearly/lifetime 추가
+        //   기존: /^zeus_(trial|day|month)_\d+_.+$/ → monthly/yearly/lifetime 차단
+        //   영향: 9,900 + 79,000 + 199,000 = 287,900원 매출 자동 거부 버그
+        const m = String(orderId).match(/^zeus_(trial|day|month|monthly|yearly|lifetime)_(\d+)_(.+)$/);
         if (!m) {
           return new Response(JSON.stringify({ success: false, error: "invalid orderId format" }), {
             headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" }
           });
         }
-        const plan = m[1]; // 'trial' | 'day' | 'month'
+        const plan = m[1]; // 'trial' | 'day' | 'month' | 'monthly' | 'yearly' | 'lifetime'
 
         // 2. 금액 검증 — 허용 금액 리스트 (클라이언트 조작 방지)
         // [V20.0] 990원 체험권 추가
