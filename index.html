@@ -2076,7 +2076,37 @@ function setSituation(btn, type, domain) {
         const qInput = document.getElementById('seed-input');
         if (qInput && pending.question) qInput.value = pending.question;
 
-        // 결제 완료 플래그 확정
+        // ══════════════════════════════════════════════════════════
+        // [V24.1 P1-1 BUGFIX] 토큰 검증 후에만 isPaidUser=true
+        //   기존: ?paid=ok URL만으로 즉시 isPaidUser=true 설정 (백도어)
+        //   영향: pendingOracle만 있으면 ?paid=ok 직접 입력으로 무료 접근 가능
+        //   해결: localStorage 토큰을 서버에 검증한 결과로만 isPaidUser 결정
+        // ══════════════════════════════════════════════════════════
+        const _sessionToken = localStorage.getItem('oracleSessionToken') || '';
+        let _verified = false;
+        if (_sessionToken && !_sessionToken.startsWith('PAID_')) {
+            // PAID_ 접두어는 계좌이체 임시 토큰 → 서버 검증 불가, 별도 처리
+            try {
+                const _vRes = await fetch('https://tarot-api.omegafund01.workers.dev/verify-payment', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ paymentKey: _sessionToken })
+                });
+                const _vData = await _vRes.json();
+                _verified = !!(_vData && _vData.ok);
+            } catch(e) {
+                console.warn('토큰 검증 실패(네트워크):', e.message);
+                _verified = false;
+            }
+        }
+        if (!_verified) {
+            // 검증 실패 시 안내 후 정상 종료 (백도어 차단)
+            console.warn('⚠️ ?paid=ok 핸들러: 유효 토큰 미발견 — 무료 권한 부여하지 않음');
+            localStorage.removeItem('pendingOracle');
+            return;
+        }
+
+        // 결제 완료 플래그 확정 (토큰 검증 통과 후)
         isPaidUser = true;
 
         // 결과창으로 즉시 전환 (홈뷰 숨기고 결과뷰 노출)
@@ -3038,94 +3068,132 @@ function analyzeAISentiment(text) {
 // ════════════════════════════════════
 // ════════════════════════════════════
 // 🔥 CARD_DB — 78장 완전 통합 데이터베이스
-//    score(점수) / risk(위험도) / power(추세 에너지) / critical(위험 카드)
-//    기존 CARD_STATE_MAP + calculateScore + analyzeCardsAdvanced 3개를 단일 소스로 통합
-// ════════════════════════════════════
+// [V24.0] uncertainty 필드 추가 — 관망 카드 게이팅용
+//   기존: score(긍정/부정) + risk(위험) + power(에너지) — 1차원 valence만 표현
+//   문제: High Priestess처럼 "관망/기다림" 카드가 양수 score로 잘못 분류됨
+//   해결: uncertainty(불확실성) 0~5 추가 — 관망 카드 합산 시 진입 차단 게이트로 작동
+//   score(점수) / risk(위험도) / power(추세 에너지) / uncertainty(불확실성) / critical(위험 카드)
 const CARD_DB = {
-    // ── 메이저 아르카나 (22장)
-    "The Fool":           { score:  0, risk: 2, power:  1 },
-    "The Magician":       { score:  2, risk: 2, power:  2 },
-    "The High Priestess": { score:  1, risk: 2, power:  0 },
-    "The Empress":        { score:  2, risk: 1, power:  1 },
-    "The Emperor":        { score:  2, risk: 1, power:  1 },
-    "The Hierophant":     { score:  1, risk: 1, power:  0 },
-    "The Lovers":         { score:  2, risk: 2, power:  1 },
-    "The Chariot":        { score:  3, risk: 2, power:  2 },
-    "Strength":           { score:  2, risk: 1, power:  1 },
-    "The Hermit":         { score:  0, risk: 2, power: -1 },
-    "Wheel of Fortune":   { score:  2, risk: 3, power:  2 },
-    "Justice":            { score:  1, risk: 1, power:  0 },
-    "The Hanged Man":     { score: -1, risk: 2, power: -1 },
-    "Death":              { score: -2, risk: 3, power:  1 },
-    "Temperance":         { score:  1, risk: 1, power:  0 },
-    "The Devil":          { score: -3, risk: 4, power:  1 },
-    "The Tower":          { score: -5, risk: 5, power: -2, critical: true },
-    "The Star":           { score:  3, risk: 1, power:  1 },
-    "The Moon":           { score: -2, risk: 3, power: -1 },
-    "The Sun":            { score:  4, risk: 1, power:  2 },
-    "Judgement":          { score:  2, risk: 2, power:  1 },
-    "The World":          { score:  4, risk: 1, power:  2 },
-    // ── 컵 (14장)
-    "Ace of Cups":    { score:  2, risk: 1, power:  1 },
-    "Two of Cups":    { score:  2, risk: 1, power:  1 },
-    "Three of Cups":  { score:  2, risk: 1, power:  1 },
-    "Four of Cups":   { score: -1, risk: 2, power: -1 },
-    "Five of Cups":   { score: -2, risk: 3, power: -1 },
-    "Six of Cups":    { score:  1, risk: 1, power:  0 },
-    "Seven of Cups":  { score: -2, risk: 3, power: -1 },
-    "Eight of Cups":  { score: -1, risk: 2, power: -1 },
-    "Nine of Cups":   { score:  3, risk: 1, power:  1 },
-    "Ten of Cups":    { score:  4, risk: 1, power:  2 },
-    "Page of Cups":   { score:  1, risk: 1, power:  0 },
-    "Knight of Cups": { score:  1, risk: 2, power:  1 },
-    "Queen of Cups":  { score:  2, risk: 1, power:  1 },
-    "King of Cups":   { score:  2, risk: 1, power:  1 },
-    // ── 펜타클 (14장)
-    "Ace of Pentacles":    { score:  3, risk: 1, power:  2 },
-    "Two of Pentacles":    { score:  0, risk: 2, power:  0 },
-    "Three of Pentacles":  { score:  2, risk: 1, power:  1 },
-    "Four of Pentacles":   { score:  0, risk: 2, power: -1 },
-    "Five of Pentacles":   { score: -3, risk: 4, power: -1 },
-    "Six of Pentacles":    { score:  2, risk: 1, power:  1 },
-    "Seven of Pentacles":  { score:  1, risk: 1, power:  0 },
-    "Eight of Pentacles":  { score:  2, risk: 1, power:  1 },
-    "Nine of Pentacles":   { score:  3, risk: 1, power:  1 },
-    "Ten of Pentacles":    { score:  4, risk: 1, power:  2 },
-    "Page of Pentacles":   { score:  1, risk: 1, power:  0 },
-    "Knight of Pentacles": { score:  1, risk: 1, power:  1 },
-    "Queen of Pentacles":  { score:  2, risk: 1, power:  1 },
-    "King of Pentacles":   { score:  3, risk: 1, power:  2 },
-    // ── 소드 (14장)
-    "Ace of Swords":    { score:  2, risk: 2, power:  2 },
-    "Two of Swords":    { score: -1, risk: 2, power: -1 },
-    "Three of Swords":  { score: -3, risk: 4, power: -1 },
-    "Four of Swords":   { score:  0, risk: 1, power: -1 },
-    "Five of Swords":   { score: -3, risk: 4, power: -2 },
-    "Six of Swords":    { score:  1, risk: 2, power:  0 },
-    "Seven of Swords":  { score: -2, risk: 3, power: -1 },
-    "Eight of Swords":  { score: -2, risk: 3, power: -2 },
-    "Nine of Swords":   { score: -3, risk: 4, power: -2 },
-    "Ten of Swords":    { score: -5, risk: 5, power: -2, critical: true },
-    "Page of Swords":   { score:  0, risk: 2, power:  0 },
-    "Knight of Swords": { score:  1, risk: 3, power:  2 },
-    "Queen of Swords":  { score:  0, risk: 2, power:  0 },
-    "King of Swords":   { score:  1, risk: 2, power:  1 },
-    // ── 완드 (14장)
-    "Ace of Wands":    { score:  3, risk: 2, power:  2 },
-    "Two of Wands":    { score:  1, risk: 2, power:  1 },
-    "Three of Wands":  { score:  2, risk: 1, power:  2 },
-    "Four of Wands":   { score:  3, risk: 1, power:  2 },
-    "Five of Wands":   { score: -1, risk: 3, power:  1 },
-    "Six of Wands":    { score:  3, risk: 1, power:  2 },
-    "Seven of Wands":  { score:  1, risk: 2, power:  1 },
-    "Eight of Wands":  { score:  3, risk: 2, power:  3 },
-    "Nine of Wands":   { score:  0, risk: 2, power:  1 },
-    "Ten of Wands":    { score: -2, risk: 3, power: -1 },
-    "Page of Wands":   { score:  1, risk: 2, power:  1 },
-    "Knight of Wands": { score:  2, risk: 3, power:  2 },
-    "Queen of Wands":  { score:  2, risk: 2, power:  1 },
-    "King of Wands":   { score:  3, risk: 2, power:  2 }
+    // ── 메이저 아르카나 22장 ──
+    "The Fool":           { score:  0, risk: 2, power:  1, uncertainty: 3 },
+    "The Magician":       { score:  2, risk: 2, power:  2, uncertainty: 1 },
+    "The High Priestess": { score:  1, risk: 2, power:  0, uncertainty: 5 }, // ★ 관망 카드
+    "The Empress":        { score:  2, risk: 1, power:  1, uncertainty: 1 },
+    "The Emperor":        { score:  2, risk: 1, power:  1, uncertainty: 1 },
+    "The Hierophant":     { score:  1, risk: 1, power:  0, uncertainty: 2 },
+    "The Lovers":         { score:  2, risk: 2, power:  1, uncertainty: 3 },
+    "The Chariot":        { score:  3, risk: 2, power:  2, uncertainty: 1 },
+    "Strength":           { score:  2, risk: 1, power:  1, uncertainty: 1 },
+    "The Hermit":         { score:  0, risk: 2, power: -1, uncertainty: 4 }, // ★ 관망 카드
+    "Wheel of Fortune":   { score:  2, risk: 3, power:  2, uncertainty: 4 },
+    "Justice":            { score:  1, risk: 1, power:  0, uncertainty: 2 },
+    "The Hanged Man":     { score: -1, risk: 2, power: -1, uncertainty: 5 }, // ★ 관망 카드
+    "Death":              { score: -2, risk: 3, power:  1, uncertainty: 3 },
+    "Temperance":         { score:  1, risk: 1, power:  0, uncertainty: 2 },
+    "The Devil":          { score: -3, risk: 4, power:  1, uncertainty: 1 },
+    "The Tower":          { score: -5, risk: 5, power: -2, uncertainty: 1, critical: true },
+    "The Star":           { score:  3, risk: 1, power:  1, uncertainty: 1 },
+    "The Moon":           { score: -2, risk: 3, power: -1, uncertainty: 5 }, // ★ 가장 큰 관망
+    "The Sun":            { score:  4, risk: 1, power:  2, uncertainty: 0 },
+    "Judgement":          { score:  2, risk: 2, power:  1, uncertainty: 2 },
+    "The World":          { score:  4, risk: 1, power:  2, uncertainty: 1 },
+
+    // ── Cups (컵) 14장 — 감정·관계 ──
+    "Ace of Cups":    { score:  2, risk: 1, power:  1, uncertainty: 2 },
+    "Two of Cups":    { score:  2, risk: 1, power:  1, uncertainty: 1 },
+    "Three of Cups":  { score:  2, risk: 1, power:  1, uncertainty: 1 },
+    "Four of Cups":   { score: -1, risk: 2, power: -1, uncertainty: 4 }, // 권태/관망
+    "Five of Cups":   { score: -2, risk: 3, power: -1, uncertainty: 3 },
+    "Six of Cups":    { score:  1, risk: 1, power:  0, uncertainty: 3 },
+    "Seven of Cups":  { score: -2, risk: 3, power: -1, uncertainty: 5 }, // ★ 환상/혼란
+    "Eight of Cups":  { score: -1, risk: 2, power: -1, uncertainty: 3 },
+    "Nine of Cups":   { score:  3, risk: 1, power:  1, uncertainty: 1 },
+    "Ten of Cups":    { score:  4, risk: 1, power:  2, uncertainty: 1 },
+    "Page of Cups":   { score:  1, risk: 1, power:  0, uncertainty: 3 },
+    "Knight of Cups": { score:  1, risk: 2, power:  1, uncertainty: 3 },
+    "Queen of Cups":  { score:  2, risk: 1, power:  1, uncertainty: 2 },
+    "King of Cups":   { score:  2, risk: 1, power:  1, uncertainty: 2 },
+
+    // ── Pentacles (펜타클) 14장 — 물질·재정 ──
+    "Ace of Pentacles":    { score:  3, risk: 1, power:  2, uncertainty: 1 },
+    "Two of Pentacles":    { score:  0, risk: 2, power:  0, uncertainty: 3 },
+    "Three of Pentacles":  { score:  2, risk: 1, power:  1, uncertainty: 1 },
+    "Four of Pentacles":   { score:  0, risk: 2, power: -1, uncertainty: 2 },
+    "Five of Pentacles":   { score: -3, risk: 4, power: -1, uncertainty: 2 },
+    "Six of Pentacles":    { score:  2, risk: 1, power:  1, uncertainty: 1 },
+    "Seven of Pentacles":  { score:  1, risk: 1, power:  0, uncertainty: 3 }, // 인내/대기
+    "Eight of Pentacles":  { score:  2, risk: 1, power:  1, uncertainty: 1 },
+    "Nine of Pentacles":   { score:  3, risk: 1, power:  1, uncertainty: 1 },
+    "Ten of Pentacles":    { score:  4, risk: 1, power:  2, uncertainty: 1 },
+    "Page of Pentacles":   { score:  1, risk: 1, power:  0, uncertainty: 2 },
+    "Knight of Pentacles": { score:  1, risk: 1, power:  1, uncertainty: 1 },
+    "Queen of Pentacles":  { score:  2, risk: 1, power:  1, uncertainty: 1 },
+    "King of Pentacles":   { score:  3, risk: 1, power:  2, uncertainty: 1 },
+
+    // ── Swords (검) 14장 — 사고·갈등 ──
+    "Ace of Swords":    { score:  2, risk: 2, power:  2, uncertainty: 1 },
+    "Two of Swords":    { score: -1, risk: 2, power: -1, uncertainty: 5 }, // ★ 결정 보류
+    "Three of Swords":  { score: -3, risk: 4, power: -1, uncertainty: 1 },
+    "Four of Swords":   { score:  0, risk: 1, power: -1, uncertainty: 3 },
+    "Five of Swords":   { score: -2, risk: 3, power: -1, uncertainty: 2 },
+    "Six of Swords":    { score:  1, risk: 1, power:  0, uncertainty: 2 },
+    "Seven of Swords":  { score: -3, risk: 3, power: -1, uncertainty: 3 },
+    "Eight of Swords":  { score: -2, risk: 3, power: -1, uncertainty: 3 },
+    "Nine of Swords":   { score: -4, risk: 4, power: -1, uncertainty: 3 },
+    "Ten of Swords":    { score: -6, risk: 5, power: -2, uncertainty: 1, critical: true },
+    "Page of Swords":   { score: -1, risk: 2, power:  0, uncertainty: 3 },
+    "Knight of Swords": { score:  2, risk: 3, power:  2, uncertainty: 2 },
+    "Queen of Swords":  { score:  1, risk: 2, power:  1, uncertainty: 2 },
+    "King of Swords":   { score:  2, risk: 2, power:  1, uncertainty: 1 },
+
+    // ── Wands (지팡이) 14장 — 행동·열정 ──
+    "Ace of Wands":    { score:  3, risk: 2, power:  2, uncertainty: 2 },
+    "Two of Wands":    { score:  2, risk: 2, power:  1, uncertainty: 3 },
+    "Three of Wands":  { score:  3, risk: 2, power:  2, uncertainty: 2 },
+    "Four of Wands":   { score:  2, risk: 1, power:  1, uncertainty: 1 },
+    "Five of Wands":   { score: -1, risk: 3, power: -1, uncertainty: 3 },
+    "Six of Wands":    { score:  4, risk: 1, power:  2, uncertainty: 1 },
+    "Seven of Wands":  { score:  1, risk: 2, power:  1, uncertainty: 2 },
+    "Eight of Wands":  { score:  4, risk: 2, power:  2, uncertainty: 1 },
+    "Nine of Wands":   { score:  0, risk: 2, power:  1, uncertainty: 2 },
+    "Ten of Wands":    { score: -2, risk: 3, power: -1, uncertainty: 2 },
+    "Page of Wands":   { score:  1, risk: 2, power:  1, uncertainty: 3 }, // 호기심·탐색
+    "Knight of Wands": { score:  2, risk: 3, power:  2, uncertainty: 2 },
+    "Queen of Wands":  { score:  2, risk: 2, power:  1, uncertainty: 1 },
+    "King of Wands":   { score:  3, risk: 2, power:  2, uncertainty: 1 }
 };
+
+// ══════════════════════════════════════════════════════════════
+// [V24.0] UNCERTAINTY GATE — 클라이언트 동등 게이트
+//   서버 worker.js와 동일한 로직 — 서버 metrics 없을 때 fallback용
+// ══════════════════════════════════════════════════════════════
+const HIGH_UNCERTAINTY_THRESHOLD_CLIENT = 10; // 3장 합산 (각 0~5, 평균 3.3+ 시 트리거)
+
+function calcUncertaintySumClient(cards) {
+    let sum = 0, count = 0;
+    cards.forEach(c => {
+        const base = (c.name || '').split(' (')[0];
+        const data = CARD_DB[base];
+        if (!data) return;
+        sum += (data.uncertainty ?? 2);
+        count++;
+    });
+    const missing = cards.length - count;
+    return sum + (missing * 2); // 미정의 카드는 중립(2)으로
+}
+
+function detectUncertaintyGateClient(cards) {
+    const uncSum = calcUncertaintySumClient(cards);
+    const isHigh = uncSum >= HIGH_UNCERTAINTY_THRESHOLD_CLIENT;
+    return {
+        sum:    uncSum,
+        isHighUncertainty: isHigh,
+        level:  uncSum >= 13 ? 'EXTREME'
+              : uncSum >= 10 ? 'HIGH'
+              : uncSum >=  7 ? 'MEDIUM' : 'LOW'
+    };
+}
+
 // ==================================================================
 // 🔥 [V16.5] ZEUS 단일 통합 엔진 (Single Truth Engine)
 // ==================================================================
@@ -3332,33 +3400,21 @@ function getCardBasedTiming(cards, queryType, intent, qRaw) {
     }
 
     // ────────────────────────────────
-    // 주식 (장중 시간 기반)
-    //   [V23.8-D] 요일 고정 제거 → 흐름 표현
+    // 주식 — [V24.0] 시간대 슬롯 → 트리거 조건으로 전환
+    //   사장님 진단: 카드 점수와 시간대(09:15, 14:30 등)는 무관
+    //   해결: 객관적 검증 가능 트리거 조건 명시 (거래량·이평선·캔들)
     // ────────────────────────────────
-    const stockBuySlots  = ["09:15 (장초반 골든타임)", "10:00~10:30 (오전 추세 안착)", "13:30~14:00 (오후 변곡 초입)", "14:30~15:00 (장마감 전 눌림)"];
-    const stockSellSlots = ["09:30~10:00 (갭 상승 익절)", "11:00~11:30 (오전 고점권)", "14:00~14:30 (오후 저항권)", "15:10~15:20 (장마감 직전 매도)"];
-    const extSlots       = ["08:30 (장전 시간외)", "16:00~16:40 (장후 시간외 단일가)"];
-    const stockZones = [
-        '이번 주 거래일',
-        '주중 변곡 구간',
-        '주 후반 흐름',
-        '다음 거래일',
-        '다가오는 거래 흐름'
-    ];
-    const bestZone  = pick(stockZones);
-    const bestZone2 = stockZones[(Math.abs(seed) + 2) % stockZones.length];
-
     if (intent === 'sell') {
-        if (totalPower <= -5) return `📅 매도 타이밍: 즉시 손절 검토 — 카드 붕괴 에너지. ${pick(stockSellSlots)} 시장가 매도 고려`;
-        if (totalPower <= 0)  return `📅 매도 타이밍: ${bestZone} ${pick(stockSellSlots)} 분할 매도 (카드 에너지 약세, 추가 보유 리스크 있음)`;
-        return `📅 매도 타이밍: ${bestZone} ${pick(stockSellSlots)} 1차 익절 · ${bestZone2} ${pick2(stockSellSlots)} 잔량 매도`;
+        if (totalPower <= -5) return `📅 매도 트리거: 즉시 분할 청산 검토 — 카드 붕괴 에너지. 첫 음봉 또는 거래량 +50% 동반 하락 시 시장가 매도`;
+        if (totalPower <= 0)  return `📅 매도 트리거: 분할 청산 권장 — 5일선 이탈 또는 일봉 -2% 발생 시 1차 매도, 추가 음봉 시 잔량 정리`;
+        return `📅 매도 트리거: 1차 익절 — 목표 도달 또는 5일선 이탈 시 50% 정리 / 잔량은 추세 유지 시 보유`;
     }
 
     // 매수
-    if (totalPower <= -5) return `📅 매수 타이밍: 진입 절대 금지 — 카드 에너지 극히 부정적. 관망 후 재판단 요망`;
-    if (totalPower <= 0)  return `📅 매수 타이밍: ${bestZone} ${pick2(stockBuySlots)} 극소량만 (카드 에너지 부정적, 손절선 필수)`;
-    if (totalPower <= 5)  return `📅 매수 타이밍: ${bestZone} ${pick(stockBuySlots)} 분할 매수 · 혹은 ${pick(extSlots)} 장외 진입 고려`;
-    return `📅 매수 타이밍: ${bestZone} ${pick(stockBuySlots)} 1차 · ${bestZone2} ${pick2(stockBuySlots)} 2차 분할 진입 유효`;
+    if (totalPower <= -5) return `📅 매수 트리거: 진입 절대 금지 — 카드 에너지 극히 부정적. 저점 확인 후 재판단 (관망 권장)`;
+    if (totalPower <= 0)  return `📅 매수 트리거: 극소량만 — 거래량 평균 +50% 동반 양봉 + 5일선 회복 동시 충족 시 5% 시범 진입 (손절 -3% 즉시 발동)`;
+    if (totalPower <= 5)  return `📅 매수 트리거: 분할 진입 — ① 일봉 5일선 회복, ② 거래량 평균 대비 +30%, ③ 단기 저항선 돌파 — 2개 이상 충족 시 1차 진입`;
+    return `📅 매수 트리거: 적극 분할 진입 — ① 5일선 회복 또는 ② 단기 저항선 돌파 1개 충족만으로도 1차 진입 가능, 추가 양봉 확인 시 추가 진입`;
 }
 
 // ════════════════════════════════════
@@ -3420,8 +3476,25 @@ function getLuckyTiming(cards, qRaw) {
 // - 특징: netScore와 Power를 결합하여 상단 서사와의 싱크로율 100% 달성
 // - 로직: 에너지가 부족하면 점수가 높아도 보수적 지표 산출 (충돌 방지)
 // ══════════════════════════════════════════════════════════════════
-function getFinalDecision(netScore, maxRisk, avgRisk, hasCritical, isVolatile, queryType, intent, power) {
+function getFinalDecision(netScore, maxRisk, avgRisk, hasCritical, isVolatile, queryType, intent, power, uncertaintySum) {
     let res = { decision: "", trendLabel: "", position: "0%", stop: "-", target: "-", riskLabel: "보통", canEnter: false, score: netScore };
+
+    // ══════════════════════════════════════════════════════════
+    // [V24.0] UNCERTAINTY GATE — 최우선 차단
+    //   관망 카드 합산 ≥ 10점이면 점수가 높아도 강제 관망
+    //   사장님 진단: "High Priestess(관망) + 양수 score 매수 권유" 모순 차단
+    // ══════════════════════════════════════════════════════════
+    if (typeof uncertaintySum === 'number' && uncertaintySum >= 10 && queryType !== 'life') {
+        res.decision   = intent === 'sell' ? "청산 보류 (검증 후 분할)" : "검증 후 진입 (관망 카드 우세)";
+        res.trendLabel = "방향성 검증 필요";
+        res.position   = "0%";
+        res.riskLabel  = "높음 (불확실성 우세)";
+        res.canEnter   = false;
+        res.uncertaintyGated = true;
+        res.gateReason = `관망 카드 합산 ${uncertaintySum}점 (임계값 10) — 신호 신뢰도 미달`;
+        return res;
+    }
+    // ══════════════════════════════════════════════════════════
 
     // ── ① 최우선 차단 로직 (변동성 및 고위험 카드) ──
     if (isVolatile && queryType !== 'life') {
@@ -3716,8 +3789,24 @@ function buildInvestmentData(cards, question) {
     const adjPower = zeus.hasCritical ? zeus.power * 0.7 : zeus.power;
     const netScore = adjPower + zeus.score; 
 
+    // ══════════════════════════════════════════════════════════
+    // [V24.0] UNCERTAINTY GATE — 클라이언트 fallback 게이트
+    //   서버 응답이 없거나 V24 미반영 서버일 때 클라이언트가 자체 판단
+    // ══════════════════════════════════════════════════════════
+    const uncGate = detectUncertaintyGateClient(cards);
+    // ══════════════════════════════════════════════════════════
+
     let trend, action, riskLabel, period;
 
+    // ══════════════════════════════════════════════════════════
+    // [V24.0] uncertainty 우세 시 — 모든 분기 무시하고 강제 관망
+    // ══════════════════════════════════════════════════════════
+    if (uncGate.isHighUncertainty) {
+        trend = "방향성 검증 필요 — 관망 카드 우세";
+        action = ctx.intent === 'sell' ? "청산 보류 — 분할 청산 검증" : "검증 후 진입";
+        riskLabel = "높음 (불확실성 우세)";
+        period = "관망 구간 — 객관적 트리거 충족 시 진입";
+    } else
     // 사용자 제안: 중앙 집중형 점수 모델
     if (netScore >= 7) {
         trend = "강력 상승";
@@ -3751,20 +3840,25 @@ function buildInvestmentData(cards, question) {
         : getCardBasedTiming(cards, queryType, ctx.intent, qRaw);
 
     // ── 포지션(권장 비중) 숫자 — 중앙 점수 모델 기반
-    const posNum =
+    // [V24.0] 비중도 uncertainty 우세 시 0% 강제
+    const posNum = uncGate.isHighUncertainty ? 0 :
         netScore >= 7 ? (queryType === 'crypto' ? 25 : 30) :
         netScore >= 3 ? (queryType === 'crypto' ? 15 : 20) :
         netScore >= 0 ? 0 : 0;
 
     // ── 손절/목표 구간 — 질문유형별 변동성 반영
-    const stopPct   = (queryType === 'crypto') ? '-8%' : '-5%';
+    // [V24.0] 분할 매수 손절 보정: 평균 단가 기준 + 목표 ½ 룰
+    //   기존 -5% 고정 → 분할 매수 시 첫 진입가 기준이면 노이즈 손절 발생
+    const stopPct   = (queryType === 'crypto') ? '-8% (평균 단가 기준)'
+                                                : '-5% (평균 단가 기준)';
     const targetStr =
+        uncGate.isHighUncertainty ? '추세 확정 후 재설정' :
         netScore >= 7 ? '+10~15%' :
         netScore >= 3 ? '+6~10%'  :
         netScore >= 0 ? '+3~6%'   : '-';
 
-    // ── 진입 가능 여부
-    const canEnter  = netScore >= 3;
+    // ── 진입 가능 여부 — uncertainty 게이트 반영
+    const canEnter  = !uncGate.isHighUncertainty && netScore >= 3;
 
     // ── 레버리지/고변동 자산 감지
     const q         = (question || '').toLowerCase();
@@ -5493,11 +5587,16 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
         })() : ''}
         ${investBlock}
         ${_zeusProHook}
-        <!-- [V23.7] 면책 고지 통일 — 모든 도메인 최하단 단일 위치 -->
-        <div style="margin-top:18px; padding:10px 14px; font-size:0.70rem;
-                    color:rgba(255,255,255,0.45); text-align:center;
-                    line-height:1.6; letter-spacing:0.01em;">
-            ※ 본 신탁은 타로 에너지 기반의 영성 가이드이며, 실제 투자 및 법적 결정의 책임은 사용자에게 있습니다.
+        <!-- [V24.0] 면책 고지 강화 — 자본시장법/공인중개사법 회피 명시 -->
+        <div style="margin-top:18px; padding:12px 14px; font-size:0.70rem;
+                    color:rgba(255,255,255,0.55); text-align:center;
+                    line-height:1.7; letter-spacing:0.01em;
+                    border:1px solid rgba(255,255,255,0.08); border-radius:8px;">
+            ⚠️ <b>본 서비스는 타로 카드를 활용한 엔터테인먼트 콘텐츠</b>로,<br>
+            투자자문업·금융상품판매업·공인중개사법상 등록된 서비스가 아닙니다.<br>
+            특정 종목·자산·부동산의 매매 권유나 투자 결정의 근거가 될 수 없으며,<br>
+            본 콘텐츠를 참고한 모든 투자·거래 결정의 결과는 사용자 본인에게 귀속됩니다.<br>
+            <span style="opacity:0.65;">Not financial / legal / tax / real-estate advice — Entertainment use only.</span>
         </div>
     </div>`;
 
