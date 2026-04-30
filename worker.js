@@ -1392,13 +1392,15 @@ function classifyByKeywords(prompt) {
   ];
   const cryptoKeywords = ["코인","비트코인","이더리움","리플","도지","이더"];
   const cryptoPattern  = /\b(btc|eth|xrp|sol|ada)\b/i;
-  // [V22.2] 주식 키워드 대폭 확장 — 동사형 + 시세/분석 표현
+  // [V22.2+V24.12] 주식 키워드 — 충돌 키워드 제거 (사장님 진단)
+  //   제거: '사고','살까','진입','들어가','담아','받을','상승','하락'
+  //   사유: 일반 한국어 동사와 충돌 ('잘살까요/사고 났다/대학 진입' 등)
   const stockKeywords  = [
     "주식","삼성","코스피","코스닥","나스닥","종목","상장","etf","etn",
     "매수","매도","주가","선물","옵션","레버리지","수익","손절","목표가",
-    // 동사형 매매 표현
-    "사려","사고","샀어","샀는데","살까","팔려","팔까","팔고","팔아","팔았",
-    "들어가","진입","담으려","받으려","넣을","넣어",
+    // 동사형 매매 표현 — 명확한 것만 유지
+    "샀어","샀는데","팔려","팔고","팔았",
+    "담으려","받으려","넣을","넣어",
     // 시세/분석
     "시세","단타","스윙","장투","급등","급락","폭락","폭등",
     "오를까","내릴까","오르나","내리나","반등","상한가","하한가","거래량","시총",
@@ -1407,15 +1409,19 @@ function classifyByKeywords(prompt) {
     "현대차","기아","lg전자","sk이노베이션","에코프로","포스코홀딩스","삼성바이오",
     "두산에너빌리티","한미사이언스","유한양행","녹십자"
   ];
-  const investIntentKeywords = ["살까","사도","들어가","투자","오를까","떨어질까","전망","사면","팔면"];
+  // [V24.12] investIntent — 모호 키워드는 패턴과 결합돼야만 활성
+  //   제거: '살까','사도','들어가' (단독으로는 일반 한국어와 충돌)
+  const investIntentKeywords = ["투자","오를까","떨어질까","전망","사면","팔면"];
 
-  // [V22.2] 종목명 + 매매 동사 정규식 패턴 (사장님 진단 핵심)
+  // [V22.2+V24.12] 종목명 + 매매 동사 정규식 패턴 (사장님 진단 핵심)
   //   "미래에셋 사려는데", "삼성전자 살까", "현대차 매수해도 될까" 등
-  const stockPatternMatch = (
+  //   [V24.12] 연애 맥락 단어 발견 시 패턴 매칭 차단 — '마음을 팔까봐' 보호
+  const _hasLoveContext = /(마음|사람|관계|친구|남자|여자|상대|애인|연애|커플|썸|짝사랑|이별|결혼|연인|감정|속마음)/.test(txt);
+  const stockPatternMatch = !_hasLoveContext && (
     /[가-힣a-z]{2,10}\s*(사려|사고|살까|살래|팔려|팔까|팔아|매수|매도|담아|담을|진입|들어가|넣어|받을)/.test(txt) ||
-    /[가-힣a-z]{2,10}\s*(주가|시세|상한가|하한가|상승|하락|반등|급등|급락)/.test(txt) ||
+    /[가-힣a-z]{2,10}\s*(주가|시세|상한가|하한가|반등|급등|급락)/.test(txt) ||
     /(언제|타이밍|시점)\s*(사|팔|매수|매도|진입|들어가|나올|익절|손절)/.test(txt) ||
-    /[가-힣a-z]{2,10}\s*(좋을|좋은|어때|어떨|괜찮|호재|악재)\s*[?]/.test(txt) && /(사려|사고|살까|매수|매도|투자|종목|주식|타이밍)/.test(txt)
+    (/[가-힣a-z]{2,10}\s*(좋을|좋은|어때|어떨|괜찮|호재|악재)\s*[?]/.test(txt) && /(사려|사고|살까|매수|매도|투자|종목|주식|타이밍)/.test(txt))
   );
 
   const loveKeywords = [
@@ -1425,13 +1431,33 @@ function classifyByKeywords(prompt) {
     "궁합","커플","관계","어울리","찰떡","천생연분","인연"
   ];
 
-  const reCount     = realEstateKeywords.filter(k => txt.includes(k)).length;
-  const cryptoHit   = cryptoKeywords.some(k => txt.includes(k)) || cryptoPattern.test(prompt);
+  // ════════════════════════════════════════════════════════════
+  // [V24.12] 강한 명시 키워드 — 우선 분류 (도메인 충돌 차단)
+  //   사장님 진단: "결혼하면 잘살까요?" → '살까' 매칭 → 주식 오분류
+  //   해결: 명시 키워드 발견 시 다른 도메인 무시
+  // ════════════════════════════════════════════════════════════
+  const STRONG_LOVE_KW = ["결혼","연애","이별","짝사랑","애인","남친","여친","썸","고백",
+                          "데이트","커플","연인","궁합","사귀","첫사랑","재회"];
+  const STRONG_STOCK_KW = ["주식","코스피","코스닥","나스닥","종목","주가","매수","매도",
+                           "단타","스윙","장투","상한가","하한가","코인","비트코인","이더리움"];
+  const STRONG_RE_KW = ["부동산","아파트","오피스텔","상가","전세","월세","분양","청약","재건축","재개발","집값"];
+
+  const hasStrongLove  = STRONG_LOVE_KW.some(k => txt.includes(k));
+  const hasStrongStock = STRONG_STOCK_KW.some(k => txt.includes(k));
+  const hasStrongRE    = STRONG_RE_KW.some(k => txt.includes(k));
+
+  if (hasStrongLove)  return { type: "love",       confidence: 3 };
+  if (hasStrongRE)    return { type: "realestate", confidence: 3 };
+  if (hasStrongStock) return { type: "stock",      confidence: 3 };
+  // ════════════════════════════════════════════════════════════
+
   // [V22.2] stockCount: 키워드 + 동사 의도 + 패턴 매칭 모두 합산
   const stockCount  = stockKeywords.filter(k => txt.includes(k)).length
                     + (investIntentKeywords.some(k => txt.includes(k)) ? 1 : 0)
                     + (stockPatternMatch ? 2 : 0);  // 패턴 매칭 시 강한 신호 (+2)
   const loveCount   = loveKeywords.filter(k => txt.includes(k)).length;
+  const reCount     = realEstateKeywords.filter(k => txt.includes(k)).length;
+  const cryptoHit   = cryptoKeywords.some(k => txt.includes(k)) || cryptoPattern.test(prompt);
 
   // confidence: 0 (애매) ~ 2+ (확실)
   if (reCount >= 1)     return { type: "realestate", confidence: Math.min(3, reCount) };
