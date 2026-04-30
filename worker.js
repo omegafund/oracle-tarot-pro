@@ -1439,24 +1439,28 @@ function buildStockMetrics({ totalScore, riskScore, cleanCards, isLeverage, quer
       }
     }
 
-    const buyHourFmt  = buyHour < 12 ? `오전 ${buyHour}시` : (buyHour === 12 ? '오후 12시' : `오후 ${buyHour-12}시`);
-    const sellHourFmt = sellHour < 12 ? `오전 ${sellHour}시` : (sellHour === 12 ? '오후 12시' : `오후 ${sellHour-12}시`);
+    // [V23.8] 시간대 구간 표현 — 요일/분 고정 제거 (사장님 안)
+    //   사용자 신뢰성 ↑ — "화요일 12시 30분" 빗나갈 위험 회피
+    //   영성 신탁 톤 일치 — 분 단위 X, 시간대 흐름 ✓
+    //   buyHour 기반 4단계 시간대로 매핑
+    const _stockTimeZone = (h) => {
+      if (h <= 10) return '장 초반 변곡 구간 (09:00~10:30)';
+      if (h <= 12) return '오전 중반 추세 구간 (10:30~12:00)';
+      if (h <= 13) return '점심 정체 — 신호 대기 구간 (12:00~13:00)';
+      if (h <= 14) return '오후 재가동 구간 (13:00~14:30)';
+      return '마감 직전 변곡 구간 (14:30~15:30)';
+    };
+    const _stockExitZone = (h) => {
+      if (h <= 10) return '장 초반 차익 실현 구간';
+      if (h <= 12) return '오전 고점 포착 구간';
+      if (h <= 13) return '점심 직후 수익 실현 구간';
+      if (h <= 14) return '오후 후반 청산 구간';
+      return '마감 청산 구간';
+    };
 
-    // 장 변곡 구간 설명 (시간대별 특성)
-    const buyHourDesc = buyHour === 9 ? '장 시작 직후' :
-                       buyHour <= 10 ? '오전 추세 안착 구간' :
-                       buyHour <= 12 ? '오전 반전 타이밍' :
-                       buyHour <= 13 ? '점심 후 방향 확인' :
-                       '장 마감 직전 변곡';
-    const sellHourDesc = sellHour === 9 ? '장 시작 갭 처리' :
-                        sellHour <= 10 ? '초반 급등 차익' :
-                        sellHour <= 12 ? '오전 고점 포착' :
-                        sellHour <= 13 ? '점심 직후 수익 실현' :
-                        '장 마감 청산';
-
-    entryTimingText = `${DAYS[buyDayIdx]}요일 ${buyHourFmt} ${buyMinute}분 (${buyHourDesc})`;
-    exitTimingText  = `${DAYS[sellDayIdx]}요일 ${sellHourFmt} ${sellMinute}분 (${sellHourDesc})`;
-    finalTimingText = `매수: ${entryTimingText} / 매도: ${exitTimingText}`;
+    entryTimingText = _stockTimeZone(buyHour);
+    exitTimingText  = _stockExitZone(sellHour);
+    finalTimingText = `매수 유리 구간: ${entryTimingText} / 매도 유리 구간: ${exitTimingText}`;
 
   } else if (queryType === "crypto") {
     // ──────────────────────────────────────────
@@ -1466,24 +1470,21 @@ function buildStockMetrics({ totalScore, riskScore, cleanCards, isLeverage, quer
     buyMinute  = Math.floor(buyMinute / 5) * 5;
     sellMinute = Math.floor(sellMinute / 5) * 5;
 
-    // 시간대별 코인 특성
-    const cryptoHourDesc = (h) => {
-      if (h <= 3)  return '심야 저점 구간 (변동성 축소)';
-      if (h <= 6)  return '새벽 반전 타이밍';
-      if (h <= 9)  return '아시아 오전 돌파 구간';
-      if (h <= 12) return '아시아 정오 정점';
-      if (h <= 15) return '오후 조정 구간';
-      if (h <= 18) return '유럽 장 개시 모멘텀';
-      if (h <= 21) return '유럽-미국 교차 피크';
-      return '미국 장 심야 변동성 피크';
+    // [V23.8] 코인 시간대 구간 표현 — 24시간 글로벌 변동성 패턴
+    const cryptoZone = (h) => {
+      if (h <= 3)  return '심야 저점 구간 (변동성 축소 시간대)';
+      if (h <= 6)  return '새벽 반전 타이밍 (00~06시 구간)';
+      if (h <= 9)  return '아시아 오전 돌파 구간 (06~09시)';
+      if (h <= 12) return '아시아 정오 정점 구간 (09~12시)';
+      if (h <= 15) return '오후 조정 구간 (12~15시)';
+      if (h <= 18) return '유럽 장 개시 모멘텀 (15~18시)';
+      if (h <= 21) return '유럽-미국 교차 피크 구간 (18~21시)';
+      return '미국 장 심야 변동성 피크 (21~24시)';
     };
 
-    const buyHourFmt  = buyHour < 12 ? `오전 ${buyHour || 12}시` : (buyHour === 12 ? '오후 12시' : `오후 ${buyHour-12}시`);
-    const sellHourFmt = sellHour < 12 ? `오전 ${sellHour || 12}시` : (sellHour === 12 ? '오후 12시' : `오후 ${sellHour-12}시`);
-
-    entryTimingText = `${DAYS[buyDayIdx]}요일 ${buyHourFmt} ${buyMinute}분 (${cryptoHourDesc(buyHour)})`;
-    exitTimingText  = `${DAYS[sellDayIdx]}요일 ${sellHourFmt} ${sellMinute}분 (${cryptoHourDesc(sellHour)})`;
-    finalTimingText = `매수: ${entryTimingText} / 매도: ${exitTimingText}`;
+    entryTimingText = cryptoZone(buyHour);
+    exitTimingText  = cryptoZone(sellHour);
+    finalTimingText = `진입 유리 구간: ${entryTimingText} / 청산 유리 구간: ${exitTimingText}`;
   }
 
   const posLabels = ["과거","현재","미래"];
@@ -2597,13 +2598,14 @@ function buildRealEstateMetrics({ totalScore, riskScore, cleanCards, intent, pro
   // 중개사무소 영업시간 (9~18시)
   if (reHour < 9 || reHour >= 18) reHour = 9 + (reSeed % 9);
 
-  const reHourFmt = reHour < 12 ? `오전 ${reHour}시` : (reHour === 12 ? '오후 12시' : `오후 ${reHour-12}시`);
-  const reHourDesc = reHour <= 10 ? '오전 임장 집중 시간'
-                   : reHour <= 12 ? '오전 상담 최적'
-                   : reHour <= 14 ? '점심 후 매물 확인'
-                   : reHour <= 16 ? '오후 계약 상담 시간'
-                   : '마감 전 의사결정 시간';
-  const dailyActionTiming = `${DAYS_RE[reDayIdx]}요일 ${reHourFmt} ${reMin}분 (${reHourDesc})`;
+  // [V23.8] 부동산 시간대 구간 표현 — 요일/분 고정 제거
+  //   사용자 컨트롤 가능한 영역(중개사무소 방문) → 시간대 표기 OK
+  const reHourZone = reHour <= 10 ? '오전 임장 집중 시간대 (09:30~10:30)'
+                   : reHour <= 12 ? '오전 상담 최적 시간대 (10:30~12:00)'
+                   : reHour <= 14 ? '점심 후 매물 확인 시간대 (13:00~14:00)'
+                   : reHour <= 16 ? '오후 계약 상담 시간대 (14:00~16:00)'
+                   : '마감 전 의사결정 시간대 (16:00~18:00)';
+  const dailyActionTiming = reHourZone;
 
   let timingLabel, timing2, strategy, period, urgency, caution;
   if (intent === "sell") {
@@ -3073,8 +3075,16 @@ function buildLoveMetrics({ totalScore, cleanCards, prompt, loveSubType }) {
   cleanCards.forEach(c => { for (let i = 0; i < c.length; i++) seed += c.charCodeAt(i); });
   const moon = getMoonPhase(cleanCards);
   const { time: numTime, num: numNum } = getNumerologyTime(cleanCards);
-  const timingDay = DAYS_FULL[Math.abs(seed + Math.abs(netScore)) % 7];
-  const finalTimingText = `${timingDay} ${numTime} / ${moon} (수비학 ${numNum})`;
+  // [V23.8] 운세 타이밍 — 요일 고정 → 주간 흐름 모호화
+  const _weeklyZones = [
+    '이번 주 초반 (시작 에너지)',
+    '주중 (전환의 흐름)',
+    '주 후반 (정점 에너지)',
+    '주말 (정리·휴식 시간)',
+    '다음 주 (새 흐름의 시작)'
+  ];
+  const timingZone = _weeklyZones[Math.abs(seed + Math.abs(netScore)) % _weeklyZones.length];
+  const finalTimingText = `${timingZone} · ${numTime} / ${moon} (수비학 ${numNum})`;
 
   const timing = {
     type: loveBlockLevel === 'HARD' ? 'BLOCKED'
@@ -3197,11 +3207,19 @@ function buildFortuneMetrics({ totalScore, cleanCards, prompt }) {
   let seed = 0;
   for (let i = 0; i < (prompt||"").length; i++) seed += prompt.charCodeAt(i);
   cleanCards.forEach(c => { for (let i = 0; i < c.length; i++) seed += c.charCodeAt(i); });
-  const luckyDay = DAYS_FULL[Math.abs(seed) % 7];
+  // [V23.8] 연애 타이밍 — 요일 고정 → 주간 흐름 모호화
+  const _loveZones = [
+    '이번 주 초반 (관계 시작 에너지)',
+    '주중 (감정 교류 시점)',
+    '주 후반 (관계 정점 흐름)',
+    '주말 (감정 정리 시간)',
+    '다음 주 (새 흐름의 시작)'
+  ];
+  const luckyDay = _loveZones[Math.abs(seed) % _loveZones.length];
   // [V2.1] 카드 기반 수비학 시간 + 월상
   const moon = getMoonPhase(cleanCards);
   const { time: numTime, num: numNum } = getNumerologyTime(cleanCards);
-  const finalTimingText = `${luckyDay} ${numTime} / ${moon} (수비학 ${numNum})`;
+  const finalTimingText = `${luckyDay} · ${numTime} / ${moon} (수비학 ${numNum})`;
 
   const cardNarrative = cleanCards.map((c, i) => {
     const m = cardMeaning(c);
