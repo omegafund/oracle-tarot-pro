@@ -4875,7 +4875,7 @@ export default {
       try {
         const body = await request.json();
         const { prompt, cardNames, cardPositions, isReversed, userName,
-                loveSubType, stockSubType, reSubType } = body;
+                loveSubType, stockSubType, reSubType, explicitDomain } = body;
 
         const rawToken = request.headers.get("x-session-token") || "";
         const isPaid   = await verifyToken(rawToken, env.TOKEN_SECRET);
@@ -4888,14 +4888,33 @@ export default {
         const leverageKeywords = ["레버리지","3배","2배","인버스"];
         const isLeverage = leverageKeywords.some(k => txt.includes(k));
 
-        const queryType_raw = classifyByKeywords(prompt);
-        // [V2.2 Phase5] 키워드 confidence=0 → LLM 분류 호출 (애매한 질문만)
-        //   이 경우에만 약 0.3~0.8초 추가 지연 발생 (대부분 질문은 해당 없음)
-        let queryType = queryType_raw.type;
-        if (queryType_raw.confidence === 0 && env.GEMINI_API_KEY) {
-          const llmType = await classifyByLLM(prompt, env.GEMINI_API_KEY);
-          if (llmType) queryType = llmType;
+        // ══════════════════════════════════════════════════════════════
+        // [V25.0] 명시 카테고리 우선 — 사장님 안 (자동 분류 폐기)
+        //   클라이언트가 explicitDomain을 보내면 그대로 사용
+        //   → classifyByKeywords / LLM 호출 모두 건너뜀
+        //   → 자연어 분류 버그 0% (V21~V24의 5회 누적 버그 원천 차단)
+        //
+        //   유효 도메인: love / stock / realestate / crypto / life
+        //   클라 'general' → 서버 'life'로 매핑 (기존 호환)
+        // ══════════════════════════════════════════════════════════════
+        const _validDomains = ['love', 'stock', 'realestate', 'crypto', 'life'];
+        const _mappedDomain = explicitDomain === 'general' ? 'life'
+                            : (explicitDomain || '').toLowerCase();
+
+        let queryType;
+        if (_mappedDomain && _validDomains.includes(_mappedDomain)) {
+            // 명시 도메인 사용 — 분류 함수 호출 0회
+            queryType = _mappedDomain;
+        } else {
+            // explicitDomain 없을 때만 자동 분류 폴백 (역호환)
+            const queryType_raw = classifyByKeywords(prompt);
+            queryType = queryType_raw.type;
+            if (queryType_raw.confidence === 0 && env.GEMINI_API_KEY) {
+                const llmType = await classifyByLLM(prompt, env.GEMINI_API_KEY);
+                if (llmType) queryType = llmType;
+            }
         }
+        // ══════════════════════════════════════════════════════════════
         const { totalScore, riskScore, cleanCards, reversedFlags, synergies } = calcCardScores(cardNames, isReversed, queryType);
 
         let metrics;
