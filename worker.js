@@ -2724,21 +2724,32 @@ function buildStockMetrics({ totalScore, riskScore, cleanCards, isLeverage, quer
   // ══════════════════════════════════════════════════════════════
   let _uncOverride = null;
   const _gateTriggered = riskGate.triggered;
-  const _gateReason = volGate.isHighVolatility
-    ? `변동성·전환 카드 우세 (risk+vol 평균 ${volGate.composite}점, 임계값 55)`
-    : `관망 카드 합산 가중치 ${uncGate.sum}점 (임계값 200)`;
+  // [V24.5] _gateReason — 실제 발동 룰 정확히 반영 (모순 메시지 차단)
+  //   기존: 평균 53점인데 "임계값 55 초과"라고 거짓 표시
+  //   해결: volGate.reason (룰 A 자동 인식) / uncGate.reason / 다수결 사유 분기
+  const _gateReason = (() => {
+    if (volGate.isHighVolatility && volGate.reason) return volGate.reason;
+    if (uncGate.isHighUncertainty && uncGate.reason) return uncGate.reason;
+    if (riskGate.decisionMajority && riskGate.decisionMajority.majorityCaution) {
+      const dm = riskGate.decisionMajority;
+      return `CARD_DECISION_MAP 다수결 — HOLD ${dm.hold}장 + SELL ${dm.sell}장 = ${dm.cautionCount}장 신중 카드 우세 (BUY ${dm.buy}장)`;
+    }
+    return '복합 게이트 발동';
+  })();
 
   if (_gateTriggered && stockIntent === 'buy') {
     _uncOverride = {
       execMode: 'WATCH',
       decisionPosition: volGate.isHighVolatility
         ? '검증 후 진입 (변동성 우세)'
-        : '검증 후 진입 (관망 카드 우세)',
+        : (riskGate.decisionMajority?.majorityCaution
+            ? '검증 후 진입 (다수결 신중 카드)'
+            : '검증 후 진입 (관망 카드 우세)'),
       decisionStrategy: '객관적 트리거 충족 시에만 진입 — 하락 시 즉시 배제',
       diagnosis: `${_gateReason} — 신호 신뢰도 미달 구간, 하락 가능성 동시 대비 필요`,
       verdict: volGate.isHighVolatility
         ? '변동성 카드 우세 — 진입 보류 + 하락 시나리오 우선 점검'
-        : '관망 카드 우세 — 추세 검증 전 진입 보류 권장',
+        : '관망/신중 카드 우세 — 추세 검증 전 진입 보류 권장',
       timingNote: '진입 트리거 충족 시 — 고정 시간 없음',
       entryTriggers: [
         { stage: '0차', action: '현재 진입 보류 — 0% 포지션 유지' },
@@ -2747,7 +2758,29 @@ function buildStockMetrics({ totalScore, riskScore, cleanCards, isLeverage, quer
         { stage: '청산', action: '평균 단가 -5% 이탈 또는 추세 변경 시 즉시 정리' }
       ],
       // [V24.3] 신규 — 하락 시나리오 트리거
-      exitTriggers: buildExitTriggers('buy', riskGate.level)
+      exitTriggers: buildExitTriggers('buy', riskGate.level),
+      // [V24.5] 게이트 발동 시 narrative 덮어쓰기 — 자기모순 차단
+      //   사장님 진단: cardEvidence/outcomePrediction/interpretText가
+      //                gate 결정 무시하고 매수 권유 톤 그대로 출력
+      //   해결: gate 발동 시 4개 텍스트 모두 일관된 신중 톤으로 교체
+      cardEvidence: (() => {
+        if (volGate.isHighVolatility && volGate.extremeCardName) {
+          return `${volGate.extremeCardName}의 변동성·전환 에너지가 단독으로 진입 신뢰도를 흐리고 있습니다.\n다른 카드의 긍정 신호가 있어도 이 에너지가 정리되기 전까지 진입 보류가 안전합니다.`;
+        }
+        if (riskGate.decisionMajority?.majorityCaution) {
+          const dm = riskGate.decisionMajority;
+          return `3장 중 ${dm.cautionCount}장이 신중·관망 카드입니다 (HOLD ${dm.hold}장 + SELL ${dm.sell}장).\n점수 합산은 양호해 보여도, 카드의 본질 의미가 진입 보류를 가리키고 있습니다.`;
+        }
+        return `관망 카드의 합산 가중치가 진입 신뢰도를 흐리고 있습니다.\n점수만으로는 매수처럼 보여도, 카드의 본질 메시지는 검증 후 진입을 권합니다.`;
+      })(),
+      outcomePrediction: `👉 지금 진입하면 '점수만 보고 카드 의미를 무시한 진입'이 되어 변동성에 노출되고\n👉 객관적 트리거 충족 후 진입이 손익비 상 훨씬 유리한 구조입니다`,
+      gateAwareInterpretation:
+        `${volGate.isHighVolatility
+          ? `${volGate.extremeCardName}의 변동성 에너지가 단독으로 점사 신뢰도를 낮추고 있는 구간입니다.`
+          : `카드 다수가 신중·관망 메시지를 보내는 구간입니다.`}\n` +
+        `점수 합산만으로는 긍정 시그널처럼 보일 수 있으나, 카드의 본질 의미와 게이트 발동 사실이 진입 보류를 권하고 있습니다.\n` +
+        `객관적 트리거가 충족될 때까지 0% 포지션을 유지하고, 하락 시나리오를 동시에 점검하십시오.`,
+      gateAwareCriticalClosing: `점수가 아닌 카드의 본질 의미를 따르십시오 — 게이트 발동 구간에서는 인내가 최고의 전략입니다.`
     };
   } else if (_gateTriggered && stockIntent === 'sell') {
     _uncOverride = {
@@ -2761,10 +2794,32 @@ function buildStockMetrics({ totalScore, riskScore, cleanCards, isLeverage, quer
       timingNote: '반등 신호 미확인 — 즉시 청산보다 분할 청산 권장',
       entryTriggers: null,
       // [V24.3] 매도 의도일 때도 exit 시나리오 제공
-      exitTriggers: buildExitTriggers('sell', riskGate.level)
+      exitTriggers: buildExitTriggers('sell', riskGate.level),
+      // [V24.5] sell 의도 시도 동일 narrative 덮어쓰기
+      cardEvidence: `현재 카드 조합은 청산 타이밍 신호로도 신뢰도가 낮습니다.\n바닥 확인 전 일괄 청산은 손실을 키울 수 있어, 분할 정리가 안전합니다.`,
+      outcomePrediction: `👉 지금 일괄 청산하면 '바닥 직전 매도' 위험이 있고\n👉 반등 신호 확인 + 분할 청산이 손실을 줄이는 구조입니다`,
+      gateAwareInterpretation:
+        `청산 타이밍 카드 조합이 명확하지 않은 구간입니다.\n게이트 발동은 추가 매도보다 흐름 확인이 우선임을 가리킵니다.\n반등 신호 미확인 시 분할 청산으로 리스크를 분산하십시오.`,
+      gateAwareCriticalClosing: `위기 구간일수록 점진적 정리가 일괄 매도보다 안전합니다.`
     };
   }
   // ══════════════════════════════════════════════════════════════
+
+  // [V24.5 PATCH 5] 게이트 발동 시 criticalInterpretation 강제 교체
+  //   기존: BUY 시그널 기반 → "상승 모멘텀 초기 신호" / "분할 진입 핵심" — 매수 권유 톤
+  //   문제: 게이트 발동(0% 비중)인데 매수 권유 톤 → 자기모순
+  //   해결: 신중 메시지 3줄로 완전 교체
+  if (_uncOverride) {
+    const _gateGeneralMsg = volGate.isHighVolatility
+      ? `${volGate.extremeCardName || '변동성 카드'}의 단독 변동성 신호가 진입 신뢰도를 낮추고 있습니다.`
+      : (riskGate.decisionMajority?.majorityCaution
+          ? `3장 중 ${riskGate.decisionMajority.cautionCount}장이 신중·관망 카드 — 점수 합산보다 본질 의미가 우선합니다.`
+          : `관망 카드 가중치가 진입 신뢰도를 흐리고 있습니다.`);
+    const _gateFlavorMsg = `객관적 트리거(거래량·이평선·추세) 충족 전까지 0% 포지션을 유지하십시오.`;
+    const _gateClosing = _uncOverride.gateAwareCriticalClosing
+      || `점수가 아닌 카드의 본질 의미를 따르십시오 — 게이트 발동 구간에서는 인내가 최고의 전략입니다.`;
+    criticalInterpretation = `${_gateGeneralMsg}\n${_gateFlavorMsg}\n${_gateClosing}`;
+  }
 
   return {
     queryType,
@@ -2791,8 +2846,11 @@ function buildStockMetrics({ totalScore, riskScore, cleanCards, isLeverage, quer
       target:    '추세 확정 후 재설정',
       note:      '⚠️ 관망 카드 우세 — 객관적 트리거 충족 전 진입 자제'
     } : position,
+    // [V24.5 PATCH 4] finalOracle — 게이트 발동 시 gateAwareInterpretation으로 완전 교체
+    //   기존: "강한 상승 에너지" + 경고 추가 → 자기모순
+    //   해결: 게이트 발동 시 원본 텍스트 버리고 gateAwareInterpretation 사용
     finalOracle: _uncOverride
-      ? `${finalOracle}\n\n⚠️ [불확실성 게이트] ${_uncOverride.diagnosis} — 객관적 진입 트리거 충족 후 진입을 권장합니다.`
+      ? (_uncOverride.gateAwareInterpretation || `${finalOracle}\n\n⚠️ [게이트 발동] ${_uncOverride.diagnosis}`)
       : finalOracle,
     isLeverage,
     // [V20.0] 5계층 데이터 (클라이언트 렌더러용)
@@ -2807,8 +2865,9 @@ function buildStockMetrics({ totalScore, riskScore, cleanCards, isLeverage, quer
                           : (_blockDecision ? _blockDecision.strategy  : decisionStrategy),
         diagnosis:        _uncOverride ? _uncOverride.diagnosis
                           : (_blockDecision ? _blockDecision.diagnosis : diagnosis),
-        cardEvidence,
-        outcomePrediction,
+        // [V24.5 PATCH 3] 게이트 발동 시 narrative 덮어쓰기 — 자기모순 차단
+        cardEvidence:     _uncOverride ? _uncOverride.cardEvidence : cardEvidence,
+        outcomePrediction: _uncOverride ? _uncOverride.outcomePrediction : outcomePrediction,
         entryTriggers:    _uncOverride ? _uncOverride.entryTriggers
                           : (_blockDecision ? _blockDecision.entryTriggers : entryTriggers),
         // [V24.3] exitTriggers — 하락 시나리오 단계별 행동 (사장님 진단)
