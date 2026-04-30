@@ -5188,6 +5188,56 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
                     </div>
                 </div>
 
+                <!-- [V23.8-C] 🎯 지금 해야 할 행동 (즉시 행동 트리거) -->
+                ${(() => {
+                    const im = fi._server?.layers?.actionGuide?.immediate
+                            || fi._server?.actionGuide?.immediate
+                            || (() => {
+                                // 폴백 — Worker 데이터 없으면 score 기반 자체 생성
+                                const tp = fi._server?.totalScore ?? 0;
+                                if (tp >= 5) return {
+                                    today:     '진솔한 메시지 또는 만남 제안 (구체적으로)',
+                                    forbidden: '집착적 연락 / 일방적 결정 통보 / 과도한 기대 표현',
+                                    decision:  '긍정 반응 → 다음 단계 진전 / 미온적이면 → 24시간 여유'
+                                };
+                                if (tp >= 0) return {
+                                    today:     '가벼운 안부 메시지 1회 시도 (짧게)',
+                                    forbidden: '감정 표현 / 긴 메시지 / 답 없는 상태에서 추가 연락',
+                                    decision:  '답장 오면 → 대화 이어가기 / 반응 없으면 → 48시간 관망'
+                                };
+                                return {
+                                    today:     '오늘은 연락 시도 없이 자기 회복에 집중',
+                                    forbidden: '감정 표현·관계 정의 시도·반복 연락',
+                                    decision:  '48시간 후 감정이 가라앉으면 다시 점검'
+                                };
+                            })();
+                    return `
+                    <div style="margin-bottom:14px; padding:14px 16px;
+                                background: linear-gradient(135deg, rgba(231,76,60,0.08), rgba(46,204,113,0.06));
+                                border: 1px solid rgba(241,196,15,0.4);
+                                border-left: 4px solid #F1C40F;
+                                border-radius: 8px;">
+                        <div style="color:#F1C40F; font-size:0.86rem; font-weight:900;
+                                    letter-spacing:0.08em; margin-bottom:10px;">
+                            🎯 지금 해야 할 행동 (핵심)
+                        </div>
+                        <div style="font-size:0.85rem; color:rgba(255,255,255,0.92); line-height:1.85;">
+                            <div style="margin-bottom:8px;">
+                                <span style="color:#2ecc71; font-weight:800;">👉 오늘 기준 행동:</span><br>
+                                &nbsp;&nbsp;→ <b style="color:#FFE08A;">${im.today}</b>
+                            </div>
+                            <div style="margin-bottom:8px;">
+                                <span style="color:#E74C3C; font-weight:800;">👉 금지 행동:</span><br>
+                                &nbsp;&nbsp;→ ${im.forbidden}
+                            </div>
+                            <div>
+                                <span style="color:#3498DB; font-weight:800;">👉 판단 기준:</span><br>
+                                &nbsp;&nbsp;→ ${im.decision}
+                            </div>
+                        </div>
+                    </div>`;
+                })()}
+
                 <!-- [V19.5] ⚡ 타이밍 — 조건형 + 수비학 병기 -->
                 <div style="margin-bottom:14px; padding-bottom:12px; border-bottom:1px solid rgba(46,204,113,0.2);">
                     <div style="color:#2ecc71; font-size:0.82rem; font-weight:900; letter-spacing:0.1em; margin-bottom:8px;">⚡ 진입 타이밍</div>
