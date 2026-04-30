@@ -3306,49 +3306,65 @@ function getCardBasedTiming(cards, queryType, intent, qRaw) {
 
     // ────────────────────────────────
     // 코인 (24h 거래 — 장중 개념 없음)
+    //   [V23.8-D] 요일 고정 제거 → 흐름 표현
     // ────────────────────────────────
     if (queryType === 'crypto') {
         const coinBuyHours  = ["02:00~04:00 (새벽 저유동 반등)", "09:00~10:00 (아시아 개장)", "14:00~15:00 (유럽 프리마켓)", "21:00~23:00 (미국 개장 직전)"];
         const coinSellHours = ["06:00~07:00 (아시아 고점)", "11:00~12:00 (오전 고점권)", "17:00~18:00 (유럽 장중 피크)", "23:30~00:30 (미국 장중 피크)"];
-        const days7 = ["월요일", "화요일", "수요일", "목요일", "금요일", "토요일", "일요일"];
-        const bestDay = pick(days7);
-        const bestDay2 = days7[(Math.abs(seed) + 2) % 7];
+        const cryptoZones = [
+            '이번 주 초반 흐름',
+            '주중 변동성 구간',
+            '주 후반 정점 시기',
+            '주말 변동 구간',
+            '다음 거래 흐름'
+        ];
+        const bestZone  = pick(cryptoZones);
+        const bestZone2 = cryptoZones[(Math.abs(seed) + 2) % cryptoZones.length];
 
         if (intent === 'sell') {
             if (totalPower <= -3) return `📅 매도 타이밍: 즉시 또는 다음 반등 시 청산 권고 — 카드 에너지 하락 우세`;
-            return `📅 코인 매도 타이밍: ${bestDay} ${pick(coinSellHours)} · 이후 ${bestDay2}까지 분할 매도 고려`;
+            return `📅 코인 매도 타이밍: ${bestZone} ${pick(coinSellHours)} · 이후 ${bestZone2}까지 분할 매도 고려`;
         }
         // 매수 or 기본
         if (totalPower <= -5) return `📅 코인 매수 타이밍: 진입 절대 금지 — 카드 붕괴 에너지 감지. 저점 확인 후 재판단 요망`;
-        if (totalPower <= 0)  return `📅 코인 매수 타이밍: ${bestDay} ${pick2(coinBuyHours)} 소량 분할 (카드 에너지 중립, 변동성 주의)`;
-        return `📅 코인 매수 타이밍: ${bestDay} ${pick(coinBuyHours)} · ${bestDay2} ${pick2(coinBuyHours)} 분할 진입 유효`;
+        if (totalPower <= 0)  return `📅 코인 매수 타이밍: ${bestZone} ${pick2(coinBuyHours)} 소량 분할 (카드 에너지 중립, 변동성 주의)`;
+        return `📅 코인 매수 타이밍: ${bestZone} ${pick(coinBuyHours)} · ${bestZone2} ${pick2(coinBuyHours)} 분할 진입 유효`;
     }
 
     // ────────────────────────────────
     // 주식 (장중 시간 기반)
+    //   [V23.8-D] 요일 고정 제거 → 흐름 표현
     // ────────────────────────────────
     const stockBuySlots  = ["09:15 (장초반 골든타임)", "10:00~10:30 (오전 추세 안착)", "13:30~14:00 (오후 변곡 초입)", "14:30~15:00 (장마감 전 눌림)"];
     const stockSellSlots = ["09:30~10:00 (갭 상승 익절)", "11:00~11:30 (오전 고점권)", "14:00~14:30 (오후 저항권)", "15:10~15:20 (장마감 직전 매도)"];
     const extSlots       = ["08:30 (장전 시간외)", "16:00~16:40 (장후 시간외 단일가)"];
-    const weekdays       = ["월요일", "화요일", "수요일", "목요일", "금요일"];
-    const bestDay        = pick(weekdays);
-    const bestDay2       = weekdays[(Math.abs(seed) + 2) % 5];
+    const stockZones = [
+        '이번 주 거래일',
+        '주중 변곡 구간',
+        '주 후반 흐름',
+        '다음 거래일',
+        '다가오는 거래 흐름'
+    ];
+    const bestZone  = pick(stockZones);
+    const bestZone2 = stockZones[(Math.abs(seed) + 2) % stockZones.length];
 
     if (intent === 'sell') {
         if (totalPower <= -5) return `📅 매도 타이밍: 즉시 손절 검토 — 카드 붕괴 에너지. ${pick(stockSellSlots)} 시장가 매도 고려`;
-        if (totalPower <= 0)  return `📅 매도 타이밍: ${bestDay} ${pick(stockSellSlots)} 분할 매도 (카드 에너지 약세, 추가 보유 리스크 있음)`;
-        return `📅 매도 타이밍: ${bestDay} ${pick(stockSellSlots)} 1차 익절 · ${bestDay2} ${pick2(stockSellSlots)} 잔량 매도`;
+        if (totalPower <= 0)  return `📅 매도 타이밍: ${bestZone} ${pick(stockSellSlots)} 분할 매도 (카드 에너지 약세, 추가 보유 리스크 있음)`;
+        return `📅 매도 타이밍: ${bestZone} ${pick(stockSellSlots)} 1차 익절 · ${bestZone2} ${pick2(stockSellSlots)} 잔량 매도`;
     }
 
     // 매수
     if (totalPower <= -5) return `📅 매수 타이밍: 진입 절대 금지 — 카드 에너지 극히 부정적. 관망 후 재판단 요망`;
-    if (totalPower <= 0)  return `📅 매수 타이밍: ${bestDay} ${pick2(stockBuySlots)} 극소량만 (카드 에너지 부정적, 손절선 필수)`;
-    if (totalPower <= 5)  return `📅 매수 타이밍: ${bestDay} ${pick(stockBuySlots)} 분할 매수 · 혹은 ${pick(extSlots)} 장외 진입 고려`;
-    return `📅 매수 타이밍: ${bestDay} ${pick(stockBuySlots)} 1차 · ${bestDay2} ${pick2(stockBuySlots)} 2차 분할 진입 유효`;
+    if (totalPower <= 0)  return `📅 매수 타이밍: ${bestZone} ${pick2(stockBuySlots)} 극소량만 (카드 에너지 부정적, 손절선 필수)`;
+    if (totalPower <= 5)  return `📅 매수 타이밍: ${bestZone} ${pick(stockBuySlots)} 분할 매수 · 혹은 ${pick(extSlots)} 장외 진입 고려`;
+    return `📅 매수 타이밍: ${bestZone} ${pick(stockBuySlots)} 1차 · ${bestZone2} ${pick2(stockBuySlots)} 2차 분할 진입 유효`;
 }
 
 // ════════════════════════════════════
-// 🔥 운세 질문용 — 카드 power 기반 기운 강한 날/시간 산출
+// 🔥 운세 질문용 — 카드 power 기반 기운 강한 시간대 산출
+//    [V23.8-D] 요일/특정 시각 고정 제거 → 시간대 흐름 (사장님 안)
+//    이유: 화요일·금요일 등 요일 고정 시 사용자 시점과 어긋날 위험
 // ════════════════════════════════════
 function getLuckyTiming(cards, qRaw) {
     const totalPower = calcCardPower(cards);
@@ -3359,22 +3375,37 @@ function getLuckyTiming(cards, qRaw) {
     const pick  = arr => arr[Math.abs(seed) % arr.length];
     const pick2 = arr => arr[Math.abs(seed + totalPower + 13) % arr.length];
 
-    const weekdays = ["월요일", "화요일", "수요일", "목요일", "금요일", "토요일", "일요일"];
-    const hours    = ["오전 6~8시 (새벽 기운)", "오전 10~12시 (활동 정점)", "오후 2~4시 (안정 흐름)", "오후 6~8시 (전환 기운)", "밤 10~12시 (내면 집중)"];
-    const moonPhases = ["초승달 뜨는 날", "보름달 뜨는 날", "달이 없는 그믐 전날"];
+    // 요일 → 주간 흐름 (고정 X)
+    const weeklyZones = [
+        '이번 주 초반 흐름',
+        '주중 전환 구간',
+        '주 후반 정점 시기',
+        '주말 정리 흐름',
+        '다가오는 보름 무렵',
+        '다음 주 초반 흐름'
+    ];
+    // 시각 → 시간대 (고정 X)
+    const timeZones = [
+        '오전 시간대 (활동 정점 구간)',
+        '오후 초반 시간대 (안정 흐름)',
+        '오후 후반 시간대 (전환 기운)',
+        '저녁 시간대 (조화 흐름)',
+        '밤 시간대 (내면 집중)'
+    ];
+    const moonPhases = ['초승달 무렵', '보름달 무렵', '그믐 전후'];
 
-    const bestDay  = pick(weekdays);
-    const bestDay2 = weekdays[(Math.abs(seed) + 3) % 7];
-    const bestHour = pick(hours);
+    const bestZone  = pick(weeklyZones);
+    const bestZone2 = weeklyZones[(Math.abs(seed) + 3) % weeklyZones.length];
+    const bestTime  = pick(timeZones);
 
     if (totalPower >= 8) {
-        return `✨ 기운이 가장 강한 때: <strong>${bestDay} ${bestHour}</strong> — 카드 에너지가 매우 높습니다. 중요한 결정이나 만남은 이 시간대가 최적입니다.`;
+        return `✨ 기운이 가장 강한 시기: <strong>${bestZone} · ${bestTime}</strong> — 카드 에너지가 매우 높습니다. 중요한 결정이나 만남은 이 흐름에 맞추는 것이 최적입니다.`;
     } else if (totalPower >= 3) {
-        return `✨ 기운이 강한 날: <strong>${bestDay}, ${bestDay2}</strong> · 특히 <strong>${bestHour}</strong>에 긍정 에너지가 집중됩니다.`;
+        return `✨ 기운이 강한 흐름: <strong>${bestZone}</strong> 또는 <strong>${bestZone2}</strong> · 특히 <strong>${bestTime}</strong>에 긍정 에너지가 집중됩니다.`;
     } else if (totalPower >= 0) {
-        return `✨ 기운의 전환점: <strong>${pick2(moonPhases)}</strong> 이후 ${bestDay}부터 에너지가 서서히 회복됩니다. <strong>${bestHour}</strong>에 명상이나 집중을 권합니다.`;
+        return `✨ 기운의 전환점: <strong>${pick2(moonPhases)}</strong> 이후 ${bestZone}부터 에너지가 서서히 회복됩니다. <strong>${bestTime}</strong>에 명상이나 집중을 권합니다.`;
     } else {
-        return `✨ 기운 회복 시기: 현재 카드 에너지가 낮습니다. <strong>${bestDay2} ${pick2(hours)}</strong> 이후 행동에 나서는 것이 유리합니다. 무리한 결정은 삼가세요.`;
+        return `✨ 기운 회복 시기: 현재 카드 에너지가 낮습니다. <strong>${bestZone2}</strong>의 <strong>${pick2(timeZones)}</strong> 이후 행동에 나서는 것이 유리합니다. 무리한 결정은 삼가세요.`;
     }
 }
 
