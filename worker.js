@@ -201,6 +201,108 @@ function detectUncertaintyGate(cardNames) {
 }
 
 // ══════════════════════════════════════════════════════════════════
+// [V24.3] VOLATILITY GATE — 고변동·고리스크 카드 게이트
+//   사장님 진단: Death + Five of Wands처럼 uncertainty는 중간이지만
+//                risk/vol이 높은 조합은 기존 게이트로 못 잡음
+//   해결: risk + vol 평균이 임계값 초과 시 별도 게이트 발동
+//   이 게이트는 uncertainty와 독립적으로 작동 — OR 조건
+// ══════════════════════════════════════════════════════════════════
+function detectVolatilityGate(cardNames) {
+  let totalRisk = 0, totalVol = 0, count = 0;
+  cardNames.forEach(name => {
+    const e = CARD_SCORE_MULTI[name];
+    if (!e) return;
+    totalRisk += (e.risk ?? 50);
+    totalVol  += (e.vol ?? 50);
+    count++;
+  });
+  // 미정의 카드는 50으로 보정
+  const missing = cardNames.length - count;
+  totalRisk += missing * 50;
+  totalVol  += missing * 50;
+  const avgRisk = totalRisk / cardNames.length;
+  const avgVol  = totalVol  / cardNames.length;
+  const composite = (avgRisk + avgVol) / 2;  // 0~100 통합 변동성 지수
+
+  // 임계값:
+  //   composite >= 70 → EXTREME (Tower, Ten of Swords 단독 카드 수준)
+  //   composite >= 55 → HIGH    (Five of Wands + Death 등 고변동 조합)
+  //   composite >= 45 → MEDIUM
+  //   else → LOW
+  const isHigh = composite >= 55;
+  return {
+    avgRisk:    Math.round(avgRisk),
+    avgVol:     Math.round(avgVol),
+    composite:  Math.round(composite),
+    isHighVolatility: isHigh,
+    level:      composite >= 70 ? 'EXTREME'
+              : composite >= 55 ? 'HIGH'
+              : composite >= 45 ? 'MEDIUM' : 'LOW',
+    reason:     isHigh ? `변동성·리스크 카드 합산 평균 ${Math.round(composite)}점 (임계값 55) — 급변 가능성 높음` : null
+  };
+}
+
+// ══════════════════════════════════════════════════════════════════
+// [V24.3] 통합 리스크 게이트 — uncertainty + volatility OR 조건
+//   둘 중 하나라도 발동 시 진입 차단 + 하락 시나리오 안내
+// ══════════════════════════════════════════════════════════════════
+function detectRiskGate(cardNames) {
+  const unc = detectUncertaintyGate(cardNames);
+  const vol = detectVolatilityGate(cardNames);
+  const triggered = unc.isHighUncertainty || vol.isHighVolatility;
+
+  // 리스크 등급 통합 — 두 게이트 중 더 높은 쪽
+  const levelRank = { 'LOW': 0, 'MEDIUM': 1, 'HIGH': 2, 'EXTREME': 3 };
+  const maxLevel = (levelRank[unc.level] >= levelRank[vol.level]) ? unc.level : vol.level;
+
+  // 리스크 레이블 한글화 — 기존 "보통" 디폴트 오류 차단
+  const riskLabelKo =
+    maxLevel === 'EXTREME' ? '매우 높음 (변동성·전환 카드 우세)'
+  : maxLevel === 'HIGH'    ? '높음 (변동성 또는 불확실성 우세)'
+  : maxLevel === 'MEDIUM'  ? '보통~높음 (주의)'
+                           : '보통';
+
+  return {
+    triggered,
+    uncertainty: unc,
+    volatility:  vol,
+    level:       maxLevel,
+    riskLabelKo,
+    primaryReason: vol.isHighVolatility ? vol.reason : (unc.reason || '리스크 정상')
+  };
+}
+
+// ══════════════════════════════════════════════════════════════════
+// [V24.3] 하락 시나리오 트리거 — Death/Tower/Five of Wands 같은 카드 대응
+//   사장님 진단: 기존엔 상승 시 진입만 있고 하락 시 대응 없음 (치명적)
+//   해결: exitTriggers 배열 — 하락 가속 시 단계별 행동 지침
+// ══════════════════════════════════════════════════════════════════
+function buildExitTriggers(intent, riskLevel) {
+  if (intent === 'sell') {
+    // 매도 의도일 땐 별도 다른 흐름
+    return [
+      { stage: '하락 가속',  action: '추가 음봉 + 거래량 +50% 시 → 잔량 즉시 시장가 청산' },
+      { stage: '추세 확정',  action: '20일선 이탈 + 종가 마감 → 잔여 포지션 100% 정리' },
+      { stage: '바닥 탐색',  action: '추세 하락 확정 후 매도 완료 → 다음 사이클까지 관망' }
+    ];
+  }
+  // 매수 의도 (기본) — 진입 안 한 상태이지만 기존 보유분 대응 + 하락 회피 룰
+  if (riskLevel === 'EXTREME' || riskLevel === 'HIGH') {
+    return [
+      { stage: '하락 1차',   action: '전저점 이탈 시 → 신규 진입 완전 배제, 모든 매수 트리거 무효화' },
+      { stage: '하락 가속',  action: '거래량 +50% 동반 음봉 발생 시 → 24시간 추가 관망 강제' },
+      { stage: '추세 확정',  action: '20일선 이탈 + 음봉 마감 → 다음 점사까지 관망 유지' },
+      { stage: '바닥 신호',  action: 'Doji 또는 망치형 + 거래량 +30% 양봉 출현 시 → 재진입 검토 가능' }
+    ];
+  }
+  // 일반 위험 수준
+  return [
+    { stage: '하락 회피',   action: '전저점 -3% 이탈 시 → 진입 트리거 무효화, 다음 점사까지 관망' },
+    { stage: '추세 확정',   action: '20일선 이탈 시 → 시장 전체 흐름 재평가' }
+  ];
+}
+
+// ══════════════════════════════════════════════════════════════════
 // [V23.4] calcScore — 카드 배열에서 도메인별 점수 계산
 //   cards: 문자열 배열 (cleanCards) — 기존 구조 그대로 사용
 //   key:   "base" | "love" | "risk" | "vol"
@@ -1342,11 +1444,15 @@ function buildStockMetrics({ totalScore, riskScore, cleanCards, isLeverage, quer
   const revFlags = reversedFlags || [false, false, false];
 
   // ══════════════════════════════════════════════════════════════
-  // [V24.0] UNCERTAINTY GATE — 관망 카드 우세 시 강제 관망
-  //   사장님 진단: "High Priestess(관망 카드)인데 매수 권유" 모순 차단
-  //   규칙: 3장 합산 uncertainty ≥ 200 → 진입 차단, '검증 후 진입' 모드
+  // [V24.0+V24.3] RISK GATE — uncertainty + volatility 통합 게이트
+  //   V24.0: 관망 카드(High Priestess, Moon, Hermit) 우세 시 차단
+  //   V24.3: 추가 — Death/Tower/Five of Wands 같은 고변동·고리스크 카드 조합도 차단
+  //   사장님 진단: Five of Wands+Death = 변동성 명백한데 기존 게이트는 못 잡음
+  //   해결: risk+vol 평균 ≥ 55 시 별도 게이트 발동 (uncertainty와 OR 조건)
   // ══════════════════════════════════════════════════════════════
-  const uncGate = detectUncertaintyGate(cleanCards);
+  const riskGate = detectRiskGate(cleanCards);
+  const uncGate = riskGate.uncertainty;  // 하위 호환 — 기존 코드가 uncGate 참조
+  const volGate = riskGate.volatility;
   // ══════════════════════════════════════════════════════════════
 
   let trend = "중립";
@@ -2501,36 +2607,55 @@ function buildStockMetrics({ totalScore, riskScore, cleanCards, isLeverage, quer
   })();
 
   // ══════════════════════════════════════════════════════════════
-  // [V24.0] UNCERTAINTY GATE OVERRIDE
-  //   기존 엔진이 매수 권유로 결정해도, uncertainty 합산이 임계값 초과면
-  //   강제로 '검증 후 진입' 모드로 변환
+  // [V24.0+V24.3] RISK GATE OVERRIDE
+  //   uncertainty OR volatility 게이트 발동 시 강제 관망 + 하락 시나리오 제공
+  //   사장님 진단 (V24.3):
+  //     ① 기존엔 상승 트리거만 있고 하락 대응 없음 (치명적)
+  //     ② 리스크 등급이 '보통' 디폴트로 잘못 표시됨
+  //   해결:
+  //     ① exitTriggers 배열 추가 — 하락 가속 시 단계별 행동
+  //     ② riskGate.riskLabelKo로 정확한 리스크 라벨 산출
   // ══════════════════════════════════════════════════════════════
   let _uncOverride = null;
-  if (uncGate.isHighUncertainty && stockIntent === 'buy') {
+  const _gateTriggered = riskGate.triggered;
+  const _gateReason = volGate.isHighVolatility
+    ? `변동성·전환 카드 우세 (risk+vol 평균 ${volGate.composite}점, 임계값 55)`
+    : `관망 카드 합산 가중치 ${uncGate.sum}점 (임계값 200)`;
+
+  if (_gateTriggered && stockIntent === 'buy') {
     _uncOverride = {
-      // 진입 차단으로 표시 변경
       execMode: 'WATCH',
-      decisionPosition: '검증 후 진입 (관망 카드 우세)',
-      decisionStrategy: '관망 카드 합산 가중치 임계값 초과 — 객관적 트리거 충족 시에만 진입',
-      diagnosis: `현재 카드 조합의 불확실성 점수 합계 ${uncGate.sum}점 (임계값 200) — 신호 신뢰도 미달 구간`,
-      verdict: '관망 카드 우세 — 추세 검증 전 진입 보류 권장',
+      decisionPosition: volGate.isHighVolatility
+        ? '검증 후 진입 (변동성 우세)'
+        : '검증 후 진입 (관망 카드 우세)',
+      decisionStrategy: '객관적 트리거 충족 시에만 진입 — 하락 시 즉시 배제',
+      diagnosis: `${_gateReason} — 신호 신뢰도 미달 구간, 하락 가능성 동시 대비 필요`,
+      verdict: volGate.isHighVolatility
+        ? '변동성 카드 우세 — 진입 보류 + 하락 시나리오 우선 점검'
+        : '관망 카드 우세 — 추세 검증 전 진입 보류 권장',
       timingNote: '진입 트리거 충족 시 — 고정 시간 없음',
       entryTriggers: [
         { stage: '0차', action: '현재 진입 보류 — 0% 포지션 유지' },
         { stage: '1차 신호', action: '일봉 5일선 회복 + 거래량 평균 대비 +30% 동시 충족 시 시범 진입 (15%)' },
         { stage: '2차 확정', action: '추세 확인 (3거래일 양봉 우위) 후 추가 진입 (15~25%)' },
         { stage: '청산', action: '평균 단가 -5% 이탈 또는 추세 변경 시 즉시 정리' }
-      ]
+      ],
+      // [V24.3] 신규 — 하락 시나리오 트리거
+      exitTriggers: buildExitTriggers('buy', riskGate.level)
     };
-  } else if (uncGate.isHighUncertainty && stockIntent === 'sell') {
+  } else if (_gateTriggered && stockIntent === 'sell') {
     _uncOverride = {
       execMode: 'WATCH',
-      decisionPosition: '청산 보류 (관망 카드 우세)',
+      decisionPosition: volGate.isHighVolatility
+        ? '청산 보류 (변동성 우세)'
+        : '청산 보류 (관망 카드 우세)',
       decisionStrategy: '바닥 확인 전 추가 매도 자제 — 반등 신호 대기',
-      diagnosis: `불확실성 점수 ${uncGate.sum}점 — 청산 타이밍 신호 검증 필요`,
-      verdict: '관망 카드 우세 — 청산 전 시장 반응 확인 필요',
+      diagnosis: `${_gateReason} — 청산 타이밍 신호 검증 필요`,
+      verdict: '게이트 발동 — 청산 전 시장 반응 확인 필요',
       timingNote: '반등 신호 미확인 — 즉시 청산보다 분할 청산 권장',
-      entryTriggers: null
+      entryTriggers: null,
+      // [V24.3] 매도 의도일 때도 exit 시나리오 제공
+      exitTriggers: buildExitTriggers('sell', riskGate.level)
     };
   }
   // ══════════════════════════════════════════════════════════════
@@ -2540,7 +2665,8 @@ function buildStockMetrics({ totalScore, riskScore, cleanCards, isLeverage, quer
     executionMode: _uncOverride ? _uncOverride.execMode : _finalExecMode,
     trend: finalTrend,
     action: _uncOverride ? _uncOverride.decisionStrategy : finalAction,
-    riskLevel: _uncOverride ? '높음 (불확실성 우세)' : finalRisk,
+    // [V24.3] 리스크 라벨 — 게이트 발동 시 riskGate.riskLabelKo 사용 (보통 디폴트 차단)
+    riskLevel: _uncOverride ? riskGate.riskLabelKo : finalRisk,
     riskLevelScore: calcScore(cleanCards, 'risk'),
     entryStrategy, exitStrategy,
     finalTimingText: _uncOverride ? _uncOverride.timingNote : timingDetail,
@@ -2579,11 +2705,17 @@ function buildStockMetrics({ totalScore, riskScore, cleanCards, isLeverage, quer
         outcomePrediction,
         entryTriggers:    _uncOverride ? _uncOverride.entryTriggers
                           : (_blockDecision ? _blockDecision.entryTriggers : entryTriggers),
+        // [V24.3] exitTriggers — 하락 시나리오 단계별 행동 (사장님 진단)
+        exitTriggers:     _uncOverride ? _uncOverride.exitTriggers : null,
         // BLOCK 레벨 메타데이터 (Client 렌더러에서 활용 가능)
         blockLevel:       _blockLevel || 'NONE',
         // [V24.0] 불확실성 게이트 메타데이터
         uncertaintyGate:  _uncOverride ? 'TRIGGERED' : 'PASSED',
-        uncertaintySum:   uncGate.sum
+        uncertaintySum:   uncGate.sum,
+        // [V24.3] 변동성 게이트 메타데이터
+        volatilityGate:   volGate.isHighVolatility ? 'TRIGGERED' : 'PASSED',
+        volatilityComposite: volGate.composite,
+        riskGateLevel:    riskGate.level
       },
       execution: _uncOverride ? {
         weight:    '0% (트리거 미충족)',
@@ -2617,10 +2749,21 @@ function buildStockMetrics({ totalScore, riskScore, cleanCards, isLeverage, quer
                  "방향성 모색 구간 — 신호 확인 후 대응")
       },
       risk: {
-        level: _uncOverride ? '높음 (불확실성 우세)' : layerRiskLevel,
-        volatility: hasReversedSignal || hasMidstreamObstacle ? "증가 가능성 있음" : (totalScore <= -3 ? "높음" : "보통"),
+        // [V24.3] riskGate 통합 — '보통' 디폴트 오류 차단
+        level: _uncOverride ? riskGate.riskLabelKo : layerRiskLevel,
+        volatility: volGate.isHighVolatility
+          ? `높음 (변동성 지수 ${volGate.composite}점)`
+          : (hasReversedSignal || hasMidstreamObstacle ? "증가 가능성 있음" : (totalScore <= -3 ? "높음" : "보통")),
         cautions: _uncOverride
-          ? [...finalRiskCautions, '관망 카드 우세 — 객관적 트리거 확인 전 진입 자제', '평균 단가 기준 손절선 사전 설정 필수']
+          ? [
+              ...finalRiskCautions,
+              volGate.isHighVolatility
+                ? '변동성·전환 카드 우세 — 급락 가능성 동시 대비'
+                : '관망 카드 우세 — 객관적 트리거 확인 전 진입 자제',
+              '전저점 이탈 시 모든 진입 트리거 무효화 — 다음 점사까지 관망',
+              '추세 하락 확정(20일선 이탈) 시 신규 진입 완전 배제',
+              '평균 단가 기준 손절선 사전 설정 필수'
+            ]
           : finalRiskCautions
       },
       rules: criticalRules,
@@ -2637,9 +2780,12 @@ function buildRealEstateMetrics({ totalScore, riskScore, cleanCards, intent, pro
   const netScore = totalScore;
 
   // ══════════════════════════════════════════════════════════════
-  // [V24.0] UNCERTAINTY GATE — 부동산도 동일 게이트 적용
+  // [V24.0+V24.3] RISK GATE — 부동산도 통합 게이트 적용
+  //   부동산은 변동성보다 불확실성이 주요 — 그래도 isHighVolatility는 OR 조건으로
   // ══════════════════════════════════════════════════════════════
-  const uncGate = detectUncertaintyGate(cleanCards);
+  const riskGate = detectRiskGate(cleanCards);
+  const uncGate = riskGate.uncertainty;
+  const volGate = riskGate.volatility;
   // ══════════════════════════════════════════════════════════════
 
   let seed = 0;
@@ -2898,16 +3044,16 @@ function buildRealEstateMetrics({ totalScore, riskScore, cleanCards, intent, pro
   //   개선: uncertainty 높으면 무조건 'AVOID' (검증 후 진입)
   // ══════════════════════════════════════════════════════════════
   const _baseScore = calcScore(cleanCards, 'base');
-  const _entryTiming = uncGate.isHighUncertainty ? 'AVOID'
+  const _entryTiming = riskGate.triggered ? 'AVOID'
                      : _baseScore > 70 ? 'NOW'
                      : _baseScore > 50 ? 'LATER' : 'AVOID';
-  const _reUncCaution = uncGate.isHighUncertainty
+  const _reUncCaution = riskGate.triggered
     ? `⚠️ 관망 카드 우세 (불확실성 ${uncGate.sum}점) — ${intent === 'sell' ? '매물 등록 전 시장 추가 관찰 권장' : '취득 결정 전 추가 임장·시세 검증 필수'}`
     : null;
 
   return {
     queryType: "realestate",
-    executionMode: uncGate.isHighUncertainty ? 'WATCH' : (netScore >= 0 ? 'ACTIVE' : 'WATCH'),
+    executionMode: riskGate.triggered ? 'WATCH' : (netScore >= 0 ? 'ACTIVE' : 'WATCH'),
     riskLevelScore: calcScore(cleanCards, 'risk'),
     intent,
     type: `realestate_${intent === "sell" ? "sell" : "buy"}`,
@@ -2929,19 +3075,19 @@ function buildRealEstateMetrics({ totalScore, riskScore, cleanCards, intent, pro
     dailyActionTiming,
     totalScore, riskScore,
     cardNarrative,
-    finalOracle: uncGate.isHighUncertainty
+    finalOracle: riskGate.triggered
       ? `${intent === "sell" ? interpretSell : interpretBuy}\n\n⚠️ [불확실성 게이트] 관망 카드 우세 — 결정 전 추가 검증을 권장합니다.`
       : (intent === "sell" ? interpretSell : interpretBuy),
     // [V20.0] 5계층 데이터
     layers: {
       decision: {
-        position: uncGate.isHighUncertainty
+        position: riskGate.triggered
           ? `${reDecisionPosition} → 검증 후 진행 권장`
           : reDecisionPosition,
-        strategy: uncGate.isHighUncertainty
+        strategy: riskGate.triggered
           ? `${reDecisionStrategy} · 불확실성 점수 ${uncGate.sum}점 — 추가 검증 후 진행`
           : reDecisionStrategy,
-        uncertaintyGate: uncGate.isHighUncertainty ? 'TRIGGERED' : 'PASSED'
+        uncertaintyGate: riskGate.triggered ? 'TRIGGERED' : 'PASSED'
       },
       // [V20.10 + V23.3] 📊 Market Layer — 시장 판단 + 부동산 특화 변수
       market: {
@@ -3411,14 +3557,16 @@ function buildFortuneMetrics({ totalScore, cleanCards, prompt }) {
   const netScore = totalScore;
 
   // ══════════════════════════════════════════════════════════════
-  // [V24.0] UNCERTAINTY GATE — 운세도 동일 게이트
-  //   해석: 불확실성 우세 → "결단보다 정리/관찰" 톤으로 보정
+  // [V24.0+V24.3] RISK GATE — 운세도 통합 게이트
+  //   해석: 게이트 발동 → "결단보다 정리/관찰" 톤으로 보정
   // ══════════════════════════════════════════════════════════════
-  const uncGate = detectUncertaintyGate(cleanCards);
+  const riskGate = detectRiskGate(cleanCards);
+  const uncGate = riskGate.uncertainty;
+  const volGate = riskGate.volatility;
   // ══════════════════════════════════════════════════════════════
 
   // [V23.8] 운세 trend — 5단계 → 더 세밀하게
-  const trend = uncGate.isHighUncertainty
+  const trend = riskGate.triggered
               ? "방향 모색 — 결정 전 정리 단계"
               : netScore >= 10 ? "기운의 폭발적 확장 — 결단의 정점"
               : netScore >= 5  ? "기운의 확장 — 결단의 황금 구간"
@@ -3427,7 +3575,7 @@ function buildFortuneMetrics({ totalScore, cleanCards, prompt }) {
               : netScore >= -5 ? "내면 정리기 — 선택 준비 단계"
               : "강한 하강 — 자기 보호 우선";
 
-  const action = uncGate.isHighUncertainty
+  const action = riskGate.triggered
                ? "결정 보류 — 정보 수집과 내면 정리 우선"
                : netScore >= 10 ? "과감한 실행 — 우주가 길을 열어줌"
                : netScore >= 5  ? "과감한 결단 유리"
@@ -3486,13 +3634,13 @@ function buildFortuneMetrics({ totalScore, cleanCards, prompt }) {
 
   return {
     queryType: "life",
-    executionMode: uncGate.isHighUncertainty ? 'WATCH' : (netScore >= 0 ? 'ACTIVE' : 'WATCH'),
+    executionMode: riskGate.triggered ? 'WATCH' : (netScore >= 0 ? 'ACTIVE' : 'WATCH'),
     riskLevelScore: calcScore(cleanCards, 'risk'),
     trend, action, riskLevel,
     finalTimingText,
     totalScore,
     cardNarrative,
-    finalOracle: uncGate.isHighUncertainty
+    finalOracle: riskGate.triggered
       ? `${interpret}\n\n⚠️ [불확실성 우세] 지금은 '결단의 시기'가 아니라 '정보 수집과 내면 정리의 시기'입니다.`
       : interpret,
     // [V23.4 + V24.0] 수치 메트릭 — 불확실성 반영
@@ -3500,23 +3648,23 @@ function buildFortuneMetrics({ totalScore, cleanCards, prompt }) {
     opportunityWindow:  calcScore(cleanCards, 'base'),
     uncertaintyScore:   uncGate.sum,
     uncertaintyLevel:   uncGate.level,
-    actionType: uncGate.isHighUncertainty ? 'wait'
+    actionType: riskGate.triggered ? 'wait'
               : calcScore(cleanCards, 'risk') > 70 ? 'wait'
               : calcScore(cleanCards, 'base') > 70 ? 'move' : 'observe',
     // [V22.4 + V24.0] 운세 5계층 데이터
     layers: {
       decision: {
-        position: uncGate.isHighUncertainty ? "정보 수집·정리 단계"
+        position: riskGate.triggered ? "정보 수집·정리 단계"
                  : netScore >= 5 ? "결단의 황금 구간"
                  : netScore >= 2 ? "긍정 수렴 — 행동 준비"
                  : netScore >= -1 ? "정체 해소 직전 — 선택 준비"
                  : netScore >= -5 ? "내면 정리기"
                  : "자기 보호 우선",
-        strategy: uncGate.isHighUncertainty ? "결정 보류 → 추가 정보 수집·내면 정리 우선"
+        strategy: riskGate.triggered ? "결정 보류 → 추가 정보 수집·내면 정리 우선"
                 : netScore >= 2 ? "내부 기준 우선 → 미루던 결정 정리"
                 : netScore >= -1 ? "관망 → 선택 전환 준비"
                 : "내면 정돈 → 다음 선택 준비",
-        uncertaintyGate: uncGate.isHighUncertainty ? 'TRIGGERED' : 'PASSED'
+        uncertaintyGate: riskGate.triggered ? 'TRIGGERED' : 'PASSED'
       },
       timing: {
         primary: netScore >= 0 ? "1차: 주중 전환점 (내부 정렬 구간)" : "1차: 그믐 전후 (정리 시작)",
