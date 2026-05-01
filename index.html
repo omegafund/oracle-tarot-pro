@@ -4321,7 +4321,7 @@ function getCardBasedTiming(cards, queryType, intent, qRaw) {
             return `📅 코인 매도 타이밍: ${bestZone} ${pick(coinSellHours)} · 이후 ${bestZone2}까지 분할 매도 고려`;
         }
         // 매수 or 기본
-        if (totalPower <= -5) return `📅 코인 매수 타이밍: 진입 절대 금지 — 카드 붕괴 에너지 감지. 저점 확인 후 재판단 요망`;
+        if (totalPower <= -5) return `📅 코인 매수 타이밍: 진입 보류가 고려될 수 있는 흐름 — 카드 붕괴 에너지 감지로 저점 확인 후 재판단이 도움이 될 수 있습니다`;
         if (totalPower <= 0)  return `📅 코인 매수 타이밍: ${bestZone} ${pick2(coinBuyHours)} 소량 분할 (카드 에너지 중립, 변동성 주의)`;
         return `📅 코인 매수 타이밍: ${bestZone} ${pick(coinBuyHours)} · ${bestZone2} ${pick2(coinBuyHours)} 분할 진입 유효`;
     }
@@ -4338,7 +4338,7 @@ function getCardBasedTiming(cards, queryType, intent, qRaw) {
     }
 
     // 매수
-    if (totalPower <= -5) return `📅 매수 트리거: 진입 절대 금지 — 카드 에너지 극히 부정적. 저점 확인 후 재판단 (관망 권장)`;
+    if (totalPower <= -5) return `📅 매수 트리거: 진입 보류가 고려될 수 있는 흐름 — 카드 에너지 극히 부정적이므로 저점 확인 후 재판단이 도움이 될 수 있습니다 (관망)`;
     if (totalPower <= 0)  return `📅 매수 트리거: 극소량만 — 거래량 평균 +50% 동반 양봉 + 5일선 회복 동시 충족 시 5% 시범 진입 (손절 -3% 즉시 발동)`;
     if (totalPower <= 5)  return `📅 매수 트리거: 분할 진입 — ① 일봉 5일선 회복, ② 거래량 평균 대비 +30%, ③ 단기 저항선 돌파 — 2개 이상 충족 시 1차 진입`;
     return `📅 매수 트리거: 적극 분할 진입 — ① 5일선 회복 또는 ② 단기 저항선 돌파 1개 충족만으로도 1차 진입 가능, 추가 양봉 확인 시 추가 진입`;
@@ -4913,7 +4913,7 @@ function buildInvestmentData(cards, question) {
         "Ace of Pentacles":{"flow":"물질적 새 시작","signal":"실질적 수익 에너지 — 진입 적기"},
         "Nine of Cups":{"flow":"만족·성취","signal":"목표 근접 — 익절 타이밍 점검"},
         "Ten of Pentacles":{"flow":"장기 풍요","signal":"장기 보유 에너지 우세"},
-        "Ten of Swords":{"flow":"최악·바닥","signal":"최대 하락 에너지 — 신규 진입 절대 금지"},
+        "Ten of Swords":{"flow":"최악·바닥","signal":"최대 하락 에너지 — 신규 진입 보류가 고려될 수 있는 구간"},
         "Five of Pentacles":{"flow":"결핍·손실","signal":"손실 구간 — 추가 진입 신중 검토 권장"},
         "Seven of Wands":{"flow":"저항·방어","signal":"상승 시도 중 강한 매도 저항"},
         "Five of Wands":{"flow":"경쟁·혼란","signal":"변동성 확대 — 방향성 불명확"}
@@ -8185,8 +8185,23 @@ async function zeusClaimSubmit(plan) {
     }
     if (stayTime < 30) {
         const remain = Math.ceil(30 - stayTime);
-        // [V25.5] 회전 모래시계 — 사장님 안: 멈추면 점사 결과
-        resultDiv.innerHTML = `<span style="color:#ffa040;"><span class="inline-spin">⏳</span> 안내문을 충분히 확인해주세요 (${remain}초 더 필요)</span>`;
+        // [V25.5+V25.9.2] 회전 모래시계 + 자동 진행
+        //   사장님 진단: "13초 후 사용자가 어떻게 해야 할지 모름 → 이탈"
+        //   해결: ① 메시지에 자동 진행 안내 추가
+        //         ② 잔여 시간만큼 setTimeout 후 자동 zeusClaimSubmit 재호출
+        resultDiv.innerHTML = `<span style="color:#ffa040;"><span class="inline-spin">⏳</span> 모래시계가 멈추면 점사창이 자동으로 열립니다 (${remain}초)</span>`;
+
+        // 이전 타이머 있으면 취소 (중복 클릭 방어)
+        if (window._zeusAutoProgressTimer) {
+            clearTimeout(window._zeusAutoProgressTimer);
+        }
+
+        // 잔여 시간 + 0.3초 버퍼 후 자동 재호출
+        window._zeusAutoProgressTimer = setTimeout(() => {
+            window._zeusAutoProgressTimer = null;
+            zeusClaimSubmit(plan);  // 30초 통과 후 자동 진행
+        }, (remain * 1000) + 300);
+
         return;
     }
 
