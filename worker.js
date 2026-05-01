@@ -3580,8 +3580,34 @@ function buildRealEstateMetrics({ totalScore, riskScore, cleanCards, intent, pro
         position: riskGate.triggered
           ? `${reDecisionPosition} → 검증 후 진행 권장`
           : reDecisionPosition,
+        // [V25.6+V25.7] 게이트 발동 사유 정확 표시 — 점수 → 등급 변환
+        //   사장님 진단: "110점, 200점 등 점수는 사용자가 이해 못 함.
+        //              한국 사용자는 100% 만점에 익숙해서 110점이 뭔지 모름.
+        //              위험도/변동성을 '낮음/보통/높음'으로 직관 표시 필요"
+        //   해결: 내부 점수 → 한국어 등급 변환 (level 필드 사용)
+        //          내부 메타데이터(uncertaintyScore 등)는 그대로 유지 (분석용)
         strategy: riskGate.triggered
-          ? `${reDecisionStrategy} · 불확실성 점수 ${uncGate.sum}점 — 추가 검증 후 진행`
+          ? (() => {
+              // 등급 변환 헬퍼 — 내부 사용 (사용자 노출 메시지용)
+              const _gradeKo = (level) =>
+                level === 'EXTREME' ? '매우 높음'
+              : level === 'HIGH'    ? '높음'
+              : level === 'MEDIUM'  ? '보통'
+                                    : '낮음';
+
+              const dm = riskGate.decisionMajority;
+              // 발동 사유 우선순위: 단일 극값 > 다수결 > 변동성 > 불확실성
+              if (riskGate.volatility.hasExtremeCard) {
+                return `${reDecisionStrategy} · 변동성 극값 카드 감지 — 변동성 점검 후 진행`;
+              } else if (dm && dm.majorityCaution) {
+                return `${reDecisionStrategy} · 다수결 신중 카드 우세 (HOLD ${dm.hold}장 + SELL ${dm.sell}장) — 추가 검증 후 진행`;
+              } else if (riskGate.volatility.isHighVolatility) {
+                return `${reDecisionStrategy} · 변동성: ${_gradeKo(riskGate.volatility.level || 'HIGH')} — 추가 검증 후 진행`;
+              } else if (riskGate.uncertainty.isHighUncertainty) {
+                return `${reDecisionStrategy} · 불확실성: ${_gradeKo(riskGate.uncertainty.level || 'HIGH')} — 추가 검증 후 진행`;
+              }
+              return `${reDecisionStrategy} · 추가 검증 후 진행`;
+            })()
           : reDecisionStrategy,
         uncertaintyGate: riskGate.triggered ? 'TRIGGERED' : 'PASSED'
       },
