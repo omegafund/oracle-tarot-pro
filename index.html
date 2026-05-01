@@ -5796,7 +5796,7 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
                                 border-left: 3px solid #FFEC9F;
                                 border-radius: 0 6px 6px 0;">
                         <div style="font-size:0.68rem; color:#FFEC9F; font-weight:800; letter-spacing:0.1em; margin-bottom:5px; text-transform:uppercase;">
-                            🔍 Diagnosis · 진단
+                            🔍 흐름 진단
                         </div>
                         <div style="font-size:0.92rem; color:#fff; font-weight:600; line-height:1.55;">
                             ${layers.decision.diagnosis}
@@ -5810,7 +5810,7 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
                                 border-left: 3px solid ${colors.signal};
                                 border-radius: 0 6px 6px 0;">
                         <div style="font-size:0.68rem; color:#C39BD3; font-weight:800; letter-spacing:0.1em; margin-bottom:5px; text-transform:uppercase;">
-                            🎴 Card Evidence · 카드 근거
+                            🎴 카드 근거
                         </div>
                         <div style="font-size:0.86rem; color:rgba(255,255,255,0.92); font-weight:500; line-height:1.65; white-space:pre-line;">
                             ${layers.decision.cardEvidence}
@@ -5824,7 +5824,7 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
                                 border-left: 3px solid ${colors.execution};
                                 border-radius: 0 6px 6px 0;">
                         <div style="font-size:0.68rem; color:#7AD188; font-weight:800; letter-spacing:0.1em; margin-bottom:5px; text-transform:uppercase;">
-                            💡 Outcome · 행동 시 결과
+                            💡 행동 시 결과
                         </div>
                         <div style="font-size:0.86rem; color:rgba(255,255,255,0.92); font-weight:500; line-height:1.65; white-space:pre-line;">
                             ${layers.decision.outcomePrediction}
@@ -5838,7 +5838,7 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
                                 border-left: 3px solid ${colors.timing};
                                 border-radius: 0 6px 6px 0;">
                         <div style="font-size:0.68rem; color:#5DADE2; font-weight:800; letter-spacing:0.1em; margin-bottom:6px; text-transform:uppercase;">
-                            ⏱ Entry Triggers · 실행 트리거
+                            ⏱ 실행 트리거
                         </div>
                         ${layers.decision.entryTriggers.map(t => `
                             <div style="display:flex; align-items:flex-start; gap:8px; padding:5px 0; font-size:0.84rem; line-height:1.55;">
@@ -7037,6 +7037,76 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
                 <div class="zenith-title-sub" style="color:rgba(46,204,113,0.85); font-size:0.85rem; font-weight:800; letter-spacing:0.2em;">ZEUS FORTUNE ORACLE</div>`;
             })()}
         </div>
+        ${(() => {
+            // [V25.21] 사장님 진단: V25.19 본질 엔진 결과가 화면에 안 보임
+            //   해결: 운세 PRO (재물/건강/직장) 서브타입일 때
+            //         본질 엔진 결과를 Gemini 본문 위에 우선 노출
+            const _sm = window._serverMetrics;
+            if (!_sm || !_sm.contextKey || !_sm.contextSignals || !_sm.contextSignals.length) return '';
+            
+            const _ctxKey = _sm.contextKey;
+            const _ctxScore = _sm.contextScore || 50;
+            const _signals = _sm.contextSignals;
+            
+            // 컨텍스트별 라벨/색상
+            const _ctxConfig = _ctxKey === 'wealth' ? {
+                label: '💰 재물 흐름 본질 매핑',
+                color: '#FFD970',
+                bgGrad: 'rgba(255,217,112,0.06)',
+                borderColor: 'rgba(255,217,112,0.35)',
+                domainLabel: '재물 점수'
+            } : _ctxKey === 'health' ? {
+                label: '🌿 건강 흐름 본질 매핑',
+                color: '#7AD188',
+                bgGrad: 'rgba(122,209,136,0.06)',
+                borderColor: 'rgba(122,209,136,0.35)',
+                domainLabel: '건강 점수'
+            } : {
+                label: '💼 커리어 흐름 본질 매핑',
+                color: '#5DADE2',
+                bgGrad: 'rgba(93,173,226,0.06)',
+                borderColor: 'rgba(93,173,226,0.35)',
+                domainLabel: '커리어 점수'
+            };
+            
+            // 점수 막대 너비 계산 (0~100)
+            const _scoreBarWidth = Math.max(5, Math.min(100, _ctxScore));
+            const _scoreColor = _ctxScore >= 70 ? _ctxConfig.color
+                              : _ctxScore >= 45 ? '#F39C12'
+                              : '#E67E22';
+            
+            return `
+            <div style="margin: 14px 0 18px;
+                        padding: 14px 16px;
+                        background: ${_ctxConfig.bgGrad};
+                        border: 1px solid ${_ctxConfig.borderColor};
+                        border-radius: 10px;">
+                <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom: 12px;">
+                    <div style="color: ${_ctxConfig.color}; font-weight: 900; font-size: 0.86rem; letter-spacing: 0.05em;">
+                        ${_ctxConfig.label}
+                    </div>
+                    <div style="font-size: 0.75rem; color: rgba(255,255,255,0.7);">
+                        ${_ctxConfig.domainLabel}: <b style="color:${_scoreColor};">${_ctxScore}</b>/100
+                    </div>
+                </div>
+                
+                <!-- 점수 막대 -->
+                <div style="height: 4px; background: rgba(0,0,0,0.3); border-radius: 2px; margin-bottom: 14px; overflow: hidden;">
+                    <div style="height: 100%; width: ${_scoreBarWidth}%; background: ${_scoreColor}; border-radius: 2px; transition: width 0.6s ease;"></div>
+                </div>
+                
+                <!-- 3카드 본질 시그널 -->
+                ${_signals.map(s => `
+                    <div style="display: flex; align-items: flex-start; gap: 10px; padding: 6px 0; font-size: 0.85rem; line-height: 1.55;">
+                        <span style="min-width: 38px; color: ${_ctxConfig.color}; font-weight: 800;">${s.role}</span>
+                        <span style="flex: 1; color: rgba(255,255,255,0.92);">
+                            <span style="color: rgba(255,255,255,0.6); font-size: 0.78rem;">${s.name}${s.isReversed ? ' (역)' : ''}</span><br>
+                            ${s.signal}
+                        </span>
+                    </div>
+                `).join('')}
+            </div>`;
+        })()}
         <div style="line-height: 1.8; color: rgba(255,255,255,0.95); font-size: 0.96rem; margin-bottom: 20px;">${formatChunk(oracleContent)}</div>
         ${!isFinanceQuery ? (() => {
             const qRaw2 = (document.getElementById('seed-input')?.value || '').toLowerCase();
