@@ -6543,6 +6543,32 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
         // ═════════════════════════════════════════════════════════════
         // 💘 [V25.24] LOVE BLOCK V2 — 100% JS, 6 박스, Gemini OFF
         // ═════════════════════════════════════════════════════════════
+        // [V25.27] 한글 조사 자동 처리 helper
+        function _hasJongseong(str) {
+            if (!str) return false;
+            const c = str.charCodeAt(str.length - 1);
+            if (c < 0xAC00 || c > 0xD7A3) return false;
+            return ((c - 0xAC00) % 28) !== 0;
+        }
+        function _josa(word, type) {
+            if (!word) return '';
+            const has = _hasJongseong(word);
+            if (type === 'ro') {
+                const c = word.charCodeAt(word.length - 1);
+                if (c >= 0xAC00 && c <= 0xD7A3) {
+                    const j = (c - 0xAC00) % 28;
+                    if (j === 0 || j === 8) return '로';
+                    return '으로';
+                }
+                return '로';
+            }
+            return type === 'eul' ? (has ? '을' : '를')
+                 : type === 'i'   ? (has ? '이' : '가')
+                 : type === 'eun' ? (has ? '은' : '는')
+                 : type === 'wa'  ? (has ? '과' : '와')
+                 : '';
+        }
+
         // 매개변수: serverOracle만 실질 사용 (cards/qRaw/loveSubType는
         //          향후 확장 위해 시그니처 보존 — eslint 회피용 _접두사)
         function _renderLoveBlockV25_24(_cards, _qRaw, _loveSubType, serverOracle, _fi) {
@@ -6688,7 +6714,7 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
                             <div>→ ${rk.riskProgression}</div>
                             <div style="margin-top:6px; color:rgba(255,140,100,0.95); font-size:0.78rem;">
                                 특히 <b>"${rk.triggerCondition}"</b> 상황에서<br>
-                                관계가 <b>${rk.collapseType}</b>로 전환됩니다.
+                                관계가 <b>${rk.collapseType}</b>${_josa(rk.collapseType, 'ro')} 전환됩니다.
                             </div>
                         </div>
                     </div>
