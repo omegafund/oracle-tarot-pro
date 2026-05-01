@@ -4308,24 +4308,27 @@ function getLoveScoreCategory(score) {
 //   사장님 진단: score만 보면 The Tower+Two of Swords+Page Wands 역
 //                같은 명백한 정리 신호 카드가 maintain에 떨어질 수 있음
 //   해결: 단절·정체 신호 카드의 가중치 합으로 카테고리 강제 하향
+// [V25.27] 가중치 재조정 + Four of Swords/Devil 강화 + 서브타입 차등
 // ──────────────────────────────────────────────────────────────────
 const COLLAPSE_SIGNAL_CARDS = {
   // 명백한 붕괴/단절 신호 (정방향 기준 가중치)
   "The Tower":4, "Death":4, "Three of Swords":3, "Ten of Swords":4,
   "Five of Pentacles":2, "Five of Cups":2, "Eight of Cups":3,
-  "The Devil":3, "Nine of Swords":2
+  "The Devil":4, "Nine of Swords":2, "Five of Swords":2
 };
 
 const STAGNATION_SIGNAL_CARDS = {
   // 회피·정체 신호 (역방향 시 1.5배 가중)
   "Two of Swords":3, "Four of Cups":2, "The Hanged Man":2,
-  "Seven of Cups":2, "Six of Cups":2
+  "Seven of Cups":2, "Six of Cups":2, "Four of Swords":2,
+  "The Hermit":1
 };
 
 const RECOVERY_SIGNAL_CARDS = {
   // 회복·재시작 신호 (정리 흐름을 상쇄)
   "The Star":3, "Ace of Cups":2, "The Sun":3, "Temperance":2,
-  "Six of Swords":2, "Ten of Cups":3, "The World":2
+  "Six of Swords":2, "Ten of Cups":3, "The World":2,
+  "Strength":2, "Judgement":2
 };
 
 function getCollapseScore(cards, revFlags) {
@@ -4336,9 +4339,9 @@ function getCollapseScore(cards, revFlags) {
   cards.forEach((card, i) => {
     const name = typeof card === 'string' ? card : (card && card.name) || '';
     const rev = rf[i] === true;
-    // 붕괴 신호 — 역방향 시 약화 (0.5배)
-    collapse += (COLLAPSE_SIGNAL_CARDS[name] || 0) * (rev ? 0.5 : 1);
-    // 정체 신호 — 역방향 시 강화 (1.5배, "정체에서 더 깊은 정체"로)
+    // 붕괴 신호 — 역방향 시 약화 (0.6배)
+    collapse += (COLLAPSE_SIGNAL_CARDS[name] || 0) * (rev ? 0.6 : 1);
+    // 정체 신호 — 역방향 시 강화 (1.5배)
     collapse += (STAGNATION_SIGNAL_CARDS[name] || 0) * (rev ? 1.5 : 1);
     // 회복 신호 — 역방향 시 약화 (0.5배), 상쇄 효과
     recovery += (RECOVERY_SIGNAL_CARDS[name] || 0) * (rev ? 0.5 : 1);
@@ -4346,19 +4349,26 @@ function getCollapseScore(cards, revFlags) {
   return Math.max(0, collapse - recovery * 0.7);
 }
 
-function getLoveScoreCategoryV2(score, cards, revFlags) {
-  // [V25.26] 카드 조합 강도 우선 — 결론 충돌 사전 차단
+function getLoveScoreCategoryV2(score, cards, revFlags, loveSubType) {
+  // [V25.26+27] 카드 조합 강도 우선 — 결론 충돌 사전 차단
   const collapse = getCollapseScore(cards, revFlags);
   const baseCategory = getLoveScoreCategory(score);
   
-  // 단절 신호 강도 8 이상 → 어떤 score든 close 강제
-  if (collapse >= 8) return 'close';
-  // 단절 신호 6 이상 + score가 maintain 이상 → realign으로 하향
-  if (collapse >= 6 && (baseCategory === 'maintain' || baseCategory === 'advance')) {
+  // [V25.27] 서브타입 차등 — 가벼운 서브타입(crush/thumb/contact)은 더 보수적
+  //   썸·호감도·연락 같은 가벼운 단계에서는 단절 신호 인식 임계값 낮춤
+  const isLightSubtype = (loveSubType === 'crush' || loveSubType === 'thumb' || loveSubType === 'contact');
+  const closeT  = isLightSubtype ? 6  : 8;   // close 강제 임계값
+  const realignT = isLightSubtype ? 4  : 6;   // realign 강제 임계값
+  const maintainDownT = isLightSubtype ? 3  : 4;   // advance→maintain 임계값
+  
+  // 단절 신호 강도 → close 강제
+  if (collapse >= closeT) return 'close';
+  // 단절 신호 → realign 강제 (maintain/advance에서)
+  if (collapse >= realignT && (baseCategory === 'maintain' || baseCategory === 'advance')) {
     return baseCategory === 'advance' ? 'maintain' : 'realign';
   }
-  // 단절 신호 4 이상 + score가 advance → maintain으로 하향
-  if (collapse >= 4 && baseCategory === 'advance') return 'maintain';
+  // 단절 신호 → maintain (advance에서)
+  if (collapse >= maintainDownT && baseCategory === 'advance') return 'maintain';
   
   return baseCategory;
 }
@@ -4367,18 +4377,51 @@ function getCardLoveType(card, isReversed) {
   if (!card) return 'neutral';
   const name = typeof card === 'string' ? card : (card.name || '');
   const rev = isReversed === true;
-  if (/Ten of Cups|The Lovers|Two of Cups|The Sun|Ace of Cups/i.test(name) && !rev) return 'positive';
-  if (/Queen of Swords|Knight of Swords|Seven of Swords|King of Swords|Two of Swords/i.test(name)) return 'defense';
-  if (/Four of Wands|The World|Ten of Pentacles|The Empress/i.test(name) && !rev) return 'stable';
-  if (/Five of Pentacles|Three of Swords|The Hermit|Four of Cups|Five of Cups/i.test(name)) return 'lack';
-  if (/Five of Wands|The Tower|Seven of Wands/i.test(name)) return 'conflict';
-  if (/The Star|Temperance|Six of Cups|Six of Swords/i.test(name) && !rev) return 'recover';
+  
+  // 긍정형 (호감·안정·발전)
+  if (/Ten of Cups|The Lovers|Two of Cups|The Sun|Ace of Cups|Three of Cups|Nine of Cups/i.test(name) && !rev) return 'positive';
+  
+  // 방어형 (이성·경계·거리)
+  if (/Queen of Swords|Knight of Swords|Seven of Swords|King of Swords|Two of Swords|Justice/i.test(name)) return 'defense';
+  
+  // 안정형 (균형·지속·완성)
+  if (/Four of Wands|The World|Ten of Pentacles|The Empress|Three of Pentacles|Nine of Pentacles|The Hierophant/i.test(name) && !rev) return 'stable';
+  
+  // 결핍형 (부족·갈망)
+  if (/Five of Pentacles|Three of Swords|The Hermit|Four of Cups|Five of Cups|Seven of Cups/i.test(name)) return 'lack';
+  
+  // 갈등형 (충돌·균열)
+  if (/Five of Wands|The Tower|Seven of Wands|Five of Swords/i.test(name)) return 'conflict';
+  
+  // 회복형 (치유·재기·균형 회복)
+  if (/The Star|Temperance|Six of Cups|Six of Swords|Strength|Judgement/i.test(name) && !rev) return 'recover';
+  if (/Strength|Judgement/i.test(name) && rev) return 'lack';
   if (/Six of Cups/i.test(name) && rev) return 'lack';
-  if (/Eight of Cups|Death|The Hanged Man/i.test(name)) return 'distance';
-  if (/Ten of Wands|The Devil|Nine of Swords/i.test(name)) return 'burden';
-  if (/Page of Swords|Page of Cups|Page of Wands|The Fool/i.test(name)) return rev ? 'lack' : 'positive';
-  if (/The Magician|The Emperor|The Chariot|King of Wands/i.test(name)) return rev ? 'conflict' : 'stable';
+  
+  // 거리형 (이별·분리·정체)
+  if (/Eight of Cups|Death|The Hanged Man|Four of Swords/i.test(name)) return 'distance';
+  
+  // 짊어짐형 (부담·과부하·집착)
+  if (/Ten of Wands|The Devil|Nine of Swords|Ten of Swords/i.test(name)) return 'burden';
+  
+  // 시험형 (탐색·망설임)
+  if (/Page of Swords|Page of Cups|Page of Wands|Page of Pentacles|The Fool/i.test(name)) return rev ? 'lack' : 'positive';
+  
+  // 권위형 (주도권·이끔)
+  if (/The Magician|The Emperor|The Chariot|King of Wands|King of Pentacles|King of Cups/i.test(name)) return rev ? 'conflict' : 'stable';
+  
+  // 직관형 (모호·내면)
   if (/The High Priestess|The Moon/i.test(name)) return 'defense';
+  
+  // 전환형 (운명·변화)
+  if (/Wheel of Fortune/i.test(name)) return rev ? 'distance' : 'recover';
+  
+  // 추진형 (열정·전투)
+  if (/Knight of Wands|Knight of Pentacles|Knight of Cups/i.test(name)) return rev ? 'conflict' : 'positive';
+  
+  // 여왕형 (감정 성숙)
+  if (/Queen of Wands|Queen of Pentacles|Queen of Cups/i.test(name)) return rev ? 'lack' : 'stable';
+  
   return 'neutral';
 }
 
@@ -4394,10 +4437,16 @@ function getFlowArrow(past, present, future, revFlags) {
     "burden-defense-distance":"방어 → 거리 → 재정렬",
     "burden-defense-lack":"방어 → 거리 → 재정렬",
     "burden-defense-positive":"방어 → 거리 → 재정렬",
+    "burden-distance-distance":"부담 → 정체 → 정리",
+    "burden-distance-recover":"부담 → 정체 → 회복 흐름",
+    "burden-distance-positive":"부담 → 정체 → 전환",
+    "burden-stable-distance":"부담 → 잠시 멈춤 → 정리",
     "stable-conflict-recover":"안정 → 균열 → 회복",
+    "stable-conflict-positive":"안정 → 시험 → 회복",
     "lack-distance-positive":"결핍 → 정체 → 전환",
     "lack-stable-positive":"결핍 → 정체 → 전환",
     "lack-defense-positive":"결핍 → 정체 → 전환",
+    "lack-defense-stable":"결핍 → 명확화 → 안정",
     "conflict-distance-distance":"갈등 → 분리 → 정리",
     "conflict-burden-distance":"갈등 → 분리 → 정리",
     "conflict-conflict-distance":"갈등 → 분리 → 정리",
@@ -4412,11 +4461,18 @@ function getFlowArrow(past, present, future, revFlags) {
     "positive-conflict-distance":"갈등 → 분리 → 정리",
     "positive-stable-stable":"안정 → 발전 → 결속",
     "stable-stable-positive":"안정 → 발전 → 결속",
+    "stable-stable-stable":"안정 → 유지 → 결속",
     "recover-positive-positive":"감정 회복 → 주도권 전환",
     "positive-defense-positive":"이성적 검증 → 재접근",
     "stable-defense-recover":"안정 → 점검 → 회복",
     "neutral-defense-lack":"방어 → 거리 → 재정렬",
-    "neutral-defense-positive":"방어 → 거리 → 재접근"
+    "neutral-defense-positive":"방어 → 거리 → 재접근",
+    "neutral-defense-stable":"검증 → 명확화 → 안정",
+    "neutral-positive-stable":"탐색 → 호감 → 안정",
+    "neutral-positive-positive":"탐색 → 호감 → 결속",
+    "neutral-stable-positive":"탐색 → 안정 → 발전",
+    "lack-distance-distance":"결핍 → 정체 → 정리",
+    "distance-distance-distance":"단절 → 정체 → 정리"
   };
   if (exactMap[key]) return exactMap[key];
   if (c === 'defense') return (f === 'positive' || f === 'recover') ? "방어 → 거리 → 재접근" : "방어 → 거리 → 재정렬";
@@ -4435,22 +4491,58 @@ function getFlowArrow(past, present, future, revFlags) {
 }
 
 const META_PATTERNS_V25_24 = {
+  // 불균형 의존 패턴 (한쪽 부담)
   "burden-defense-distance":"불균형 의존 패턴","burden-defense-neutral":"불균형 의존 패턴",
   "burden-defense-lack":"불균형 의존 패턴","burden-defense-conflict":"불균형 의존 패턴",
-  "burden-defense-positive":"불균형 의존 패턴","stable-conflict-recover":"성장통 통과 패턴",
+  "burden-defense-positive":"불균형 의존 패턴","burden-distance-distance":"불균형 의존 패턴",
+  "burden-lack-distance":"불균형 의존 패턴",
+  // 성장통 통과 패턴 (안정 → 충돌 → 회복)
+  "stable-conflict-recover":"성장통 통과 패턴","stable-conflict-positive":"성장통 통과 패턴",
+  "positive-conflict-recover":"성장통 통과 패턴","positive-conflict-stable":"성장통 통과 패턴",
+  // 잠재 회복 패턴 (정체 후 새 흐름)
   "lack-stagnant-positive":"잠재 회복 패턴","lack-distance-positive":"잠재 회복 패턴",
-  "lack-defense-positive":"잠재 회복 패턴","positive-defense-conflict":"이성적 검증 패턴",
-  "positive-defense-positive":"이성적 검증 패턴","conflict-distance-distance":"자연 정리 패턴",
-  "conflict-burden-distance":"자연 정리 패턴","conflict-conflict-distance":"자연 정리 패턴",
+  "lack-defense-positive":"잠재 회복 패턴","lack-distance-recover":"잠재 회복 패턴",
+  "lack-defense-recover":"잠재 회복 패턴","lack-recover-positive":"잠재 회복 패턴",
+  "positive-lack-positive":"잠재 회복 패턴","positive-lack-recover":"잠재 회복 패턴",
+  "stable-lack-positive":"잠재 회복 패턴",
+  // 이성적 검증 패턴 (감정보다 기준)
+  "positive-defense-conflict":"이성적 검증 패턴","positive-defense-positive":"이성적 검증 패턴",
+  "positive-defense-stable":"이성적 검증 패턴","positive-defense-recover":"이성적 검증 패턴",
+  "stable-defense-stable":"이성적 검증 패턴","stable-defense-positive":"이성적 검증 패턴",
+  "neutral-defense-stable":"이성적 검증 패턴","neutral-defense-positive":"이성적 검증 패턴",
+  // 자연 정리 패턴 (관계 동력 소진)
+  "conflict-distance-distance":"자연 정리 패턴","conflict-burden-distance":"자연 정리 패턴",
+  "conflict-conflict-distance":"자연 정리 패턴","distance-burden-distance":"자연 정리 패턴",
+  "burden-burden-distance":"자연 정리 패턴","distance-distance-distance":"자연 정리 패턴",
+  "lack-distance-distance":"자연 정리 패턴","conflict-neutral-distance":"자연 정리 패턴",
+  // 붕괴 후 잔존 감정 패턴 (정리 권장)
   "conflict-defense-lack":"붕괴 후 잔존 감정 패턴","conflict-defense-distance":"붕괴 후 잔존 감정 패턴",
   "conflict-defense-positive":"붕괴 후 잔존 감정 패턴","conflict-defense-recover":"붕괴 후 잔존 감정 패턴",
   "conflict-defense-neutral":"붕괴 후 잔존 감정 패턴","conflict-neutral-lack":"붕괴 후 잔존 감정 패턴",
-  "conflict-neutral-distance":"자연 정리 패턴","conflict-defense-conflict":"갈등 고착 패턴",
+  "burden-distance-distance":"붕괴 후 잔존 감정 패턴","burden-defense-stable":"붕괴 후 잔존 감정 패턴",
+  // 갈등 고착 패턴
+  "conflict-defense-conflict":"갈등 고착 패턴","conflict-conflict-conflict":"갈등 고착 패턴",
+  // 정체에서 전환 패턴 (Devil → 정체 → 전환)
+  "burden-distance-distance":"정체에서 전환 패턴","burden-distance-recover":"정체에서 전환 패턴",
+  "burden-distance-positive":"정체에서 전환 패턴","burden-stable-distance":"정체에서 전환 패턴",
+  // 안정 결속 패턴
   "stable-positive-positive":"안정 결속 패턴","positive-positive-positive":"안정 결속 패턴",
-  "stable-stable-positive":"안정 결속 패턴","lack-recover-positive":"주도권 전환 패턴",
-  "burden-recover-positive":"주도권 전환 패턴","distance-defense-positive":"재접근 시험 패턴",
-  "distance-positive-positive":"재접근 시험 패턴","neutral-defense-lack":"이성적 검증 패턴",
-  "neutral-defense-positive":"재접근 시험 패턴"
+  "stable-stable-positive":"안정 결속 패턴","positive-stable-positive":"안정 결속 패턴",
+  "positive-positive-stable":"안정 결속 패턴","stable-stable-stable":"안정 결속 패턴",
+  "stable-positive-stable":"안정 결속 패턴",
+  // 주도권 전환 패턴 (회복 후 변화)
+  "lack-recover-positive":"주도권 전환 패턴","burden-recover-positive":"주도권 전환 패턴",
+  "distance-recover-positive":"주도권 전환 패턴","conflict-recover-positive":"주도권 전환 패턴",
+  // 재접근 시험 패턴 (거리 후 재시도)
+  "distance-defense-positive":"재접근 시험 패턴","distance-positive-positive":"재접근 시험 패턴",
+  "distance-defense-recover":"재접근 시험 패턴","distance-defense-stable":"재접근 시험 패턴",
+  "distance-positive-stable":"재접근 시험 패턴",
+  // 신뢰 구축 진행 패턴 (안정/긍정 흐름)
+  "neutral-stable-positive":"신뢰 구축 진행 패턴","neutral-positive-stable":"신뢰 구축 진행 패턴",
+  "neutral-positive-positive":"신뢰 구축 진행 패턴","positive-stable-stable":"신뢰 구축 진행 패턴",
+  // 환상에서 결단 패턴 (Cups 7 → 결정)
+  "lack-defense-stable":"환상에서 결단 패턴","lack-defense-distance":"환상에서 결단 패턴",
+  "neutral-defense-lack":"이성적 검증 패턴","neutral-defense-distance":"이성적 검증 패턴"
 };
 
 const HIDDEN_DRIVERS_V25_24 = {
@@ -4461,9 +4553,12 @@ const HIDDEN_DRIVERS_V25_24 = {
   "자연 정리 패턴":"관계 동력 소진 — 정리 후 새 시작",
   "붕괴 후 잔존 감정 패턴":"끝났음을 받아들이는 속도 — 정리 타이밍이 핵심",
   "갈등 고착 패턴":"같은 충돌의 반복 — 거리 두기가 유일한 해법",
+  "정체에서 전환 패턴":"내려놓기를 통한 흐름 재개 — 변화 수용이 핵심",
   "안정 결속 패턴":"신뢰 누적 흐름 — 무리 없는 진행이 핵심",
   "주도권 전환 패턴":"기다림 끝 변화 — 자기 회복이 핵심",
   "재접근 시험 패턴":"거리 후 재시도 — 신중한 속도가 핵심",
+  "신뢰 구축 진행 패턴":"단계적 결속 형성 — 자연스러움이 핵심",
+  "환상에서 결단 패턴":"여러 가능성에서 명확한 선택 — 객관적 판단이 핵심",
   "일반 흐름 패턴":"감정과 구조 사이 균형 — 객관적 관찰이 핵심"
 };
 
@@ -4527,10 +4622,10 @@ const CARD_LOVE_PHRASE = {
   "Ace of Cups":       { upright:"순수한 감정의 시작", reversed:"감정 차단" },
   "Two of Cups":       { upright:"상호 끌림",          reversed:"균형 균열" },
   "Three of Cups":     { upright:"기쁨의 공유",        reversed:"공유 약화" },
-  "Four of Cups":      { upright:"감정 권태",          reversed:"감정 회복 시작" },
+  "Four of Cups":      { upright:"감정 권태·관망",    reversed:"감정 회복 시작" },
   "Five of Cups":      { upright:"상실감",             reversed:"회복의 단초" },
   "Six of Cups":       { upright:"추억의 회복",        reversed:"과거에 묶인 정체" },
-  "Seven of Cups":     { upright:"감정의 환상",        reversed:"환상 깨짐" },
+  "Seven of Cups":     { upright:"감정의 환상·다선택", reversed:"환상 깨짐·명확화" },
   "Eight of Cups":     { upright:"떠남의 결단",        reversed:"떠남 망설임" },
   "Nine of Cups":      { upright:"감정 충족",          reversed:"충족 부족" },
   "Ten of Cups":       { upright:"완전한 결속",        reversed:"결속 흔들림" },
@@ -4545,6 +4640,7 @@ const CARD_LOVE_PHRASE = {
   "King of Swords":    { upright:"객관적 판단",        reversed:"냉정 과잉" },
   "Two of Swords":     { upright:"결정 보류·정지",     reversed:"결정 강요" },
   "Three of Swords":   { upright:"감정의 상처",        reversed:"상처 회복" },
+  "Four of Swords":    { upright:"휴식과 성찰·정체",   reversed:"휴식 끝 활동 재개" },
   "Five of Swords":    { upright:"갈등 후 잔재",       reversed:"갈등 정리" },
   "Seven of Swords":   { upright:"숨김·전략",          reversed:"진실 드러남" },
   "Nine of Swords":    { upright:"걱정·불안",          reversed:"불안 해소" },
@@ -4558,8 +4654,58 @@ const CARD_LOVE_PHRASE = {
   // Pentacles (안정·기반)
   "Four of Wands":     { upright:"안정된 결속",        reversed:"결속 흔들림" },
   "Five of Pentacles": { upright:"감정 결핍",          reversed:"회복 시작" },
-  "Ten of Pentacles":  { upright:"장기 안정",          reversed:"안정 흔들림" }
+  "Ten of Pentacles":  { upright:"장기 안정",          reversed:"안정 흔들림" },
+  "Page of Pentacles": { upright:"신뢰 학습",          reversed:"신뢰 부족" },
+  "Knight of Pentacles":{ upright:"꾸준한 진행",       reversed:"고집 또는 정체" },
+  "Queen of Pentacles":{ upright:"안정된 돌봄",        reversed:"돌봄 부담" },
+  "King of Pentacles": { upright:"실질적 안정",        reversed:"실리 우선" },
+  "Three of Pentacles":{ upright:"협력 결속",          reversed:"협력 균열" },
+  "Nine of Pentacles": { upright:"독립 안정",          reversed:"독립 불안" },
+  // 누락 보강
+  "Three of Cups":     { upright:"공동의 기쁨",        reversed:"기쁨 약화" },
+  "Knight of Cups":    { upright:"낭만 접근",          reversed:"감정 과잉" },
+  "Queen of Cups":     { upright:"공감 깊이",          reversed:"감정 의존" },
+  "King of Cups":      { upright:"성숙한 감정",        reversed:"감정 억제" },
+  "Knight of Wands":   { upright:"열정 추진",          reversed:"열정 분산" },
+  "Queen of Wands":    { upright:"확신과 매력",        reversed:"불안한 매력" },
+  "King of Wands":     { upright:"비전 주도",          reversed:"통제 강요" }
 };
+
+// ──────────────────────────────────────────────────────────────────
+// [V25.27] 한글 조사 자동 처리 — 받침 유무 자동 판정
+//   "흐름" + 으로 = "흐름으로" / "판단" + 으로 = "판단으로"
+//   "환상" + 이 = "환상이" / "흐름" + 이 = "흐름이"
+// ──────────────────────────────────────────────────────────────────
+function hasJongseong(str) {
+  if (!str) return false;
+  const lastChar = str.charCodeAt(str.length - 1);
+  if (lastChar < 0xAC00 || lastChar > 0xD7A3) return false;  // 한글 범위 외
+  return ((lastChar - 0xAC00) % 28) !== 0;
+}
+
+function josa(word, type) {
+  // type: 'eul' (을/를), 'i' (이/가), 'eun' (은/는), 'ro' (으로/로), 'wa' (와/과)
+  if (!word) return '';
+  const has = hasJongseong(word);
+  switch (type) {
+    case 'eul':  return has ? '을'   : '를';
+    case 'i':    return has ? '이'   : '가';
+    case 'eun':  return has ? '은'   : '는';
+    case 'ro':   {
+      // ㄹ 받침은 '로' 사용 (e.g. "절망로" X → "절망으로", but "갈" + 로 → "갈로")
+      const lastChar = word.charCodeAt(word.length - 1);
+      if (lastChar >= 0xAC00 && lastChar <= 0xD7A3) {
+        const jongseong = (lastChar - 0xAC00) % 28;
+        if (jongseong === 0) return '로';      // 받침 없음
+        if (jongseong === 8) return '로';      // ㄹ 받침
+        return '으로';
+      }
+      return '로';
+    }
+    case 'wa':   return has ? '과'   : '와';
+    default:     return '';
+  }
+}
 
 function getCardPhrase(card, isReversed) {
   if (!card) return null;
@@ -4806,7 +4952,7 @@ function splitCardsByRole(cards, revFlags) {
 
 // ── 6 박스 빌더 ──
 function buildLoveCoreInsight(content, flowArrow, metaPattern, cards, revFlags) {
-  // [V25.26] 카드 인식형 서술 강화 — 사장님 PRO 완성형 톤
+  // [V25.27] 카드 인식형 서술 + 한글 조사 자동 처리
   const rf = revFlags || [false, false, false];
   const past    = cards && cards[0];
   const present = cards && cards[1];
@@ -4828,20 +4974,26 @@ function buildLoveCoreInsight(content, flowArrow, metaPattern, cards, revFlags) 
     ? `이 관계는 '${pastPhrase} → ${presentPhrase} → ${futurePhrase}' 구조입니다.`
     : `[현재 관계의 본질은] ${content.core_keyword} 상태입니다.`;
   
-  // line2 (★ V25.26 강화): 카드 직접 인용 + 본질 진단 (사장님 PRO 완성형 톤)
+  // line2 (★ V25.27 강화): 카드 직접 인용 + 한글 조사 자동 처리
   const line2 = (pastName && presentName && futureName)
-    ? `${pastName}${pastRev}로 시작된 흐름은 ${presentName}${presentRev}에서 ${pastPhrase}이 ${presentPhrase}로 변하고, ${futureName}${futureRev}로 향하고 있습니다.`
+    ? `${pastName}${pastRev}로 시작된 흐름은 ${presentName}${presentRev}에서 ${pastPhrase}${josa(pastPhrase,'i')} ${presentPhrase}${josa(presentPhrase,'ro')} 변하고, ${futureName}${futureRev}${josa(futureName + futureRev,'ro')} 향하고 있습니다.`
     : `겉으로는 ${content.surface_state}처럼 보이지만, 실제 흐름은 ${content.hidden_flow}에 가깝습니다.`;
   
-  // line3 (★ V25.26 신규): 본질 진단
+  // line3 (★ V25.27 통합): 본질 진단
   const line3 = `이 관계는 ${content.relationship_type} 구조이며, ${content.structure_sentence}.`;
+  
+  // line4: 중심축
+  const line4 = `이미 감정의 중심축은 ${content.dominant_side} 쪽으로 기울어져 있습니다.`;
+  
+  // line5 (★ V25.27 변경): 표면 vs 실제 — 본질 진단으로 가치 강화
+  const line5 = `겉으로는 ${content.surface_state}처럼 보이지만, 실제 흐름은 ${content.hidden_flow}${josa(content.hidden_flow,'i')} 작동하는 단계입니다.`;
   
   return {
     line1,
     line2,
     line3,
-    line4: `이미 감정의 중심축은 ${content.dominant_side} 쪽으로 기울어져 있습니다.`,
-    line5: `겉으로는 ${content.surface_state}처럼 보이지만, 실제 흐름은 ${content.hidden_flow}에 가깝습니다.`,
+    line4,
+    line5,
     coreKey: content.core_decision, flowArrow, metaPattern
   };
 }
@@ -4915,7 +5067,7 @@ function buildLoveProEnhancement(metaPattern) {
 // ── MASTER ──
 function buildLoveOracleV25_24({ totalScore, cards, revFlags, loveSubType, numerology }) {
   const subtype = loveSubType || 'general';
-  const scoreCategory = getLoveScoreCategoryV2(totalScore, cards, revFlags);
+  const scoreCategory = getLoveScoreCategoryV2(totalScore, cards, revFlags, subtype);
   const content = getLoveContent(subtype, scoreCategory);
   const past = cards[0], present = cards[1], future = cards[2];
   const flowArrow = getFlowArrow(past, present, future, revFlags);
