@@ -1748,36 +1748,35 @@
         <!--   • 모바일 한 화면에 핵심 흐름 끝까지 보임                   -->
         <!-- ════════════════════════════════════════════════════════ -->
 
-        <!-- [V25.4] 상단: 오늘의 카드 — 슬림 가로 레이아웃 -->
-        <div id="daily-card-slim" style="display:none; max-width:480px; margin:6px auto 12px; padding:0 14px;">
+        <!-- [V25.4+V25.8] 상단: 오늘의 카드 — 중앙 정렬 슬림 레이아웃
+             V25.8 사장님 진단: "좌측으로 몰려있다 — 중앙배치 해야"
+             해결: 가로 3단 → 세로 중앙 정렬 (라벨 위 + 카드명 + 메시지 중앙 정렬) -->
+        <div id="daily-card-slim" style="display:none; max-width:380px; margin:6px auto 14px; padding:0 14px;">
             <div style="
                 display:flex;
+                flex-direction:column;
                 align-items:center;
-                gap:12px;
+                gap:3px;
                 background:linear-gradient(135deg, rgba(212,175,55,0.08), rgba(80,200,120,0.04));
                 border:1px solid rgba(212,175,55,0.28);
                 border-radius:10px;
-                padding:8px 12px;
-                box-shadow: 0 1px 6px rgba(212,175,55,0.06);">
-                <!-- 좌: 라벨 -->
-                <div style="flex-shrink:0; text-align:left;">
-                    <div style="font-size:0.6rem; letter-spacing:0.15em; color:var(--gold); font-weight:900; line-height:1.2;">
-                        TODAY
-                    </div>
-                    <div style="font-size:0.55rem; opacity:0.6; letter-spacing:0.12em; margin-top:1px;">
-                        오늘의 카드
-                    </div>
+                padding:8px 14px;
+                box-shadow: 0 1px 6px rgba(212,175,55,0.06);
+                text-align:center;">
+                <!-- 라벨 -->
+                <div style="font-size:0.58rem; letter-spacing:0.18em; color:var(--gold); font-weight:900; line-height:1.2;">
+                    TODAY · <span style="opacity:0.7;">오늘의 카드</span>
                 </div>
-                <!-- 카드 이미지 (선택적) -->
-                <img id="daily-card-img" alt=""
-                     style="display:none; width:32px; height:48px; object-fit:cover; border-radius:3px; border:1px solid rgba(212,175,55,0.5); flex-shrink:0;"
-                     onload="this.style.display='block'"
-                     onerror="this.style.display='none'">
-                <!-- 우: 카드명 + 메시지 한 줄 -->
-                <div style="flex:1; min-width:0; text-align:left;">
-                    <div id="daily-card-name" style="font-size:0.78rem; color:#fff; font-weight:800; line-height:1.2; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">-</div>
-                    <div id="daily-card-message" style="font-size:0.66rem; color:rgba(255,255,255,0.65); line-height:1.4; font-style:italic; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-top:1px;">-</div>
+                <!-- 카드 이미지 + 카드명 (가로 중앙) -->
+                <div style="display:flex; align-items:center; justify-content:center; gap:8px; margin-top:3px;">
+                    <img id="daily-card-img" alt=""
+                         style="display:none; width:24px; height:36px; object-fit:cover; border-radius:3px; border:1px solid rgba(212,175,55,0.5);"
+                         onload="this.style.display='block'"
+                         onerror="this.style.display='none'">
+                    <div id="daily-card-name" style="font-size:0.85rem; color:#fff; font-weight:800; line-height:1.2;">-</div>
                 </div>
+                <!-- 메시지 (중앙 정렬) -->
+                <div id="daily-card-message" style="font-size:0.68rem; color:rgba(255,255,255,0.7); line-height:1.4; font-style:italic; margin-top:2px; max-width:340px; text-align:center;">-</div>
             </div>
         </div>
 
