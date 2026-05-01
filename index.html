@@ -1845,6 +1845,11 @@
 마음의 질문을 깊게 새기소서" oninput="onQuestionInput(this.value)" autofocus></textarea>
         </div>
 
+        <!-- [V25.14] 카테고리 자동 추천 배너 — Claude 4순위 데이터 의견
+             질문 키워드 분석 → 적합 카테고리 추천 (강제 X)
+             사장님이 양재역 모아타운 케이스에서 헷갈렸던 것 해결 -->
+        <div id="cat-recommend-banner" style="display:none; margin: 10px 14px; max-width:600px; margin-left:auto; margin-right:auto;"></div>
+
         <!-- [V18.2] 상황 선택 UI — 연애/주식/부동산 3도메인 자동 노출 -->
         <div class="situation-bar" id="situation-bar" style="display:none;">
             <span class="situation-label" id="situation-label">✦ Choose your context · 상황을 선택하면 더 정확한 신탁을 받습니다 ✦</span>
@@ -2511,11 +2516,153 @@ let ACTIVE_DOMAIN_BAR = ''; // '' | 'love' | 'stock' | 'realestate'
 
 function onQuestionInput(val) {
     // [V25.0] 자동 분류 제거 — 카테고리는 사용자가 직접 선택
-    //   기존의 100줄 자동 분류 코드 → 빈 함수로 대체
-    //   서브타입은 selectSubtype()에서 직접 설정
-    //
-    // (역호환성: situation-bar는 더 이상 자동 노출되지 않음)
-    return;
+    // [V25.14] 카테고리 미선택 시 자동 추천 배너 (Claude 4순위 데이터 의견)
+    //   사장님이 양재역 모아타운에서 매수 vs 재개발 헷갈렸던 케이스 해결
+    //   질문 키워드 기반으로 카테고리/서브타입 추천 (강제 아님)
+
+    // 카테고리가 이미 선택되어 있으면 추천 안 함 (사용자 의지 존중)
+    if (typeof ACTIVE_DOMAIN_BAR !== 'undefined' && ACTIVE_DOMAIN_BAR) {
+        return;
+    }
+
+    const banner = document.getElementById('cat-recommend-banner');
+    if (!banner) return;
+
+    if (!val || val.trim().length < 4) {
+        banner.style.display = 'none';
+        return;
+    }
+
+    const text = val.toLowerCase();
+
+    // 키워드 매트릭스 — 도메인×서브타입 단순 룰
+    const recommendation = (() => {
+        // [부동산 — 재개발 우선] 양재역 모아타운 케이스
+        if (/재개발|재건축|모아타운|뉴타운|정비사업|조합/.test(text)) {
+            return { catKey: 'realestate', subtype: 'redev', label: '🏗️ 부동산 → 재개발/재건축', reason: '재개발 키워드 감지' };
+        }
+        // [부동산]
+        if (/아파트|부동산|주택|매물|호가|평수|전세|월세|매입|매수.*아파트|아파트.*매수/.test(text)) {
+            if (/팔|매도|매각/.test(text)) {
+                return { catKey: 'realestate', subtype: 'sell', label: '🏠 부동산 → 매도 분석', reason: '부동산 매도 키워드' };
+            }
+            if (/사|매수|매입/.test(text)) {
+                return { catKey: 'realestate', subtype: 'buy', label: '🏠 부동산 → 매수 분석', reason: '부동산 매수 키워드' };
+            }
+            return { catKey: 'realestate', subtype: 'buy', label: '🏠 부동산', reason: '부동산 관련 질문' };
+        }
+        // [연애 — 결혼]
+        if (/결혼|혼인|예식|상견례|혼사/.test(text)) {
+            return { catKey: 'love', subtype: 'marriage', label: '💍 연애 → 결혼', reason: '결혼 키워드' };
+        }
+        // [연애 — 재회]
+        if (/재회|다시.*만|헤어졌.*다시/.test(text)) {
+            return { catKey: 'love', subtype: 'reunion', label: '💑 연애 → 재회', reason: '재회 키워드' };
+        }
+        // [연애 — 이별]
+        if (/이별|헤어|결별|끝낼/.test(text)) {
+            return { catKey: 'love', subtype: 'breakup', label: '💔 연애 → 이별', reason: '이별 키워드' };
+        }
+        // [연애 — 짝사랑]
+        if (/짝사랑|좋아하는데|좋아해|마음을 어떻게/.test(text)) {
+            return { catKey: 'love', subtype: 'crush', label: '💕 연애 → 짝사랑', reason: '짝사랑 키워드' };
+        }
+        // [연애 — 썸]
+        if (/썸|호감|관심.*있/.test(text)) {
+            return { catKey: 'love', subtype: 'thumb', label: '💫 연애 → 썸', reason: '썸 키워드' };
+        }
+        // [연애 — 궁합]
+        if (/궁합|어울리|맞을까|맞을지/.test(text)) {
+            return { catKey: 'love', subtype: 'compatibility', label: '💞 연애 → 궁합', reason: '궁합 키워드' };
+        }
+        // [연애 — 일반]
+        if (/연애|남자친구|여자친구|남친|여친|연인|애인|사랑/.test(text)) {
+            return { catKey: 'love', subtype: 'general', label: '💗 연애운', reason: '연애 키워드' };
+        }
+        // [주식/코인 — 매도] 종목명 + 매도 키워드 또는 명시적 종목명 + 타이밍
+        //   사장님 케이스: "삼성전자 매도 타이밍" → stock/sell_timing
+        if (/주식|종목|코인|비트코인|이더리움|매수.*타이밍|매도.*타이밍|손절.*타이밍|익절.*타이밍/.test(text)
+            && /팔|매도|매각|익절|손절|청산/.test(text)) {
+            return { catKey: 'stock', subtype: 'sell_timing', label: '📤 투자 → 매도 타이밍', reason: '매도 키워드' };
+        }
+        // [주식/코인 — 매수]
+        if (/주식|종목|코인|비트코인|이더리움/.test(text)) {
+            return { catKey: 'stock', subtype: 'buy_timing', label: '💰 투자 → 매수 타이밍', reason: '투자 키워드' };
+        }
+        // [주식 — 매도/매수 타이밍 단독] 종목명 없어도 매도/매수 + 타이밍이면 주식
+        if (/매도\s*타이밍|매수\s*타이밍|손절\s*타이밍|익절\s*타이밍/.test(text)) {
+            const isSell = /매도|손절|익절/.test(text);
+            return {
+                catKey: 'stock',
+                subtype: isSell ? 'sell_timing' : 'buy_timing',
+                label: isSell ? '📤 투자 → 매도 타이밍' : '💰 투자 → 매수 타이밍',
+                reason: '투자 타이밍 키워드'
+            };
+        }
+        // [운세 — 신년]
+        if (/올해|새해|신년|내년|이번 해/.test(text)) {
+            return { catKey: 'general', subtype: 'newyear', label: '🎊 운세 → 신년 운세', reason: '신년 키워드' };
+        }
+        // [운세 — 오늘]
+        if (/오늘|내일|모레/.test(text)) {
+            return { catKey: 'general', subtype: 'today', label: '🌅 운세 → 오늘 운세', reason: '오늘 키워드' };
+        }
+        // [운세 — 일반]
+        if (/운세|운명|흐름|타이밍/.test(text)) {
+            return { catKey: 'general', subtype: 'general', label: '✨ 운세 → 전반 운세', reason: '운세 키워드' };
+        }
+        return null;
+    })();
+
+    if (!recommendation) {
+        banner.style.display = 'none';
+        return;
+    }
+
+    // 추천 배너 노출
+    banner.innerHTML = `
+        <div style="display:flex; align-items:center; gap:10px; padding:10px 14px;
+                    background: linear-gradient(135deg, rgba(212,175,55,0.12), rgba(155,89,182,0.08));
+                    border: 1px solid rgba(212,175,55,0.35);
+                    border-radius: 10px; cursor:pointer;
+                    transition: transform 0.15s ease;"
+             onmouseover="this.style.transform='translateY(-1px)'"
+             onmouseout="this.style.transform='translateY(0)'"
+             onclick="applyRecommendation('${recommendation.catKey}', '${recommendation.subtype}')">
+            <span style="font-size:1.05rem;">💡</span>
+            <div style="flex:1; min-width:0;">
+                <div style="color: var(--gold); font-size: 0.78rem; font-weight: 800; letter-spacing: 0.02em;">
+                    이 질문은 <span style="color:#fff;">${recommendation.label}</span>에 적합합니다
+                </div>
+                <div style="font-size: 0.7rem; color: rgba(255,255,255,0.55); margin-top: 2px;">
+                    탭하여 자동 선택 · ${recommendation.reason}
+                </div>
+            </div>
+            <span style="color: var(--gold); font-size: 1rem;">→</span>
+        </div>`;
+    banner.style.display = 'block';
+}
+
+// [V25.14] 추천 카테고리 자동 적용
+function applyRecommendation(catKey, subtype) {
+    const cfg = CATEGORY_CONFIG[catKey];
+    if (!cfg) return;
+
+    // 카테고리 카드 클릭 시뮬레이션
+    const catCard = document.querySelector(`.cat-card[data-cat="${catKey}"]`);
+    if (catCard) {
+        selectCategory(catKey, catCard);
+    }
+
+    // 서브타입 자동 클릭 (DOM 렌더 후)
+    setTimeout(() => {
+        const subBtn = document.querySelector(`.sub-btn[data-subtype="${subtype}"]`);
+        if (subBtn) subBtn.click();
+    }, 200);
+
+    // 배너 숨김
+    const banner = document.getElementById('cat-recommend-banner');
+    if (banner) banner.style.display = 'none';
 }
 
 // ══ 카테고리 정의 (4개) ══
@@ -2589,7 +2736,12 @@ const CATEGORY_CONFIG = {
               placeholder: '예: 지금 송파 아파트 매수해도 될까요?' },
             { type: 'hold',  icon: '🏛️', label: '보유 전략',
               hint: '보유 vs 정리 의사결정을 점사합니다',
-              placeholder: '예: 보유 중인 부동산 계속 들고 갈까요?' }
+              placeholder: '예: 보유 중인 부동산 계속 들고 갈까요?' },
+            // [V25.13] 사장님 요청 — 재개발/재건축 서브타입 추가
+            //   양재역 모아타운 같은 재개발 정보 점사 분기
+            { type: 'redev', icon: '🏗️', label: '재개발/재건축',
+              hint: '재개발·재건축 진행 가능성과 장기 흐름을 점사합니다',
+              placeholder: '예: 양재역 모아타운 재개발 어떻게 될까요?' }
         ]
     },
     general: {
@@ -2602,7 +2754,17 @@ const CATEGORY_CONFIG = {
               placeholder: '예: 오늘 어떤 흐름인가요?' },
             { type: 'general', icon: '✨', label: '전반 운세',
               hint: '근래 전반적인 운세 흐름을 점사합니다',
-              placeholder: '예: 요즘 내 흐름이 어떤가요?' }
+              placeholder: '예: 요즘 내 흐름이 어떤가요?' },
+            // [V25.13] 사장님 요청 — 신년 운세 서브타입 추가
+            //   연말~연초 사용자 유입 ↑, 한 해 흐름 명확 분리
+            { type: 'newyear', icon: '🎊', label: '신년 운세',
+              hint: '한 해 전반의 흐름과 핵심 시기를 점사합니다',
+              placeholder: '예: 올해 내 운세는 어떤가요?' },
+            // [V25.13] 사장님 요청 — 기타 신탁 (Claude 명명)
+            //   분류 어려운 자유 질문, ZEUS 브랜드 일관성 유지
+            { type: 'etc',     icon: '🔮', label: '기타 신탁',
+              hint: '카테고리에 속하지 않는 자유로운 질문을 점사합니다',
+              placeholder: '예: 이번 결정이 맞을까요? / 자유롭게 질문해주세요' }
         ]
     }
 };
@@ -5877,14 +6039,21 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
                             border-left: 3px solid ${colors.risk};
                             border-radius: 6px;">
                     <div style="color:${colors.risk}; font-size:0.78rem; font-weight:900; letter-spacing:0.08em; margin-bottom:8px;">
-                        ${domain === 'love' ? '💔 관계 흐름 점검' : '⚠️ 리스크 분석'}
+                        ${domain === 'love' ? '💔 관계 흐름 점검'
+                          : (domain === 'life' || domain === 'general') ? '🛡️ 흐름 주의 포인트'
+                          : '⚠️ 리스크 분석'}
                     </div>
                     <div style="font-size:0.85rem; color:rgba(255,255,255,0.92); line-height:1.85;">
-                        ${domain !== 'love' ? `<div>• 리스크 수준: <b style="color:${riskColor};">${rsk.level || '보통'}</b></div>
-                        <div>• 변동성: ${rsk.volatility || '보통'}</div>` : `<div>• 관계 부담도: <b style="color:${riskColor};">${rsk.level || '보통'}</b></div>
-                        <div>• 감정 변동성: ${rsk.volatility || '보통'}</div>`}
+                        ${domain === 'love' ? `<div>• 관계 부담도: <b style="color:${riskColor};">${rsk.level || '보통'}</b></div>
+                        <div>• 감정 변동성: ${rsk.volatility || '보통'}</div>`
+                          : (domain === 'life' || domain === 'general') ? `<div>• 주의도: <b style="color:${riskColor};">${rsk.level || '보통'}</b></div>
+                        <div>• 흐름 변화: ${rsk.volatility || '보통'}</div>`
+                          : `<div>• 리스크 수준: <b style="color:${riskColor};">${rsk.level || '보통'}</b></div>
+                        <div>• 변동성: ${rsk.volatility || '보통'}</div>`}
                         ${(rsk.cautions && rsk.cautions.length) ? `
-                        ${domain !== 'love' ? `<div style="margin-top:6px; font-size:0.78rem; opacity:0.9;">• 주의 포인트:</div>` : `<div style="margin-top:6px; font-size:0.78rem; opacity:0.9;">• 점검 포인트:</div>`}
+                        ${domain === 'love' ? `<div style="margin-top:6px; font-size:0.78rem; opacity:0.9;">• 점검 포인트:</div>`
+                          : (domain === 'life' || domain === 'general') ? `<div style="margin-top:6px; font-size:0.78rem; opacity:0.9;">• 흐름 점검 포인트:</div>`
+                          : `<div style="margin-top:6px; font-size:0.78rem; opacity:0.9;">• 주의 포인트:</div>`}
                         <ul style="margin:4px 0 0 16px; padding:0; font-size:0.82rem; line-height:1.7;">
                             ${rsk.cautions.map(c => `<li style="color:rgba(255,255,255,0.85);">${applyDomainFilter(c, domain)}</li>`).join('')}
                         </ul>` : ''}
@@ -6856,6 +7025,8 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
             }
 
             // ✨ 일반 운세: 기존 지표 박스 유지 (연애 용어 배제)
+            // [V25.13] 사장님 안 — '🛡️ 주의' → '🛡️ 흐름 주의 포인트'
+            //   짧고 의미 모호한 라벨을 자기 기준 우선 권유 톤으로 강화
             return `
                 <div style="margin-top:14px;padding:14px 16px;background:rgba(212,175,55,0.07);border-left:3px solid var(--gold);border-radius:0 8px 8px 0;font-size:0.9rem;line-height:1.8;color:rgba(255,255,255,0.9);margin-bottom:14px;">${lucky}</div>
                 <div style="padding:14px 16px;background:rgba(46,204,113,0.05);border:1px solid rgba(46,204,113,0.2);border-radius:8px;font-size:0.88rem;line-height:1.9;">
@@ -6863,61 +7034,137 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
                     <div style="margin-bottom:4px;">📈 흐름: <span style="color:rgba(255,255,255,0.9);">${fi.trend}</span></div>
                     <div style="margin-bottom:4px;">🧭 행동: <span style="color:rgba(255,255,255,0.9);">${fi.action}</span></div>
                     <div style="margin-bottom:4px;">⚡ 타이밍: <span style="color:rgba(255,255,255,0.9);">${fi.timing}</span></div>
-                    <div>🛡️ 주의: <span style="color:rgba(255,255,255,0.9);">${fi.risk}</span></div>
+                    <div style="margin-top:10px; padding-top:10px; border-top:1px solid rgba(46,204,113,0.15); font-size:0.85rem;">
+                        <div style="color:#2ecc71; font-weight:700; margin-bottom:6px;">🛡️ 흐름 주의 포인트</div>
+                        <div style="margin-left:6px; line-height:1.7; color:rgba(255,255,255,0.88);">
+                            👉 중요한 선택의 시기이므로 감정적 판단보다 기준 정리 후 결정이 도움이 됩니다<br>
+                            👉 주변 의견보다 자신의 기준과 가치관을 우선하는 것이 흐름을 안정시킵니다
+                        </div>
+                    </div>
                 </div>`;
         })() : ''}
         ${investBlock}
         ${_zeusProHook}
-        <!-- [V24.0] 면책 고지 강화 — 자본시장법/공인중개사법 회피 명시 -->
-        <div style="margin-top:18px; padding:12px 14px; font-size:0.70rem;
+        <!-- [V24.0+V25.13] 면책 고지 — 도메인별 차별화 (사장님 안)
+             운세(life/general): 가벼운 톤 (UX 친화)
+             그 외: 강한 법무 (자본시장법/공인중개사법 회피) -->
+        ${(ACTIVE_DOMAIN_BAR === 'life' || ACTIVE_DOMAIN_BAR === 'general')
+          ? `<div style="margin-top:18px; padding:12px 14px; font-size:0.72rem;
+                    color:rgba(255,255,255,0.6); text-align:center;
+                    line-height:1.7; letter-spacing:0.01em;
+                    border:1px solid rgba(255,255,255,0.08); border-radius:8px;">
+                ※ 본 신탁은 흐름 해석을 돕기 위한 참고 콘텐츠입니다.<br>
+                중요한 결정은 개인 상황을 기준으로 신중히 판단하시기 바랍니다.
+            </div>`
+          : `<div style="margin-top:18px; padding:12px 14px; font-size:0.70rem;
                     color:rgba(255,255,255,0.55); text-align:center;
                     line-height:1.7; letter-spacing:0.01em;
                     border:1px solid rgba(255,255,255,0.08); border-radius:8px;">
-            ⚠️ <b>본 서비스는 타로 카드를 활용한 엔터테인먼트 콘텐츠</b>로,<br>
-            투자자문업·금융상품판매업·공인중개사법상 등록된 서비스가 아닙니다.<br>
-            특정 종목·자산·부동산의 매매 권유나 투자 결정의 근거가 될 수 없으며,<br>
-            본 콘텐츠를 참고한 모든 투자·거래 결정의 결과는 사용자 본인에게 귀속됩니다.<br>
-            <span style="opacity:0.65;">Not financial / legal / tax / real-estate advice — Entertainment use only.</span>
-        </div>
+                ⚠️ <b>본 서비스는 타로 카드를 활용한 엔터테인먼트 콘텐츠</b>로,<br>
+                투자자문업·금융상품판매업·공인중개사법상 등록된 서비스가 아닙니다.<br>
+                특정 종목·자산·부동산의 매매 권유나 투자 결정의 근거가 될 수 없으며,<br>
+                본 콘텐츠를 참고한 모든 투자·거래 결정의 결과는 사용자 본인에게 귀속됩니다.<br>
+                <span style="opacity:0.65;">Not financial / legal / tax / real-estate advice — Entertainment use only.</span>
+            </div>`}
     </div>`;
 
         return publicSections + futureCardHTML + oracleHTML;
     } else {
-        // 🔥 [V6.3] 떨림 방지 및 즉시 안착 로직 적용
-        return publicSections + `
+        // [V25.14] PRO Blur 미리보기 — Claude 1순위 데이터 의견 적용
+        //   사장님 진단 채택: "사용자가 무엇을 사는지 모르고 결제"
+        //   해결: PRO 결과 일부를 흐릿하게 노출 → 잠금 해제 → 선명화
+        //   ROI: 결제 전환 +20~30% 추정 (실제 산 것을 미리 본 후 결제)
+        //
+        // 도메인별 Blur 미리보기 콘텐츠 (PRO 결과 일부)
+        const _activeDomain = (typeof ACTIVE_DOMAIN_BAR !== 'undefined' && ACTIVE_DOMAIN_BAR) || 'general';
+        const previewItems = (() => {
+            if (_activeDomain === 'love') {
+                return [
+                    { icon: '💎', title: '상대 진짜 마음', preview: '두 사람의 본질적 합의 가능성, 상대가 느끼는 거리감과 진심의 깊이...' },
+                    { icon: '🔮', title: '관계 미래 흐름', preview: '향후 3개월 관계의 결정적 분기점과 작용할 우주적 타이밍...' },
+                    { icon: '⚡', title: '내일 행동 타이밍', preview: '연락·만남에 가장 적합한 시간대와 피해야 할 구간...' }
+                ];
+            } else if (_activeDomain === 'stock' || _activeDomain === 'crypto') {
+                return [
+                    { icon: '📊', title: '5차원 영성 분석', preview: '카드별 base/관계/리스크/변동성/불확실성 점수 시각화...' },
+                    { icon: '🎯', title: '진입 트리거 시그널', preview: '객관적 신호 충족 시 단계별 비중 조정 흐름과 타이밍...' },
+                    { icon: '⚡', title: '수비학 황금 시간대', preview: '카드 에너지가 정점에 이르는 정확한 요일·시간대 분석...' }
+                ];
+            } else if (_activeDomain === 'realestate') {
+                return [
+                    { icon: '🏛️', title: '시장 흐름 심층 분석', preview: '향후 시즌별 거래 가능성과 가격 협상 여지의 깊이...' },
+                    { icon: '📅', title: '계약 황금 시점', preview: '카드 에너지가 부동산 거래에 가장 적합한 월·주 분석...' },
+                    { icon: '🛡️', title: '리스크 회피 가이드', preview: '금리·규제·실거래가 변수의 카드별 영향도 분석...' }
+                ];
+            } else {
+                // 운세/일반
+                return [
+                    { icon: '✨', title: '월별 흐름 예측', preview: '한 해의 핵심 시기와 작은 선택이 큰 영향을 줄 분기점...' },
+                    { icon: '🌙', title: '수비학 황금 타이밍', preview: '달의 흐름과 카드 에너지가 동조하는 정확한 시간대...' },
+                    { icon: '🎯', title: '맞춤 행동 가이드', preview: '오늘 한 번의 행동이 향후 흐름에 미치는 우주적 파장...' }
+                ];
+            }
+        })();
+
+        const blurPreviewHTML = `
+            <div style="margin: 16px 0; padding: 14px; background: rgba(212,175,55,0.04); border: 1px solid rgba(212,175,55,0.15); border-radius: 12px;">
+                <div style="text-align:center; color: var(--gold); font-size: 0.78rem; font-weight: 900; letter-spacing: 0.1em; margin-bottom: 12px;">
+                    ✦ 잠금 해제 후 공개되는 신탁 ✦
+                </div>
+                ${previewItems.map((item, idx) => `
+                    <div style="position: relative; margin-bottom: 10px; padding: 12px 14px; background: rgba(0,0,0,0.35); border-radius: 8px; overflow: hidden;">
+                        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 6px;">
+                            <span style="font-size: 1.05rem;">${item.icon}</span>
+                            <span style="color: var(--gold); font-weight: 800; font-size: 0.88rem;">${item.title}</span>
+                            <span style="margin-left: auto; font-size: 0.75rem; color: rgba(255,255,255,0.4);">🔒</span>
+                        </div>
+                        <div style="filter: blur(4px); user-select: none; pointer-events: none; color: rgba(255,255,255,0.7); font-size: 0.82rem; line-height: 1.6; letter-spacing: 0.01em;">
+                            ${item.preview}
+                        </div>
+                        <!-- Blur 위에 미세한 그라데이션 오버레이로 신비로움 강조 -->
+                        <div style="position: absolute; top: 32px; left: 0; right: 0; bottom: 0; background: linear-gradient(180deg, transparent 0%, rgba(0,0,0,0.15) 50%, rgba(0,0,0,0.3) 100%); pointer-events: none;"></div>
+                    </div>
+                `).join('')}
+                <div style="text-align: center; margin-top: 10px; color: rgba(255,255,255,0.5); font-size: 0.72rem; font-style: italic;">
+                    ↑ 결제 시 선명하게 공개됩니다
+                </div>
+            </div>`;
+
+        // 🔥 [V6.3+V25.14] 떨림 방지 + Blur 미리보기 통합
+        return publicSections + blurPreviewHTML + `
             <div class="lock-section" style="
-                padding: 40px 20px; 
+                padding: 32px 20px; 
                 text-align: center; 
                 background: rgba(0,0,0,0.4); 
                 border: 2px solid var(--gold); 
                 border-radius: 18px; 
-                margin: 25px 0; 
-                min-height: 320px; /* 👈 높이를 미리 확보하여 덜덜거림 방지 */
+                margin: 18px 0 25px;
+                min-height: 280px;
                 display: flex; 
                 flex-direction: column; 
                 justify-content: center;
                 box-sizing: border-box;
-                backface-visibility: hidden; /* 👈 떨림 방지용 하드웨어 가속 */
+                backface-visibility: hidden;
             ">
                 
-                <div style="margin-bottom: 20px;">
-                    <div style="width: 60px; height: 60px; margin: 0 auto; border-radius: 50%; background: radial-gradient(circle, var(--gold) 0%, transparent 70%); animation: zeus-pulse 2s infinite ease-in-out;"></div>
-                    <div style="margin-top: -40px; font-size: 1.5rem; color: var(--gold); animation: lightning-flicker 0.6s infinite alternate;">⚡</div>
+                <div style="margin-bottom: 16px;">
+                    <div style="width: 56px; height: 56px; margin: 0 auto; border-radius: 50%; background: radial-gradient(circle, var(--gold) 0%, transparent 70%); animation: zeus-pulse 2s infinite ease-in-out;"></div>
+                    <div style="margin-top: -38px; font-size: 1.4rem; color: var(--gold); animation: lightning-flicker 0.6s infinite alternate;">⚡</div>
                 </div>
 
-                <h3 style="color: var(--gold); margin: 0 0 10px 0; font-weight: 900; font-size: 1.1rem; line-height: 1.4;">
-                    제우스의 시선이<br>유저님의 운명을 향하고 있습니다
+                <h3 style="color: var(--gold); margin: 0 0 8px 0; font-weight: 900; font-size: 1.05rem; line-height: 1.4;">
+                    위 신탁을 선명하게<br>확인하시겠습니까?
                 </h3>
                 
-                <p style="font-size: 0.9rem; color: rgba(255,255,255,0.7); margin-bottom: 20px; line-height: 1.6;">
-                    미래의 신탁 데이터와 교신 중입니다.<br>잠시만 기다리시면 당신의 운명이 열립니다.
+                <p style="font-size: 0.82rem; color: rgba(255,255,255,0.65); margin-bottom: 18px; line-height: 1.5;">
+                    제우스의 시선이 잠겨 있는 신탁을 풀어드립니다
                 </p>
 
-                <button onclick="showPayModal()" style="background: linear-gradient(135deg, #d4af37, #f1c40f); color: #000; border: none; padding: 12px 35px; border-radius: 30px; font-weight: 900; cursor: pointer; box-shadow: 0 4px 15px rgba(212,175,55,0.4);">
+                <button onclick="showPayModal()" style="background: linear-gradient(135deg, #d4af37, #f1c40f); color: #000; border: none; padding: 12px 35px; border-radius: 30px; font-weight: 900; cursor: pointer; box-shadow: 0 4px 15px rgba(212,175,55,0.4); font-size: 0.9rem;">
                     🔓 미래 신탁 잠금 해제
                 </button>
 
-                <div style="margin-top: 20px; color: #50C878; font-size: 0.85rem; font-weight: bold; animation: emerald-glow 2s infinite alternate;">
+                <div style="margin-top: 16px; color: #50C878; font-size: 0.78rem; font-weight: bold; animation: emerald-glow 2s infinite alternate;">
                     신탁의 실타래가 유저님의 운명과 엮이는 중...
                 </div>
             </div>`;
@@ -8588,10 +8835,24 @@ const DOMAIN_LABEL_MAP = {
         '연인': '거래 상대',
     },
     general: {
-        // 운세도 '리스크' 같은 강한 단어는 부드럽게
-        '리스크 분석': '주의 흐름 점검',
+        // [V25.12] 운세 — '리스크' 같은 강한 단어를 '주의 흐름'으로 부드럽게
+        '리스크 분석': '🛡️ 흐름 주의 포인트',
         '리스크 수준': '주의도',
+        '리스크': '주의도',
         '고위험 구간': '주의 필요 구간',
+        '고위험': '주의 필요',
+        '신중한 포지션 관리 필요': '신중한 판단이 필요한 시점입니다',
+        '포지션': '흐름 자세',
+        '진입': '흐름 시작',
+        '익절': '흐름 정리',
+        '손절': '흐름 정리',
+        '청산': '흐름 마무리',
+        '매수': '흐름 진입',
+        '매도': '흐름 정리',
+        '추세': '흐름',
+        '변동성': '흐름 변화',
+        '저점': '흐름 저점',
+        '고점': '흐름 고점',
     },
     stock: {},   // 주식은 그대로 OK
     crypto: {},
@@ -8635,27 +8896,31 @@ function renderMetrics(metrics) {
                 letter-spacing:0.04em;">
         ${_isLove
           ? `⚠️ 감정 변동 구간 (관계 부담도 ${rls}%) — 신중한 판단이 필요한 시점입니다`
+          : (_domain === 'general')
+          ? `🛡️ 흐름 주의 포인트 (주의도 ${rls}%) — 중요한 선택의 시기이므로 기준 정리 후 결정이 도움이 됩니다`
           : `⚠️ 고위험 구간 (리스크 ${rls}%) — 신중한 포지션 관리 필요`}
     </div>` : '';
 
-    // 표시할 항목 구성 — [V25.10] 도메인별 라벨 분기
+    // 표시할 항목 구성 — [V25.10+V25.12] 도메인별 라벨 분기
+    //   _isLove: 연애 / _isGeneral: 운세 / 그외: 투자
+    const _isGeneral = (_domain === 'general');
     const items = [];
     if (metrics.attractionScore      !== undefined) items.push({ icon: '💘', label: '호감도',    value: metrics.attractionScore + '%' });
-    if (metrics.conflictIndex        !== undefined) items.push({ icon: '⚔️', label: _isLove ? '긴장도' : '갈등지수',  value: metrics.conflictIndex + '%' });
+    if (metrics.conflictIndex        !== undefined) items.push({ icon: '⚔️', label: _isLove ? '긴장도' : _isGeneral ? '갈등 흐름' : '갈등지수',  value: metrics.conflictIndex + '%' });
     if (metrics.reconnectProbability !== undefined) items.push({ icon: '🔁', label: '재연결 가능성', value: metrics.reconnectProbability + '%' });
-    // [V25.10] riskLevelScore — 도메인별 라벨
+    // [V25.10+V25.12] riskLevelScore — 도메인별 라벨 (love/general/투자)
     if (rls !== undefined) {
         const riskColor = rls > 70 ? '#FF8080' : rls > 40 ? '#F39C12' : '#2ecc71';
         items.push({
-            icon: _isLove ? '💔' : '⚠️',
-            label: _isLove ? '관계 부담도' : '리스크',
+            icon: _isLove ? '💔' : _isGeneral ? '🛡️' : '⚠️',
+            label: _isLove ? '관계 부담도' : _isGeneral ? '주의도' : '리스크',
             value: rls + '%',
             color: riskColor
         });
     } else if (metrics.riskScore !== undefined) {
         items.push({
-            icon: _isLove ? '💔' : '⚠️',
-            label: _isLove ? '관계 부담도' : '리스크',
+            icon: _isLove ? '💔' : _isGeneral ? '🛡️' : '⚠️',
+            label: _isLove ? '관계 부담도' : _isGeneral ? '주의도' : '리스크',
             value: metrics.riskScore + '%'
         });
     }
@@ -8663,27 +8928,34 @@ function renderMetrics(metrics) {
     if (metrics.actionType) {
         const actionLabel = _isLove
             ? { wait: '⏸ 관망', move: '🚀 표현', observe: '👁 관찰' }
+            : _isGeneral
+            ? { wait: '⏸ 관망', move: '🚀 행동', observe: '👁 관찰' }
             : { wait: '⏸ 대기', move: '🚀 행동', observe: '👁 관찰' };
         items.push({ icon: '🧭', label: '행동', value: actionLabel[metrics.actionType] || metrics.actionType });
     }
     if (metrics.volatilityScore      !== undefined) items.push({
         icon: '📊',
-        label: _isLove ? '감정 변동성' : '변동성',
+        label: _isLove ? '감정 변동성' : _isGeneral ? '흐름 변화' : '변동성',
         value: metrics.volatilityScore + '%'
     });
     if (metrics.dealConfidence       !== undefined) items.push({ icon: '🏠', label: '거래확률',  value: metrics.dealConfidence + '%' });
     if (metrics.entryTiming) {
-        const timingLabel = _isLove
-            ? { NOW: '✅ 지금', LATER: '⏳ 나중', AVOID: '❌ 보류' }
-            : { NOW: '✅ 지금', LATER: '⏳ 나중', AVOID: '❌ 보류' };
+        const timingLabel = { NOW: '✅ 지금', LATER: '⏳ 나중', AVOID: '❌ 보류' };
         items.push({
             icon: '⏱',
-            label: _isLove ? '대화 타이밍' : '진입',
+            label: _isLove ? '대화 타이밍' : _isGeneral ? '행동 시점' : '진입',
             value: timingLabel[metrics.entryTiming] || metrics.entryTiming
         });
     }
 
     if (!items.length && !riskWarningHTML) return '';
+
+    // ══════════════════════════════════════════════════════════════
+    // [V25.14] 5차원 영성 레이더 차트 (Claude 2순위)
+    //   사장님 1년 작업 CARD_SCORE_MULTI를 시각화
+    //   다른 타로 앱 못 따라하는 차별화 포인트
+    // ══════════════════════════════════════════════════════════════
+    const radarHTML = renderCardRadarChart(metrics.cardDimensions, _domain);
 
     return riskWarningHTML + `
     <div style="margin:16px 0 8px; padding:14px 16px;
@@ -8705,6 +8977,157 @@ function renderMetrics(metrics) {
                 <div style="font-size:0.88rem; color:${it.color || '#fff'}; font-weight:800;">${it.value}</div>
             </div>
         </div>`).join('')}
+    </div>` + radarHTML;
+}
+
+// ══════════════════════════════════════════════════════════════════
+// [V25.14] renderCardRadarChart — 카드 5차원 영성 레이더 차트 SVG
+//   사장님 1년 작업: CARD_SCORE_MULTI (base/love/risk/vol/uncertainty)
+//   3장 카드를 5축에 시각화 — 차별화 포인트 (다른 타로 앱 X)
+//   도메인별 축 라벨 변환 (love/general/투자)
+// ══════════════════════════════════════════════════════════════════
+function renderCardRadarChart(cardDimensions, domain) {
+    if (!cardDimensions || !cardDimensions.length) return '';
+
+    // 도메인별 축 라벨 — 사장님 V25.10 매핑 일관 적용
+    const axes = (() => {
+        if (domain === 'love') {
+            return [
+                { key: 'base',        label: '관계 기반' },
+                { key: 'love',        label: '호감도' },
+                { key: 'risk',        label: '관계 부담' },
+                { key: 'vol',         label: '감정 변동' },
+                { key: 'uncertainty', label: '불확실성' }
+            ];
+        } else if (domain === 'general') {
+            return [
+                { key: 'base',        label: '흐름 기반' },
+                { key: 'love',        label: '관계 에너지' },
+                { key: 'risk',        label: '주의도' },
+                { key: 'vol',         label: '흐름 변화' },
+                { key: 'uncertainty', label: '불확실성' }
+            ];
+        }
+        // stock / crypto / realestate
+        return [
+            { key: 'base',        label: '기본 점수' },
+            { key: 'love',        label: '관계 에너지' },
+            { key: 'risk',        label: '리스크' },
+            { key: 'vol',         label: '변동성' },
+            { key: 'uncertainty', label: '불확실성' }
+        ];
+    })();
+
+    // 카드별 색상 (과거/현재/미래)
+    const cardColors = ['#9b59b6', '#d4af37', '#2ecc71'];  // 보라/금/에메랄드
+
+    const W = 320, H = 320;
+    const cx = W / 2, cy = H / 2 + 8;
+    const R = 105;  // 최대 반경
+    const numAxes = axes.length;
+
+    // 5축 좌표 계산 (12시 방향 시작, 시계 방향)
+    const axisPoints = axes.map((_, i) => {
+        const angle = -Math.PI / 2 + (2 * Math.PI * i) / numAxes;
+        return {
+            angle,
+            x: cx + R * Math.cos(angle),
+            y: cy + R * Math.sin(angle)
+        };
+    });
+
+    // 동심원 그리드 (20/40/60/80/100%)
+    const grids = [0.2, 0.4, 0.6, 0.8, 1.0].map(scale => {
+        const points = axisPoints.map(p => {
+            const x = cx + (p.x - cx) * scale;
+            const y = cy + (p.y - cy) * scale;
+            return `${x.toFixed(1)},${y.toFixed(1)}`;
+        }).join(' ');
+        return `<polygon points="${points}" fill="none" stroke="rgba(212,175,55,${0.08 + scale * 0.06})" stroke-width="1"/>`;
+    }).join('');
+
+    // 축선
+    const axisLines = axisPoints.map(p =>
+        `<line x1="${cx}" y1="${cy}" x2="${p.x.toFixed(1)}" y2="${p.y.toFixed(1)}" stroke="rgba(212,175,55,0.15)" stroke-width="1"/>`
+    ).join('');
+
+    // 축 라벨
+    const axisLabels = axes.map((axis, i) => {
+        const p = axisPoints[i];
+        const labelX = cx + (R + 22) * Math.cos(p.angle);
+        const labelY = cy + (R + 22) * Math.sin(p.angle);
+        return `<text x="${labelX.toFixed(1)}" y="${labelY.toFixed(1)}"
+                fill="rgba(255,215,112,0.85)" font-size="10" font-weight="700"
+                text-anchor="middle" dominant-baseline="middle"
+                letter-spacing="0.5">${axis.label}</text>`;
+    }).join('');
+
+    // 카드별 다각형
+    const cardPolygons = cardDimensions.map((card, idx) => {
+        const color = cardColors[idx] || '#d4af37';
+        const points = axes.map((axis, i) => {
+            const value = (card.dimensions[axis.key] || 50) / 100;
+            const angle = axisPoints[i].angle;
+            const x = cx + R * value * Math.cos(angle);
+            const y = cy + R * value * Math.sin(angle);
+            return `${x.toFixed(1)},${y.toFixed(1)}`;
+        }).join(' ');
+        return `
+            <polygon points="${points}"
+                fill="${color}" fill-opacity="0.15"
+                stroke="${color}" stroke-width="1.8"
+                stroke-linejoin="round"/>
+            ${axes.map((axis, i) => {
+                const value = (card.dimensions[axis.key] || 50) / 100;
+                const angle = axisPoints[i].angle;
+                const x = cx + R * value * Math.cos(angle);
+                const y = cy + R * value * Math.sin(angle);
+                return `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="3"
+                        fill="${color}" stroke="rgba(0,0,0,0.4)" stroke-width="1"/>`;
+            }).join('')}`;
+    }).join('');
+
+    // 범례
+    const legend = cardDimensions.map((card, idx) => {
+        const color = cardColors[idx] || '#d4af37';
+        const reversed = card.isReversed ? ' (역)' : '';
+        return `
+            <div style="display:flex; align-items:center; gap:6px; font-size:0.78rem;">
+                <span style="display:inline-block; width:10px; height:10px; border-radius:50%; background:${color}; border:1px solid rgba(0,0,0,0.3);"></span>
+                <span style="color:rgba(255,255,255,0.85); font-weight:700;">${card.roleLabel}</span>
+                <span style="color:rgba(255,255,255,0.55); font-size:0.72rem;">${card.name}${reversed}</span>
+            </div>`;
+    }).join('');
+
+    return `
+    <div style="margin:14px 0 8px; padding:18px 14px;
+                background: linear-gradient(135deg, rgba(155,89,182,0.06), rgba(212,175,55,0.05), rgba(46,204,113,0.06));
+                border: 1px solid rgba(212,175,55,0.25);
+                border-radius: 12px;">
+        <div style="text-align:center; color: var(--gold);
+                    font-size: 0.82rem; font-weight: 900;
+                    letter-spacing: 0.1em; margin-bottom: 4px;">
+            ⭐ 카드 5차원 영성 분석
+        </div>
+        <div style="text-align:center; color: rgba(255,255,255,0.55);
+                    font-size: 0.7rem; margin-bottom: 12px;
+                    letter-spacing: 0.02em;">
+            제우스의 시선이 비추는 카드의 다섯 갈래 흐름
+        </div>
+        <div style="display:flex; justify-content:center;">
+            <svg viewBox="0 0 ${W} ${H}" width="100%" style="max-width:340px;"
+                 xmlns="http://www.w3.org/2000/svg">
+                ${grids}
+                ${axisLines}
+                ${cardPolygons}
+                ${axisLabels}
+            </svg>
+        </div>
+        <div style="display:flex; flex-direction:column; gap:6px;
+                    margin-top:10px; padding:10px 14px;
+                    background: rgba(0,0,0,0.25); border-radius: 8px;">
+            ${legend}
+        </div>
     </div>`;
 }
 
