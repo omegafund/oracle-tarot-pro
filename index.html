@@ -3179,7 +3179,7 @@ async function getTradingSignal(fullText) {
     if (tarotScore > 0 && rsi < 35) {
         finalAction = "🔥 강한 매수";
     } else if (tarotScore < 0 && rsi > 65) {
-        finalAction = "❌ 매수 금지";
+        finalAction = "❌ 신규 진입 보류가 고려될 수 있습니다";
     } else if (tarotScore > 0) {
         finalAction = "분할 매수";
     }
@@ -4100,24 +4100,24 @@ function detectRiskGateClient(cards) {
     };
 }
 
-// 하락 시나리오 트리거 (클라이언트)
+// 하락 시나리오 트리거 (클라이언트) — [V25.9+V25.9.1] 법무 안전 표현 강화
 function buildExitTriggersClient(intent, riskLevel) {
     if (intent === 'sell') {
         return [
-            { stage: '하락 가속',  action: '추가 음봉 + 거래량 +50% 시 → 잔량 즉시 시장가 청산' },
-            { stage: '추세 확정',  action: '20일선 이탈 + 종가 마감 → 잔여 포지션 100% 정리' }
+            { stage: '하락 가속',  action: '추가 약세와 거래량 강화 시 흐름 재평가가 필요할 수 있습니다' },
+            { stage: '추세 약화',  action: '추세 약세 흐름 시 보유 전략의 본질적 재검토가 고려될 수 있습니다' }
         ];
     }
     if (riskLevel === 'EXTREME' || riskLevel === 'HIGH') {
         return [
-            { stage: '하락 1차',   action: '전저점 이탈 시 → 신규 진입 완전 배제' },
-            { stage: '하락 가속',  action: '거래량 +50% 동반 음봉 발생 시 → 24시간 추가 관망 강제' },
-            { stage: '추세 확정',  action: '20일선 이탈 + 음봉 마감 → 다음 점사까지 관망 유지' },
-            { stage: '바닥 신호',  action: 'Doji 또는 망치형 + 거래량 +30% 양봉 출현 시 → 재진입 검토' }
+            { stage: '하락 흐름',   action: '단기 저점 약화 시 신규 진입에 대한 보수적 검토가 도움이 될 수 있습니다' },
+            { stage: '하락 가속',   action: '거래량 동반 약세 시 추가 관망이 하나의 선택지로 해석될 수 있습니다' },
+            { stage: '추세 약화',   action: '추세 약세 흐름 시 다음 점사까지 관망이 고려될 수 있습니다' },
+            { stage: '바닥 신호',   action: '바닥 신호 감지 시 재진입에 대한 검토가 고려될 수 있습니다' }
         ];
     }
     return [
-        { stage: '하락 회피', action: '전저점 -3% 이탈 시 → 진입 트리거 무효화' }
+        { stage: '하락 흐름', action: '단기 저점 약화 시 진입 시점에 대한 신중한 검토가 도움이 될 수 있습니다' }
     ];
 }
 
@@ -4289,7 +4289,7 @@ function getCardBasedTiming(cards, queryType, intent, qRaw) {
         const bestMonth2 = monthNums[(Math.abs(seed) + 3) % 12];
 
         if (intent === 'sell') {
-            if (totalPower <= -4) return `📅 부동산 매각 타이밍: 즉시 매물 등록 검토 — 카드 에너지 하락 우세, 추가 하락 전 선제 대응 권고`;
+            if (totalPower <= -4) return `📅 부동산 매각 타이밍: 즉시 매물 등록이 고려될 수 있는 흐름 — 카드 에너지 하락 우세로 선제적 대응이 도움이 될 수 있습니다`;
             if (totalPower <= 0)  return `📅 부동산 매각 타이밍: ${pick(sellSeasons)} 매물 등록 — 카드 에너지 약세, 호가 조정 후 거래 가능성`;
             return `📅 부동산 매각 타이밍: ${pick(sellSeasons)} 적극 매물 등록 · ${bestMonth}월~${bestMonth2}월 계약 완료 목표`;
         }
@@ -4504,7 +4504,7 @@ function getFinalDecision(netScore, maxRisk, avgRisk, hasCritical, isVolatile, q
     }
 
     if (maxRisk >= 8 || avgRisk >= 6.5) {
-        res.decision = intent === 'sell' ? "즉시 청산 검토" : "🚫 진입 금지 (위험 카드)";
+        res.decision = intent === 'sell' ? "흐름 재평가가 고려될 수 있는 구간" : "🚫 진입 보류가 고려될 수 있습니다 (위험 카드)";
         res.trendLabel = "하락 위험 구간";
         res.riskLabel = "극고위험";
         return res;
@@ -4574,7 +4574,7 @@ function getFinalDecision(netScore, maxRisk, avgRisk, hasCritical, isVolatile, q
     // 6. 강한 하락 (그 외)
     else {
         res.trendLabel = "강한 하락 신호";
-        res.decision   = intent === 'sell' ? "즉시 매도 검토" : "🚫 진입 금지";
+        res.decision   = intent === 'sell' ? "포지션 조절이 고려될 수 있는 흐름" : "🚫 진입 보류가 고려될 수 있습니다";
         res.riskLabel  = "매우 높음";
     }
 
@@ -4815,22 +4815,22 @@ function buildInvestmentData(cards, question) {
     // 사용자 제안: 중앙 집중형 점수 모델
     if (netScore >= 7) {
         trend = "강력 상승";
-        action = (queryType === 'realestate' && ctx.intent === 'sell') ? "즉시 매물 등록" : "적극 매수";
+        action = (queryType === 'realestate' && ctx.intent === 'sell') ? "즉시 매물 등록 흐름" : "적극적 진입이 고려될 수 있는 흐름";
         riskLabel = "낮음";
         period = "단기~중기 추진 구간";
     } else if (netScore >= 3) {
         trend = "상승 우세";
-        action = (queryType === 'realestate' && ctx.intent === 'sell') ? "분할 매도/등록" : "분할 매수";
+        action = (queryType === 'realestate' && ctx.intent === 'sell') ? "분할 매도/등록 흐름" : "분할 진입이 고려될 수 있는 흐름";
         riskLabel = "보통";
         period = "완만한 흐름 구간";
     } else if (netScore >= 0) {
         trend = "중립";
-        action = "관망 및 대기";
+        action = "관망 및 흐름 점검이 고려될 수 있는 구간";
         riskLabel = "보통";
         period = "방향성 탐색 구간";
     } else {
         trend = "하락 우세";
-        action = (queryType === 'realestate' && ctx.intent === 'sell') ? "보류 후 시장 확인" : "매수 금지";
+        action = (queryType === 'realestate' && ctx.intent === 'sell') ? "보류 후 시장 확인 흐름" : "신규 진입 보류가 고려될 수 있는 흐름";
         riskLabel = "높음";
         period = "리스크 관리 구간";
     }
@@ -4854,8 +4854,8 @@ function buildInvestmentData(cards, question) {
     // ── 손절/목표 구간 — 질문유형별 변동성 반영
     // [V24.0] 분할 매수 손절 보정: 평균 단가 기준 + 목표 ½ 룰
     //   기존 -5% 고정 → 분할 매수 시 첫 진입가 기준이면 노이즈 손절 발생
-    const stopPct   = (queryType === 'crypto') ? '-8% (평균 단가 기준)'
-                                                : '-5% (평균 단가 기준)';
+    const stopPct   = (queryType === 'crypto') ? '손실 제한 기준 사전 점검 (변동성 큰 자산 — 보수적 설정 도움)'
+                                                : '손실 제한 기준 사전 점검 (사전 설정이 리스크 관리에 도움)';
     const targetStr =
         riskGate.triggered ? '추세 확정 후 재설정' :
         netScore >= 7 ? '+10~15%' :
@@ -4914,7 +4914,7 @@ function buildInvestmentData(cards, question) {
         "Nine of Cups":{"flow":"만족·성취","signal":"목표 근접 — 익절 타이밍 점검"},
         "Ten of Pentacles":{"flow":"장기 풍요","signal":"장기 보유 에너지 우세"},
         "Ten of Swords":{"flow":"최악·바닥","signal":"최대 하락 에너지 — 신규 진입 절대 금지"},
-        "Five of Pentacles":{"flow":"결핍·손실","signal":"손실 구간 — 추가 매수 금지"},
+        "Five of Pentacles":{"flow":"결핍·손실","signal":"손실 구간 — 추가 진입 신중 검토 권장"},
         "Seven of Wands":{"flow":"저항·방어","signal":"상승 시도 중 강한 매도 저항"},
         "Five of Wands":{"flow":"경쟁·혼란","signal":"변동성 확대 — 방향성 불명확"}
     };
@@ -4984,14 +4984,14 @@ function buildInvestmentData(cards, question) {
                 `1차 매각 행동: ${t1} 매물 등록 및 호가 설정`,
                 `2차 매각 행동: ${t2} 조건 조정 후 적극 협상`,
                 `계약 목표: 등록 후 1~2개월 내 계약 완료 목표`,
-                `호가 조정 기준: 시세 대비 -3% 이내에서 유연하게 협의`,
+                `호가 조정 기준: 시세 대비 보수적 범위 내 유연한 협의가 고려될 수 있습니다`,
                 `철회 기준: 카드 에너지 재판단 후 3개월 이상 미거래 시 전략 재수립`
             ] : [
                 `1차 탐색: ${t1} 집중 임장 및 급매 물건 검토`,
                 `2차 진입: ${t2} 조건 협의 후 계약금 투입`,
                 `목표 수익: 취득 후 ${tParts[1]||tParts[0]} 시세 상승 시 매각 검토`,
                 `보유 기간: 카드 에너지 기준 최소 1~2년 이상 중장기 보유 권장`,
-                `리스크 기준: 취득가 대비 -5% 이상 조정 시 포지션 재검토`
+                `리스크 기준: 취득가 대비 약세 흐름 감지 시 포지션 재검토가 도움이 될 수 있습니다`
             ];
         }
 
@@ -5001,7 +5001,7 @@ function buildInvestmentData(cards, question) {
             `2차 진입: ${t2} — 추가 ${h2}% (에너지 강화 확인 후)`,
             `익절 1차: ${tParts[0]} 도달 시 절반 정리`,
             `익절 2차: ${tParts[1]||tParts[0]} 도달 시 잔량 정리`,
-            `손절 기준: ${d.stop !== '-' ? d.stop : '-5%'} 이탈 시 카드 에너지 소멸로 보고 청산`
+            `흐름 점검: 단기 약세 흐름 시 카드 에너지 변화로 해석하여 흐름 재평가가 고려될 수 있습니다`
         ];
     })() : null;
 

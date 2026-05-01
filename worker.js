@@ -366,39 +366,44 @@ function buildExitTriggers(intent, riskLevel) {
     //   기존: "추세 확정 후 청산"만 있음 → 결과적으로 손실 방치
     //   해결: 4단계 단계적 탈출 — 선제적 비중 축소 + 손절 + 시간 손절
     // ════════════════════════════════════════════════════════════
+    // [V25.9+V25.9.1] 법무 안전 표현 — 사장님 강화 안:
+    //   "고려될 수 있습니다" "도움이 될 수 있습니다" 어미 사용
+    //   → 단정 회피 + 사용자 자율 판단 강조 (글로벌 메이저 패턴 100%)
+    // ════════════════════════════════════════════════════════════
     if (riskLevel === 'EXTREME' || riskLevel === 'HIGH') {
-      // 게이트 발동 + sell intent — 명확한 탈출 전략
+      // 게이트 발동 + sell intent — 가능성·해석 톤 (사장님 안)
       return [
-        { stage: '0차 (즉시)',  action: '선제적 비중 축소 — 보유분의 30% 즉시 정리 (시장가)' },
-        { stage: '1차 손절',    action: '평균 단가 -5% 이탈 시 → 추가 30% 정리 (감정적 보유 차단)' },
-        { stage: '2차 손절',    action: '평균 단가 -10% 이탈 시 → 잔여 100% 전량 정리 (손실 확대 방지)' },
-        { stage: '시간 손절',   action: '5거래일 내 반등 +3% 미달성 시 → 잔여 분할 정리 (기회비용 차단)' },
-        { stage: '반등 대응',   action: '반등 +3~5% 도달 시 → 잔여분 30~50% 분할 청산 (욕심 차단)' },
-        { stage: '최종 청산',   action: '20일선 이탈 + 거래량 +50% 음봉 → 잔여 전량 즉시 시장가 청산' }
+        { stage: '현재 흐름',     action: '카드 신호상 포지션 일부를 선제적으로 축소하는 전략이 고려될 수 있습니다' },
+        { stage: '하락 흐름',     action: '하락 압력 감지 시 손실 제한 기준을 사전에 설정하는 접근이 리스크 관리에 도움이 될 수 있습니다' },
+        { stage: '하락 가속',     action: '추세 약화 흐름 시 보유 전략의 본질적 재검토가 필요할 수 있습니다' },
+        { stage: '시간 흐름',     action: '일정 기간 내 흐름이 개선되지 않을 경우 재평가가 필요할 수 있습니다' },
+        { stage: '반등 신호',     action: '단기 반등 흐름 시 기회비용 관점에서 보수적 대응이 하나의 선택지로 해석될 수 있습니다' },
+        { stage: '추세 전환',     action: '강한 리스크 회피 관점에서는 빠른 포지션 정리도 하나의 선택지로 해석될 수 있습니다' }
       ];
     }
-    // 일반 sell — 약간 더 여유 있는 탈출
+    // 일반 sell — 보다 완화된 흐름
     return [
-      { stage: '0차 (즉시)',  action: '비중 축소 — 보유분의 20% 즉시 정리 (방어 우선)' },
-      { stage: '1차 손절',    action: '평균 단가 -5% 이탈 시 → 추가 30% 정리' },
-      { stage: '2차 손절',    action: '평균 단가 -10% 이탈 시 → 잔여 전량 정리' },
-      { stage: '시간 손절',   action: '7거래일 내 반등 미확인 시 → 잔여 분할 정리' },
-      { stage: '반등 대응',   action: '반등 +5% 도달 시 → 잔여분 50% 분할 청산' }
+      { stage: '현재 흐름',   action: '카드 신호는 포지션 일부 조정이 고려될 수 있는 흐름을 시사합니다' },
+      { stage: '하락 흐름',   action: '하락 압력 감지 시 손실 제한 기준을 사전에 설정하는 접근이 도움이 될 수 있습니다' },
+      { stage: '하락 가속',   action: '추세 약화 시 보유 전략의 보수적 재검토가 고려될 수 있습니다' },
+      { stage: '시간 흐름',   action: '일정 기간 내 흐름이 개선되지 않을 경우 재평가가 필요할 수 있습니다' },
+      { stage: '반등 신호',   action: '단기 흐름 회복 시 보수적 대응이 하나의 선택지로 해석될 수 있습니다' }
     ];
   }
-  // 매수 의도 (기본) — 진입 안 한 상태이지만 기존 보유분 대응 + 하락 회피 룰
+  // 매수 의도 (기본) — 진입 안 한 상태이지만 기존 보유분 대응
+  // [V25.9+V25.9.1] 매수도 동일하게 안전 표현
   if (riskLevel === 'EXTREME' || riskLevel === 'HIGH') {
     return [
-      { stage: '하락 1차',   action: '전저점 이탈 시 → 신규 진입 완전 배제, 모든 매수 트리거 무효화' },
-      { stage: '하락 가속',  action: '거래량 +50% 동반 음봉 발생 시 → 24시간 추가 관망 강제' },
-      { stage: '추세 확정',  action: '20일선 이탈 + 음봉 마감 → 다음 점사까지 관망 유지' },
-      { stage: '바닥 신호',  action: 'Doji 또는 망치형 + 거래량 +30% 양봉 출현 시 → 재진입 검토 가능' }
+      { stage: '하락 흐름',   action: '하락 압력 감지 시 신규 진입에 대한 보수적 대응이 고려될 수 있습니다' },
+      { stage: '하락 가속',   action: '추세 약화 시 진입 시점에 대한 재평가가 필요할 수 있습니다' },
+      { stage: '추세 약화',   action: '추세 전환 신호 시 진입 전략 보류가 하나의 선택지로 해석될 수 있습니다' },
+      { stage: '바닥 신호',   action: '바닥 신호 감지 시 진입 가능성에 대한 재검토가 고려될 수 있습니다' }
     ];
   }
   // 일반 위험 수준
   return [
-    { stage: '하락 회피',   action: '전저점 -3% 이탈 시 → 진입 트리거 무효화, 다음 점사까지 관망' },
-    { stage: '추세 확정',   action: '20일선 이탈 시 → 시장 전체 흐름 재평가' }
+    { stage: '하락 흐름',   action: '하락 신호 감지 시 진입 시점에 대한 신중한 검토가 도움이 될 수 있습니다' },
+    { stage: '추세 약화',   action: '추세 약화 시 시장 전체 흐름의 재평가가 고려될 수 있습니다' }
   ];
 }
 
@@ -1632,21 +1637,21 @@ function buildStockMetrics({ totalScore, riskScore, cleanCards, isLeverage, quer
     // ━━ 매도 의도일 때 (보유 중 → 언제 팔까?) ━━
     if      (trend === "강한 상승") action = "🚫 매도 보류 — 추세 정점까지 보유";
     else if (trend === "상승")      action = "분할 익절 — 단계적 차익실현";
-    else if (trend === "하락")      action = "🟢 즉시 매도 — 손실 확대 방지";
-    else if (trend === "강한 하락") action = "🚨 전량 매도 — 즉시 청산";
+    else if (trend === "하락")      action = "🟢 보수적 대응이 손실 제한 관점에서 도움이 될 수 있습니다";
+    else if (trend === "강한 하락") action = "🚨 신속한 흐름 재평가와 포지션 대폭 조정이 고려될 수 있습니다";
     else                             action = "조건부 매도 — 추세 확인 후 분할";
 
     // 서사형 보정
     if (trendNarrative.includes("반등 시도")) {
       action = "매도 보류 — 반등 후 익절 권장";
     } else if (trendNarrative.includes("하락 가속")) {
-      action = "🚨 즉시 매도 — 추가 하락 방어";
+      action = "🚨 신속한 보수적 대응이 추가 약세 흐름에 대한 대비로 고려될 수 있습니다";
       positionAdjust = "urgent";
     } else if (trendNarrative.includes("모멘텀 약화")) {
       action = "분할 익절 — 일부 차익 실현";
       positionAdjust = "moderate";
     } else if (trendNarrative.includes("피로 누적")) {
-      action = "선제 익절 — 고점 근접 시 분할 매도";
+      action = "고점 근접 흐름에서 포지션 일부 조정이 고려될 수 있습니다";
       positionAdjust = "moderate";
     }
 
@@ -1655,7 +1660,7 @@ function buildStockMetrics({ totalScore, riskScore, cleanCards, isLeverage, quer
     //   강한 하락 (totalScore<=-3) 시 무조건 urgent → 비중도 100%로 통일
     //   원리: "전량 매도"는 100%여야 함 (Decision/Execution 일관성)
     if (totalScore <= -3) {
-      action = "🚨 전량 매도 — 즉시 청산";
+      action = "🚨 신속한 흐름 재평가와 포지션 대폭 조정이 고려될 수 있습니다";
       positionAdjust = "urgent";
     }
   } else {
@@ -1709,8 +1714,8 @@ function buildStockMetrics({ totalScore, riskScore, cleanCards, isLeverage, quer
     // ━━ 매도 의도: entry = 익절 시점, exit = 손절 한도 ━━
     if (trend === "강한 상승") { entryStrategy = "추세 정점 추적 — 보유 유지"; exitStrategy = "목표가 도달 시 분할 익절"; }
     else if (trend === "상승") { entryStrategy = "분할 익절 (2~3회)"; exitStrategy = "단계적 차익실현"; }
-    else if (trend === "하락") { entryStrategy = "🟢 즉시 매도 시작"; exitStrategy = "전량 청산 권장"; }
-    else if (trend === "강한 하락") { entryStrategy = "🚨 전량 즉시 매도"; exitStrategy = "손실 확대 차단"; }
+    else if (trend === "하락") { entryStrategy = "🟢 보수적 대응 흐름이 고려될 수 있습니다"; exitStrategy = "포지션 대폭 조정이 고려될 수 있습니다"; }
+    else if (trend === "강한 하락") { entryStrategy = "🚨 신속한 흐름 재평가가 필요할 수 있습니다"; exitStrategy = "손실 제한 기준 점검이 도움이 될 수 있습니다"; }
     else { entryStrategy = "조건부 분할 매도"; exitStrategy = "추세 확인 후 결정"; }
   } else {
     // ━━ 매수 의도 (기본) ━━
@@ -1720,8 +1725,8 @@ function buildStockMetrics({ totalScore, riskScore, cleanCards, isLeverage, quer
     entryStrategy = "관망 및 대기"; exitStrategy = "추세 확인 후 대응";
     if (trend === "강한 상승") { entryStrategy = "초기 진입 + 눌림목 추가매수"; exitStrategy = "목표가 도달 시 분할 차익 실현"; }
     else if (trend === "상승") { entryStrategy = "분할 진입 (2~3회)"; exitStrategy = "단기 고점 일부 차익 실현"; }
-    else if (trend === "하락") { entryStrategy = "🚫 신규 매수 금지"; exitStrategy = "반등 신호 대기"; }
-    else if (trend === "강한 하락") { entryStrategy = "🚫 절대 매수 금지 — 관망 유지"; exitStrategy = "방어선 -5% 엄수 (이탈 시 재평가)"; }
+    else if (trend === "하락") { entryStrategy = "🚫 신규 진입 보류가 고려될 수 있습니다"; exitStrategy = "단기 흐름 회복 신호 대기가 도움이 될 수 있습니다"; }
+    else if (trend === "강한 하락") { entryStrategy = "🚫 신규 진입 보류와 관망이 고려될 수 있습니다"; exitStrategy = "보수적 손실 제한 접근과 단기 약세 시 흐름 재평가가 도움이 될 수 있습니다"; }
   }
 
   // ══════════════════════════════════════════════════════════════════
@@ -1897,7 +1902,7 @@ function buildStockMetrics({ totalScore, riskScore, cleanCards, isLeverage, quer
   const scenarios = {
     bull: `🟢 낙관 (미래 카드 에너지 완전 실현 시): +${upPct}% 도달 가능 — ${cleanCards[2] || '미래 카드'} 에너지 극대화 구간`,
     base: `⚪ 기본 (현재 흐름 유지 시): +${basePct}% 수준 — 현재 카드 에너지 지속`,
-    bear: `🔴 비관 (리스크 카드 현실화 시): -5% 이탈 가능 — 손절 기준선 엄수 필요`
+    bear: `🔴 비관 (리스크 카드 현실화 시): 단기 약세 흐름 가능성이 있으며 손실 제한 기준 점검이 도움이 될 수 있습니다`
   };
 
   const posNum = totalScore >= 6 ? 30 : totalScore >= 2 ? 20 : 0;
@@ -1906,7 +1911,7 @@ function buildStockMetrics({ totalScore, riskScore, cleanCards, isLeverage, quer
     `2차 진입: 흐름 재확인 후 — 추가 ${posNum - Math.floor(posNum/2)}% (에너지 강화 확인 후)`,
     `익절 1차: +${basePct}% 도달 시 절반 정리`,
     `익절 2차: +${upPct}% 도달 시 잔량 정리`,
-    `손절 기준: -5% 이탈 시 카드 에너지 소멸로 보고 청산`
+    `흐름 점검: 단기 약세 흐름 시 카드 에너지 변화로 해석하여 흐름 재평가가 고려될 수 있습니다`
   ] : [
     `진입 금지 구간 — 카드 에너지가 하락/중립에 머물러 있음`,
     `관찰 포인트: 거래량 증가 + 저점 지지 확인`,
@@ -1954,7 +1959,7 @@ function buildStockMetrics({ totalScore, riskScore, cleanCards, isLeverage, quer
     // [V22.6] 의도별 차별화 — UI에서 매수/매도 혼동 차단
     finalAction = stockIntent === 'sell'
       ? "🚫 매도 보류 → 반등 대기"
-      : "🚫 매수 금지 → 관망 유지";
+      : "🚫 신규 진입 보류와 관망이 고려될 수 있습니다";
   }
   if (!finalRisk || finalRisk === "중립") {
     finalRisk = "보통 (방향 미확정)";
@@ -1977,23 +1982,24 @@ function buildStockMetrics({ totalScore, riskScore, cleanCards, isLeverage, quer
     // [V22.4] 사장님 안: Decision/Execution 100% 동기화
     //   Decision "전량 매도" → Weight도 100% 통일
     //   "1차 50% → 2차 전량" 자연스러운 연결
+    // [V25.9+V25.9.1] 가능성·해석 톤 (사장님 강화 안)
     const isUrgent = finalAction.includes("즉시") || finalAction.includes("전량") || positionAdjust === "urgent";
     const isModerate = positionAdjust === "moderate";
     position = {
-      weight:    isUrgent       ? "🚨 1차 50% 즉시 → 2차 전량 청산" :
-                 isModerate     ? "30~50% 분할 익절 (모멘텀 약화 대응)" :
-                 totalScore <= -2 ? "70~100% 매도 (대부분 정리)" :
-                 totalScore >= 6  ? "10~20% 부분 익절 (코어 유지)" :
-                 totalScore >= 2  ? "30~50% 분할 익절 (단계적)" :
-                 "50~70% 매도 (방어 모드)",
-      stopLoss:  isUrgent       ? "현재가 -2% 이탈 시 잔여 전량 청산" :
-                 totalScore >= 2 ? "보유분 -3% 추가 하락 시 즉시 매도" :
-                 "현 시점에서 -2% 이탈 시 즉시 청산",
-      target:    isUrgent       ? "반등 시 분할 청산 (고점 회복 기대 금지)" :
-                 isModerate     ? `현재가 +${basePct}% 도달 시 추가 익절` :
-                 totalScore >= 6 ? `현재가 +${upPct}% 구간 도달 시 추가 익절` :
-                 totalScore >= 2 ? `현재가 +${basePct}~${Math.min(10, upPct-2)}% 구간 익절` :
-                 "반등 시점 잡으면 즉시 매도"
+      weight:    isUrgent       ? "🚨 강한 리스크 회피 관점에서는 빠른 포지션 정리도 하나의 선택지로 해석될 수 있습니다" :
+                 isModerate     ? "포지션 일부 조정이 모멘텀 약화 대응으로 고려될 수 있습니다" :
+                 totalScore <= -2 ? "포지션 대부분 조정이 보수적 접근으로 해석될 수 있습니다" :
+                 totalScore >= 6  ? "포지션 일부 조정이 핵심 보유 유지와 함께 고려될 수 있습니다" :
+                 totalScore >= 2  ? "포지션 일부 조정이 단계적 흐름 점검과 함께 고려될 수 있습니다" :
+                 "포지션 절반 이상 조정이 방어적 흐름으로 해석될 수 있습니다",
+      stopLoss:  isUrgent       ? "단기 추가 약세 시 흐름 재해석이 필요할 수 있습니다" :
+                 totalScore >= 2 ? "추가 하락 흐름 시 보수적 대응이 도움이 될 수 있습니다" :
+                 "추가 약세 시 흐름 재평가가 필요할 수 있습니다",
+      target:    isUrgent       ? "단기 흐름 회복 시 보수적 대응이 하나의 선택지로 해석될 수 있습니다" :
+                 isModerate     ? "단기 흐름 강화 시 추가 포지션 조정이 고려될 수 있습니다" :
+                 totalScore >= 6 ? "단기 흐름 강화 시 추가 포지션 조정이 고려될 수 있습니다" :
+                 totalScore >= 2 ? "단기 흐름 강화 시 단계적 포지션 조정이 고려될 수 있습니다" :
+                 "단기 흐름 회복 시 보수적 대응이 하나의 선택지로 해석될 수 있습니다"
     };
   } else {
     // ━━ 매수 의도 (기본): 신규 진입 비중·손절·목표 ━━
@@ -2002,24 +2008,21 @@ function buildStockMetrics({ totalScore, riskScore, cleanCards, isLeverage, quer
     const isCautious = positionAdjust === "cautious";
     const isTentative = positionAdjust === "tentative";
     position = {
-      // [V22.7] 옵션 C - 관망 시 weight 명확화 (사장님 안 + 신뢰감 보완)
-      //   사장님 진단: "Decision 관망인데 Weight 0~10%가 모순"
-      //   사장님 안:   "0%" 단순 명확
-      //   데이터 보완: "0% (현재)" + "신호 시" 가이드 → entryTriggers 연동 + 신뢰감 유지
-      weight:    isNoEntry  ? "0% (현재) — 신호 전환 후 재평가" :
-                 isCautious ? "10~20% (모멘텀 약화 — 신중 진입)" :
-                 isTentative ? "5~10% (조건 만족 시 시범 진입)" :
-                 totalScore >= 6 ? "40~50% (강한 확신 구간)" :
-                 totalScore >= 2 ? "20~30% (분할 진입)" : "10~20% (탐색 구간)",
-      // [V22.7] 관망 시 손절 — "보유/진입 시" 라벨로 자연스럽게 가이드 제공
-      stopLoss:  isNoEntry ? "보유 또는 진입 시 -3% 엄수 (이탈 시 재평가)" :
-                 isCautious ? "-2~3% 이탈 시 즉시 손절 (타이트하게)" :
-                 "-3~5% 이탈 시 즉시 손절",
-      // [V22.7] 관망 시 목표 — "1차 신호 후" 가이드 (entryTriggers 연동)
-      target:    isNoEntry ? "1차 신호 후 +3~5% 반등 시 재평가" :
-                 isCautious ? `+${basePct}~${Math.min(8, upPct-3)}% 구간 (보수적)` :
-                 totalScore >= 6 ? `+${Math.min(15, basePct+5)}~${upPct}% 구간` :
-                 `+${basePct}~${Math.min(12, upPct)}% 구간`
+      // [V22.7+V25.9+V25.9.1] 가능성·해석 톤 (사장님 강화 안)
+      weight:    isNoEntry  ? "진입 보류 흐름 — 신호 전환 후 재평가가 고려될 수 있습니다" :
+                 isCautious ? "포지션 일부 진입이 모멘텀 약화 시 신중한 접근으로 고려될 수 있습니다" :
+                 isTentative ? "시범적 진입이 조건 충족 시 단계적 접근으로 고려될 수 있습니다" :
+                 totalScore >= 6 ? "단계적 포지션 진입이 강한 흐름 구간에서 고려될 수 있습니다" :
+                 totalScore >= 2 ? "분할 진입이 단계적 접근으로 고려될 수 있습니다" : "탐색적 진입이 신중한 흐름에서 고려될 수 있습니다",
+      // 손실 제한 흐름 표현
+      stopLoss:  isNoEntry ? "진입 시 손실 제한 기준을 사전에 점검하는 접근이 도움이 될 수 있습니다" :
+                 isCautious ? "단기 약세 흐름 시 보수적 대응이 도움이 될 수 있습니다" :
+                 "추가 약세 흐름 시 흐름 재평가가 필요할 수 있습니다",
+      // 흐름 강화 표현
+      target:    isNoEntry ? "신호 전환 후 단기 흐름 회복 시 재평가가 고려될 수 있습니다" :
+                 isCautious ? "단기 흐름 강화 시 보수적 대응이 도움이 될 수 있습니다" :
+                 totalScore >= 6 ? "단기 흐름 강화 시 추가 포지션 조정이 고려될 수 있습니다" :
+                 "단기 흐름 강화 시 단계적 대응이 고려될 수 있습니다"
     };
   }
 
@@ -2111,7 +2114,7 @@ function buildStockMetrics({ totalScore, riskScore, cleanCards, isLeverage, quer
       decisionPosition = "탐색 매수 (Exploratory)";
       decisionStrategy = "소액 진입 → 신호 검증";
     } else if (totalScore >= 6 && !hasReversedSignal && !hasMidstreamObstacle && positionAdjust !== "cautious") {
-      decisionPosition = "적극 매수 (Strong Buy)";
+      decisionPosition = "적극적 진입이 고려될 수 있는 흐름 (Strong Buy)";
       decisionStrategy = "초기 진입 + 눌림목 추가매수 → 목표가까지 보유";
     } else if (hasMidstreamObstacle || hasReversedSignal || positionAdjust === "cautious") {
       decisionPosition = "단기 매수 (Short-Term Buy)";
@@ -2240,7 +2243,7 @@ function buildStockMetrics({ totalScore, riskScore, cleanCards, isLeverage, quer
   let outcomePrediction;
   if (stockIntent === "sell") {
     if (totalScore <= -3) {
-      outcomePrediction = "👉 지금 매도하지 않으면 '추가 하락 시 손실이 확대'될 가능성이 높고\n👉 반등 후 매도가 아닌 즉시 정리가 유리한 구조입니다";
+      outcomePrediction = "👉 흐름 점검 없이 방치할 경우 추가 약세 노출 가능성이 있고\n👉 단기 흐름 회복을 기다리기보다 능동적 포지션 조절이 균형 접근으로 고려될 수 있습니다";
     } else if (totalScore >= 6) {
       outcomePrediction = "👉 지금 전량 매도하면 '추가 상승 기회를 놓칠' 가능성이 있고\n👉 분할 익절로 코어 유지가 훨씬 유리한 구조입니다";
     } else {
@@ -2272,15 +2275,15 @@ function buildStockMetrics({ totalScore, riskScore, cleanCards, isLeverage, quer
   if (stockIntent === "sell") {
     if (totalScore <= -3) {
       entryTriggers = [
-        { stage: "현재", action: "즉시 비중 축소 (50% 우선 정리)" },
-        { stage: "1차 신호", action: "지지선 이탈 시 → 추가 정리" },
-        { stage: "2차 확정", action: "거래량 동반 음봉 시 → 전량 청산" }
+        { stage: "현재", action: "포지션 일부 조정이 보수적 접근으로 고려될 수 있습니다" },
+        { stage: "1차 신호", action: "지지선 약화 시 추가 포지션 조정이 고려될 수 있습니다" },
+        { stage: "2차 확정", action: "거래량 동반 약세 시 흐름 재평가가 필요할 수 있습니다" }
       ];
     } else {
       entryTriggers = [
-        { stage: "현재", action: "분할 익절 시작 (1/3 정리)" },
-        { stage: "1차 신호", action: "단기 고점 형성 시 → 추가 1/3 정리" },
-        { stage: "2차 확정", action: "추세 둔화 신호 시 → 코어 일부만 유지" }
+        { stage: "현재", action: "포지션 일부 조정이 단계적 흐름으로 고려될 수 있습니다" },
+        { stage: "1차 신호", action: "단기 고점 형성 시 추가 조정이 고려될 수 있습니다" },
+        { stage: "2차 확정", action: "추세 둔화 신호 시 핵심 보유만 유지하는 접근이 고려될 수 있습니다" }
       ];
     }
   } else {
@@ -2440,9 +2443,9 @@ function buildStockMetrics({ totalScore, riskScore, cleanCards, isLeverage, quer
   if (stockIntent === "sell") {
     if (totalScore <= -3) {
       criticalRules = [
-        "즉시 청산 우선 검토",
+        "흐름 재평가가 우선되며 포지션 조정이 보수적 접근으로 고려될 수 있습니다",
         "반등만 기다리며 보유 금지",
-        "추가 매수로 평단 낮추기 절대 금지"
+        "평단 조정 시도는 추가 리스크 노출 가능성을 신중히 고려할 필요가 있습니다"
       ];
     } else if (totalScore >= 6) {
       criticalRules = [
@@ -2473,7 +2476,7 @@ function buildStockMetrics({ totalScore, riskScore, cleanCards, isLeverage, quer
       ];
     } else if (totalScore >= 6) {
       criticalRules = [
-        "분할 매수 원칙 — 한 번에 풀 매수 금지",
+        "분할 진입 접근 — 일괄 진입보다 단계적 접근이 도움이 될 수 있습니다",
         "목표가 도달 시 즉시 분할 익절",
         "손절 기준 무조건 준수"
       ];
@@ -2502,19 +2505,19 @@ function buildStockMetrics({ totalScore, riskScore, cleanCards, isLeverage, quer
 
   // [V24.6+V24.7 PATCH] sell intent + 게이트 발동 시 — 능동 탈출 행동 지침
   //   사장님 진단: "기다리면 해결" 구조 아님 — 손실 방어 전략 필수
-  //   해결: 선제적 비중 축소 + 손절 트리거 + 시간 손절 명시
+  //   [V25.9+V25.9.1] 가능성·해석 톤 강화 (사장님 안)
   if (riskGate.triggered && stockIntent === 'sell') {
     const _isStrongSell = totalScore <= -3 || volGate.isHighVolatility || volGate.hasExtremeCard;
     criticalRules = _isStrongSell
       ? [
-          '선제적 비중 축소 — 보유분 30% 즉시 정리 (방치 금지)',
-          '손절선 사전 설정 — 평균 단가 -5% / -10% 단계 손절',
-          '시간 손절 — 5거래일 내 반등 미달성 시 잔여 분할 정리'
+          '포지션 일부를 선제적으로 축소하는 전략이 고려될 수 있습니다',
+          '손실 제한 기준을 사전에 설정하는 접근이 리스크 관리에 도움이 될 수 있습니다',
+          '일정 기간 내 흐름이 개선되지 않을 경우 재평가가 필요할 수 있습니다'
         ]
       : [
-          '선제적 비중 축소 — 보유분 20% 즉시 정리 (방어 우선)',
-          '단계적 탈출 — 반등 시 추가 정리, 손절선 동시 운용',
-          '추가 매수로 평단 낮추기 절대 금지'
+          '포지션 일부 조정이 보수적 접근으로 고려될 수 있습니다',
+          '단기 흐름 회복 시점에서 보수적 대응과 흐름 재평가가 도움이 될 수 있습니다',
+          '평단 조정 시도는 추가 리스크 노출 가능성을 신중히 고려할 필요가 있습니다'
         ];
   }
 
@@ -2659,7 +2662,7 @@ function buildStockMetrics({ totalScore, riskScore, cleanCards, isLeverage, quer
               : _blockLevel === 'MEDIUM' ? '0% (현재) — 신호 후 소량 검토'
               :                           '5~10% 주의 진입 (손절 타이트)',
       stopLoss: _blockLevel === 'HARD'   ? '진입 없음 — 손절 불필요'
-              : _blockLevel === 'BOTTOM' ? '진입 시 -3% 엄수 (타이트)'
+              : _blockLevel === 'BOTTOM' ? '진입 시 손실 제한 기준을 사전에 점검하는 접근이 도움이 될 수 있습니다'
               :                           '-2~3% 이탈 시 즉시 손절',
       target:   _blockLevel === 'HARD'   ? '진입 없음 — 목표가 불필요'
               : _blockLevel === 'BOTTOM' ? '1차 신호 후 +3~5% (조건부)'
@@ -2817,7 +2820,7 @@ function buildStockMetrics({ totalScore, riskScore, cleanCards, isLeverage, quer
         { stage: '0차', action: '현재 진입 보류 — 0% 포지션 유지' },
         { stage: '1차 신호', action: '일봉 5일선 회복 + 거래량 평균 대비 +30% 동시 충족 시 시범 진입 (15%)' },
         { stage: '2차 확정', action: '추세 확인 (3거래일 양봉 우위) 후 추가 진입 (15~25%)' },
-        { stage: '청산', action: '평균 단가 -5% 이탈 또는 추세 변경 시 즉시 정리' }
+        { stage: '추세 전환', action: '추세 약화 시 포지션 조정이 고려될 수 있습니다' }
       ],
       // [V24.3] 신규 — 하락 시나리오 트리거
       exitTriggers: buildExitTriggers('buy', riskGate.level),
@@ -2846,65 +2849,58 @@ function buildStockMetrics({ totalScore, riskScore, cleanCards, isLeverage, quer
     };
   } else if (_gateTriggered && stockIntent === 'sell') {
     // ════════════════════════════════════════════════════════════
-    // [V24.7] 사장님 진단: "버티면 해결" 구조 아님 — 탈출 전략 필수
-    //   기존: "청산 보류 — 반등 신호 대기" → 손실 방치 위험
-    //   해결: "단계적 탈출 (Exit Strategy)" — 선제적 비중 축소 + 손절 + 시간 손절
-    //   원칙: sell intent = 이미 출구 모색 중인 사용자. "기다려라"는 답이 아님.
-    //
-    // 케이스별 전략 강도:
-    //   • 단순 게이트 (예: 다수결만 발동) → 경량 탈출 (선제 20% 축소)
-    //   • 게이트 + 하락 score (totalScore≤-3) → 강한 탈출 (선제 30% 축소 + 시간 손절)
+    // [V24.7+V25.9+V25.9.1] 사장님 진단 통합:
+    //   ① "버티면 해결" 구조 아님 — 흐름 재평가 필요 (V24.7)
+    //   ② "선제 30% 매도 = 투자자문업 이슈" → 가능성·해석 톤 (V25.9)
+    //   ③ 강화 안 — "고려될 수 있습니다" 어미로 단정 회피 (V25.9.1)
+    //   해결: 능동 대응 의도는 유지 + 표현은 가능성·해석 톤
     // ════════════════════════════════════════════════════════════
     const _isStrongSell = totalScore <= -3 || volGate.isHighVolatility || volGate.hasExtremeCard;
     _uncOverride = {
-      execMode: 'EXIT',  // [V24.7] WATCH → EXIT — 능동적 탈출
+      execMode: 'EXIT',
       decisionPosition: _isStrongSell
-        ? '단계적 탈출 (선제 비중 축소 + 손절 트리거)'
-        : '방어적 분할 청산 (선제 축소 + 반등 대응)',
+        ? '리스크 관리 중심 흐름 (포지션 일부 축소가 고려될 수 있는 구간)'
+        : '신중 흐름 (포지션 일부 조정과 흐름 재평가가 고려될 수 있는 구간)',
       decisionStrategy: _isStrongSell
-        ? '선제 30% 축소 → 손절 트리거 발동 시 추가 정리 → 5거래일 시간 손절'
-        : '선제 20% 축소 → 반등 +5% 시 추가 정리 → 7거래일 시간 손절',
-      diagnosis: `${_gateReason} — 카드 조합이 회복보다 정리를 가리키는 구간`,
+        ? '포지션 일부를 선제적으로 축소하는 전략이 고려될 수 있으며, 손실 제한 기준을 사전에 설정하는 접근이 도움이 될 수 있습니다'
+        : '포지션 일부 조정과 단기 흐름 회복 시점에서의 보수적 대응이 하나의 선택지로 해석될 수 있습니다',
+      diagnosis: `${_gateReason} — 카드 조합이 추세 지속보다 흐름 재평가를 시사`,
       verdict: _isStrongSell
-        ? '게이트 발동 + 하락 신호 — 선제적 탈출 전략 필수 (방치 금지)'
-        : '게이트 발동 — 분할 청산 + 손절 트리거 동시 운용',
-      timingNote: '즉시 일부 정리 → 손절·반등 트리거 대기 (방치 아님)',
+        ? '게이트 발동 + 약세 흐름 — 리스크 관리 중심 접근이 도움이 될 수 있는 구간'
+        : '게이트 발동 — 포지션 조정과 흐름 재평가가 고려될 수 있는 흐름',
+      timingNote: '일정 기간 내 흐름 점검 후 재평가가 필요할 수 있습니다',
       entryTriggers: null,
-      // [V24.7] 핵심: exitTriggers를 명확한 6단계 탈출 전략으로
       exitTriggers: buildExitTriggers('sell', _isStrongSell ? 'HIGH' : riskGate.level),
-      // [V24.5+V24.7] sell narrative — "기다려라"가 아니라 "방어 행동하라"
+      // [V24.5+V25.9.1] sell narrative — 가능성·해석 톤 (사장님 강화 안)
       cardEvidence: _isStrongSell
-        ? `Five of Swords 같은 '이미 진 싸움' 카드와 역방향 회복 카드 조합은\n버티는 전략이 아닌 단계적 탈출을 가리킵니다. 손절 트리거 사전 설정 필수입니다.`
-        : `현재 카드 조합은 회복 신뢰도가 낮습니다.\n선제적 비중 축소로 방어선을 만들고, 반등 시 추가 정리 + 손절선 동시 운용이 안전합니다.`,
+        ? `현재 카드 조합은 추세 지속보다 피로 누적 구간을 시사합니다.\n공격적 확장보다는 리스크 관리 중심 접근이 유리할 수 있는 흐름으로 해석됩니다.`
+        : `현재 카드 조합은 회복 신뢰도가 낮은 구간을 시사합니다.\n포지션 조정과 흐름 재평가를 함께 고려하는 보수적 접근이 도움이 될 수 있습니다.`,
       outcomePrediction: _isStrongSell
-        ? `👉 지금 아무 행동 안 하면 '시간 + 추가 하락'에 이중 노출되고\n👉 선제 30% 축소 + 손절 트리거 운용이 손실 한도 통제에 유리합니다`
-        : `👉 지금 일괄 청산하면 '바닥 직전 매도' 위험, 무대응하면 '추가 하락 방치' 위험이고\n👉 분할 정리 + 손절선 동시 운용이 양쪽 리스크를 모두 줄입니다`,
+        ? `👉 흐름 점검 없이 방치할 경우 시간·추세 양쪽에 노출될 가능성이 있고\n👉 포지션 일부를 선제적으로 축소하는 전략이 리스크 관리에 도움이 될 수 있습니다`
+        : `👉 일괄적 결단도 무대응도 한쪽 리스크에 치우칠 수 있고\n👉 포지션 일부 조정과 흐름 재평가가 균형 잡힌 접근으로 해석될 수 있습니다`,
       gateAwareInterpretation: _isStrongSell
-        ? `Five of Swords + 역방향 회복 카드 — 카드 의미가 명확히 '정리'를 가리킵니다.\n"바닥 매도 회피"라는 이유로 무대응하는 것은 카드 메시지를 거스르는 손실 방치입니다.\n선제 비중 축소 + 손절 트리거 + 시간 손절을 동시 운용해 손실 한도를 통제하십시오.`
-        : `현재 카드 조합은 회복보다 정리를 가리킵니다.\n일괄 청산도 무대응도 정답이 아닙니다 — 분할 정리 + 손절선 동시 운용이 핵심입니다.\n반등 신호 도달 시 추가 정리, 손절 도달 시 즉시 잔여 정리하십시오.`,
+        ? `현재 카드 조합은 흐름 재평가를 시사합니다.\n"바닥 매도 회피" 관점의 무대응이 능사는 아닐 수 있는 구간으로 해석됩니다.\n포지션 일부 축소와 손실 제한 기준 점검을 함께 고려하는 보수적 접근이 도움이 될 수 있습니다.`
+        : `현재 카드 조합은 추세 지속보다 흐름 재평가를 시사합니다.\n일괄 결단도 무대응도 한쪽으로 치우친 선택일 수 있으며, 포지션 조정과 흐름 재평가가 균형 접근으로 해석될 수 있습니다.\n단기 흐름 회복 시 보수적 대응을, 추가 약세 시 흐름 재해석을 고려해볼 수 있습니다.`,
       gateAwareCriticalClosing: _isStrongSell
-        ? `'기다리면 해결'이 아닌 카드 조합입니다 — 선제적 탈출이 손실을 통제합니다.`
-        : `방치는 전략이 아닙니다 — 분할 정리 + 손절 트리거가 진짜 방어입니다.`
+        ? `'기다리면 해결'이라 단정하기 어려운 카드 조합으로 해석되며, 능동적 흐름 점검이 리스크 관리에 도움이 될 수 있습니다.`
+        : `방치도 결단도 한쪽 답은 아닐 수 있으며, 포지션 조정과 흐름 재평가가 균형 접근으로 고려될 수 있습니다.`
     };
   }
   // ══════════════════════════════════════════════════════════════
 
   // [V24.5 PATCH 5] 게이트 발동 시 criticalInterpretation 강제 교체
-  //   기존: BUY 시그널 기반 → "상승 모멘텀 초기 신호" / "분할 진입 핵심" — 매수 권유 톤
-  //   문제: 게이트 발동(0% 비중)인데 매수 권유 톤 → 자기모순
-  //   해결: 신중 메시지 3줄로 완전 교체
   if (_uncOverride) {
-    // [V24.7] sell intent + 게이트 발동 시 — 능동 탈출 메시지로
+    // [V24.7+V25.9+V25.9.1] sell intent + 게이트 발동 시 — 가능성 표현 톤
     if (stockIntent === 'sell') {
       const _isStrongSell = totalScore <= -3 || volGate.isHighVolatility || volGate.hasExtremeCard;
       const _sellGeneralMsg = _isStrongSell
-        ? `현재 카드 조합은 회복보다 정리를 가리킵니다 — '버티면 해결' 구조 아님.`
-        : `현재 카드 조합은 회복 신뢰도가 낮습니다 — 분할 정리 + 손절선 동시 운용 필수.`;
+        ? `현재 카드 조합은 추세 지속보다 흐름 재평가를 시사하며, '버티면 해결'이라 단정하기 어려운 구간으로 해석됩니다.`
+        : `현재 카드 조합은 회복 신뢰도가 낮은 구간으로, 포지션 조정과 흐름 재평가를 함께 고려할 수 있는 시점입니다.`;
       const _sellFlavorMsg = _isStrongSell
-        ? `선제 30% 즉시 정리 + 손절 트리거(-5%/-10%) + 5거래일 시간 손절을 동시 운용하십시오.`
-        : `선제 20% 즉시 정리 + 반등 시 추가 정리 + 손절선 운용으로 양쪽 리스크 통제.`;
+        ? `포지션 일부를 선제적으로 축소하는 전략이 고려될 수 있으며, 손실 제한 기준을 사전에 설정하는 접근이 리스크 관리에 도움이 될 수 있습니다.`
+        : `포지션 일부 조정, 단기 흐름 회복 시 보수적 대응, 손실 제한 기준 점검이 균형 접근으로 해석될 수 있습니다.`;
       const _sellClosing = _uncOverride.gateAwareCriticalClosing
-        || `방치는 전략이 아닙니다 — 단계적 탈출이 진짜 방어입니다.`;
+        || `방치도 결단도 한쪽 답은 아닐 수 있으며, 포지션 조정과 흐름 재평가가 균형 접근으로 고려될 수 있습니다.`;
       criticalInterpretation = `${_sellGeneralMsg}\n${_sellFlavorMsg}\n${_sellClosing}`;
     } else {
       // buy intent (기존)
@@ -2941,7 +2937,7 @@ function buildStockMetrics({ totalScore, riskScore, cleanCards, isLeverage, quer
     cardNarrative, flowSummary, riskChecks, scenarios, roadmap,
     position: _uncOverride ? {
       weight:    '0% (관망 — 트리거 미충족)',
-      stopLoss:  '진입 후: 평균 단가 -5% (분할 매수 시)',
+      stopLoss:  '진입 시 손실 제한 기준 사전 점검이 도움이 될 수 있습니다 (분할 진입 시)',
       target:    '추세 확정 후 재설정',
       note:      '⚠️ 관망 카드 우세 — 객관적 트리거 충족 전 진입 자제'
     } : position,
@@ -2985,25 +2981,25 @@ function buildStockMetrics({ totalScore, riskScore, cleanCards, isLeverage, quer
         const _isStrongSell = stockIntent === 'sell' && (totalScore <= -3 || volGate.isHighVolatility || volGate.hasExtremeCard);
         if (stockIntent === 'sell') {
           return {
-            // [V24.7] 사장님 진단: "0% 매도"는 방치 — 선제적 비중 축소 필수
+            // [V24.7+V25.9+V25.9.1] 가능성·해석 톤 (사장님 강화 안)
             weight:    _isStrongSell
-              ? '선제 30% 즉시 정리 + 손절 트리거 운용'
-              : '선제 20% 즉시 정리 + 반등 시 추가 정리',
+              ? '포지션 일부를 선제적으로 축소하는 전략이 고려될 수 있습니다'
+              : '포지션 일부 조정이 보수적 접근으로 고려될 수 있습니다',
             stopLoss:  _isStrongSell
-              ? '평균 단가 -5% / -10% 단계별 손절 + 5거래일 시간 손절'
-              : '평균 단가 -5% / -10% 단계별 손절 + 7거래일 시간 손절',
+              ? '손실 제한 기준을 사전에 설정하는 접근이 리스크 관리에 도움이 될 수 있습니다'
+              : '손실 제한 기준 점검과 단기 흐름 회복 시 재평가가 도움이 될 수 있습니다',
             target:    _isStrongSell
-              ? '반등 +3~5% 시 잔여 30~50% 정리 / 20일선 이탈 시 전량 청산'
-              : '반등 +5% 시 잔여 50% 정리 / 20일선 이탈 시 전량 청산',
-            note:      '⚠️ "기다림"이 아닌 "단계적 탈출" — 손절 트리거 사전 설정 필수'
+              ? '단기 흐름 회복 시 보수적 대응이 하나의 선택지로 해석될 수 있습니다'
+              : '단기 흐름 회복 시 보수적 대응 또는 추세 전환 시 본질적 재검토가 고려될 수 있습니다',
+            note:      '⚠️ 본 내용은 카드 해석에 따른 참고 의견이며, 모든 의사결정은 본인 책임입니다'
           };
         }
-        // buy intent (기존)
+        // buy intent — 안전 표현
         return {
-          weight:    '0% (트리거 미충족)',
-          stopLoss:  '진입 후 평균 단가 -5%',
-          target:    '추세 확정 후 재설정',
-          note:      '⚠️ 관망 카드 우세 — 객관적 트리거 충족 전 진입 자제'
+          weight:    '진입 보류 흐름 (트리거 미충족 — 신호 전환 후 재평가가 고려될 수 있습니다)',
+          stopLoss:  '진입 시 손실 제한 기준을 사전에 점검하는 접근이 도움이 될 수 있습니다',
+          target:    '추세 확인 후 재평가가 고려될 수 있습니다',
+          note:      '⚠️ 관망 카드 우세 — 객관적 신호 확인 전 진입 보류가 하나의 선택지로 해석될 수 있습니다'
         };
       })() : position,
       timing: _uncOverride ? {
@@ -3055,8 +3051,8 @@ function buildStockMetrics({ totalScore, riskScore, cleanCards, isLeverage, quer
                       ? '"기다리면 해결" 구조 아님 — 선제 비중 축소 필수'
                       : '무대응 = 추가 하락 방치 — 분할 정리로 방어선 구축',
                     '손절선 사전 설정 — 감정적 보유 차단을 위한 트리거 자동화',
-                    '시간 손절 운용 — N거래일 내 반등 미달성 시 잔여 정리',
-                    '추가 매수로 평단 낮추기 절대 금지'
+                    '일정 기간 내 흐름 개선이 없을 경우 흐름 재평가가 필요할 수 있습니다',
+                    '평단 조정 시도는 추가 리스크 노출 가능성을 신중히 고려할 필요가 있습니다'
                   ];
                 })()
               : [
@@ -3064,9 +3060,9 @@ function buildStockMetrics({ totalScore, riskScore, cleanCards, isLeverage, quer
                   volGate.isHighVolatility
                     ? '변동성·전환 카드 우세 — 급락 가능성 동시 대비'
                     : '관망 카드 우세 — 객관적 트리거 확인 전 진입 자제',
-                  '전저점 이탈 시 모든 진입 트리거 무효화 — 다음 점사까지 관망',
-                  '추세 하락 확정(20일선 이탈) 시 신규 진입 완전 배제',
-                  '평균 단가 기준 손절선 사전 설정 필수'
+                  '단기 저점 약화 시 진입 신호 재평가가 필요할 수 있으며, 다음 점사까지 관망이 고려될 수 있습니다',
+                  '추세 약세 흐름 시 신규 진입에 대한 보수적 검토가 도움이 될 수 있습니다',
+                  '진입 시 손실 제한 기준 사전 설정이 도움이 될 수 있습니다'
                 ])
           : finalRiskCautions
       },
@@ -3683,7 +3679,7 @@ function buildRealEstateMetrics({ totalScore, riskScore, cleanCards, intent, pro
           ] : [
             "시세 대비 -5~8% 적극 조정 검토",
             "장기 미거래 위험 매우 높음",
-            "다음 성수기 대기 vs 즉시 정리 결단"
+            "다음 성수기 대기 또는 능동적 흐름 점검이 고려될 수 있습니다"
           ]
         ) : (
           isFutureDanger ? [
