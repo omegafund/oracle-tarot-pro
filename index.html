@@ -6529,6 +6529,215 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
         // ── 🔒 방호벽: 연애 전용 렌더러 (투자 언어 절대 금지)
         //    연애는 isFinanceQuery=false 경로로 이미 렌더링되지만,
         //    명시적 블록으로 분리하여 "주식/부동산 용어가 절대 섞이지 않도록" 방호
+
+        // ═════════════════════════════════════════════════════════════
+        // 💘 [V25.24] LOVE BLOCK V2 — 100% JS, 6 박스, Gemini OFF
+        // ═════════════════════════════════════════════════════════════
+        // 매개변수: serverOracle만 실질 사용 (cards/qRaw/loveSubType는
+        //          향후 확장 위해 시그니처 보존 — eslint 회피용 _접두사)
+        function _renderLoveBlockV25_24(_cards, _qRaw, _loveSubType, serverOracle, _fi) {
+            // serverOracle = window._serverMetrics.oracleV25_24 (Worker가 생성)
+            const o = serverOracle;
+            if (!o || !o.boxes) return null;
+
+            const b = o.boxes;
+            const pro = o.proEnhancement;
+
+            // 공통 박스 스타일
+            const boxBase = `padding:14px 16px; border-radius:10px; margin-bottom:14px; line-height:1.85;`;
+            const greenBorder = `background:rgba(46,204,113,0.06); border:1px solid rgba(46,204,113,0.4); border-left:3px solid #2ecc71;`;
+            const goldBorder  = `background:rgba(212,175,55,0.06); border:1px solid rgba(212,175,55,0.4); border-left:3px solid #D4AF37;`;
+            const redBorder   = `background:rgba(231,76,60,0.06); border:1px solid rgba(231,76,60,0.4); border-left:3px solid #E74C3C;`;
+            const yellowBorder= `background:rgba(241,196,15,0.06); border:1px solid rgba(241,196,15,0.5); border-left:4px solid #F1C40F;`;
+            const blueBorder  = `background:rgba(52,152,219,0.06); border:1px solid rgba(52,152,219,0.4); border-left:3px solid #3498DB;`;
+            const finalBox    = `background:linear-gradient(135deg, rgba(212,175,55,0.18), rgba(46,204,113,0.08)); border:2px solid rgba(212,175,55,0.55); border-radius:12px; box-shadow:0 0 24px rgba(212,175,55,0.18);`;
+
+            const labelStyle  = `color:#2ecc71; font-size:0.78rem; font-weight:900; letter-spacing:0.12em; margin-bottom:8px;`;
+            const labelGold   = `color:#FFD970; font-size:0.78rem; font-weight:900; letter-spacing:0.12em; margin-bottom:8px;`;
+            const labelRed    = `color:#FFB090; font-size:0.78rem; font-weight:900; letter-spacing:0.12em; margin-bottom:8px;`;
+            const labelYellow = `color:#F1C40F; font-size:0.86rem; font-weight:900; letter-spacing:0.10em; margin-bottom:10px;`;
+
+            const coreKey = (txt) => `<div style="margin-top:8px; padding:8px 12px; background:rgba(212,175,55,0.10); border-left:3px solid #D4AF37; border-radius:0 6px 6px 0; font-size:0.86rem; color:#FFE08A; font-weight:700;">👉 핵심: <b>"${txt}"</b></div>`;
+
+            // ── Box 1: Core Insight (PRO 강조) ──
+            const box1 = `
+                <div style="${boxBase} ${goldBorder}">
+                    <div style="display:flex; align-items:center; gap:6px; margin-bottom:10px;">
+                        <div style="${labelGold}">🧠 핵심 흐름 해석</div>
+                        <div style="margin-left:auto; font-size:0.62rem; color:rgba(212,175,55,0.85); font-weight:700; letter-spacing:0.1em;">CORE INSIGHT · PRO</div>
+                    </div>
+                    <div style="font-size:0.9rem; color:rgba(255,255,255,0.92);">
+                        <div>${b.coreInsight.line1}</div>
+                        <div>${b.coreInsight.line2}</div>
+                        <div style="margin-top:6px;">${b.coreInsight.line3}</div>
+                        <div>${b.coreInsight.line4}</div>
+                        <div style="margin-top:6px; color:rgba(212,175,55,0.95); font-style:italic;">${b.coreInsight.line5}</div>
+                        <div style="margin-top:8px; padding:6px 10px; background:rgba(46,204,113,0.08); border-radius:6px; font-size:0.78rem; color:rgba(46,204,113,0.95);">
+                            ↳ 흐름 패턴: <b>${b.coreInsight.flowArrow}</b>
+                        </div>
+                    </div>
+                    ${coreKey(b.coreInsight.coreKey)}
+                </div>`;
+
+            // ── Box 2: Relation Essence (2:2 구조) ──
+            const re = b.relationEssence;
+            const box2 = `
+                <div style="${boxBase} ${greenBorder}">
+                    <div style="${labelStyle}">💘 관계 본질</div>
+                    <div style="font-size:0.88rem; color:rgba(255,255,255,0.92);">
+                        <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:10px;">
+                            <div style="padding:8px 10px; background:rgba(46,204,113,0.08); border-radius:6px;">
+                                <div style="color:#2ecc71; font-size:0.74rem; font-weight:900; margin-bottom:4px;">[유저님 상태]</div>
+                                <div>✔ ${re.userBlock.strength}</div>
+                                <div>✔ ${re.userBlock.hidden}</div>
+                            </div>
+                            <div style="padding:8px 10px; background:rgba(52,152,219,0.08); border-radius:6px;">
+                                <div style="color:#5DADE2; font-size:0.74rem; font-weight:900; margin-bottom:4px;">[상대 상태]</div>
+                                <div>✔ ${re.partnerBlock.visible}</div>
+                                <div>✔ ${re.partnerBlock.real}</div>
+                            </div>
+                        </div>
+                        <div style="padding:8px 10px; background:rgba(0,0,0,0.18); border-radius:6px; font-size:0.82rem;">
+                            <div style="color:#FFE08A; margin-bottom:4px;">두 사람 구조: <b>${re.dynamic} ↔ ${re.counterDynamic}</b></div>
+                            <div style="font-size:0.78rem; color:rgba(255,255,255,0.78);">
+                                균형 유지 → ${re.positiveResult}<br>
+                                균형 붕괴 → ${re.negativeResult}
+                            </div>
+                        </div>
+                    </div>
+                    ${coreKey(re.coreKey)}
+                </div>`;
+
+            // ── Box 3: Action Guide ──
+            const ag = b.actionGuide;
+            const box3 = `
+                <div style="${boxBase} ${yellowBorder}">
+                    <div style="${labelYellow}">🎯 지금 해야 할 행동 (핵심)</div>
+                    <div style="font-size:0.88rem; color:rgba(255,255,255,0.92);">
+                        <div style="margin-bottom:10px;">
+                            <span style="color:#2ecc71; font-weight:800;">✔ 해야 할 행동 1</span><br>
+                            &nbsp;&nbsp;→ <b style="color:#FFE08A;">${ag.action1}</b><br>
+                            <span style="font-size:0.78rem; color:rgba(255,255,255,0.7);">&nbsp;&nbsp;&nbsp;&nbsp;⤷ ${ag.actionResult1}</span>
+                        </div>
+                        <div style="margin-bottom:10px;">
+                            <span style="color:#2ecc71; font-weight:800;">✔ 해야 할 행동 2</span><br>
+                            &nbsp;&nbsp;→ <b style="color:#FFE08A;">${ag.action2}</b><br>
+                            <span style="font-size:0.78rem; color:rgba(255,255,255,0.7);">&nbsp;&nbsp;&nbsp;&nbsp;⤷ ${ag.actionResult2}</span>
+                        </div>
+                        <div>
+                            <span style="color:#E74C3C; font-weight:800;">✘ 절대 피할 것</span><br>
+                            &nbsp;&nbsp;→ ${ag.avoidAction}<br>
+                            <span style="font-size:0.78rem; color:rgba(255,140,100,0.85);">&nbsp;&nbsp;&nbsp;&nbsp;⤷ 관계를 ${ag.riskEffect} 방향으로 밀어버립니다</span>
+                        </div>
+                    </div>
+                    ${coreKey(ag.coreKey)}
+                </div>`;
+
+            // ── Box 4: Timing ──
+            const tm = b.timing;
+            const box4 = `
+                <div style="${boxBase} ${blueBorder}">
+                    <div style="color:#5DADE2; font-size:0.78rem; font-weight:900; letter-spacing:0.12em; margin-bottom:10px;">⚡ 타이밍 흐름</div>
+                    <div style="font-size:0.88rem; color:rgba(255,255,255,0.92);">
+                        <div style="display:grid; grid-template-columns:80px 1fr; gap:6px 10px; margin-bottom:10px; font-size:0.82rem;">
+                            <div style="color:#5DADE2; font-weight:800;">✔ 단기</div>
+                            <div>(${tm.shortTerm}) → ${tm.shortFlow}</div>
+                            <div style="color:#5DADE2; font-weight:800;">✔ 중기</div>
+                            <div>(${tm.midTerm}) → ${tm.midFlow}</div>
+                            <div style="color:#5DADE2; font-weight:800;">✔ 장기</div>
+                            <div>(${tm.longTerm}) → ${tm.longFlow}</div>
+                        </div>
+                        <div style="padding:6px 10px; background:rgba(241,196,15,0.10); border-radius:6px; font-size:0.82rem; color:#FFD970; margin-bottom:6px;">
+                            ⚡ <b>분기점: ${tm.criticalTiming}</b>
+                        </div>
+                        <div style="padding:6px 10px; background:rgba(46,204,113,0.08); border-radius:6px; font-size:0.82rem; color:rgba(46,204,113,0.95); margin-bottom:6px;">
+                            👉 ${tm.timingNow}
+                        </div>
+                        <div style="padding:6px 10px; background:rgba(46,204,113,0.06); border-radius:6px; font-size:0.82rem; color:rgba(255,255,255,0.85); margin-bottom:6px;">
+                            👉 ${tm.timingNext}
+                        </div>
+                        <div style="font-size:0.78rem; color:rgba(255,255,255,0.65); font-style:italic;">
+                            🌙 ${tm.numerology}
+                        </div>
+                    </div>
+                    ${coreKey(tm.coreKey)}
+                </div>`;
+
+            // ── Box 5: Risk ──
+            const rk = b.risk;
+            const box5 = `
+                <div style="${boxBase} ${redBorder}">
+                    <div style="${labelRed}">🛡️ 리스크 분석</div>
+                    <div style="font-size:0.88rem; color:rgba(255,255,255,0.92);">
+                        <div style="margin-bottom:8px;">
+                            👉 ${rk.risk1}<br>
+                            👉 ${rk.risk2}
+                        </div>
+                        <div style="padding:8px 10px; background:rgba(0,0,0,0.20); border-radius:6px; font-size:0.82rem;">
+                            <div style="color:#FFB090; margin-bottom:4px;">⚠️ 진행 시나리오</div>
+                            <div>→ ${rk.riskProgression}</div>
+                            <div style="margin-top:6px; color:rgba(255,140,100,0.95); font-size:0.78rem;">
+                                특히 <b>"${rk.triggerCondition}"</b> 상황에서<br>
+                                관계가 <b>${rk.collapseType}</b>로 전환됩니다.
+                            </div>
+                        </div>
+                    </div>
+                    ${coreKey(rk.coreKey)}
+                </div>`;
+
+            // ── Box 6: Final Verdict (강조 박스) ──
+            const fn = b.final;
+            const box6 = `
+                <div style="${boxBase} ${finalBox} margin-top:18px; padding:18px 18px;">
+                    <div style="text-align:center; margin-bottom:12px;">
+                        <div style="color:#FFD970; font-size:0.74rem; font-weight:900; letter-spacing:0.18em;">FINAL VERDICT</div>
+                        <div style="color:#fff; font-size:1.15rem; font-weight:900; margin-top:6px;">👉 ${fn.finalState}</div>
+                    </div>
+                    <div style="font-size:0.88rem; color:rgba(255,255,255,0.92); text-align:center; margin-bottom:12px;">
+                        ${fn.finalExplanation}
+                    </div>
+                    <div style="padding:10px 12px; background:rgba(0,0,0,0.25); border-radius:8px; font-size:0.84rem;">
+                        <div style="color:#2ecc71; margin-bottom:6px;">✔ 좋은 길</div>
+                        <div style="margin-bottom:10px; padding-left:10px;">→ ${fn.goodPath}</div>
+                        <div style="color:#E74C3C; margin-bottom:6px;">✘ 나쁜 길</div>
+                        <div style="padding-left:10px;">→ ${fn.badPath}</div>
+                    </div>
+                    <div style="margin-top:12px; text-align:center; padding:10px; background:rgba(212,175,55,0.15); border-radius:8px;">
+                        <div style="color:#FFE08A; font-size:0.78rem; font-weight:700; margin-bottom:4px;">최종 키</div>
+                        <div style="color:#fff; font-size:0.95rem; font-weight:900;">"${fn.finalKey}"</div>
+                    </div>
+                    <div style="margin-top:10px; text-align:center; color:rgba(255,255,255,0.85); font-size:0.85rem; font-style:italic;">
+                        ${fn.coreKey}
+                    </div>
+                </div>`;
+
+            // ── PRO Enhancement (메타 패턴) ──
+            const proBox = pro ? `
+                <div style="${boxBase} background:linear-gradient(135deg, rgba(155,89,182,0.10), rgba(212,175,55,0.06)); border:1px solid rgba(155,89,182,0.45); border-left:3px solid #9B59B6; margin-top:14px;">
+                    <div style="color:#C39BD3; font-size:0.78rem; font-weight:900; letter-spacing:0.12em; margin-bottom:8px;">✨ 메타 패턴 분석 · PRO</div>
+                    <div style="font-size:0.86rem; color:rgba(255,255,255,0.92); line-height:1.85;">
+                        <div style="margin-bottom:6px;">※ ${pro.metaDescription}</div>
+                        <div style="margin-bottom:6px; color:#FFE08A;">${pro.hiddenDriver}</div>
+                        <div style="font-size:0.78rem; color:rgba(255,255,255,0.7); font-style:italic;">${pro.longTermNote}</div>
+                    </div>
+                </div>` : '';
+
+            return `
+            <div class="final-oracle final-oracle-love" style="padding:18px; background:rgba(46,204,113,0.04); border:1px solid rgba(46,204,113,0.45); border-radius:12px; margin-top:25px;">
+                <h3 style="color:#2ecc71; text-align:center; margin:0 0 18px 0; font-size:1.15rem; border-bottom:1px solid rgba(46,204,113,0.35); padding-bottom:10px;">
+                    💘 연애 흐름 신탁
+                    <span style="display:block; font-size:0.7rem; color:rgba(212,175,55,0.85); letter-spacing:0.18em; margin-top:4px;">ZEUS LOVE ORACLE · V25.24</span>
+                </h3>
+                ${box1}
+                ${box2}
+                ${box3}
+                ${box4}
+                ${box5}
+                ${box6}
+                ${proBox}
+            </div>`;
+        }
+
         function _renderLoveBlock(cards, qRaw, loveSubType) {
             const fi = buildFortuneIndicators(cards, qRaw, loveSubType);
             const hookData = (typeof HOOK_DB !== 'undefined') && loveSubType ? HOOK_DB[loveSubType] : null;
@@ -7182,15 +7391,24 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
                 const investData = window._serverMetrics ? _mapServerMetricsToInvestData(window._serverMetrics, cards) : null;
                 const layer5HTML = investData ? _render5LayerBlock(investData, { isSell: false, domain: 'love', title: '제우스 연애 신탁' }) : null;
 
-                // 무료 영역 — 5계층 결과 또는 기존 _renderLoveBlock
-                const freeContent = layer5HTML
-                    ? `<div style="padding:18px; background:rgba(212,175,55,0.06); border:1px solid rgba(212,175,55,0.4); border-radius:12px; margin-top:18px;">
+                // [V25.24] Oracle V25.24 데이터가 있으면 최우선 사용 (6박스 + PRO)
+                const v25_24Oracle = (window._serverMetrics && window._serverMetrics.oracleV25_24)
+                    ? window._serverMetrics.oracleV25_24 : null;
+                const v25_24HTML = v25_24Oracle
+                    ? _renderLoveBlockV25_24(cards, qRaw2, LOVE_SUBTYPE, v25_24Oracle, null)
+                    : null;
+
+                // 무료 영역 — V25.24 (최우선) → 5계층 결과 → 기존 _renderLoveBlock
+                const freeContent = v25_24HTML
+                    ? v25_24HTML
+                    : (layer5HTML
+                        ? `<div style="padding:18px; background:rgba(212,175,55,0.06); border:1px solid rgba(212,175,55,0.4); border-radius:12px; margin-top:18px;">
                             <h3 style="color:#FF7BAC; text-align:center; margin:0 0 15px 0; font-size:1.1rem; border-bottom:1px solid rgba(255,123,172,0.35); padding-bottom:10px;">
                                 💘 제우스 연애 신탁 <span style="font-size:0.78rem; opacity:0.7; letter-spacing:0.15em;">ZEUS LOVE ORACLE</span>
                             </h3>
                             ${layer5HTML}
                         </div>`
-                    : _renderLoveBlock(cards, qRaw2, LOVE_SUBTYPE);
+                        : _renderLoveBlock(cards, qRaw2, LOVE_SUBTYPE));
 
                 // [V22.0] 🔒 PRO 전환 박스 — 사장님 전환률 강화 문구
                 const proHookHTML = `
