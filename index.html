@@ -5504,9 +5504,19 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
         && window._serverMetrics
         && window._serverMetrics.oracleV25_24
         && window._serverMetrics.oracleV25_24.boxes);
+
+    // [V25.28] 주식/코인/부동산 5계층 박스 활성 시 Gemini Core Insight 중복 차단
+    //   5계층 박스 안에 이미 "🔥 핵심 해석" + "🧭 최종 결론" + "💡 행동 시 결과" 등이 있음
+    //   투자 결과창에서 중복된 결론 박스 출력 방지 (매도/매수/코인 모두 동일 적용)
+    const _5layerInvestActive = !!(typeof window !== 'undefined'
+        && window._serverMetrics
+        && (typeof window._isFinanceQuery !== 'undefined' && window._isFinanceQuery));
+
+    // 통합 차단 플래그 — V25.24 LOVE 또는 5계층 투자 박스가 활성이면 Gemini Core Insight 차단
+    const _suppressGeminiCoreInsight = _v25_24LoveActive || _5layerInvestActive;
     
     const _coreInsightMatch = text.match(/핵심\s*흐름\s*해석\s*\n([\s\S]+?)(?=\n\n[━─\-]{3,}|\n\n[가-힣A-Z][^\n]*[\n:]|\n\n\[|$)/);
-    if (_coreInsightMatch && !_isFreeSubtype && !_v25_24LoveActive) {
+    if (_coreInsightMatch && !_isFreeSubtype && !_suppressGeminiCoreInsight) {
         const _coreContent = _coreInsightMatch[1].trim()
             .replace(/^[─━\-]+$/gm, '')
             .replace(/\n{3,}/g, '\n\n')
@@ -5542,8 +5552,9 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
     } else if (_isFreeSubtype && _coreInsightMatch) {
         // 무료 영역 — Core Insight 본문에서 제거 (차별화)
         text = text.replace(/핵심\s*흐름\s*해석\s*\n[\s\S]+?(?=\n\n[━─\-]{3,}|\n\n[가-힣A-Z][^\n]*[\n:]|\n\n\[|$)/, '\n');
-    } else if (_v25_24LoveActive && _coreInsightMatch) {
-        // [V25.25] V25.24 활성 시 Gemini Core Insight 본문 제거 (V25.24 박스로 대체)
+    } else if (_suppressGeminiCoreInsight && _coreInsightMatch) {
+        // [V25.25+28] V25.24 LOVE 또는 5계층 투자 활성 시 Gemini Core Insight 본문 제거
+        //   (LOVE는 V25.24 박스로 / 투자는 5계층 박스로 대체)
         text = text.replace(/핵심\s*흐름\s*해석\s*\n[\s\S]+?(?=\n\n[━─\-]{3,}|\n\n[가-힣A-Z][^\n]*[\n:]|\n\n\[|$)/, '\n');
     }
     // _coreInsightHTML은 아래 oracleHTML 직후에 삽입
@@ -7703,6 +7714,15 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
             if (_domain === 'love' && window._serverMetrics && window._serverMetrics.oracleV25_24
                 && window._serverMetrics.oracleV25_24.boxes
                 && window._serverMetrics.oracleV25_24.boxes.actionGuide) {
+                return '';
+            }
+            
+            // [V25.28] 주식/코인/부동산 5계층 박스 활성 시 실행 가이드 박스 중복 차단
+            //   _render5LayerBlock이 이미 "🛡 제우스 행동 지침" + "⚡ 실전 매매 전략"을 출력함
+            //   (매도/매수/코인/부동산 4 도메인 모두 동일 적용)
+            if ((_domain === 'stock' || _domain === 'crypto' || _domain === 'realestate')
+                && window._serverMetrics
+                && window._isFinanceQuery) {
                 return '';
             }
             
