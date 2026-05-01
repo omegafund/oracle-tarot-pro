@@ -5513,8 +5513,15 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
         && window._serverMetrics
         && (typeof window._isFinanceQuery !== 'undefined' && window._isFinanceQuery));
 
-    // 통합 차단 플래그 — V25.24 LOVE 또는 5계층 투자 박스가 활성이면 Gemini Core Insight 차단
-    const _suppressGeminiCoreInsight = _v25_24LoveActive || _5layerInvestActive;
+    // [V25.32] FORTUNE V25.32 (wealth/health/career) 활성 시 Gemini Core Insight 차단
+    //   V25.32 자체 6박스(Core Insight 포함)를 생성하므로 중복 출력 방지
+    const _v25_32FortuneActive = !!(typeof window !== 'undefined'
+        && window._serverMetrics
+        && window._serverMetrics.oracleV25_32
+        && window._serverMetrics.oracleV25_32.boxes);
+
+    // 통합 차단 플래그 — V25.24 LOVE 또는 5계층 투자 또는 V25.32 FORTUNE이 활성이면 Gemini Core Insight 차단
+    const _suppressGeminiCoreInsight = _v25_24LoveActive || _5layerInvestActive || _v25_32FortuneActive;
     
     const _coreInsightMatch = text.match(/핵심\s*흐름\s*해석\s*\n([\s\S]+?)(?=\n\n[━─\-]{3,}|\n\n[가-힣A-Z][^\n]*[\n:]|\n\n\[|$)/);
     if (_coreInsightMatch && !_isFreeSubtype && !_suppressGeminiCoreInsight) {
@@ -6786,6 +6793,249 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
             </div>`;
         }
 
+        // ═════════════════════════════════════════════════════════════
+        // ✨ [V25.32] FORTUNE BLOCK — 100% JS, 6 박스, Gemini OFF
+        //    wealth/health/career 도메인 전용 (LOVE V25.27 사상 복제)
+        // ═════════════════════════════════════════════════════════════
+        function _renderFortuneBlockV25_32(serverOracle) {
+            if (!serverOracle || !serverOracle.boxes) return '';
+            
+            const ci  = serverOracle.boxes.coreInsight;
+            const es  = serverOracle.boxes.essence;
+            const ag  = serverOracle.boxes.actionGuide;
+            const tm  = serverOracle.boxes.timing;
+            const ct  = serverOracle.boxes.caution;
+            const fn  = serverOracle.boxes.final;
+            const pro = serverOracle.proEnhancement;
+            const subtype = serverOracle.subtype || 'wealth';
+            
+            // 도메인별 헤더 어휘
+            const domainTitle = subtype === 'wealth'  ? '💰 재물 흐름 신탁'
+                              : subtype === 'health'  ? '🌿 건강 흐름 신탁'
+                              : subtype === 'career'  ? '💼 직장 흐름 신탁'
+                              : subtype === 'today'   ? '🌅 오늘 운세 신탁'
+                              : subtype === 'newyear' ? '🎊 신년 운세 신탁'
+                              : subtype === 'general' ? '✨ 전반 운세 신탁'
+                              : subtype === 'etc'     ? '🔮 기타 신탁'
+                              : '✨ 운세 흐름 신탁';
+            const domainSub   = subtype === 'wealth'  ? 'ZEUS WEALTH ORACLE · V25.32'
+                              : subtype === 'health'  ? 'ZEUS HEALTH ORACLE · V25.32'
+                              : subtype === 'career'  ? 'ZEUS CAREER ORACLE · V25.32'
+                              : subtype === 'today'   ? 'ZEUS TODAY ORACLE · V25.33'
+                              : subtype === 'newyear' ? 'ZEUS NEWYEAR ORACLE · V25.33'
+                              : subtype === 'general' ? 'ZEUS GENERAL ORACLE · V25.33'
+                              : subtype === 'etc'     ? 'ZEUS FORTUNE ORACLE · V25.33'
+                              : 'ZEUS FORTUNE ORACLE · V25.33';
+            
+            // ─── 박스 1: 핵심 흐름 해석 ───
+            const box1HTML = `
+            <div style="margin-top:16px; padding:18px 20px;
+                        background: linear-gradient(135deg, rgba(212,175,55,0.10), rgba(0,0,0,0.4));
+                        border: 1px solid rgba(212,175,55,0.35);
+                        border-radius: 12px;">
+                <div style="color: #FFD970; font-size: 0.84rem; font-weight: 900; letter-spacing: 0.08em; margin-bottom: 12px; display:flex; align-items:center; gap:8px;">
+                    <span style="font-size: 1.05rem;">🔮</span>
+                    <span>핵심 흐름 해석</span>
+                    <span style="margin-left:auto; font-size: 0.62rem; color: rgba(212,175,55,0.7); font-weight: 700; letter-spacing:0.1em;">CORE INSIGHT · PRO</span>
+                </div>
+                <div style="font-size: 0.94rem; color: rgba(255,255,255,0.95); line-height: 1.95; font-weight: 500;">
+                    ${ci.line1}<br>
+                    ${ci.line2}<br>
+                    ${ci.line3}<br>
+                    ${ci.line4}<br>
+                    ${ci.line5}
+                </div>
+                <div style="margin-top:12px; padding-top:10px; border-top:1px solid rgba(212,175,55,0.18); font-size:0.84rem; color:rgba(255,217,112,0.85);">
+                    ↳ 흐름 패턴: <b>${ci.flowArrow}</b>
+                </div>
+                <div style="margin-top:8px; padding:10px 12px; background: rgba(212,175,55,0.08); border-left:3px solid var(--gold); border-radius:0 8px 8px 0; font-size:0.88rem; color:rgba(255,255,255,0.95); font-weight:600;">
+                    👉 핵심: "${ci.coreKey}"
+                </div>
+            </div>`;
+            
+            // ─── 박스 2: 흐름 본질 진단 ───
+            const box2HTML = `
+            <div style="margin-top:14px; padding:16px 18px;
+                        background: rgba(212,175,55,0.06);
+                        border: 1px solid rgba(212,175,55,0.22);
+                        border-radius: 10px;">
+                <div style="color: #FFD970; font-size: 0.82rem; font-weight: 900; letter-spacing: 0.08em; margin-bottom: 10px;">
+                    🌊 흐름 본질 진단
+                </div>
+                <div style="font-size:0.88rem; line-height:1.85; color:rgba(255,255,255,0.92);">
+                    <div style="margin-bottom:8px;"><b style="color:#FFD970;">[유저님 상태]</b></div>
+                    <div style="padding-left:8px; margin-bottom:6px;">✔ ${es.userBlock.strength}</div>
+                    <div style="padding-left:8px; margin-bottom:10px;">✔ ${es.userBlock.hidden}</div>
+                    <div style="margin-bottom:8px;"><b style="color:#FFD970;">[흐름 신호]</b></div>
+                    <div style="padding-left:8px; margin-bottom:6px;">✔ ${es.flowBlock.visible}</div>
+                    <div style="padding-left:8px; margin-bottom:10px;">✔ ${es.flowBlock.real}</div>
+                    <div style="padding:8px 10px; background:rgba(212,175,55,0.08); border-radius:6px; font-size:0.84rem;">
+                        두 흐름의 구조: <b>${es.dynamic}</b> ↔ <b>${es.counterDynamic}</b>
+                    </div>
+                    <div style="margin-top:8px; font-size:0.82rem; color:rgba(255,255,255,0.85);">
+                        균형 유지 → ${es.positiveResult}<br>
+                        균형 붕괴 → ${es.negativeResult}
+                    </div>
+                </div>
+                <div style="margin-top:10px; padding:10px 12px; background:rgba(212,175,55,0.08); border-left:3px solid var(--gold); border-radius:0 8px 8px 0; font-size:0.88rem; color:rgba(255,255,255,0.95); font-weight:600;">
+                    👉 핵심: "${es.coreKey}"
+                </div>
+            </div>`;
+            
+            // ─── 박스 3: 행동 가이드 ───
+            const box3HTML = `
+            <div style="margin-top:14px; padding:16px 18px;
+                        background: rgba(46,204,113,0.05);
+                        border: 1px solid rgba(46,204,113,0.25);
+                        border-radius: 10px;">
+                <div style="color: #2ecc71; font-size: 0.82rem; font-weight: 900; letter-spacing: 0.08em; margin-bottom: 10px;">
+                    🎯 지금 해야 할 행동 (핵심)
+                </div>
+                <div style="font-size:0.88rem; line-height:1.85; color:rgba(255,255,255,0.92);">
+                    <div style="margin-bottom:6px;"><b style="color:#2ecc71;">✔ 해야 할 행동 1</b></div>
+                    <div style="padding-left:12px; margin-bottom:4px;">→ ${ag.action1}</div>
+                    <div style="padding-left:24px; margin-bottom:10px; font-size:0.82rem; color:rgba(255,255,255,0.78);">⤷ ${ag.actionResult1}</div>
+                    <div style="margin-bottom:6px;"><b style="color:#2ecc71;">✔ 해야 할 행동 2</b></div>
+                    <div style="padding-left:12px; margin-bottom:4px;">→ ${ag.action2}</div>
+                    <div style="padding-left:24px; margin-bottom:10px; font-size:0.82rem; color:rgba(255,255,255,0.78);">⤷ ${ag.actionResult2}</div>
+                    <div style="margin-bottom:6px;"><b style="color:#FF8080;">✘ 절대 피할 것</b></div>
+                    <div style="padding-left:12px; margin-bottom:4px;">→ ${ag.avoidAction}</div>
+                    <div style="padding-left:24px; font-size:0.82rem; color:rgba(255,140,100,0.85);">⤷ 흐름을 ${ag.riskEffect}${_josa(ag.riskEffect, 'ro')} 밀어버립니다</div>
+                </div>
+                <div style="margin-top:10px; padding:10px 12px; background:rgba(46,204,113,0.08); border-left:3px solid #2ecc71; border-radius:0 8px 8px 0; font-size:0.88rem; color:rgba(255,255,255,0.95); font-weight:600;">
+                    👉 핵심: "${ag.coreKey}"
+                </div>
+            </div>`;
+            
+            // ─── 박스 4: 타이밍 흐름 ───
+            const box4HTML = `
+            <div style="margin-top:14px; padding:16px 18px;
+                        background: rgba(93,173,226,0.05);
+                        border: 1px solid rgba(93,173,226,0.25);
+                        border-radius: 10px;">
+                <div style="color: #5DADE2; font-size: 0.82rem; font-weight: 900; letter-spacing: 0.08em; margin-bottom: 10px;">
+                    ⏰ 타이밍 흐름
+                </div>
+                <div style="font-size:0.88rem; line-height:1.85; color:rgba(255,255,255,0.92);">
+                    <div style="margin-bottom:6px;"><b style="color:#5DADE2;">✔ 단기</b></div>
+                    <div style="padding-left:12px; margin-bottom:8px;">(${tm.shortTerm}) → ${tm.shortFlow}</div>
+                    <div style="margin-bottom:6px;"><b style="color:#5DADE2;">✔ 중기</b></div>
+                    <div style="padding-left:12px; margin-bottom:8px;">(${tm.midTerm}) → ${tm.midFlow}</div>
+                    <div style="margin-bottom:6px;"><b style="color:#5DADE2;">✔ 장기</b></div>
+                    <div style="padding-left:12px; margin-bottom:10px;">(${tm.longTerm}) → ${tm.longFlow}</div>
+                    <div style="padding:8px 10px; background:rgba(93,173,226,0.08); border-radius:6px; font-size:0.84rem; margin-bottom:8px;">
+                        ⚡ 분기점: <b>${tm.criticalTiming}</b>
+                    </div>
+                    <div style="font-size:0.82rem; color:rgba(255,255,255,0.85);">
+                        👉 ${tm.timingNow}<br>
+                        👉 ${tm.timingNext}
+                    </div>
+                    <div style="margin-top:8px; padding:8px 10px; background:rgba(212,175,55,0.06); border-radius:6px; font-size:0.82rem; color:rgba(255,217,112,0.9);">
+                        🌙 ${tm.numerology}
+                    </div>
+                </div>
+                <div style="margin-top:10px; padding:10px 12px; background:rgba(93,173,226,0.08); border-left:3px solid #5DADE2; border-radius:0 8px 8px 0; font-size:0.88rem; color:rgba(255,255,255,0.95); font-weight:600;">
+                    👉 핵심: "${tm.coreKey}"
+                </div>
+            </div>`;
+            
+            // ─── 박스 5: 주의 포인트 ───
+            const box5HTML = `
+            <div style="margin-top:14px; padding:16px 18px;
+                        background: rgba(243,156,18,0.05);
+                        border: 1px solid rgba(243,156,18,0.28);
+                        border-radius: 10px;">
+                <div style="color: #F39C12; font-size: 0.82rem; font-weight: 900; letter-spacing: 0.08em; margin-bottom: 10px;">
+                    🛡️ 주의 포인트
+                </div>
+                <div style="font-size:0.88rem; line-height:1.85; color:rgba(255,255,255,0.92);">
+                    <div style="margin-bottom:6px;">👉 ${ct.caution1}</div>
+                    <div style="margin-bottom:10px;">👉 ${ct.caution2}</div>
+                    <div style="padding:10px 12px; background:rgba(243,156,18,0.06); border-left:2px solid rgba(243,156,18,0.4); border-radius:0 6px 6px 0; font-size:0.84rem;">
+                        <b style="color:#F39C12;">⚠️ 진행 시나리오</b><br>
+                        → ${ct.cautionProgression}<br>
+                        <span style="font-size:0.8rem; color:rgba(255,255,255,0.78);">특히 "${ct.triggerCondition}" 상황에서<br>
+                        흐름이 <b>${ct.collapseType}</b>${_josa(ct.collapseType, 'ro')} 전환됩니다.</span>
+                    </div>
+                </div>
+                <div style="margin-top:10px; padding:10px 12px; background:rgba(243,156,18,0.08); border-left:3px solid #F39C12; border-radius:0 8px 8px 0; font-size:0.88rem; color:rgba(255,255,255,0.95); font-weight:600;">
+                    👉 핵심: "${ct.coreKey}"
+                </div>
+            </div>`;
+            
+            // ─── 박스 6: 최종 결론 ───
+            const box6HTML = `
+            <div style="margin-top:14px; padding:18px 20px;
+                        background: linear-gradient(135deg, rgba(212,175,55,0.12), rgba(0,0,0,0.45));
+                        border: 1px solid rgba(212,175,55,0.45);
+                        border-radius: 12px;
+                        box-shadow: 0 0 18px rgba(212,175,55,0.15);">
+                <div style="color: #FFD970; font-size: 0.86rem; font-weight: 900; letter-spacing: 0.1em; margin-bottom: 12px; text-align:center;">
+                    ✨ FINAL VERDICT
+                </div>
+                <div style="text-align:center; font-size:1rem; color:#FFD970; font-weight:900; margin-bottom:6px;">
+                    👉 ${fn.finalState}
+                </div>
+                <div style="text-align:center; font-size:0.86rem; color:rgba(255,255,255,0.85); margin-bottom:14px;">
+                    ${fn.finalExplanation}
+                </div>
+                <div style="display:flex; gap:8px; margin-bottom:10px;">
+                    <div style="flex:1; padding:10px; background:rgba(46,204,113,0.08); border-radius:8px; font-size:0.82rem;">
+                        <div style="color:#2ecc71; font-weight:800; margin-bottom:4px;">✔ 좋은 길</div>
+                        → ${fn.goodPath}
+                    </div>
+                    <div style="flex:1; padding:10px; background:rgba(255,128,128,0.08); border-radius:8px; font-size:0.82rem;">
+                        <div style="color:#FF8080; font-weight:800; margin-bottom:4px;">✘ 나쁜 길</div>
+                        → ${fn.badPath}
+                    </div>
+                </div>
+                <div style="margin-top:14px; padding:12px; background:rgba(212,175,55,0.10); border-radius:8px; text-align:center;">
+                    <div style="font-size:0.72rem; color:rgba(255,217,112,0.7); letter-spacing:0.15em; margin-bottom:6px;">최종 키</div>
+                    <div style="font-size:0.96rem; color:#FFD970; font-weight:900;">"${fn.finalKey}"</div>
+                </div>
+                <div style="margin-top:10px; padding:10px 12px; background:rgba(212,175,55,0.06); border-left:3px solid var(--gold); border-radius:0 8px 8px 0; font-size:0.86rem; color:rgba(255,255,255,0.95); font-weight:600; text-align:center;">
+                    ${fn.coreKey}
+                </div>
+            </div>`;
+            
+            // ─── PRO 메타 패턴 박스 ───
+            // [V25.33] 무료 운세(today/general)는 PRO 박스 차단 — 무료/유료 차별화
+            const _isFreeFortune = (subtype === 'today' || subtype === 'general');
+            const proBox = (pro && !_isFreeFortune) ? `
+            <div style="margin-top:14px; padding:14px 16px;
+                        background: linear-gradient(135deg, rgba(155,89,182,0.10), rgba(0,0,0,0.4));
+                        border: 1px solid rgba(155,89,182,0.35);
+                        border-radius: 10px;">
+                <div style="color: #BB8FCE; font-size: 0.78rem; font-weight: 900; letter-spacing: 0.1em; margin-bottom: 10px;">
+                    ✨ 메타 패턴 분석 · PRO
+                </div>
+                <div style="font-size:0.86rem; line-height:1.85; color:rgba(255,255,255,0.92);">
+                    <div style="margin-bottom:6px;">※ ${pro.metaDescription}</div>
+                    <div style="margin-bottom:6px; padding:8px 10px; background:rgba(155,89,182,0.08); border-radius:6px;">
+                        ${pro.hiddenDriver}
+                    </div>
+                    <div style="font-size:0.8rem; color:rgba(255,255,255,0.75);">
+                        ${pro.longTermNote}
+                    </div>
+                </div>
+            </div>` : '';
+            
+            return `
+            <div style="margin-top: 16px;">
+                <div style="text-align:center; padding:12px; background:linear-gradient(135deg, rgba(212,175,55,0.10), rgba(0,0,0,0.3)); border:1px solid rgba(212,175,55,0.35); border-radius:10px; margin-bottom:14px;">
+                    <div style="font-size:1.05rem; color:#FFD970; font-weight:900; letter-spacing:0.05em;">${domainTitle}</div>
+                    <div style="font-size:0.7rem; color:rgba(212,175,55,0.7); letter-spacing:0.15em; margin-top:4px;">${domainSub}</div>
+                </div>
+                ${box1HTML}
+                ${box2HTML}
+                ${box3HTML}
+                ${box4HTML}
+                ${box5HTML}
+                ${box6HTML}
+                ${proBox}
+            </div>`;
+        }
+
         function _renderLoveBlock(cards, qRaw, loveSubType) {
             const fi = buildFortuneIndicators(cards, qRaw, loveSubType);
             const hookData = (typeof HOOK_DB !== 'undefined') && loveSubType ? HOOK_DB[loveSubType] : null;
@@ -7495,6 +7745,14 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
             //   건강운: "체력 점검·휴식 기준" 톤
             //   직장운: "커리어 기준·결정 기준" 톤
             //   일반:   "기준 정리·자기 가치관" 톤
+
+            // [V25.32] FORTUNE Oracle V25.32 — 6박스 우선 출력 (wealth/health/career)
+            //   서버 oracleV25_32 데이터가 있으면 기존 운세 박스 대체
+            const v25_32Oracle = (window._serverMetrics && window._serverMetrics.oracleV25_32)
+                ? window._serverMetrics.oracleV25_32 : null;
+            const v25_32HTML = v25_32Oracle
+                ? _renderFortuneBlockV25_32(v25_32Oracle)
+                : null;
             const _fortuneGuide = (() => {
                 if (FORTUNE_SUBTYPE === 'wealth') {
                     return `👉 자금 계획과 자산 기준의 명확화가 흐름을 안정시킵니다<br>
@@ -7512,6 +7770,13 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
                 return `👉 중요한 선택의 시기이므로 감정적 판단보다 기준 정리 후 결정이 도움이 됩니다<br>
                         👉 주변 의견보다 자신의 기준과 가치관을 우선하는 것이 흐름을 안정시킵니다`;
             })();
+            
+            // [V25.32] V25.32 Oracle이 있으면 우선 출력 (wealth/health/career)
+            //   기존 운세 박스를 V25.32 6박스로 대체
+            if (v25_32HTML) {
+                return v25_32HTML;
+            }
+            
             return `
                 <div style="margin-top:14px;padding:14px 16px;background:rgba(212,175,55,0.07);border-left:3px solid var(--gold);border-radius:0 8px 8px 0;font-size:0.9rem;line-height:1.8;color:rgba(255,255,255,0.9);margin-bottom:14px;">${lucky}</div>
                 ${(() => {
@@ -7705,7 +7970,12 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
             const _domain = (typeof ACTIVE_DOMAIN_BAR !== 'undefined' && ACTIVE_DOMAIN_BAR) || '';
             
             // 운세는 위에서 이미 노출됨 → 중복 방지
-            if (_domain === 'life' || _domain === 'general') return '';
+            // [V25.31] 운세 도메인 식별 — wealth/health/career/general/life 모두 운세
+            //   원래 위에서 별도 운세 박스로 처리되므로 이 IIFE는 차단
+            const _isFortuneDomain = (_domain === 'life' || _domain === 'general'
+                                   || _domain === 'wealth' || _domain === 'health'
+                                   || _domain === 'career');
+            if (_isFortuneDomain) return '';
             
             // PRO 결제 전이면 표시 안 함 (Blur 박스에서 유도)
             if (typeof isPaid !== 'undefined' && !isPaid) return '';
@@ -9856,13 +10126,20 @@ function applyDomainFilter(text, domain) {
 function renderMetrics(metrics) {
     if (!metrics) return '';
 
-    // [V25.10] 도메인 식별 — type 필드에서 추출
+    // [V25.10+V25.31] 도메인 식별 — type 필드에서 추출
     //   server에서 type: 'love' | 'stock' | 'crypto' | 'realestate_sell' | 'life' 등
+    //   [V25.31] 운세 subtype 세분화: wealth/health/career/today/newyear/etc
     const _typeRaw = metrics.type || '';
     const _domain = _typeRaw.startsWith('realestate') ? 'realestate'
                   : _typeRaw === 'love'      ? 'love'
                   : _typeRaw === 'stock'     ? 'stock'
                   : _typeRaw === 'crypto'    ? 'crypto'
+                  : _typeRaw === 'wealth'    ? 'wealth'      // ★ V25.31 신규
+                  : _typeRaw === 'health'    ? 'health'      // ★ V25.31 신규
+                  : _typeRaw === 'career'    ? 'career'      // ★ V25.31 신규
+                  : _typeRaw === 'today'     ? 'general'     // 오늘 운세 → 일반 라벨
+                  : _typeRaw === 'newyear'   ? 'general'     // 신년 운세 → 일반 라벨
+                  : _typeRaw === 'etc'       ? 'general'     // 기타 → 일반 라벨
                   : _typeRaw === 'life'      ? 'general'
                   : 'general';
     const _isLove = (_domain === 'love');
@@ -9878,14 +10155,15 @@ function renderMetrics(metrics) {
                 letter-spacing:0.04em;">
         ${_isLove
           ? `⚠️ 감정 변동 구간 (관계 부담도 ${rls}%) — 신중한 판단이 필요한 시점입니다`
-          : (_domain === 'general')
+          : _isGeneral
           ? `🛡️ 흐름 주의 포인트 (주의도 ${rls}%) — 중요한 선택의 시기이므로 기준 정리 후 결정이 도움이 됩니다`
           : `⚠️ 고위험 구간 (리스크 ${rls}%) — 신중한 포지션 관리 필요`}
     </div>` : '';
 
-    // 표시할 항목 구성 — [V25.10+V25.12] 도메인별 라벨 분기
-    //   _isLove: 연애 / _isGeneral: 운세 / 그외: 투자
-    const _isGeneral = (_domain === 'general');
+    // 표시할 항목 구성 — [V25.10+V25.12+V25.31] 도메인별 라벨 분기
+    //   _isLove: 연애 / _isGeneral: 운세(life/general/wealth/health/career) / 그외: 투자
+    const _isGeneral = (_domain === 'general' || _domain === 'wealth'
+                     || _domain === 'health'  || _domain === 'career');
     const items = [];
     if (metrics.attractionScore      !== undefined) items.push({ icon: '💘', label: '호감도',    value: metrics.attractionScore + '%' });
     if (metrics.conflictIndex        !== undefined) items.push({ icon: '⚔️', label: _isLove ? '긴장도' : _isGeneral ? '갈등 흐름' : '갈등지수',  value: metrics.conflictIndex + '%' });
@@ -9972,6 +10250,7 @@ function renderCardRadarChart(cardDimensions, domain) {
     if (!cardDimensions || !cardDimensions.length) return '';
 
     // 도메인별 축 라벨 — 사장님 V25.10 매핑 일관 적용
+    // [V25.31 F-1] 운세 세부 도메인(wealth/health/career) 라벨 분리 추가
     const axes = (() => {
         if (domain === 'love') {
             return [
@@ -9979,6 +10258,33 @@ function renderCardRadarChart(cardDimensions, domain) {
                 { key: 'love',        label: '호감도' },
                 { key: 'risk',        label: '관계 부담' },
                 { key: 'vol',         label: '감정 변동' },
+                { key: 'uncertainty', label: '불확실성' }
+            ];
+        } else if (domain === 'wealth') {
+            // [V25.31] 재물운 전용 라벨
+            return [
+                { key: 'base',        label: '재물 기반' },
+                { key: 'love',        label: '안정 흐름' },
+                { key: 'risk',        label: '리스크' },
+                { key: 'vol',         label: '변동성' },
+                { key: 'uncertainty', label: '불확실성' }
+            ];
+        } else if (domain === 'health') {
+            // [V25.31] 건강운 전용 라벨
+            return [
+                { key: 'base',        label: '건강 기반' },
+                { key: 'love',        label: '활력 흐름' },
+                { key: 'risk',        label: '주의도' },
+                { key: 'vol',         label: '컨디션 변화' },
+                { key: 'uncertainty', label: '불확실성' }
+            ];
+        } else if (domain === 'career') {
+            // [V25.31] 직장운 전용 라벨
+            return [
+                { key: 'base',        label: '직장 기반' },
+                { key: 'love',        label: '관계 흐름' },
+                { key: 'risk',        label: '리스크' },
+                { key: 'vol',         label: '변화 강도' },
                 { key: 'uncertainty', label: '불확실성' }
             ];
         } else if (domain === 'general') {
