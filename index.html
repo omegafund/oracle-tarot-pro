@@ -705,12 +705,51 @@
         }
         .input-context-hint.hidden { display: none; }
 
+        /* [V25.20 B안] FREE/PRO 시각 배지 — 사장님 비즈니스 모델 명시
+           서브타입 버튼 옆에 작게 표시되어 클릭 전 인지 보장 */
+        .sub-badge {
+            display: inline-block;
+            margin-left: 6px;
+            padding: 2px 7px;
+            font-size: 0.62rem;
+            font-weight: 900;
+            letter-spacing: 0.06em;
+            border-radius: 8px;
+            vertical-align: middle;
+            line-height: 1.4;
+        }
+        .sub-badge-free {
+            background: rgba(46, 204, 113, 0.18);
+            color: #2ecc71;
+            border: 1px solid rgba(46, 204, 113, 0.45);
+        }
+        .sub-badge-pro {
+            background: linear-gradient(135deg, rgba(212, 175, 55, 0.22), rgba(241, 196, 15, 0.15));
+            color: #FFD970;
+            border: 1px solid rgba(212, 175, 55, 0.5);
+            text-shadow: 0 0 4px rgba(212, 175, 55, 0.3);
+        }
+        /* 카테고리 카드 미니 배지 — V25.20 (cat-badge 기존 위치 스타일과 결합) */
+        .cat-badge-pro {
+            background: linear-gradient(135deg, rgba(212, 175, 55, 0.95), rgba(241, 196, 15, 0.85)) !important;
+            color: #1a1a2e !important;
+            border: 1px solid rgba(212, 175, 55, 0.6);
+        }
+        .cat-badge-mixed {
+            background: linear-gradient(90deg, rgba(46, 204, 113, 0.85), rgba(212, 175, 55, 0.85)) !important;
+            color: #1a1a2e !important;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            font-size: 0.52rem !important;
+            padding: 2px 5px !important;
+        }
+
         @media (max-width: 380px) {
             .cat-card { min-height: 100px; padding: 12px 8px; }
             .cat-icon { font-size: 1.65rem; }
             .cat-title { font-size: 0.88rem; }
             .cat-sub { font-size: 0.62rem; }
             .sub-btn { padding: 8px 12px; font-size: 0.8rem; }
+            .sub-badge { font-size: 0.55rem; padding: 1px 5px; }
         }
 
         /* ══════════════════════════════════════════════════════════
@@ -1794,7 +1833,7 @@
         <div class="category-grid" id="category-grid">
             <!-- 💘 연애 — 과금 핵심 -->
             <div class="cat-card" data-cat="love" onclick="selectCategory('love', this)">
-                <span class="cat-badge premium">PRO</span>
+                <span class="cat-badge cat-badge-pro">PRO</span>
                 <div class="cat-icon">💘</div>
                 <div class="cat-title">연애·관계운</div>
                 <div class="cat-sub">상대 마음 / 재회 / 결혼<br>궁합 / 짝사랑</div>
@@ -1802,6 +1841,7 @@
 
             <!-- 📈 투자 — 신뢰 기반 재방문 -->
             <div class="cat-card" data-cat="stock" onclick="selectCategory('stock', this)">
+                <span class="cat-badge cat-badge-pro">PRO</span>
                 <div class="cat-icon">📈</div>
                 <div class="cat-title">투자 신탁</div>
                 <div class="cat-sub">주식 / 코인<br>매수 · 매도 타이밍</div>
@@ -1809,18 +1849,18 @@
 
             <!-- 🏠 부동산 — 고가 상품 가능 -->
             <div class="cat-card" data-cat="realestate" onclick="selectCategory('realestate', this)">
-                <span class="cat-badge premium">PRO</span>
+                <span class="cat-badge cat-badge-pro">PRO</span>
                 <div class="cat-icon">🏠</div>
                 <div class="cat-title">부동산</div>
                 <div class="cat-sub">매도 타이밍 / 가격 전략<br>매수 결정</div>
             </div>
 
-            <!-- ✨ 일반 — 유입용 (오늘의 흐름) -->
+            <!-- ✨ 일반 운세 — V25.20 B안: FREE + PRO 혼합 -->
             <div class="cat-card" data-cat="general" onclick="selectCategory('general', this)">
-                <span class="cat-badge">FREE</span>
+                <span class="cat-badge cat-badge-mixed">FREE · PRO</span>
                 <div class="cat-icon">✨</div>
                 <div class="cat-title">일반 운세</div>
-                <div class="cat-sub">오늘의 흐름<br>전반 운세</div>
+                <div class="cat-sub">오늘 / 전반 (무료)<br>재물 · 건강 · 직장 · 신년 (PRO)</div>
             </div>
         </div>
 
@@ -2491,6 +2531,8 @@ function _zeusDetectStockPattern(text) {
 // 서브타입 전역 (기존 LOVE_SUBTYPE 유지하고 주식/부동산 추가)
 let STOCK_SUBTYPE = '';
 let RE_SUBTYPE    = '';
+// [V25.18] 운세 서브타입 — wealth/health/career/today/general/newyear/etc
+let FORTUNE_SUBTYPE = '';
 // 현재 어느 도메인 바가 열려있는지 추적 (꼬임 방지용 가드)
 let ACTIVE_DOMAIN_BAR = ''; // '' | 'love' | 'stock' | 'realestate'
 
@@ -2598,6 +2640,17 @@ function onQuestionInput(val) {
                 label: isSell ? '📤 투자 → 매도 타이밍' : '💰 투자 → 매수 타이밍',
                 reason: '투자 타이밍 키워드'
             };
+        }
+        // [V25.18] 운세 — 재물/건강/직장 특화 (신년보다 먼저 매칭)
+        //   재물 키워드: 재물/돈/자산/투자운/금전/재정/돈벌이/수입
+        if (/재물운|재물|돈벌이|금전운|재정운|자산운|투자운|돈\s?운|수입\s?흐름/.test(text)) {
+            return { catKey: 'general', subtype: 'wealth', label: '💰 운세 → 재물운', reason: '재물운 키워드' };
+        }
+        if (/건강운|건강\s?흐름|몸\s?상태|체력|회복|병/.test(text)) {
+            return { catKey: 'general', subtype: 'health', label: '🌿 운세 → 건강운', reason: '건강운 키워드' };
+        }
+        if (/직장운|이직|승진|취업|커리어|회사\s?운|직장\s?흐름/.test(text)) {
+            return { catKey: 'general', subtype: 'career', label: '💼 운세 → 직장운', reason: '직장운 키워드' };
         }
         // [운세 — 신년]
         if (/올해|새해|신년|내년|이번 해/.test(text)) {
@@ -2749,20 +2802,29 @@ const CATEGORY_CONFIG = {
         label: '✨ 일반 운세',
         prompt: '오늘의 흐름을 점사합니다',
         subtypes: [
-            { type: 'today',   icon: '🌅', label: '오늘 운세', featured: true,
+            // [V25.20 B안] 무료 — 진입 미끼
+            { type: 'today',   icon: '🌅', label: '오늘 운세', featured: true, isPro: false,
               hint: '오늘의 흐름과 주의 포인트를 점사합니다',
               placeholder: '예: 오늘 어떤 흐름인가요?' },
-            { type: 'general', icon: '✨', label: '전반 운세',
+            { type: 'general', icon: '✨', label: '전반 운세', isPro: false,
               hint: '근래 전반적인 운세 흐름을 점사합니다',
               placeholder: '예: 요즘 내 흐름이 어떤가요?' },
-            // [V25.13] 사장님 요청 — 신년 운세 서브타입 추가
-            //   연말~연초 사용자 유입 ↑, 한 해 흐름 명확 분리
-            { type: 'newyear', icon: '🎊', label: '신년 운세',
+            // [V25.13+V25.20] PRO — 깊은 분석 (한 해/재물/건강/직장/자유)
+            { type: 'newyear', icon: '🎊', label: '신년 운세', isPro: true,
               hint: '한 해 전반의 흐름과 핵심 시기를 점사합니다',
               placeholder: '예: 올해 내 운세는 어떤가요?' },
-            // [V25.13] 사장님 요청 — 기타 신탁 (Claude 명명)
-            //   분류 어려운 자유 질문, ZEUS 브랜드 일관성 유지
-            { type: 'etc',     icon: '🔮', label: '기타 신탁',
+            // [V25.18+V25.19] 재물/건강/직장운 — 78장 본질 매핑 엔진
+            { type: 'wealth',  icon: '💰', label: '재물운', isPro: true,
+              hint: '재물 흐름과 자산 진입 타이밍을 점사합니다',
+              placeholder: '예: 올해 내 재물운은 어떤가요?' },
+            { type: 'health',  icon: '🌿', label: '건강운', isPro: true,
+              hint: '건강 흐름과 회복 타이밍을 점사합니다',
+              placeholder: '예: 요즘 내 건강 흐름은 어떤가요?' },
+            { type: 'career',  icon: '💼', label: '직장운', isPro: true,
+              hint: '직장·커리어 흐름과 결정 타이밍을 점사합니다',
+              placeholder: '예: 이직해도 될까요? / 승진 흐름은?' },
+            // [V25.13] 기타 신탁 — 자유 질문
+            { type: 'etc',     icon: '🔮', label: '기타 신탁', isPro: true,
               hint: '카테고리에 속하지 않는 자유로운 질문을 점사합니다',
               placeholder: '예: 이번 결정이 맞을까요? / 자유롭게 질문해주세요' }
         ]
@@ -2789,13 +2851,23 @@ function selectCategory(catKey, btnEl) {
     if (!panel || !prompt || !row) return;
 
     prompt.textContent = cfg.prompt;
-    row.innerHTML = cfg.subtypes.map(s => `
+    // [V25.20 B안] 서브타입 버튼에 FREE/PRO 배지 시각 표시
+    //   기본 동작: love/stock/realestate 전체 PRO (isPro 값 무관)
+    //              general 도메인은 isPro 플래그 따라 분기
+    row.innerHTML = cfg.subtypes.map(s => {
+        // 운세(general)는 isPro 명시값 사용, 그 외 도메인은 모두 PRO
+        const _isFree = (catKey === 'general') ? (s.isPro === false) : false;
+        const _badge = _isFree
+            ? `<span class="sub-badge sub-badge-free">FREE</span>`
+            : `<span class="sub-badge sub-badge-pro">PRO</span>`;
+        return `
         <button class="sub-btn${s.featured ? ' featured' : ''}"
                 data-subtype="${s.type}"
+                data-is-pro="${!_isFree}"
                 onclick="selectSubtype('${catKey}','${s.type}', this, ${JSON.stringify(s.placeholder).replace(/"/g, '&quot;')})">
-            ${s.icon} ${s.label}
-        </button>
-    `).join('');
+            ${s.icon} ${s.label}${_badge}
+        </button>`;
+    }).join('');
     panel.classList.add('show');
 
     // 부드러운 스크롤 (서브타입이 보이도록)
@@ -2823,15 +2895,16 @@ function selectSubtype(catKey, subType, btnEl, placeholder) {
     // 도메인별 SUBTYPE 전역 변수 설정 — 점사 엔진과 호환
     if (catKey === 'love') {
         LOVE_SUBTYPE = subType;
-        STOCK_SUBTYPE = ''; RE_SUBTYPE = '';
+        STOCK_SUBTYPE = ''; RE_SUBTYPE = ''; FORTUNE_SUBTYPE = '';
     } else if (catKey === 'stock') {
         STOCK_SUBTYPE = subType;
-        LOVE_SUBTYPE = ''; RE_SUBTYPE = '';
+        LOVE_SUBTYPE = ''; RE_SUBTYPE = ''; FORTUNE_SUBTYPE = '';
     } else if (catKey === 'realestate') {
         RE_SUBTYPE = subType;
-        LOVE_SUBTYPE = ''; STOCK_SUBTYPE = '';
+        LOVE_SUBTYPE = ''; STOCK_SUBTYPE = ''; FORTUNE_SUBTYPE = '';
     } else {
-        // general → 모두 빈 값
+        // [V25.18] general → 운세 서브타입 (today/general/newyear/wealth/health/career/etc)
+        FORTUNE_SUBTYPE = subType;
         LOVE_SUBTYPE = ''; STOCK_SUBTYPE = ''; RE_SUBTYPE = '';
     }
 
@@ -3444,6 +3517,8 @@ async function startStreamFetch(userQuestion, cards) {
                 loveSubType:   LOVE_SUBTYPE,
                 stockSubType:  STOCK_SUBTYPE,
                 reSubType:     RE_SUBTYPE,
+                // [V25.18] 운세 서브타입 — 재물/건강/직장 특화
+                fortuneSubType: FORTUNE_SUBTYPE,
                 // [V25.0] 사용자가 명시 선택한 도메인 — 자동 분류 우회
                 //   서버는 이 값이 있으면 classifyQueryType 호출 없이 그대로 사용
                 explicitDomain: (typeof ACTIVE_DOMAIN_BAR !== 'undefined') ? ACTIVE_DOMAIN_BAR : ''
@@ -7023,8 +7098,28 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
             }
 
             // ✨ 일반 운세: 기존 지표 박스 유지 (연애 용어 배제)
-            // [V25.13] 사장님 안 — '🛡️ 주의' → '🛡️ 흐름 주의 포인트'
-            //   짧고 의미 모호한 라벨을 자기 기준 우선 권유 톤으로 강화
+            // [V25.13+V25.18] 사장님 안 — 흐름 주의 포인트 + 서브타입 특화
+            //   재물운: "자금 계획·자산 기준" 톤
+            //   건강운: "체력 점검·휴식 기준" 톤
+            //   직장운: "커리어 기준·결정 기준" 톤
+            //   일반:   "기준 정리·자기 가치관" 톤
+            const _fortuneGuide = (() => {
+                if (FORTUNE_SUBTYPE === 'wealth') {
+                    return `👉 자금 계획과 자산 기준의 명확화가 흐름을 안정시킵니다<br>
+                            👉 외부 정보보다 자신의 자금 흐름과 기준이 우선되는 시기입니다`;
+                }
+                if (FORTUNE_SUBTYPE === 'health') {
+                    return `👉 체력 신호와 휴식 흐름을 우선 살피는 것이 안정적인 선택입니다<br>
+                            👉 외부 자극보다 자신의 컨디션과 회복 흐름을 우선하는 시기입니다`;
+                }
+                if (FORTUNE_SUBTYPE === 'career') {
+                    return `👉 커리어 기준과 결정 흐름의 정리가 핵심인 시기입니다<br>
+                            👉 주변 의견보다 자신의 직무 가치관과 방향성이 우선됩니다`;
+                }
+                // today / general / newyear / etc — 사장님 V25.13 안 그대로
+                return `👉 중요한 선택의 시기이므로 감정적 판단보다 기준 정리 후 결정이 도움이 됩니다<br>
+                        👉 주변 의견보다 자신의 기준과 가치관을 우선하는 것이 흐름을 안정시킵니다`;
+            })();
             return `
                 <div style="margin-top:14px;padding:14px 16px;background:rgba(212,175,55,0.07);border-left:3px solid var(--gold);border-radius:0 8px 8px 0;font-size:0.9rem;line-height:1.8;color:rgba(255,255,255,0.9);margin-bottom:14px;">${lucky}</div>
                 <div style="padding:14px 16px;background:rgba(46,204,113,0.05);border:1px solid rgba(46,204,113,0.2);border-radius:8px;font-size:0.88rem;line-height:1.9;">
@@ -7035,8 +7130,7 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
                     <div style="margin-top:10px; padding-top:10px; border-top:1px solid rgba(46,204,113,0.15); font-size:0.85rem;">
                         <div style="color:#2ecc71; font-weight:700; margin-bottom:6px;">🛡️ 흐름 주의 포인트</div>
                         <div style="margin-left:6px; line-height:1.7; color:rgba(255,255,255,0.88);">
-                            👉 중요한 선택의 시기이므로 감정적 판단보다 기준 정리 후 결정이 도움이 됩니다<br>
-                            👉 주변 의견보다 자신의 기준과 가치관을 우선하는 것이 흐름을 안정시킵니다
+                            ${_fortuneGuide}
                         </div>
                     </div>
                 </div>`;
@@ -7103,10 +7197,23 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
 
         return publicSections + futureCardHTML + oracleHTML;
     } else {
-        // [V25.14] PRO Blur 미리보기 — Claude 1순위 데이터 의견 적용
-        //   사장님 진단 채택: "사용자가 무엇을 사는지 모르고 결제"
+        // [V25.18→V25.20 B안] 운세 무료/PRO 분리
+        //   기존(V25.18): 운세 전체 무료 (A안)
+        //   신규(V25.20): isPro=false 서브타입만 무료, isPro=true는 PRO Blur 노출
+        //     • 무료: today (오늘 운세) / general (전반 운세)
+        //     • PRO:  newyear / wealth / health / career / etc
+        const _checkDomain = (typeof ACTIVE_DOMAIN_BAR !== 'undefined' && ACTIVE_DOMAIN_BAR) || '';
+        const _checkSubtype = (typeof FORTUNE_SUBTYPE !== 'undefined' && FORTUNE_SUBTYPE) || '';
+        const _isFreeSubtype = (_checkSubtype === 'today' || _checkSubtype === 'general');
+        
+        if ((_checkDomain === 'life' || _checkDomain === 'general') && _isFreeSubtype) {
+            // 무료 운세 (오늘/전반) — 즉시 결과 노출, 결제 모달 차단
+            return publicSections;
+        }
+        
+        // [V25.14+V25.20] PRO Blur 미리보기 — 운세 PRO 서브타입 포함
         //   해결: PRO 결과 일부를 흐릿하게 노출 → 잠금 해제 → 선명화
-        //   ROI: 결제 전환 +20~30% 추정 (실제 산 것을 미리 본 후 결제)
+        //   ROI: 결제 전환 +20~30% 추정
         //
         // 도메인별 Blur 미리보기 콘텐츠 (PRO 결과 일부)
         const _activeDomain = (typeof ACTIVE_DOMAIN_BAR !== 'undefined' && ACTIVE_DOMAIN_BAR) || 'general';
@@ -7130,9 +7237,39 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
                     { icon: '🛡️', title: '리스크 회피 가이드', preview: '금리·규제·실거래가 변수의 카드별 영향도 분석...' }
                 ];
             } else {
-                // 운세/일반
+                // [V25.20 B안] 운세 PRO 서브타입별 미리보기 — 본질 엔진 가치 노출
+                const _fortuneSub = (typeof FORTUNE_SUBTYPE !== 'undefined') ? FORTUNE_SUBTYPE : '';
+                if (_fortuneSub === 'wealth') {
+                    return [
+                        { icon: '💎', title: '재물 흐름 5차원 분석', preview: '카드별 자산 점수와 영역별 본질 의미 — 78장 매핑 기반 심층 분석...' },
+                        { icon: '📅', title: '재물 황금 시점', preview: '자산 진입과 정리에 가장 적합한 정확한 월·주차 영성 분석...' },
+                        { icon: '🛡️', title: '자산 리스크 가이드', preview: '카드 에너지가 시사하는 자금 보호 우선순위와 회피 신호...' }
+                    ];
+                }
+                if (_fortuneSub === 'health') {
+                    return [
+                        { icon: '🌿', title: '건강 흐름 본질 매핑', preview: '카드별 건강 신호와 회복 메시지 — 78장 본질 의미 분석...' },
+                        { icon: '⚡', title: '회복 황금 타이밍', preview: '활력 회복과 휴식이 가장 효과적인 시기 영성 분석...' },
+                        { icon: '🎯', title: '맞춤 건강 가이드', preview: '카드가 가리키는 우선 점검 영역과 생활 습관 조정 가이드...' }
+                    ];
+                }
+                if (_fortuneSub === 'career') {
+                    return [
+                        { icon: '💼', title: '커리어 흐름 본질 분석', preview: '카드별 직장 신호와 결정 메시지 — 78장 본질 의미 분석...' },
+                        { icon: '🚀', title: '결단 황금 시점', preview: '이직·승진·전환에 가장 적합한 정확한 시기 영성 분석...' },
+                        { icon: '🎯', title: '직무 방향 가이드', preview: '카드가 시사하는 우선 방향과 에너지 활용 가이드...' }
+                    ];
+                }
+                if (_fortuneSub === 'newyear') {
+                    return [
+                        { icon: '📅', title: '월별 흐름 예측', preview: '한 해 12개월의 핵심 시기와 작은 선택이 큰 영향을 줄 분기점...' },
+                        { icon: '🌙', title: '연중 황금 타이밍', preview: '카드 에너지가 정점을 이루는 시기별 우주적 파장 분석...' },
+                        { icon: '🎯', title: '연간 맞춤 가이드', preview: '한 해 흐름을 가장 잘 활용하는 영역별 행동 우선순위...' }
+                    ];
+                }
+                // etc (기타 신탁) + 일반 폴백
                 return [
-                    { icon: '✨', title: '월별 흐름 예측', preview: '한 해의 핵심 시기와 작은 선택이 큰 영향을 줄 분기점...' },
+                    { icon: '✨', title: '본질 흐름 심층 분석', preview: '카드별 본질 메시지와 결정적 분기점의 우주적 의미...' },
                     { icon: '🌙', title: '수비학 황금 타이밍', preview: '달의 흐름과 카드 에너지가 동조하는 정확한 시간대...' },
                     { icon: '🎯', title: '맞춤 행동 가이드', preview: '오늘 한 번의 행동이 향후 흐름에 미치는 우주적 파장...' }
                 ];
@@ -9208,7 +9345,8 @@ function startTossPayment(planKey, method) {
             queryMode:      (typeof CURRENT_MODE !== 'undefined') ? CURRENT_MODE : 'life',
             loveSubType:    (typeof LOVE_SUBTYPE !== 'undefined') ? LOVE_SUBTYPE : '',
             stockSubType:   (typeof STOCK_SUBTYPE !== 'undefined') ? STOCK_SUBTYPE : '',
-            reSubType:      (typeof RE_SUBTYPE !== 'undefined') ? RE_SUBTYPE : ''
+            reSubType:      (typeof RE_SUBTYPE !== 'undefined') ? RE_SUBTYPE : '',
+            fortuneSubType: (typeof FORTUNE_SUBTYPE !== 'undefined') ? FORTUNE_SUBTYPE : ''
         };
         localStorage.setItem('pendingOracle', JSON.stringify(pendingOracle));
     } catch(e) {

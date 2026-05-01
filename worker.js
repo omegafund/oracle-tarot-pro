@@ -168,6 +168,368 @@ const CARD_SCORE_MULTI = {
 };
 
 // ══════════════════════════════════════════════════════════════════
+// [V25.19] CARD_FORTUNE_CONTEXT — 78장 × 3영역(재물/건강/직장) 본질 매핑
+//   사장님 진단: "재물건강직장운등의 엔진이 비어있다 — 빈 점사 금지"
+//   해결: 78장 각각이 재물/건강/직장 컨텍스트에서 가지는
+//        ① 점수 (0~100, 가중 평균 산출용)
+//        ② 정방향 시그널 (한 줄 메시지)
+//        ③ 역방향 시그널 (한 줄 메시지)
+//   사장님의 CARD_SCORE_MULTI 패턴 그대로 모방
+// ══════════════════════════════════════════════════════════════════
+const CARD_FORTUNE_CONTEXT = {
+  // ═════ 메이저 아르카나 22장 ═════
+  "The Fool":           { wealthScore: 60, wealthSig: "새로운 자산 흐름의 시작",  wealthRev: "충동적 지출·검증 부족 주의",
+                          healthScore: 70, healthSig: "활력 회복·새 습관 시작",   healthRev: "무리한 시도·기초 점검 필요",
+                          careerScore: 65, careerSig: "새 길 모색 흐름",         careerRev: "방향 설정 부족·신중 필요" },
+  "The Magician":       { wealthScore: 80, wealthSig: "자산 활용 의지가 결실로",  wealthRev: "기술적 위험·과신 주의",
+                          healthScore: 75, healthSig: "건강 관리 실행력 강함",   healthRev: "과로·에너지 분산 주의",
+                          careerScore: 85, careerSig: "커리어 실행 황금기",      careerRev: "능력 분산·집중 부족" },
+  "The High Priestess": { wealthScore: 50, wealthSig: "자산 직관·내면 정보 신뢰", wealthRev: "정보 부족·추측성 결정 주의",
+                          healthScore: 60, healthSig: "내면 신호·직관적 점검",   healthRev: "신호 무시·검진 필요",
+                          careerScore: 50, careerSig: "직관적 판단 시기",        careerRev: "정보 결핍·결정 보류" },
+  "The Empress":        { wealthScore: 92, wealthSig: "재물 풍요·자산 성장 정점", wealthRev: "과소비·자원 낭비 주의",
+                          healthScore: 88, healthSig: "활력 풍성·회복 빠름",     healthRev: "과식·관리 소홀",
+                          careerScore: 80, careerSig: "창의적 성과 풍요기",      careerRev: "에너지 정체·방향 재설정" },
+  "The Emperor":        { wealthScore: 85, wealthSig: "안정적 자산 구조 형성",   wealthRev: "통제 과잉·유연성 부족",
+                          healthScore: 75, healthSig: "체계적 건강 관리",       healthRev: "과로·통제 강박",
+                          careerScore: 88, careerSig: "리더십·승진 흐름",       careerRev: "권위 압박·자율성 결핍" },
+  "The Hierophant":     { wealthScore: 70, wealthSig: "전통적 자산 운용 안정",   wealthRev: "관습 답습·혁신 부재",
+                          healthScore: 65, healthSig: "기존 습관 유지가 안정",   healthRev: "고정관념·새 시도 거부",
+                          careerScore: 70, careerSig: "조직 안정·내부 인정",    careerRev: "고정 역할·정체 가능성" },
+  "The Lovers":         { wealthScore: 75, wealthSig: "선택의 기로 — 자산 결정", wealthRev: "결정 회피·갈등 누적",
+                          healthScore: 70, healthSig: "균형 회복의 시기",       healthRev: "선택 미루기·정체",
+                          careerScore: 78, careerSig: "직무 가치 일치 흐름",    careerRev: "직무 부조화·이직 검토" },
+  "The Chariot":        { wealthScore: 82, wealthSig: "추진력으로 자산 확장",    wealthRev: "방향 잃은 추진·낭비",
+                          healthScore: 78, healthSig: "체력 강한 회복기",       healthRev: "무리한 진행·번아웃",
+                          careerScore: 85, careerSig: "승진·돌파 흐름",        careerRev: "추진력 약화·정체" },
+  "Strength":           { wealthScore: 78, wealthSig: "꾸준한 자산 축적",       wealthRev: "인내 부족·조급함",
+                          healthScore: 85, healthSig: "체력·면역력 강화",      healthRev: "무리한 단련·휴식 부족",
+                          careerScore: 78, careerSig: "끈기로 인정받는 흐름",   careerRev: "에너지 소진·자신감 약화" },
+  "The Hermit":         { wealthScore: 50, wealthSig: "자산 점검·관망 시기",    wealthRev: "고립된 결정·정보 부족",
+                          healthScore: 55, healthSig: "휴식·내면 회복기",      healthRev: "은둔·고립 주의",
+                          careerScore: 45, careerSig: "재충전·전문성 심화",   careerRev: "고립·관계 단절 주의" },
+  "Wheel of Fortune":   { wealthScore: 70, wealthSig: "자산 흐름 전환점",      wealthRev: "예측 불가·변동 확대",
+                          healthScore: 65, healthSig: "건강 패턴 변화기",      healthRev: "리듬 깨짐·재정비 필요",
+                          careerScore: 75, careerSig: "커리어 전환 기회",     careerRev: "외부 변수·불확실성" },
+  "Justice":            { wealthScore: 65, wealthSig: "공정한 자산 정리",      wealthRev: "불공정 거래·법적 분쟁 주의",
+                          healthScore: 60, healthSig: "균형 회복 필요",        healthRev: "불균형 누적·점검 필요",
+                          careerScore: 70, careerSig: "공정한 평가·결정",     careerRev: "부당 대우·재검토 필요" },
+  "The Hanged Man":     { wealthScore: 35, wealthSig: "자산 정체·관점 전환",   wealthRev: "결정 지연·기회 상실",
+                          healthScore: 50, healthSig: "휴식·관점 전환기",      healthRev: "정체·우울 주의",
+                          careerScore: 40, careerSig: "관점 전환의 시기",     careerRev: "정체·소외 주의" },
+  "Death":              { wealthScore: 40, wealthSig: "자산 구조 재편기",      wealthRev: "변화 거부·기회 상실",
+                          healthScore: 55, healthSig: "낡은 패턴 전환",        healthRev: "변화 회피·재발 주의",
+                          careerScore: 50, careerSig: "커리어 종결·재시작",   careerRev: "변화 거부·고집" },
+  "Temperance":         { wealthScore: 72, wealthSig: "균형 잡힌 자산 운용",   wealthRev: "균형 깨짐·과잉 또는 결핍",
+                          healthScore: 80, healthSig: "회복·조화의 흐름",     healthRev: "리듬 깨짐·점검 필요",
+                          careerScore: 72, careerSig: "조화로운 협업",        careerRev: "갈등·부조화" },
+  "The Devil":          { wealthScore: 25, wealthSig: "자산 집착·중독 주의",   wealthRev: "속박에서 해방 흐름",
+                          healthScore: 30, healthSig: "건강 습관 점검 필요",   healthRev: "악습관 단절 흐름",
+                          careerScore: 30, careerSig: "직무 속박·악순환",     careerRev: "악조건 탈출 흐름" },
+  "The Tower":          { wealthScore: 12, wealthSig: "자산 구조 격변·손실 주의", wealthRev: "충격 완화·재건 시작",
+                          healthScore: 20, healthSig: "급작 건강 변동 주의",  healthRev: "회복 시작·재건",
+                          careerScore: 18, careerSig: "직장 격변·구조조정",   careerRev: "변동 안정화·재시작" },
+  "The Star":           { wealthScore: 88, wealthSig: "자산 회복·희망의 흐름", wealthRev: "기대치 과잉·실현 지연",
+                          healthScore: 92, healthSig: "건강 회복의 정점",     healthRev: "회복 지연·끈기 필요",
+                          careerScore: 85, careerSig: "비전 실현 흐름",       careerRev: "기대치 조정·인내 필요" },
+  "The Moon":           { wealthScore: 35, wealthSig: "자산 불확실·정보 부족", wealthRev: "오해 해소·진실 드러남",
+                          healthScore: 45, healthSig: "잠재 신호 점검 필요",  healthRev: "검진·재진단 권장",
+                          careerScore: 40, careerSig: "직무 안갯속·혼란기",   careerRev: "혼란 정리·명확화" },
+  "The Sun":            { wealthScore: 95, wealthSig: "재물 풍요·결실의 정점", wealthRev: "지연된 풍요·인내 필요",
+                          healthScore: 95, healthSig: "활력·회복의 정점",     healthRev: "활력 지연·휴식 필요",
+                          careerScore: 90, careerSig: "성과 인정·승리 흐름",  careerRev: "성과 지연·재정비" },
+  "Judgement":          { wealthScore: 78, wealthSig: "자산 재평가·새 기회",  wealthRev: "재평가 지연·결단 필요",
+                          healthScore: 80, healthSig: "건강 재평가·각성기",   healthRev: "신호 무시·재진단 필요",
+                          careerScore: 82, careerSig: "커리어 재평가·전환점", careerRev: "결단 지연·기회 상실" },
+  "The World":          { wealthScore: 92, wealthSig: "자산 완성·결실 흐름",   wealthRev: "마무리 미완·재정비 필요",
+                          healthScore: 90, healthSig: "회복 완성·균형 흐름",  healthRev: "마무리 미흡·점검 필요",
+                          careerScore: 92, careerSig: "프로젝트 완성·인정",   careerRev: "마무리 부족·재시도" },
+
+  // ═════ Wands (지팡이) 14장 ═════
+  "Ace of Wands":       { wealthScore: 78, wealthSig: "새 수익 기회 포착",     wealthRev: "기회 유실·실행 지연",
+                          healthScore: 75, healthSig: "활력 회복 시작",       healthRev: "에너지 정체·재시도",
+                          careerScore: 80, careerSig: "새 프로젝트 시작",     careerRev: "추진력 약화·기회 지연" },
+  "Two of Wands":       { wealthScore: 70, wealthSig: "자산 계획 수립기",     wealthRev: "계획 정체·결정 지연",
+                          healthScore: 65, healthSig: "건강 계획 점검",       healthRev: "실행 미흡·점검 필요",
+                          careerScore: 72, careerSig: "이직·확장 검토",       careerRev: "결정 지연·관망 필요" },
+  "Three of Wands":     { wealthScore: 80, wealthSig: "자산 확장·결실 임박",  wealthRev: "기대치 조정 필요",
+                          healthScore: 72, healthSig: "회복 진척 흐름",       healthRev: "회복 지연·인내 필요",
+                          careerScore: 82, careerSig: "확장·해외 기회",       careerRev: "확장 지연·재검토" },
+  "Four of Wands":      { wealthScore: 80, wealthSig: "자산 안정·축하 흐름",  wealthRev: "안정 균열·점검 필요",
+                          healthScore: 78, healthSig: "회복·안정의 흐름",     healthRev: "안정 깨짐·재정비",
+                          careerScore: 75, careerSig: "성과 인정·축하",       careerRev: "성과 지연·재시도" },
+  "Five of Wands":      { wealthScore: 35, wealthSig: "자산 갈등·경쟁 압박",  wealthRev: "갈등 해소·정리 흐름",
+                          healthScore: 45, healthSig: "스트레스 누적 주의",   healthRev: "스트레스 해소·휴식",
+                          careerScore: 38, careerSig: "직장 갈등·경쟁기",     careerRev: "갈등 정리·화해" },
+  "Six of Wands":       { wealthScore: 88, wealthSig: "자산 성과·인정 흐름",  wealthRev: "인정 지연·재시도 필요",
+                          healthScore: 75, healthSig: "회복 성과 가시화",     healthRev: "성과 인정 지연",
+                          careerScore: 90, careerSig: "승리·승진 흐름",       careerRev: "성과 인정 지연" },
+  "Seven of Wands":     { wealthScore: 55, wealthSig: "자산 방어·도전 대응",  wealthRev: "방어 약화·후퇴",
+                          healthScore: 60, healthSig: "면역 도전·끈기 필요",  healthRev: "체력 약화·휴식",
+                          careerScore: 60, careerSig: "직무 방어·자리 지키기", careerRev: "지친 방어·후퇴 검토" },
+  "Eight of Wands":     { wealthScore: 85, wealthSig: "빠른 자산 흐름",      wealthRev: "혼란·속도 제어 필요",
+                          healthScore: 70, healthSig: "빠른 회복 흐름",       healthRev: "급격 변동 주의",
+                          careerScore: 85, careerSig: "빠른 진행·소식 도착",  careerRev: "지연·소통 혼선" },
+  "Nine of Wands":      { wealthScore: 50, wealthSig: "자산 방어·끈기 시기",  wealthRev: "지친 끈기·휴식 필요",
+                          healthScore: 55, healthSig: "체력 끈기 흐름",       healthRev: "에너지 고갈·휴식",
+                          careerScore: 55, careerSig: "직무 끈기·인내",       careerRev: "번아웃·휴식 필요" },
+  "Ten of Wands":       { wealthScore: 30, wealthSig: "자산 부담 누적",       wealthRev: "부담 정리·해방",
+                          healthScore: 35, healthSig: "체력 과부하 주의",     healthRev: "부담 해소·휴식",
+                          careerScore: 32, careerSig: "업무 과부하·번아웃",   careerRev: "업무 정리·위임" },
+  "Page of Wands":      { wealthScore: 65, wealthSig: "새 정보·시도 흐름",   wealthRev: "성급함·실수 주의",
+                          healthScore: 65, healthSig: "활력 호기심 흐름",     healthRev: "충동적 시도 주의",
+                          careerScore: 68, careerSig: "신규 영역 탐색",       careerRev: "탐색 부족·미숙함" },
+  "Knight of Wands":    { wealthScore: 75, wealthSig: "공격적 자산 운용",     wealthRev: "성급한 결정·손실",
+                          healthScore: 70, healthSig: "강한 추진 흐름",       healthRev: "과로·번아웃 주의",
+                          careerScore: 78, careerSig: "추진력·돌파 흐름",     careerRev: "성급함·후회 가능" },
+  "Queen of Wands":     { wealthScore: 82, wealthSig: "자신감으로 자산 확장", wealthRev: "자신감 약화·재정비",
+                          healthScore: 80, healthSig: "활력·자기관리 흐름",   healthRev: "스트레스 누적",
+                          careerScore: 82, careerSig: "리더십 인정·매력",     careerRev: "자신감 부족·고립" },
+  "King of Wands":      { wealthScore: 85, wealthSig: "비전으로 자산 확장",   wealthRev: "리더십 부담·과욕",
+                          healthScore: 78, healthSig: "강한 통제력 흐름",     healthRev: "과로·통제 강박",
+                          careerScore: 88, careerSig: "리더 비전·확장",       careerRev: "독선·고집 주의" },
+
+  // ═════ Cups (컵) 14장 ═════
+  "Ace of Cups":        { wealthScore: 70, wealthSig: "감정적 만족 자산 흐름", wealthRev: "감정 비용·소모 주의",
+                          healthScore: 80, healthSig: "감정·회복의 시작",     healthRev: "감정 정체·우울 주의",
+                          careerScore: 70, careerSig: "직무 만족 흐름",       careerRev: "감정 결핍·소진" },
+  "Two of Cups":        { wealthScore: 72, wealthSig: "협력 자산 흐름",       wealthRev: "협력 균열·재조정",
+                          healthScore: 75, healthSig: "관계가 건강에 긍정",   healthRev: "관계 부담·스트레스",
+                          careerScore: 75, careerSig: "협업·파트너십 흐름",  careerRev: "협업 균열·재조정" },
+  "Three of Cups":      { wealthScore: 70, wealthSig: "축하·풍요 흐름",       wealthRev: "과소비·소비 균형 필요",
+                          healthScore: 75, healthSig: "사교 활력 회복",       healthRev: "과음·체력 소모",
+                          careerScore: 72, careerSig: "팀 성과·축하",         careerRev: "팀 갈등·소외" },
+  "Four of Cups":       { wealthScore: 35, wealthSig: "자산 권태·기회 무시",  wealthRev: "각성·기회 포착",
+                          healthScore: 45, healthSig: "활력 정체·우울",       healthRev: "회복 시작·각성",
+                          careerScore: 40, careerSig: "직무 권태·무관심",     careerRev: "관심 회복·각성" },
+  "Five of Cups":       { wealthScore: 28, wealthSig: "자산 손실·후회",       wealthRev: "회복·재기 시작",
+                          healthScore: 40, healthSig: "정신적 침체·우울",     healthRev: "회복 시작",
+                          careerScore: 35, careerSig: "직무 실망·후회",       careerRev: "재기·기회 발견" },
+  "Six of Cups":        { wealthScore: 65, wealthSig: "과거 자산 회복·향수",  wealthRev: "과거 집착·발전 정체",
+                          healthScore: 70, healthSig: "회복·치유의 흐름",     healthRev: "과거 트라우마",
+                          careerScore: 65, careerSig: "옛 인연·재합류",       careerRev: "과거 의존·정체" },
+  "Seven of Cups":      { wealthScore: 35, wealthSig: "자산 환상·선택 혼란",  wealthRev: "현실 직시·결정",
+                          healthScore: 45, healthSig: "혼란·집중 부족",       healthRev: "명확화·집중 회복",
+                          careerScore: 40, careerSig: "선택 과잉·혼란",       careerRev: "현실 결단·명확화" },
+  "Eight of Cups":      { wealthScore: 40, wealthSig: "자산 정리·새 길 모색", wealthRev: "이탈 망설임·정체",
+                          healthScore: 55, healthSig: "낡은 패턴 정리",       healthRev: "정리 망설임",
+                          careerScore: 45, careerSig: "이직 검토·정리",       careerRev: "이직 망설임" },
+  "Nine of Cups":       { wealthScore: 85, wealthSig: "자산 만족·소원 성취",  wealthRev: "만족 지연·기대 조정",
+                          healthScore: 82, healthSig: "건강 만족·회복",       healthRev: "회복 지연",
+                          careerScore: 80, careerSig: "직무 만족·성취",       careerRev: "성취 지연·재시도" },
+  "Ten of Cups":        { wealthScore: 88, wealthSig: "자산 풍요·가족 안정",  wealthRev: "가족 갈등·재정 부담",
+                          healthScore: 85, healthSig: "정서·가족 안정",       healthRev: "관계 스트레스",
+                          careerScore: 78, careerSig: "직장·삶 균형",         careerRev: "균형 깨짐·재정비" },
+  "Page of Cups":       { wealthScore: 60, wealthSig: "감각적 자산 흐름",     wealthRev: "감정 충동·낭비",
+                          healthScore: 65, healthSig: "감정 회복 시작",       healthRev: "감정 미숙·기복",
+                          careerScore: 60, careerSig: "창의적 시도",         careerRev: "미숙·실수 가능" },
+  "Knight of Cups":     { wealthScore: 70, wealthSig: "감각적 자산 제안",     wealthRev: "비현실적 제안 주의",
+                          healthScore: 70, healthSig: "감정 회복 진행",       healthRev: "기복·일관성 부족",
+                          careerScore: 65, careerSig: "이상적 제안·기회",     careerRev: "실현성 부족·재검토" },
+  "Queen of Cups":      { wealthScore: 75, wealthSig: "직관적 자산 운용",     wealthRev: "감정적 결정·손실",
+                          healthScore: 80, healthSig: "감정 안정·회복",       healthRev: "감정 침체·우울",
+                          careerScore: 70, careerSig: "공감적 리더십",       careerRev: "감정 소진·번아웃" },
+  "King of Cups":       { wealthScore: 78, wealthSig: "감정 통제 자산 운용",  wealthRev: "감정 폭발·판단 흐림",
+                          healthScore: 75, healthSig: "감정 균형·자기 통제",  healthRev: "감정 억압·스트레스",
+                          careerScore: 80, careerSig: "성숙한 리더십",       careerRev: "감정 통제 약화" },
+
+  // ═════ Swords (검) 14장 ═════
+  "Ace of Swords":      { wealthScore: 75, wealthSig: "명확한 자산 결단",     wealthRev: "결정 혼란·재고 필요",
+                          healthScore: 70, healthSig: "명확한 진단·돌파",     healthRev: "진단 혼란·재검진",
+                          careerScore: 80, careerSig: "결단·돌파의 시기",     careerRev: "결정 미루기·혼란" },
+  "Two of Swords":      { wealthScore: 45, wealthSig: "자산 결정 보류·교착",  wealthRev: "교착 해소·결정",
+                          healthScore: 55, healthSig: "결정 보류 시기",       healthRev: "결정·진단 명확화",
+                          careerScore: 48, careerSig: "선택 교착·결정 회피",  careerRev: "결정·진전 시작" },
+  "Three of Swords":    { wealthScore: 25, wealthSig: "자산 손실·실망",       wealthRev: "회복 시작·정리",
+                          healthScore: 35, healthSig: "정신적 충격·회복기",   healthRev: "치유·회복",
+                          careerScore: 28, careerSig: "직장 실망·갈등",       careerRev: "회복·정리" },
+  "Four of Swords":     { wealthScore: 50, wealthSig: "자산 휴식·점검기",     wealthRev: "휴식 종료·재진입",
+                          healthScore: 75, healthSig: "회복·휴식 흐름",       healthRev: "휴식 부족·재발 주의",
+                          careerScore: 50, careerSig: "직무 휴식·재충전",     careerRev: "복귀·재시작" },
+  "Five of Swords":     { wealthScore: 35, wealthSig: "자산 갈등·승리 후 손실", wealthRev: "갈등 해소·재정비",
+                          healthScore: 45, healthSig: "스트레스 누적",       healthRev: "스트레스 해소",
+                          careerScore: 35, careerSig: "직장 갈등·승부 후 소외", careerRev: "갈등 정리·화해" },
+  "Six of Swords":      { wealthScore: 60, wealthSig: "자산 전환·이동 흐름",  wealthRev: "전환 정체·재고",
+                          healthScore: 65, healthSig: "회복 이동·전환",       healthRev: "회복 정체",
+                          careerScore: 65, careerSig: "이직·전환 흐름",       careerRev: "전환 지연·재고" },
+  "Seven of Swords":    { wealthScore: 38, wealthSig: "자산 위험·기만 주의",  wealthRev: "기만 폭로·정직 회복",
+                          healthScore: 50, healthSig: "건강 정보 점검 필요",  healthRev: "투명한 진단",
+                          careerScore: 40, careerSig: "직장 음모·기밀 주의",  careerRev: "투명성 회복" },
+  "Eight of Swords":    { wealthScore: 30, wealthSig: "자산 속박·제약",       wealthRev: "속박 해소·자유",
+                          healthScore: 40, healthSig: "건강 제약·갇힘",       healthRev: "회복·자유 흐름",
+                          careerScore: 35, careerSig: "직장 속박·무력감",     careerRev: "탈출·자유 흐름" },
+  "Nine of Swords":     { wealthScore: 25, wealthSig: "자산 불안·걱정 누적",  wealthRev: "걱정 해소·안정",
+                          healthScore: 35, healthSig: "정신적 스트레스·불면", healthRev: "회복·안정",
+                          careerScore: 30, careerSig: "직무 스트레스·불안",   careerRev: "안정·회복" },
+  "Ten of Swords":      { wealthScore: 15, wealthSig: "자산 바닥·재시작",     wealthRev: "회복·재기 시작",
+                          healthScore: 25, healthSig: "건강 바닥·재기",       healthRev: "회복 시작",
+                          careerScore: 20, careerSig: "직장 종결·재시작",     careerRev: "회복·새 출발" },
+  "Page of Swords":     { wealthScore: 60, wealthSig: "정보 수집·자산 탐색",  wealthRev: "정보 부족·성급함",
+                          healthScore: 60, healthSig: "건강 정보 탐색",       healthRev: "정보 혼란",
+                          careerScore: 65, careerSig: "신입·학습 흐름",       careerRev: "미숙함·신중 필요" },
+  "Knight of Swords":   { wealthScore: 65, wealthSig: "공격적 자산 운용",     wealthRev: "충동적 결정·손실",
+                          healthScore: 60, healthSig: "급한 진행·번아웃",     healthRev: "속도 조절·휴식",
+                          careerScore: 70, careerSig: "추진·돌파 흐름",       careerRev: "성급함·실수" },
+  "Queen of Swords":    { wealthScore: 70, wealthSig: "냉철한 자산 운용",     wealthRev: "비판 과잉·고립",
+                          healthScore: 65, healthSig: "객관적 건강 관리",     healthRev: "감정 억압·스트레스",
+                          careerScore: 75, careerSig: "분석적 직무 강함",     careerRev: "비판·고립 주의" },
+  "King of Swords":     { wealthScore: 78, wealthSig: "전략적 자산 운용",     wealthRev: "독선·유연성 부족",
+                          healthScore: 70, healthSig: "지적·분석적 관리",     healthRev: "스트레스·통제 강박",
+                          careerScore: 82, careerSig: "전략적 리더십",       careerRev: "권위 남용·고집" },
+
+  // ═════ Pentacles (펜타클) 14장 ═════
+  "Ace of Pentacles":   { wealthScore: 90, wealthSig: "새 재물·자산 기회",    wealthRev: "기회 유실·검증 필요",
+                          healthScore: 80, healthSig: "건강 회복 새 출발",   healthRev: "기초 점검 필요",
+                          careerScore: 80, careerSig: "새 일·계약 기회",     careerRev: "기회 지연·재검토" },
+  "Two of Pentacles":   { wealthScore: 65, wealthSig: "자산 균형·다중 운용",  wealthRev: "균형 깨짐·과부하",
+                          healthScore: 65, healthSig: "균형 유지·유연성",     healthRev: "균형 붕괴·과로",
+                          careerScore: 70, careerSig: "다중 업무·유연 대응", careerRev: "과부하·우선순위 혼란" },
+  "Three of Pentacles": { wealthScore: 78, wealthSig: "협업으로 자산 확장",   wealthRev: "협업 부진·소통 부족",
+                          healthScore: 70, healthSig: "전문가 도움 회복",     healthRev: "도움 부족·재시도",
+                          careerScore: 82, careerSig: "협업·전문성 인정",    careerRev: "협업 균열·재정비" },
+  "Four of Pentacles":  { wealthScore: 65, wealthSig: "자산 보존·축적",       wealthRev: "과도한 보존·지출 회피",
+                          healthScore: 60, healthSig: "안정 유지·보수적",     healthRev: "경직·유연성 부족",
+                          careerScore: 65, careerSig: "직위 보전·안정",       careerRev: "변화 거부·정체" },
+  "Five of Pentacles":  { wealthScore: 25, wealthSig: "재정 위축·결핍",       wealthRev: "회복·도움 도착",
+                          healthScore: 35, healthSig: "건강 결핍·회복 필요",  healthRev: "회복 시작",
+                          careerScore: 30, careerSig: "직장 결핍·경제적 어려움", careerRev: "회복·기회 도착" },
+  "Six of Pentacles":   { wealthScore: 78, wealthSig: "자산 균형·관용 흐름",  wealthRev: "불균형 거래·손실",
+                          healthScore: 70, healthSig: "도움받는 회복",        healthRev: "도움 부족·자력",
+                          careerScore: 75, careerSig: "공정한 보상",         careerRev: "보상 불균형·재협상" },
+  "Seven of Pentacles": { wealthScore: 60, wealthSig: "자산 인내·중간 점검",  wealthRev: "인내 부족·조급함",
+                          healthScore: 60, healthSig: "회복 인내·중간 평가",  healthRev: "조급함·재시도",
+                          careerScore: 65, careerSig: "장기 투자 점검",       careerRev: "성과 지연·재평가" },
+  "Eight of Pentacles": { wealthScore: 80, wealthSig: "자산 숙련·축적",       wealthRev: "숙련 부족·재학습",
+                          healthScore: 75, healthSig: "꾸준한 관리·숙련",     healthRev: "관리 부족·재시도",
+                          careerScore: 88, careerSig: "전문성 축적·승진 흐름", careerRev: "정체·재훈련 필요" },
+  "Nine of Pentacles":  { wealthScore: 88, wealthSig: "자산 자립·풍요",       wealthRev: "자립 흔들림·재정비",
+                          healthScore: 80, healthSig: "건강 자립·풍요",       healthRev: "관리 소홀·재진단",
+                          careerScore: 82, careerSig: "직무 자립·성공",       careerRev: "고립·재정비" },
+  "Ten of Pentacles":   { wealthScore: 92, wealthSig: "자산 안정·유산 형성",  wealthRev: "유산 분쟁·구조 흔들림",
+                          healthScore: 82, healthSig: "안정·장기 건강",       healthRev: "패밀리 건강 점검",
+                          careerScore: 85, careerSig: "안정적 직장·승계",    careerRev: "구조 변화·재정비" },
+  "Page of Pentacles":  { wealthScore: 70, wealthSig: "자산 학습·신중 시작",  wealthRev: "학습 부족·성급함",
+                          healthScore: 65, healthSig: "건강 정보·관리 시작", healthRev: "정보 부족",
+                          careerScore: 72, careerSig: "신입·실력 축적",       careerRev: "미숙·재학습" },
+  "Knight of Pentacles":{ wealthScore: 75, wealthSig: "꾸준한 자산 축적",     wealthRev: "정체·진척 없음",
+                          healthScore: 75, healthSig: "꾸준한 관리·회복",     healthRev: "고립·정체",
+                          careerScore: 75, careerSig: "안정적 직무·꾸준",     careerRev: "정체·변화 필요" },
+  "Queen of Pentacles": { wealthScore: 85, wealthSig: "실용적 자산 운용",     wealthRev: "낭비·균형 깨짐",
+                          healthScore: 82, healthSig: "실용적 자기관리",     healthRev: "관리 소홀·균형 약화",
+                          careerScore: 80, careerSig: "실무 능력·신뢰",       careerRev: "과로·번아웃" },
+  "King of Pentacles":  { wealthScore: 90, wealthSig: "자산 안정·풍요 정점",  wealthRev: "물질 집착·유연성 부족",
+                          healthScore: 80, healthSig: "안정적 건강·풍요",     healthRev: "과식·관리 강박",
+                          careerScore: 88, careerSig: "사업·자산 리더십",    careerRev: "물질 집착·고집" }
+};
+
+// ══════════════════════════════════════════════════════════════════
+// [V25.19] 운세 컨텍스트 점수 계산 — 가중 평균 (사장님 calcScore 패턴)
+//   재물/건강/직장 각각 78장 점수 기반 가중 평균 산출
+//   역방향 카드: 점수 100 - 원점수 (반전 처리)
+// ══════════════════════════════════════════════════════════════════
+function calcFortuneScore(cardNames, reversedFlags, contextKey) {
+  if (!cardNames || !cardNames.length) return 50;
+  const scoreKey = `${contextKey}Score`; // wealthScore / healthScore / careerScore
+  let sum = 0, count = 0;
+  cardNames.forEach((name, i) => {
+    const entry = CARD_FORTUNE_CONTEXT[name];
+    if (!entry) return;
+    let score = entry[scoreKey] ?? 50;
+    if (reversedFlags && reversedFlags[i]) {
+      score = Math.max(0, Math.min(100, 100 - score));
+    }
+    sum += score;
+    count++;
+  });
+  return count > 0 ? Math.round(sum / count) : 50;
+}
+
+// ══════════════════════════════════════════════════════════════════
+// [V25.19] 운세 컨텍스트 시그널 — 카드별 한 줄 메시지 추출
+//   사장님 getLoveCardFlavor 패턴 모방
+//   contextKey: 'wealth' / 'health' / 'career'
+// ══════════════════════════════════════════════════════════════════
+function getFortuneCardSignal(cardName, isReversed, contextKey) {
+  const entry = CARD_FORTUNE_CONTEXT[cardName];
+  if (!entry) {
+    return isReversed ? "신호 약화·재점검 필요" : "흐름 형성 중";
+  }
+  const sigKey = `${contextKey}Sig`;
+  const revKey = `${contextKey}Rev`;
+  return isReversed ? (entry[revKey] || entry[sigKey] || "신호 약화") : (entry[sigKey] || "신호 형성");
+}
+
+// ══════════════════════════════════════════════════════════════════
+// [V25.19] 운세 컨텍스트 오라클 본문 생성 — 3카드 흐름 종합
+//   사장님 패턴: 과거→현재→미래 + signal 종합 결론
+//   contextKey: 'wealth' / 'health' / 'career'
+// ══════════════════════════════════════════════════════════════════
+function buildFortuneContextOracle(cleanCards, reversedFlags, contextKey, score) {
+  const past    = cleanCards[0];
+  const present = cleanCards[1];
+  const future  = cleanCards[2];
+  const pastRev    = reversedFlags && reversedFlags[0];
+  const presentRev = reversedFlags && reversedFlags[1];
+  const futureRev  = reversedFlags && reversedFlags[2];
+
+  const pastSig    = getFortuneCardSignal(past, pastRev, contextKey);
+  const presentSig = getFortuneCardSignal(present, presentRev, contextKey);
+  const futureSig  = getFortuneCardSignal(future, futureRev, contextKey);
+
+  // 컨텍스트별 어휘 정의
+  const ctx = contextKey === 'wealth' ? {
+    label: '재물운',
+    domainName: '재물 흐름',
+    highTrend: '확장과 결실의 흐름',
+    midTrend: '점검과 정비의 흐름',
+    lowTrend: '정리와 보호의 흐름',
+    keyTopic: '자금 계획과 자산 기준',
+    actionHigh: '자산 진입과 확장 검토',
+    actionMid: '자금 점검과 단계적 운용',
+    actionLow: '자산 보호와 위험 관리'
+  } : contextKey === 'health' ? {
+    label: '건강운',
+    domainName: '건강 흐름',
+    highTrend: '활력과 회복의 흐름',
+    midTrend: '점검과 균형의 흐름',
+    lowTrend: '휴식과 회복의 흐름',
+    keyTopic: '체력 신호와 회복 흐름',
+    actionHigh: '활력 활용·새 습관 도입',
+    actionMid: '균형 점검·생활 정비',
+    actionLow: '휴식 우선·신호 관찰'
+  } : {
+    label: '직장운',
+    domainName: '커리어 흐름',
+    highTrend: '진전과 결단의 흐름',
+    midTrend: '점검과 조율의 흐름',
+    lowTrend: '재정비와 휴식의 흐름',
+    keyTopic: '커리어 기준과 결정 흐름',
+    actionHigh: '결단·진입·확장 검토',
+    actionMid: '조율·균형·전략 수립',
+    actionLow: '재정비·역량 보호'
+  };
+
+  // 점수 기반 흐름 분류
+  const flowDesc = score >= 70 ? ctx.highTrend
+                 : score >= 45 ? ctx.midTrend
+                 : ctx.lowTrend;
+  const actionDesc = score >= 70 ? ctx.actionHigh
+                   : score >= 45 ? ctx.actionMid
+                   : ctx.actionLow;
+
+  // 본문 — 과거/현재/미래 시그널 통합
+  const para1 = `${ctx.label}의 흐름은 과거 [${pastSig}]에서 시작되어, 현재 [${presentSig}] 흐름을 거쳐, 미래 [${futureSig}] 방향으로 이어지는 구간으로 해석됩니다. 전반적으로 ${flowDesc}에 있으며, ${ctx.keyTopic}의 정리가 핵심으로 작용할 수 있는 시기입니다.`;
+
+  const para2 = score >= 70
+    ? `현재는 ${ctx.domainName}이 우호적으로 정렬되는 구간으로 해석됩니다. ${actionDesc}이 흐름을 자연스럽게 강화할 수 있는 시점입니다.`
+    : score >= 45
+    ? `현재는 ${ctx.domainName}이 방향성을 탐색하는 균형 구간으로 해석됩니다. ${actionDesc}이 안정적인 선택으로 볼 수 있습니다.`
+    : `현재는 ${ctx.domainName}이 정리와 회복을 우선하는 구간으로 해석됩니다. ${actionDesc}이 흐름을 안정시키는 데 도움이 될 수 있습니다.`;
+
+  return `${para1}\n\n${para2}`;
+}
+
+// ══════════════════════════════════════════════════════════════════
 // [V24.0] UNCERTAINTY GATE — 관망 카드 우세 시 진입 차단 게이트
 //   사용처: 주식/부동산/연애 buildXxxMetrics에서 우선 호출
 //   규칙: 3장 합산 uncertainty ≥ HIGH_UNCERTAINTY_THRESHOLD → 강제 관망
@@ -4372,7 +4734,7 @@ ${actionGuide.oneLine}`;
 // ══════════════════════════════════════════════════════════════════
 // ✨ 일반 운세 메트릭
 // ══════════════════════════════════════════════════════════════════
-function buildFortuneMetrics({ totalScore, cleanCards, prompt }) {
+function buildFortuneMetrics({ totalScore, cleanCards, prompt, fortuneSubType, reversedFlags }) {
   const netScore = totalScore;
 
   // ══════════════════════════════════════════════════════════════
@@ -4384,31 +4746,120 @@ function buildFortuneMetrics({ totalScore, cleanCards, prompt }) {
   const volGate = riskGate.volatility;
   // ══════════════════════════════════════════════════════════════
 
-  // [V23.8] 운세 trend — 5단계 → 더 세밀하게
-  const trend = riskGate.triggered
-              ? "방향 모색 — 결정 전 정리 단계"
-              : netScore >= 10 ? "기운의 폭발적 확장 — 결단의 정점"
-              : netScore >= 5  ? "기운의 확장 — 결단의 황금 구간"
-              : netScore >= 2  ? "긍정 수렴 — 방향성 명확화 중"
-              : netScore >= -1 ? "정체 해소 직전 — 방향 수렴 구간"
-              : netScore >= -5 ? "내면 정리기 — 선택 준비 단계"
-              : "강한 하강 — 자기 보호 우선";
+  // [V25.18+V25.19] 운세 서브타입별 톤 분기 — 재물/건강/직장 본질 엔진
+  //   사장님 진단 (V25.19): "재물건강직장운 엔진이 비어있다 — 빈 점사 금지"
+  //   해결: CARD_FORTUNE_CONTEXT (78장 × 3영역) 기반 진짜 점수·시그널 사용
+  const _isWealth = fortuneSubType === 'wealth';
+  const _isHealth = fortuneSubType === 'health';
+  const _isCareer = fortuneSubType === 'career';
+  const _isContextSpecial = _isWealth || _isHealth || _isCareer;
+  
+  // 컨텍스트 키 + 영역 점수 산출
+  const _contextKey = _isWealth ? 'wealth' : _isHealth ? 'health' : _isCareer ? 'career' : null;
+  const _contextScore = _contextKey ? calcFortuneScore(cleanCards, reversedFlags, _contextKey) : 50;
+  
+  // 컨텍스트 시그널 추출 (3카드)
+  const _contextSignals = _contextKey ? cleanCards.map((c, i) => ({
+    name: c,
+    role: ['과거', '현재', '미래'][i],
+    isReversed: !!(reversedFlags && reversedFlags[i]),
+    signal: getFortuneCardSignal(c, reversedFlags && reversedFlags[i], _contextKey)
+  })) : null;
 
-  const action = riskGate.triggered
-               ? "결정 보류 — 정보 수집과 내면 정리 우선"
-               : netScore >= 10 ? "과감한 실행 — 우주가 길을 열어줌"
-               : netScore >= 5  ? "과감한 결단 유리"
-               : netScore >= 2  ? "유연한 수용 + 적극 시도"
-               : netScore >= -1 ? "관망 → 선택 전환 준비"
-               : netScore >= -5 ? "내면 정리 → 선택 준비"
-               : "휴식 + 에너지 보존";
+  // [V23.8+V25.18+V25.19] 운세 trend — 컨텍스트 점수 우선, 일반은 netScore
+  let trend;
+  if (_isWealth) {
+    trend = riskGate.triggered ? "자산 흐름 점검 — 진입 전 정리 단계"
+          : netScore >= 10 ? "재물 흐름 폭발적 확장 — 진입의 정점"
+          : netScore >= 5  ? "재물 흐름 확장 — 자산 진입 황금 구간"
+          : netScore >= 2  ? "재물 긍정 수렴 — 자산 방향성 명확화 중"
+          : netScore >= -1 ? "재물 정체 해소 직전 — 자산 수렴 구간"
+          : netScore >= -5 ? "재물 정리기 — 자금 점검 준비 단계"
+          : "재물 강한 하강 — 자산 보호 우선";
+  } else if (_isHealth) {
+    trend = riskGate.triggered ? "건강 흐름 점검 — 회복 전 정리 단계"
+          : netScore >= 10 ? "건강 흐름 폭발적 확장 — 활력의 정점"
+          : netScore >= 5  ? "건강 흐름 확장 — 활력 회복 황금 구간"
+          : netScore >= 2  ? "건강 긍정 수렴 — 회복 방향성 명확화"
+          : netScore >= -1 ? "건강 정체 해소 직전 — 회복 수렴 구간"
+          : netScore >= -5 ? "건강 정리기 — 휴식 준비 단계"
+          : "건강 강한 하강 — 회복 우선";
+  } else if (_isCareer) {
+    trend = riskGate.triggered ? "커리어 흐름 점검 — 결정 전 정리 단계"
+          : netScore >= 10 ? "커리어 흐름 폭발적 확장 — 결단의 정점"
+          : netScore >= 5  ? "커리어 흐름 확장 — 진입 황금 구간"
+          : netScore >= 2  ? "커리어 긍정 수렴 — 방향성 명확화 중"
+          : netScore >= -1 ? "커리어 정체 해소 직전 — 방향 수렴 구간"
+          : netScore >= -5 ? "커리어 정리기 — 선택 준비 단계"
+          : "커리어 강한 하강 — 자기 보호 우선";
+  } else {
+    // [V23.8] 일반/오늘/신년 운세 — 5단계
+    trend = riskGate.triggered ? "방향 모색 — 결정 전 정리 단계"
+          : netScore >= 10 ? "기운의 폭발적 확장 — 결단의 정점"
+          : netScore >= 5  ? "기운의 확장 — 결단의 황금 구간"
+          : netScore >= 2  ? "긍정 수렴 — 방향성 명확화 중"
+          : netScore >= -1 ? "정체 해소 직전 — 방향 수렴 구간"
+          : netScore >= -5 ? "내면 정리기 — 선택 준비 단계"
+          : "강한 하강 — 자기 보호 우선";
+  }
 
-  // [V23.8] 운세 riskLevel — 5단계 다양화
-  const riskLevel = netScore >= 10 ? "교만 경계 — 절제가 핵심"
-                  : netScore >= 5  ? "외부 시기 주의"
-                  : netScore >= 0  ? "외부 개입 주의"
-                  : netScore >= -5 ? "에너지 소모 경계"
-                  : "감정 휘둘림 경계";
+  // [V25.18] 서브타입별 action
+  let action;
+  if (_isWealth) {
+    action = riskGate.triggered ? "자산 결정 보류 — 자금 계획 점검 우선"
+           : netScore >= 10 ? "과감한 자산 진입 — 흐름이 길을 열어줌"
+           : netScore >= 5  ? "자산 진입 적합한 흐름"
+           : netScore >= 2  ? "유연한 자산 점검 + 단계적 진입"
+           : netScore >= -1 ? "자산 관망 → 진입 준비"
+           : netScore >= -5 ? "자금 정리 → 진입 준비"
+           : "자산 보호 + 에너지 보존";
+  } else if (_isHealth) {
+    action = riskGate.triggered ? "건강 결정 보류 — 점검 우선"
+           : netScore >= 10 ? "활력 적극 활용 흐름"
+           : netScore >= 5  ? "회복 적극 활용 흐름"
+           : netScore >= 2  ? "유연한 회복 + 적극 관리"
+           : netScore >= -1 ? "관망 → 회복 준비"
+           : netScore >= -5 ? "휴식 → 회복 준비"
+           : "휴식 + 에너지 보존";
+  } else if (_isCareer) {
+    action = riskGate.triggered ? "커리어 결정 보류 — 정보 수집 우선"
+           : netScore >= 10 ? "과감한 커리어 결단 — 흐름이 길을 열어줌"
+           : netScore >= 5  ? "커리어 결단 유리"
+           : netScore >= 2  ? "유연한 수용 + 적극 시도"
+           : netScore >= -1 ? "관망 → 결정 준비"
+           : netScore >= -5 ? "내면 정리 → 결정 준비"
+           : "휴식 + 커리어 점검";
+  } else {
+    action = riskGate.triggered ? "결정 보류 — 정보 수집과 내면 정리 우선"
+           : netScore >= 10 ? "과감한 실행 — 우주가 길을 열어줌"
+           : netScore >= 5  ? "과감한 결단 유리"
+           : netScore >= 2  ? "유연한 수용 + 적극 시도"
+           : netScore >= -1 ? "관망 → 선택 전환 준비"
+           : netScore >= -5 ? "내면 정리 → 선택 준비"
+           : "휴식 + 에너지 보존";
+  }
+
+  // [V25.18] 서브타입별 riskLevel
+  let riskLevel;
+  if (_isWealth) {
+    riskLevel = netScore >= 10 ? "과욕 경계 — 자산 절제가 핵심"
+              : netScore >= 5  ? "외부 변수 주의 (시장·금리)"
+              : netScore >= 0  ? "감정 진입 주의 — 객관 점검 필요"
+              : netScore >= -5 ? "자금 소모 경계"
+              : "충동 진입 경계";
+  } else if (_isHealth) {
+    riskLevel = netScore >= 10 ? "활력 과잉 — 절제가 핵심"
+              : netScore >= 5  ? "외부 환경 주의"
+              : netScore >= 0  ? "스트레스 누적 주의"
+              : netScore >= -5 ? "체력 소모 경계"
+              : "건강 회복 우선 경계";
+  } else {
+    riskLevel = netScore >= 10 ? "교만 경계 — 절제가 핵심"
+              : netScore >= 5  ? "외부 시기 주의"
+              : netScore >= 0  ? "외부 개입 주의"
+              : netScore >= -5 ? "에너지 소모 경계"
+              : "감정 휘둘림 경계";
+  }
 
   const DAYS_FULL = ["일요일","월요일","화요일","수요일","목요일","금요일","토요일"];
   let seed = 0;
@@ -4459,19 +4910,38 @@ function buildFortuneMetrics({ totalScore, cleanCards, prompt }) {
     finalTimingText,
     totalScore,
     cardNarrative,
-    finalOracle: riskGate.triggered
-      ? `${interpret}\n\n⚠️ [불확실성 우세] 지금은 '결단의 시기'가 아니라 '정보 수집과 내면 정리의 시기'입니다.`
-      : interpret,
+    // [V25.19] finalOracle — 재물/건강/직장은 컨텍스트 오라클, 일반은 기존 interpret
+    finalOracle: (() => {
+      // 컨텍스트 특화 (재물/건강/직장) — 본질 엔진 오라클
+      if (_isContextSpecial && _contextKey) {
+        const ctxOracle = buildFortuneContextOracle(cleanCards, reversedFlags, _contextKey, _contextScore);
+        if (riskGate.triggered) {
+          return `${ctxOracle}\n\n⚠️ [불확실성 우세] 지금은 결단보다 정보 수집과 흐름 점검이 우선되는 시기입니다.`;
+        }
+        return ctxOracle;
+      }
+      // 기존 일반 운세 (오늘/전반/신년/etc)
+      return riskGate.triggered
+        ? `${interpret}\n\n⚠️ [불확실성 우세] 지금은 '결단의 시기'가 아니라 '정보 수집과 내면 정리의 시기'입니다.`
+        : interpret;
+    })(),
     // [V23.4 + V24.0] 수치 메트릭 — 불확실성 반영
+    // [V25.19] 컨텍스트 점수 노출 — 재물/건강/직장운 점수
     riskScore:          calcScore(cleanCards, 'risk'),
-    opportunityWindow:  calcScore(cleanCards, 'base'),
+    opportunityWindow:  _isContextSpecial ? _contextScore : calcScore(cleanCards, 'base'),
+    contextScore:       _contextScore,
+    contextKey:         _contextKey,
+    contextSignals:     _contextSignals,
     uncertaintyScore:   uncGate.sum,
     uncertaintyLevel:   uncGate.level,
     actionType: riskGate.triggered ? 'wait'
-              : calcScore(cleanCards, 'risk') > 70 ? 'wait'
-              : calcScore(cleanCards, 'base') > 70 ? 'move' : 'observe',
-    // [V25.14] 5차원 영성 레이더 차트 데이터 (Claude 2순위)
-    cardDimensions: buildCardDimensionsArray(cleanCards, []),
+              : (_isContextSpecial
+                  ? (_contextScore >= 70 ? 'move' : _contextScore >= 45 ? 'observe' : 'wait')
+                  : (calcScore(cleanCards, 'risk') > 70 ? 'wait'
+                    : calcScore(cleanCards, 'base') > 70 ? 'move' : 'observe')),
+    // [V25.14+V25.19] 5차원 영성 레이더 차트 데이터
+    //   reversedFlags 전달 — 역방향 카드 정확 시각화
+    cardDimensions: buildCardDimensionsArray(cleanCards, reversedFlags || []),
     // [V22.4 + V24.0] 운세 5계층 데이터
     layers: {
       decision: {
@@ -5038,7 +5508,9 @@ export default {
       try {
         const body = await request.json();
         const { prompt, cardNames, cardPositions, isReversed, userName,
-                loveSubType, stockSubType, reSubType, explicitDomain } = body;
+                loveSubType, stockSubType, reSubType, explicitDomain,
+                // [V25.18] 운세 서브타입 — wealth/health/career/today/general/newyear/etc
+                fortuneSubType } = body;
 
         const rawToken = request.headers.get("x-session-token") || "";
         const isPaid   = await verifyToken(rawToken, env.TOKEN_SECRET);
@@ -5151,7 +5623,7 @@ export default {
           metrics = buildLoveMetrics({ totalScore, cleanCards, prompt, loveSubType: finalLoveSubType });
         }
         else {
-          metrics = buildFortuneMetrics({ totalScore, cleanCards, prompt });
+          metrics = buildFortuneMetrics({ totalScore, cleanCards, prompt, fortuneSubType, reversedFlags });
         }
 
         // [V2.1] 궁합 정보 및 역방향 플래그를 metrics에 주입
