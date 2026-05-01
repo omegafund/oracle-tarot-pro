@@ -3207,6 +3207,8 @@ function buildStockMetrics({ totalScore, riskScore, cleanCards, isLeverage, quer
                     : _blockLevel === 'SOFT'    ? 'WATCH'
                     : 'BLOCKED'; // BLOCK 경로면 무조건 BLOCKED/WATCH
     return {
+      // [V25.31 F-2] type 필드 — 클라이언트 도메인 식별용 (5차원 라벨 매핑)
+      type: queryType,
       queryType,
       executionMode: _execMode,
       trend: finalTrend,
@@ -3412,6 +3414,8 @@ function buildStockMetrics({ totalScore, riskScore, cleanCards, isLeverage, quer
   //   (게이트 정보는 finalOracle/cardEvidence/diagnosis에 이미 반영됨)
 
   return {
+    // [V25.31 F-2] type 필드 — 클라이언트 도메인 식별용 (5차원 라벨 매핑)
+    type: queryType,
     queryType,
     executionMode: _uncOverride ? _uncOverride.execMode : _finalExecMode,
     trend: finalTrend,
@@ -5584,6 +5588,1185 @@ ${actionGuide.oneLine}`;
 
 
 // ══════════════════════════════════════════════════════════════════
+// ✨ [V25.32] FORTUNE ORACLE — 100% JS, Layered Matrix, Gemini OFF
+// ══════════════════════════════════════════════════════════════════
+// 설계 철학: AI는 보조, 구조는 코드가 100% 통제 (LOVE V25.27 사상 복제)
+// 데이터:    Layered Matrix (base + override)
+// 박스 수:   6 + 1(PRO 업셀)
+// 도메인:    wealth / health / career (PRO 우선 3종)
+// 활용:      CARD_FORTUNE_CONTEXT (사장님 1년 작업 78장 매핑) + V25.27 인프라
+// 배포일:    2026-05-02
+// ══════════════════════════════════════════════════════════════════
+
+// ─────────────────────────────────────────────────────────────────
+// [1] 점수 → 카테고리 변환 (LOVE와 동일 4분기)
+// ─────────────────────────────────────────────────────────────────
+function getFortuneScoreCategory(score) {
+  if (score >= 3)   return 'advance';
+  if (score >= -2)  return 'maintain';
+  if (score >= -5)  return 'realign';
+  return 'close';
+}
+
+// ─────────────────────────────────────────────────────────────────
+// [2] 운세 도메인별 카드 → 타입 매핑
+//   재물/건강/직장 각자 다른 의미 → 도메인별 분기
+// ─────────────────────────────────────────────────────────────────
+function getCardFortuneType(card, isReversed, fortuneSubType) {
+  if (!card) return 'neutral';
+  const name = typeof card === 'string' ? card : (card.name || '');
+  const ctx = CARD_FORTUNE_CONTEXT[name];
+  if (!ctx) return 'neutral';
+  
+  // 도메인별 점수 추출
+  // [V25.33] today/general/newyear/etc는 3영역 평균 (전반적 흐름)
+  let score;
+  if (fortuneSubType === 'wealth')      score = ctx.wealthScore;
+  else if (fortuneSubType === 'health') score = ctx.healthScore;
+  else if (fortuneSubType === 'career') score = ctx.careerScore;
+  else if (fortuneSubType === 'today' || fortuneSubType === 'general'
+        || fortuneSubType === 'newyear' || fortuneSubType === 'etc') {
+    // 4종 도메인 — 3영역 평균
+    score = ((ctx.wealthScore || 50) + (ctx.healthScore || 50) + (ctx.careerScore || 50)) / 3;
+  } else {
+    score = ctx.wealthScore;
+  }
+  
+  // 역방향이면 점수 반전
+  const adjScore = isReversed ? (100 - score) : score;
+  
+  // 점수 → 타입 매핑
+  if (adjScore >= 80)  return 'thriving';   // 번성·풍요
+  if (adjScore >= 65)  return 'growing';    // 성장·발전
+  if (adjScore >= 45)  return 'stable';     // 안정·유지
+  if (adjScore >= 30)  return 'caution';    // 주의·점검
+  if (adjScore >= 15)  return 'declining';  // 약화·하락
+  return 'critical';                        // 위험·정리
+}
+
+// ─────────────────────────────────────────────────────────────────
+// [3] flowArrow 자동 매핑 (운세 도메인 패턴)
+// ─────────────────────────────────────────────────────────────────
+function getFortuneFlowArrow(past, present, future, revFlags, fortuneSubType) {
+  const rf = revFlags || [false, false, false];
+  const p = getCardFortuneType(past, rf[0], fortuneSubType);
+  const c = getCardFortuneType(present, rf[1], fortuneSubType);
+  const f = getCardFortuneType(future, rf[2], fortuneSubType);
+  const key = `${p}-${c}-${f}`;
+  
+  // 도메인 어휘 결정
+  const tone = (fortuneSubType === 'wealth')  ? '재물'
+             : (fortuneSubType === 'health')  ? '건강'
+             : (fortuneSubType === 'career')  ? '직장'
+             : (fortuneSubType === 'today')   ? '오늘'
+             : (fortuneSubType === 'newyear') ? '한 해'
+             : (fortuneSubType === 'general' || fortuneSubType === 'etc') ? '전반'
+             : '흐름';
+  
+  // Tier 1: 정확 매핑
+  const exactMap = {
+    "thriving-thriving-thriving":  `${tone} 풍요 → 정점 → 결실`,
+    "thriving-growing-thriving":   `${tone} 풍요 → 발전 → 결실`,
+    "growing-thriving-growing":    `${tone} 발전 → 정점 → 안정`,
+    "growing-growing-thriving":    `${tone} 성장 → 누적 → 풍요`,
+    "stable-growing-thriving":     `${tone} 안정 → 발전 → 풍요`,
+    "stable-stable-growing":       `${tone} 안정 → 유지 → 발전`,
+    "stable-stable-stable":        `${tone} 안정 → 유지 → 결속`,
+    "caution-stable-growing":      `${tone} 점검 → 회복 → 발전`,
+    "caution-caution-stable":      `${tone} 점검 → 정비 → 안정`,
+    "caution-stable-stable":       `${tone} 점검 → 정비 → 안정`,
+    "declining-caution-stable":    `${tone} 약화 → 점검 → 회복`,
+    "declining-stable-growing":    `${tone} 약화 → 안정 → 회복`,
+    "declining-declining-caution": `${tone} 약화 → 하락 → 정리`,
+    "declining-declining-declining":`${tone} 약화 → 하락 → 정체`,
+    "critical-declining-caution":  `${tone} 위험 → 정리 → 회복`,
+    "critical-critical-declining": `${tone} 위험 → 정리 필수`,
+    "critical-caution-stable":     `${tone} 위험 → 정리 → 안정`,
+    "growing-stable-growing":      `${tone} 발전 → 조정 → 진전`,
+    "thriving-stable-growing":     `${tone} 풍요 → 조정 → 진전`,
+    "growing-caution-stable":      `${tone} 발전 → 점검 → 안정`,
+    "thriving-caution-stable":     `${tone} 풍요 → 점검 → 안정`,
+    "stable-caution-stable":       `${tone} 안정 → 점검 → 회복`,
+    "stable-caution-growing":      `${tone} 안정 → 점검 → 발전`,
+    "stable-declining-caution":    `${tone} 안정 → 약화 → 정리`,
+    "growing-declining-stable":    `${tone} 발전 → 약화 → 회복`,
+    "thriving-declining-caution":  `${tone} 풍요 → 약화 → 점검`,
+    "caution-declining-declining": `${tone} 점검 → 약화 → 정체`,
+    "caution-declining-critical":  `${tone} 점검 → 약화 → 위험`,
+    "declining-caution-caution":   `${tone} 약화 → 점검 → 정리`,
+    "declining-caution-growing":   `${tone} 약화 → 점검 → 회복`,
+    "caution-caution-caution":     `${tone} 점검 → 정비 → 재정렬`,
+    "caution-caution-growing":     `${tone} 점검 → 정비 → 회복`,
+    "stable-declining-stable":     `${tone} 안정 → 약화 → 회복`,
+    "caution-caution-declining":   `${tone} 점검 → 약화 진행`,
+    "caution-stable-declining":    `${tone} 점검 → 약화 진행`,
+    "stable-caution-declining":    `${tone} 흔들림 → 약화 진행`,
+    "growing-declining-caution":   `${tone} 발전 → 약화 → 정리`,
+    "thriving-declining-stable":   `${tone} 풍요 → 약화 → 회복`,
+    "thriving-thriving-growing":   `${tone} 풍요 → 정점 → 발전`,
+    "growing-thriving-thriving":   `${tone} 발전 → 정점 → 풍요`,
+    "growing-growing-growing":     `${tone} 단계적 성장`,
+    "stable-growing-growing":      `${tone} 안정 → 성장 → 누적`,
+    "growing-caution-growing":     `${tone} 발전 → 점검 → 진전`,
+    "thriving-caution-growing":    `${tone} 풍요 → 점검 → 진전`,
+    "stable-declining-critical":   `${tone} 안정 → 약화 → 위험`,
+    "declining-stable-stable":     `${tone} 약화 → 안정 회복`,
+    "critical-critical-critical":  `${tone} 위험 지속 — 정리 필수`,
+    "critical-critical-caution":   `${tone} 위험 → 정리 → 점검`,
+    "critical-declining-stable":   `${tone} 위험 → 정리 → 안정`,
+    "critical-caution-growing":    `${tone} 위험 → 점검 → 회복`,
+    "declining-declining-stable":  `${tone} 약화 → 하락 → 회복`,
+    "declining-critical-caution":  `${tone} 약화 → 위기 → 정리`,
+    "declining-critical-declining":`${tone} 약화 → 위기 → 지속`,
+    // 중립 혼합
+    "neutral-caution-stable":      `${tone} 점검 → 안정`,
+    "neutral-stable-stable":       `${tone} 안정 유지`,
+    "neutral-stable-growing":      `${tone} 안정 → 발전`,
+    "stable-neutral-stable":       `${tone} 안정 유지`,
+    "growing-neutral-stable":      `${tone} 발전 → 안정`,
+    "caution-neutral-stable":      `${tone} 점검 → 안정`,
+    "declining-neutral-caution":   `${tone} 약화 → 점검`,
+    "neutral-declining-caution":   `${tone} 약화 → 점검`,
+    "neutral-neutral-stable":      `${tone} 안정 유지`
+  };
+  
+  if (exactMap[key]) return exactMap[key];
+  
+  // Tier 2: 현재 카드 기반 fallback
+  if (c === 'thriving')               return `${tone} 풍요 → 정점`;
+  if (c === 'growing')                return `${tone} 성장 흐름`;
+  if (c === 'stable')                 return `${tone} 안정 유지`;
+  if (c === 'caution')                return `${tone} 점검 시기`;
+  if (c === 'declining')              return `${tone} 약화 흐름`;
+  if (c === 'critical')               return `${tone} 정리 시기`;
+  
+  // Tier 3: 최종 안전망
+  return `${tone} 흐름 변화 구간`;
+}
+
+// ─────────────────────────────────────────────────────────────────
+// [4] 메타 패턴 (PRO 차별화) — 운세 도메인
+// ─────────────────────────────────────────────────────────────────
+const FORTUNE_META_PATTERNS = {
+  // 풍요/성장 군
+  "thriving-thriving-thriving":  "지속 풍요 패턴",
+  "thriving-growing-thriving":   "지속 풍요 패턴",
+  "thriving-thriving-growing":   "지속 풍요 패턴",
+  "growing-thriving-thriving":   "지속 풍요 패턴",
+  "growing-thriving-growing":    "정점 통과 패턴",
+  "growing-growing-thriving":    "성장 누적 패턴",
+  "growing-growing-growing":     "성장 누적 패턴",
+  "stable-growing-thriving":     "성장 누적 패턴",
+  "stable-stable-growing":       "안정 발전 패턴",
+  "stable-growing-growing":      "안정 발전 패턴",
+  "stable-stable-stable":        "안정 결속 패턴",
+  "stable-positive-stable":      "안정 결속 패턴",
+  // 점검·재정비 군
+  "caution-stable-growing":      "점검 후 회복 패턴",
+  "caution-stable-stable":       "점검 후 안정 패턴",
+  "caution-caution-stable":      "재정비 진행 패턴",
+  "caution-caution-growing":     "재정비 진행 패턴",
+  "caution-caution-caution":     "재정비 진행 패턴",
+  "stable-caution-stable":       "흔들림 통과 패턴",
+  "stable-caution-growing":      "흔들림 통과 패턴",
+  "growing-caution-stable":      "흔들림 통과 패턴",
+  "growing-caution-growing":     "흔들림 통과 패턴",
+  "thriving-caution-stable":     "흔들림 통과 패턴",
+  "thriving-caution-growing":    "흔들림 통과 패턴",
+  // 약화·하락 군
+  "declining-caution-stable":    "약화 후 회복 패턴",
+  "declining-caution-growing":   "약화 후 회복 패턴",
+  "declining-caution-caution":   "약화 후 회복 패턴",
+  "declining-stable-growing":    "약화 후 회복 패턴",
+  "declining-stable-stable":     "약화 후 회복 패턴",
+  "caution-caution-declining":   "에너지 소진 패턴",
+  "caution-stable-declining":    "에너지 소진 패턴",
+  "stable-caution-declining":    "에너지 소진 패턴",
+  "stable-declining-caution":    "에너지 소진 패턴",
+  "stable-declining-stable":     "에너지 소진 패턴",
+  "growing-declining-stable":    "에너지 소진 패턴",
+  "growing-declining-caution":   "에너지 소진 패턴",
+  "thriving-declining-caution":  "정점 통과 후 조정 패턴",
+  "thriving-declining-stable":   "정점 통과 후 조정 패턴",
+  "declining-declining-caution": "지속 약화 패턴",
+  "declining-declining-stable":  "지속 약화 패턴",
+  "declining-declining-declining":"지속 약화 패턴",
+  // 위기·정리 군
+  "caution-declining-critical":  "위기 진입 패턴",
+  "caution-declining-declining": "위기 진입 패턴",
+  "stable-declining-critical":   "위기 진입 패턴",
+  "critical-critical-declining": "정리 필수 패턴",
+  "critical-critical-critical":  "정리 필수 패턴",
+  "critical-critical-caution":   "정리 필수 패턴",
+  "critical-declining-caution":  "정리 후 회복 패턴",
+  "critical-declining-stable":   "정리 후 회복 패턴",
+  "critical-caution-stable":     "정리 후 회복 패턴",
+  "critical-caution-growing":    "정리 후 회복 패턴",
+  "declining-critical-caution":  "위기 진입 패턴",
+  "declining-critical-declining":"위기 진입 패턴",
+  // 혼합 fallback
+  "neutral-caution-stable":      "흔들림 통과 패턴",
+  "neutral-stable-stable":       "안정 결속 패턴",
+  "neutral-stable-growing":      "안정 발전 패턴",
+  "stable-neutral-stable":       "안정 결속 패턴",
+  "growing-neutral-stable":      "안정 결속 패턴",
+  "caution-neutral-caution":     "재정비 진행 패턴",
+  "caution-neutral-stable":      "점검 후 안정 패턴",
+  "declining-neutral-caution":   "약화 후 회복 패턴",
+  "neutral-declining-caution":   "에너지 소진 패턴",
+  "neutral-neutral-stable":      "안정 결속 패턴"
+};
+
+const FORTUNE_HIDDEN_DRIVERS = {
+  "지속 풍요 패턴":          "흐름이 자연스럽게 형성됨 — 무리 없는 진행이 핵심",
+  "정점 통과 패턴":          "정점에서 조정 — 욕심을 내려놓고 수확하는 시기",
+  "성장 누적 패턴":          "단계적 누적 — 인내가 결실을 만든다",
+  "안정 발전 패턴":          "안정 위에 발전 — 기본기 강화가 핵심",
+  "안정 결속 패턴":          "흔들림 없는 흐름 — 무리 없는 유지가 답",
+  "점검 후 회복 패턴":       "잠시의 멈춤 후 회복 — 점검 시기 활용이 핵심",
+  "점검 후 안정 패턴":       "점검 후 흐름 정상화 — 기준 정리가 답",
+  "재정비 진행 패턴":        "구조 재편 진행 중 — 새 기준 정립이 핵심",
+  "흔들림 통과 패턴":        "일시 흔들림 후 회복 — 속도 조절과 인내가 핵심",
+  "약화 후 회복 패턴":       "약화 후 흐름 전환 — 재기 의지가 핵심",
+  "에너지 소진 패턴":        "에너지 소진 중 — 휴식과 재충전이 답",
+  "정점 통과 후 조정 패턴":  "정점 후 자연 조정 — 욕심 내려놓기가 핵심",
+  "지속 약화 패턴":          "흐름이 식어가는 중 — 새 방향 모색이 필요",
+  "위기 진입 패턴":          "위기 신호 감지 — 선제적 대응이 핵심",
+  "정리 필수 패턴":          "흐름 정리 필요 — 결단과 손실 차단이 답",
+  "정리 후 회복 패턴":       "정리 진행 후 회복 — 자기 점검이 핵심",
+  "일반 흐름 패턴":          "흐름과 기준 사이 균형 — 객관적 점검이 핵심"
+};
+
+function getFortuneMetaPattern(past, present, future, revFlags, fortuneSubType) {
+  const rf = revFlags || [false, false, false];
+  const p = getCardFortuneType(past, rf[0], fortuneSubType);
+  const c = getCardFortuneType(present, rf[1], fortuneSubType);
+  const f = getCardFortuneType(future, rf[2], fortuneSubType);
+  return FORTUNE_META_PATTERNS[`${p}-${c}-${f}`] || "일반 흐름 패턴";
+}
+
+// ─────────────────────────────────────────────────────────────────
+// [5] 분기점 매트릭스 (good_path / bad_path)
+// ─────────────────────────────────────────────────────────────────
+const FORTUNE_PATH_BRANCHES = {
+  advance: {
+    good: "흐름이 자연스럽게 진전됩니다 — 무리 없는 진행이 결실",
+    bad:  "성급함이 흐름을 깨뜨립니다 — 속도 조절 필수"
+  },
+  maintain: {
+    good: "현 흐름 유지하며 안정 누적 — 기준 정립이 진전",
+    bad:  "방향성 부재가 정체로 굳어집니다 — 명확한 기준 필요"
+  },
+  realign: {
+    good: "방식 전환으로 새 흐름 형성 — 재정비 결실",
+    bad:  "감정적 대응이 같은 패턴 반복 — 흐름 고착화"
+  },
+  close: {
+    good: "정리 후 새 방향 발견 — 자기 점검 진행",
+    bad:  "미련이 회복을 막습니다 — 손실 차단 결단 필요"
+  }
+};
+
+// ─────────────────────────────────────────────────────────────────
+// [6] 카드 phrase — CARD_FORTUNE_CONTEXT 기반 (사장님 1년 작업 활용)
+// ─────────────────────────────────────────────────────────────────
+function getFortuneCardPhrase(card, isReversed, fortuneSubType) {
+  if (!card) return null;
+  const name = typeof card === 'string' ? card : (card.name || '');
+  const ctx = CARD_FORTUNE_CONTEXT[name];
+  if (!ctx) {
+    // Fallback — type 기반
+    const type = getCardFortuneType(card, isReversed, fortuneSubType);
+    const fallback = {
+      "thriving":"풍요 흐름","growing":"성장 흐름","stable":"안정 흐름",
+      "caution":"점검 시기","declining":"약화 흐름","critical":"정리 시기",
+      "neutral":"중립적 흐름"
+    };
+    return fallback[type] || "흐름 변화";
+  }
+  
+  // 도메인별 시그널 (정/역)
+  if (fortuneSubType === 'wealth') {
+    return isReversed ? ctx.wealthRev : ctx.wealthSig;
+  } else if (fortuneSubType === 'health') {
+    return isReversed ? ctx.healthRev : ctx.healthSig;
+  } else if (fortuneSubType === 'career') {
+    return isReversed ? ctx.careerRev : ctx.careerSig;
+  } else if (fortuneSubType === 'today' || fortuneSubType === 'general'
+          || fortuneSubType === 'newyear' || fortuneSubType === 'etc') {
+    // [V25.33] 4종 도메인 — 평균 점수 기반 phrase 생성
+    //   3영역 시그널 중 가장 강한 의미 선택 (점수가 가장 양극단인 것)
+    const wScore = ctx.wealthScore || 50;
+    const hScore = ctx.healthScore || 50;
+    const cScore = ctx.careerScore || 50;
+    const wDist = Math.abs(wScore - 50);
+    const hDist = Math.abs(hScore - 50);
+    const cDist = Math.abs(cScore - 50);
+    const maxDist = Math.max(wDist, hDist, cDist);
+    let raw;
+    if (maxDist === wDist)      raw = isReversed ? ctx.wealthRev : ctx.wealthSig;
+    else if (maxDist === hDist) raw = isReversed ? ctx.healthRev : ctx.healthSig;
+    else                        raw = isReversed ? ctx.careerRev : ctx.careerSig;
+    
+    // [V25.33] 도메인 특화 단어를 일반 어휘로 치환 (today/general/newyear/etc)
+    //   예: "자산 풍요" → "흐름 풍요" / "체력 회복" → "에너지 회복"
+    if (raw) {
+      raw = raw
+        .replace(/자산\s+/g, '흐름 ').replace(/재물\s+/g, '흐름 ')
+        .replace(/투자\s+/g, '흐름 ').replace(/포트폴리오\s+/g, '구조 ')
+        .replace(/체력\s+/g, '에너지 ').replace(/건강\s+/g, '에너지 ').replace(/활력\s+/g, '에너지 ')
+        .replace(/커리어\s+/g, '흐름 ').replace(/직장\s+/g, '흐름 ').replace(/직무\s+/g, '흐름 ')
+        .replace(/승진\s+/g, '진전 ').replace(/이직\s+/g, '전환 ');
+    }
+    return raw || "흐름 변화";
+  }
+  return ctx.wealthSig || "흐름 변화";
+}
+
+// ──────────────────────────────────────────────────────────────────
+// [7] FORTUNE_CONTENT_V1 — Layered Matrix (3 도메인 × 4 score × 45 필드)
+// ──────────────────────────────────────────────────────────────────
+const FORTUNE_CONTENT_V1 = {
+  base: {
+    advance: {
+      core_keyword:"진전 가능한",surface_state:"순조로운 흐름",hidden_flow:"기회가 열리는 흐름",
+      flow_type:"성장 가능 단계",dominant_side:"긍정적 방향성",core_decision:"이 흐름을 자연스럽게 잡는 것",
+      structure_sentence:"흐름이 열려있어 자연스러운 진전이 가능한 시기입니다",
+      user_strength:"흐름을 보는 안목",user_hidden:"준비가 거의 된 상태",
+      flow_visible:"외부 신호 긍정적",flow_real:"진짜 기회가 있음",
+      flow_dynamic:"기회 인식",counter_dynamic:"실행 의지",
+      positive_result:"자연스러운 결실로 이어짐",negative_result:"성급함이 부담으로 전환",
+      essence_summary:"기회와 준비가 맞물리는 시기",
+      action_1:"기회 1가지를 구체적으로 점검",action_result_1:"방향이 명확해집니다",
+      action_2:"준비된 것 1가지를 작은 행동으로",action_result_2:"흐름이 손에 잡힙니다",
+      avoid_action:"성급한 확장이나 일방적 결정",risk_effect:"흐름 부담",
+      action_core:"행동보다 자연스러운 흐름이 결과를 만드는 시점",
+      short_term:"오늘~3일",short_flow:"기회 포착의 적기",
+      mid_term:"1~2주",mid_flow:"흐름이 명확해지는 구간",
+      long_term:"1~2개월",long_flow:"안정적 결실 형성 가능",
+      critical_timing:"이번 주 후반 또는 다음 주말",
+      timing_now:"지금이 가장 좋은 타이밍입니다",timing_next:"오늘~내일 사이가 유리합니다",
+      timing_core:"흐름이 이미 열려 있습니다 — 망설일수록 손해",
+      caution_1:"과속 진행 — 흐름의 속도 무시",caution_2:"확신을 강요하는 일방 결정",
+      caution_progression:"흐름이 부담으로 전환됩니다",
+      trigger_condition:"신호가 미온적인데 밀어붙이는",collapse_type:"흐름 회피",
+      caution_summary:"균형을 무시하면 흐름이 식습니다",
+      final_state:"진전 가능 상태",final_explanation:"흐름을 자연스럽게 받아들이는 것이 핵심",
+      good_path:"자연스러운 진전 — 결실로 이어집니다",
+      bad_path:"성급함이 흐름을 깨뜨립니다 — 속도 조절 필수",
+      final_key:"타이밍은 잡되 속도는 조절하라",
+      final_action_statement:"지금은 흐름을 자연스럽게 키워가는 시점"
+    },
+    maintain: {
+      core_keyword:"관찰이 필요한",surface_state:"표면적 평온",hidden_flow:"방향성 탐색 중인 흐름",
+      flow_type:"탐색 단계",dominant_side:"확정 안 된 균형",core_decision:"성급한 결정 대신 흐름 관찰",
+      structure_sentence:"기준 정립이 흐름의 방향을 결정하는 시기입니다",
+      user_strength:"신중한 판단력",user_hidden:"기준 정립 중인 상태",
+      flow_visible:"중립적 신호",flow_real:"방향성 보류 중",
+      flow_dynamic:"탐색",counter_dynamic:"관찰",
+      positive_result:"기준 정립으로 안정 진입",negative_result:"애매함이 정체로 굳어짐",
+      essence_summary:"흐름보다 기준이 결과를 좌우하는 시점",
+      action_1:"흐름 1가지를 객관적으로 점검",action_result_1:"방향성이 보이기 시작합니다",
+      action_2:"기준 1가지를 명확히 정립",action_result_2:"흐름이 정리됩니다",
+      avoid_action:"애매한 태도 유지 또는 과도한 의미 부여",risk_effect:"방향 모호",
+      action_core:"지금은 선택보다 관찰이 우선인 시점",
+      short_term:"2~3일",short_flow:"흐름 점검 시도 가능",
+      mid_term:"1주~2주",mid_flow:"방향성 확인되는 구간",
+      long_term:"1개월",long_flow:"흐름 정의 분기점",
+      critical_timing:"다음 주 중반",
+      timing_now:"조심스러운 점검이 가능한 시점입니다",timing_next:"2~3일 후 접근이 안정적입니다",
+      timing_core:"지금은 밀어붙이기보다 흐름을 읽는 시점",
+      caution_1:"애매한 태도 지속",caution_2:"기준 없는 행동",
+      caution_progression:"정체가 점점 굳어집니다",
+      trigger_condition:"답을 보류한 채 같은 패턴을 반복하는",collapse_type:"관성적 정체",
+      caution_summary:"명확성 부족이 가장 큰 적입니다",
+      final_state:"현 흐름 유지하며 관찰",final_explanation:"성급한 결정 대신 신뢰 누적",
+      good_path:"현 흐름 유지하며 안정 누적 — 기준 정립이 진전",
+      bad_path:"방향성 부재가 정체로 굳어집니다 — 명확한 기준 필요",
+      final_key:"시간이 답을 만든다",
+      final_action_statement:"지금은 관찰하며 흐름을 읽을 시점"
+    },
+    realign: {
+      core_keyword:"재정비가 필요한",surface_state:"표면적 정체",hidden_flow:"흐름 구조가 흔들리는 시기",
+      flow_type:"구조 재편 단계",dominant_side:"에너지가 한쪽으로 기울어진 상태",
+      core_decision:"감정이 아닌 방식의 변화",
+      structure_sentence:"단순한 흐름 변화가 아니라 구조 자체의 조정 시기입니다",
+      user_strength:"객관적 인식력",user_hidden:"흐름 정리 중인 상태",
+      flow_visible:"약화 신호",flow_real:"구조 조정 중",
+      flow_dynamic:"점검",counter_dynamic:"재정비",
+      positive_result:"방식 전환으로 새 균형 형성",negative_result:"같은 패턴 반복으로 고착",
+      essence_summary:"흐름은 있어도 같은 방식으로는 더 이상 안 통하는 시기",
+      action_1:"기존 방식 1가지를 객관적으로 점검",action_result_1:"무엇이 안 통하는지 보입니다",
+      action_2:"새 방식 1가지를 시도",action_result_2:"재정비 방향이 명확해집니다",
+      avoid_action:"같은 방식 반복 또는 감정적 대응",risk_effect:"고착화",
+      action_core:"행동보다 방식 점검이 회복을 만드는 시점",
+      short_term:"1주",short_flow:"점검 시간 확보 권장",
+      mid_term:"2~3주",mid_flow:"흐름 방식 재점검 구간",
+      long_term:"1~2개월",long_flow:"재정비 또는 자연 정리 분기점",
+      critical_timing:"점검 1주 경과 시점",
+      timing_now:"지금은 추진 타이밍이 아닙니다",timing_next:"최소 1주일 점검 권장",
+      timing_core:"방식 변경이 답입니다 — 감정 아닌 구조 변경",
+      caution_1:"감정적 대응 — 부담 증가",caution_2:"답 없는 상태에서 추가 시도",
+      caution_progression:"흐름을 잃고 정체가 더 굳어집니다",
+      trigger_condition:"신호 없는데 같은 시도를 반복하는",collapse_type:"고착 모드",
+      caution_summary:"방식이 바뀌지 않으면 결과도 바뀌지 않습니다",
+      final_state:"흐름 방식 전환 필요",final_explanation:"감정이 아닌 구조의 변경이 핵심",
+      good_path:"방식 전환으로 새 흐름 형성 — 재정비 결실",
+      bad_path:"감정에 휘둘려 같은 패턴 반복 — 흐름 고착화",
+      final_key:"방식이 바뀌지 않으면 결과도 바뀌지 않는다",
+      final_action_statement:"지금은 감정을 더 쏟는 시점이 아니라 방식을 바꾸는 시점"
+    },
+    close: {
+      core_keyword:"정리 권장 흐름의",surface_state:"흐름이 식고 있는 상태",hidden_flow:"에너지가 이미 빠진 흐름",
+      flow_type:"정리 + 자기 점검 단계",dominant_side:"양쪽 모두 소진된 상태",
+      core_decision:"손실 차단과 안정 우선",
+      structure_sentence:"이 시기는 회복보다 정리가 더 자연스러운 흐름입니다",
+      user_strength:"정리해야 한다는 인식",user_hidden:"미련이 남은 상태",
+      flow_visible:"명백한 약화 신호",flow_real:"흐름 동력 소진",
+      flow_dynamic:"정리",counter_dynamic:"보호",
+      positive_result:"정리 후 자기 점검 → 새 방향",negative_result:"미련 유지 → 손실 누적",
+      essence_summary:"붙잡으려 하면 더 식어가는 시기",
+      action_1:"새로운 진입 보류 — 기존 자산·흐름 점검",action_result_1:"손실 노출이 줄고 시야가 회복됩니다",
+      action_2:"손실 차단과 안정 우선 — 무리한 확장 자제",action_result_2:"흐름 외부에서 회복 시작",
+      avoid_action:"무리한 확장이나 충동적 진입",risk_effect:"회복 지연",
+      action_core:"붙잡는 행동이 아니라 내려놓는 행동이 필요한 시점",
+      short_term:"2주",short_flow:"점검·보호 필수 구간",
+      mid_term:"1~2개월",mid_flow:"흐름 정리 + 회복 구간",
+      long_term:"3개월 이상",long_flow:"새 방향 모색 가능",
+      critical_timing:"점검 2주 경과 시점",
+      timing_now:"당분간 보수적 운용이 필요합니다",timing_next:"1~2개월 자기 점검 우선",
+      timing_core:"시작 타이밍이 아니라 끝을 정리하는 타이밍",
+      caution_1:"무리한 진입 — 흐름 역행",caution_2:"감정 기반 결정 — 손실 가속",
+      caution_progression:"흐름이 끊어지지 않고 계속 소모됩니다",
+      trigger_condition:"불안할 때 충동적으로",collapse_type:"미련 고착화",
+      caution_summary:"끊지 못하면 계속 소모됩니다",
+      final_state:"정리 권장 흐름",final_explanation:"회복 가능성이 아니라 정리 타이밍이 핵심",
+      good_path:"정리 → 자기 점검 → 새 방향 진입",
+      bad_path:"미련 유지 → 손실 반복",
+      final_key:"회복 가능성이 아니라 정리 타이밍",
+      final_action_statement:"지금의 선택이 이후 몇 달의 흐름을 결정합니다"
+    }
+  },
+
+  // ═════════════════════════════════════════════════════════════════
+  // OVERRIDES — 도메인별 (wealth/health/career) 특화 어휘
+  // ═════════════════════════════════════════════════════════════════
+  overrides: {
+    wealth: {
+      advance: {
+        flow_type:"재물 진전 단계",core_decision:"이 재물 흐름을 자연스럽게 잡는 것",
+        structure_sentence:"재물 흐름이 열려있어 자연스러운 자산 형성이 가능한 시기입니다",
+        user_strength:"자산 흐름을 보는 안목",user_hidden:"투자·운용 준비된 상태",
+        flow_visible:"긍정적 시장 신호",flow_real:"진짜 자산 기회 형성",
+        flow_dynamic:"자산 기회 포착",counter_dynamic:"실행 의지",
+        positive_result:"자연스러운 자산 형성",negative_result:"성급한 진입의 부담",
+        essence_summary:"자산 기회와 준비가 맞물리는 시기",
+        action_1:"자산 흐름 1가지를 구체적으로 점검",action_result_1:"진입 방향이 명확해집니다",
+        action_2:"준비된 자산 1가지를 작은 진입으로",action_result_2:"흐름이 손에 잡힙니다",
+        avoid_action:"성급한 확장이나 무리한 진입",risk_effect:"자산 부담",
+        action_core:"공격적 진입보다 자연스러운 형성이 결과를 만드는 시점",
+        timing_core:"자산 흐름이 이미 열려 있습니다 — 망설일수록 손해",
+        caution_1:"과속 진입 — 자산 흐름 무시",caution_2:"확신 강요로 일방 결정",
+        caution_progression:"자산이 일방적으로 기울어집니다",
+        collapse_type:"진입 부담 회피",
+        caution_summary:"자산 균형을 무시하면 흐름이 식습니다",
+        final_state:"자산 진전 가능 상태",final_explanation:"자산 흐름을 자연스럽게 받아들이는 것이 핵심",
+        good_path:"자연스러운 자산 진전 — 결실로 이어집니다",
+        final_key:"자산 타이밍은 잡되 속도는 조절하라",
+        final_action_statement:"지금은 자산을 자연스럽게 키워가는 시점"
+      },
+      maintain: {
+        flow_type:"자산 탐색 단계",core_decision:"성급한 진입 대신 자산 흐름 관찰",
+        structure_sentence:"자산 기준 정립이 흐름의 방향을 결정하는 시기입니다",
+        user_strength:"자산 신중함",user_hidden:"투자 기준 정립 중",
+        flow_visible:"중립적 시장 신호",flow_real:"자산 방향성 보류",
+        flow_dynamic:"자산 탐색",counter_dynamic:"관찰",
+        positive_result:"자산 기준 정립 → 안정 진입",negative_result:"애매한 운용이 정체로 굳어짐",
+        essence_summary:"자산 흐름보다 운용 기준이 결과를 좌우하는 시점",
+        action_1:"자산 흐름 1가지를 객관 점검",action_result_1:"진입 방향이 보이기 시작합니다",
+        action_2:"투자 기준 1가지를 명확히 정립",action_result_2:"자산 흐름이 정리됩니다",
+        avoid_action:"애매한 운용 또는 과도한 추측",risk_effect:"방향 모호",
+        action_core:"지금은 진입보다 점검이 우선인 시점",
+        timing_core:"지금은 밀어붙이기보다 자산 흐름을 읽는 시점",
+        caution_1:"애매한 운용 지속",caution_2:"기준 없는 진입",
+        caution_progression:"자산 정체가 점점 굳어집니다",
+        collapse_type:"관성적 정체",
+        caution_summary:"투자 기준 부족이 가장 큰 적입니다",
+        final_state:"현 자산 흐름 유지하며 관찰",final_explanation:"성급한 진입 대신 기준 정립",
+        good_path:"현 자산 흐름 유지하며 누적 — 기준 정립이 진전",
+        bad_path:"방향성 부재가 자산 정체로 굳어집니다 — 명확한 기준 필요",
+        final_key:"시간이 자산 답을 만든다",
+        final_action_statement:"지금은 관찰하며 자산 흐름을 읽을 시점"
+      },
+      realign: {
+        flow_type:"자산 구조 재편 단계",core_decision:"감정이 아닌 운용 방식의 변화",
+        structure_sentence:"단순한 시세 변화가 아니라 자산 구조 자체의 조정 시기입니다",
+        user_strength:"객관적 자산 인식",user_hidden:"포트폴리오 정리 중",
+        flow_visible:"자산 약화 신호",flow_real:"운용 구조 조정 중",
+        flow_dynamic:"자산 점검",counter_dynamic:"재정비",
+        positive_result:"운용 방식 전환으로 새 균형",negative_result:"같은 패턴 반복으로 고착",
+        essence_summary:"자산은 있어도 같은 운용으로는 더 이상 안 통하는 시기",
+        action_1:"기존 운용 방식 1가지를 객관 점검",action_result_1:"무엇이 안 통하는지 보입니다",
+        action_2:"새 운용 방식 1가지를 시도",action_result_2:"재정비 방향이 명확해집니다",
+        avoid_action:"같은 방식 반복 또는 감정 매수",risk_effect:"고착화",
+        action_core:"진입보다 운용 점검이 회복을 만드는 시점",
+        caution_1:"감정 기반 대응 — 손실 증가",caution_2:"답 없는 상태에서 평단 조정",
+        caution_progression:"자산 흐름을 잃고 정체가 더 굳어집니다",
+        collapse_type:"손실 고착",
+        caution_summary:"운용이 바뀌지 않으면 결과도 바뀌지 않습니다",
+        final_state:"자산 운용 방식 전환 필요",final_explanation:"감정이 아닌 구조의 변경이 핵심",
+        good_path:"운용 방식 전환으로 새 흐름 — 재정비 결실",
+        bad_path:"감정에 휘둘려 같은 패턴 반복 — 자산 고착화",
+        final_key:"운용이 바뀌지 않으면 결과도 바뀌지 않는다",
+        final_action_statement:"지금은 자산을 더 쏟는 시점이 아니라 운용을 바꾸는 시점"
+      },
+      close: {
+        flow_type:"자산 정리 + 보호 단계",core_decision:"손실 차단과 자산 안정 우선",
+        structure_sentence:"이 시기는 자산 흐름이 식고 있는 구간입니다. 새로운 진입은 보류하고, 기존 자산을 점검·보호하는 시기입니다",
+        user_strength:"자산 정리 인식",user_hidden:"미련과 회복욕 사이",
+        flow_visible:"명백한 자산 약화",flow_real:"투자 동력 소진",
+        flow_dynamic:"자산 정리",counter_dynamic:"보호",
+        positive_result:"정리 후 자산 점검 → 새 방향",negative_result:"미련 유지 → 손실 누적",
+        essence_summary:"붙잡으려 하면 더 약해지는 시기 — 무리한 확장보다 손실 차단과 안정 우선이 핵심",
+        action_1:"새로운 진입 보류 — 기존 자산 점검",action_result_1:"손실 노출이 줄고 시야가 회복됩니다",
+        action_2:"손실 차단 기준 명확화 — 무리한 확장 자제",action_result_2:"자산 외부에서 회복 시작",
+        avoid_action:"무리한 확장이나 저가 추격",risk_effect:"손실 가속",
+        action_core:"붙잡는 자산이 아니라 보호하는 자산이 답인 시점",
+        caution_1:"저가 추격·평단 조정 — 흐름 역행",caution_2:"감정 매수 — 손실 가속",
+        caution_progression:"자산이 끊어지지 않고 계속 소모됩니다",
+        collapse_type:"미련 고착화",
+        caution_summary:"끊지 못하면 자산이 계속 소모됩니다",
+        final_state:"자산 정리 권장 흐름",final_explanation:"회복 가능성이 아니라 손실 차단 타이밍이 핵심",
+        good_path:"자산 정리 → 자기 점검 → 새 방향 진입",
+        bad_path:"미련 유지 → 자산 손실 반복",
+        final_key:"회복 가능성이 아니라 손실 차단 타이밍",
+        final_action_statement:"지금의 선택이 이후 몇 달의 자산 흐름을 결정합니다"
+      }
+    },
+    health: {
+      advance: {
+        flow_type:"건강 회복·발전 단계",core_decision:"이 활력 흐름을 자연스럽게 잡는 것",
+        structure_sentence:"건강 흐름이 열려있어 자연스러운 활력 회복이 가능한 시기입니다",
+        user_strength:"몸 신호를 보는 감각",user_hidden:"회복 준비된 상태",
+        flow_visible:"활력 신호 긍정적",flow_real:"진짜 회복 흐름 형성",
+        flow_dynamic:"활력 회복",counter_dynamic:"실행 의지",
+        positive_result:"자연스러운 활력 형성",negative_result:"무리한 활동의 부담",
+        essence_summary:"회복 흐름과 의지가 맞물리는 시기",
+        action_1:"건강 습관 1가지를 구체적으로 시작",action_result_1:"몸 변화가 손에 잡힙니다",
+        action_2:"가벼운 운동·휴식 1가지 실행",action_result_2:"활력이 자연스럽게 누적됩니다",
+        avoid_action:"무리한 운동이나 일방적 다이어트",risk_effect:"체력 부담",
+        action_core:"강도보다 자연스러운 회복이 결과를 만드는 시점",
+        timing_core:"활력 흐름이 이미 열려 있습니다 — 망설일수록 손해",
+        caution_1:"과한 운동 — 회복 흐름 무시",caution_2:"극단적 식이 강요",
+        caution_progression:"활력이 일방적으로 기울어집니다",
+        collapse_type:"체력 회피",
+        caution_summary:"활력 균형을 무시하면 회복이 식습니다",
+        final_state:"건강 회복 가능 상태",final_explanation:"활력 흐름을 자연스럽게 받아들이는 것이 핵심",
+        good_path:"자연스러운 활력 회복 — 결실로 이어집니다",
+        final_key:"활력 타이밍은 잡되 강도는 조절하라",
+        final_action_statement:"지금은 활력을 자연스럽게 키워가는 시점"
+      },
+      maintain: {
+        flow_type:"건강 탐색 단계",core_decision:"성급한 변화 대신 활력 흐름 관찰",
+        structure_sentence:"건강 기준 정립이 흐름의 방향을 결정하는 시기입니다",
+        user_strength:"몸 신호 신중함",user_hidden:"건강 기준 정립 중",
+        flow_visible:"중립적 컨디션 신호",flow_real:"활력 방향성 보류",
+        flow_dynamic:"건강 탐색",counter_dynamic:"관찰",
+        positive_result:"건강 기준 정립 → 안정 진입",negative_result:"애매한 관리가 정체로 굳어짐",
+        essence_summary:"활력보다 관리 기준이 결과를 좌우하는 시점",
+        action_1:"몸 신호 1가지를 객관 점검",action_result_1:"건강 방향성이 보입니다",
+        action_2:"건강 기준 1가지를 명확히 정립",action_result_2:"활력 흐름이 정리됩니다",
+        avoid_action:"애매한 관리 또는 과도한 자가진단",risk_effect:"방향 모호",
+        action_core:"지금은 변화보다 점검이 우선인 시점",
+        timing_core:"지금은 밀어붙이기보다 몸 신호를 읽는 시점",
+        caution_1:"애매한 관리 지속",caution_2:"기준 없는 운동·식이",
+        caution_progression:"건강 정체가 점점 굳어집니다",
+        collapse_type:"관성적 정체",
+        caution_summary:"건강 기준 부족이 가장 큰 적입니다",
+        final_state:"현 활력 흐름 유지하며 관찰",final_explanation:"성급한 변화 대신 기준 정립",
+        good_path:"현 활력 유지하며 누적 — 기준 정립이 진전",
+        bad_path:"방향성 부재가 건강 정체로 굳어집니다 — 명확한 기준 필요",
+        final_key:"시간이 건강 답을 만든다",
+        final_action_statement:"지금은 관찰하며 몸 신호를 읽을 시점"
+      },
+      realign: {
+        flow_type:"건강 재정비 단계",core_decision:"감정이 아닌 관리 방식의 변화",
+        structure_sentence:"단순한 컨디션 변화가 아니라 건강 구조 자체의 조정 시기입니다",
+        user_strength:"객관적 건강 인식",user_hidden:"활력 정리 중",
+        flow_visible:"활력 약화 신호",flow_real:"건강 구조 조정 중",
+        flow_dynamic:"건강 점검",counter_dynamic:"재정비",
+        positive_result:"관리 방식 전환으로 새 균형",negative_result:"같은 패턴 반복으로 고착",
+        essence_summary:"활력은 있어도 같은 관리로는 더 이상 안 통하는 시기",
+        action_1:"기존 건강 습관 1가지를 객관 점검",action_result_1:"무엇이 안 통하는지 보입니다",
+        action_2:"새 건강 습관 1가지를 시도",action_result_2:"재정비 방향이 명확해집니다",
+        avoid_action:"같은 방식 반복 또는 감정적 폭식·금식",risk_effect:"고착화",
+        action_core:"활동보다 관리 점검이 회복을 만드는 시점",
+        caution_1:"감정 기반 대응 — 컨디션 악화",caution_2:"답 없는 상태에서 추가 무리",
+        caution_progression:"활력을 잃고 정체가 더 굳어집니다",
+        collapse_type:"체력 고착",
+        caution_summary:"관리가 바뀌지 않으면 결과도 바뀌지 않습니다",
+        final_state:"건강 관리 방식 전환 필요",final_explanation:"감정이 아닌 구조의 변경이 핵심",
+        good_path:"관리 방식 전환으로 새 흐름 — 재정비 결실",
+        bad_path:"감정에 휘둘려 같은 패턴 반복 — 건강 고착화",
+        final_key:"관리가 바뀌지 않으면 결과도 바뀌지 않는다",
+        final_action_statement:"지금은 활력을 더 쏟는 시점이 아니라 관리를 바꾸는 시점"
+      },
+      close: {
+        flow_type:"건강 정리 + 회복 우선 단계",core_decision:"체력 보호와 회복 우선",
+        structure_sentence:"이 시기는 활력 흐름이 식고 있는 구간입니다. 무리한 활동은 보류하고, 충분한 휴식·회복을 우선하는 시기입니다",
+        user_strength:"건강 정리 인식",user_hidden:"의지와 체력 사이",
+        flow_visible:"명백한 활력 약화",flow_real:"체력 동력 소진",
+        flow_dynamic:"건강 회복",counter_dynamic:"보호",
+        positive_result:"휴식 후 활력 점검 → 새 방향",negative_result:"무리 유지 → 체력 누적 손실",
+        essence_summary:"붙잡으려 하면 더 약해지는 시기 — 무리한 활동보다 휴식과 회복 우선이 핵심",
+        action_1:"무리한 활동 보류 — 충분한 휴식",action_result_1:"체력 회복이 시작됩니다",
+        action_2:"기본 건강 점검 — 전문가 상담 검토",action_result_2:"근본 원인이 보입니다",
+        avoid_action:"무리한 운동이나 의지로 버티기",risk_effect:"체력 가속 손실",
+        action_core:"버티는 건강이 아니라 회복하는 건강이 답인 시점",
+        caution_1:"무리한 운동 — 흐름 역행",caution_2:"증상 무시 — 손실 가속",
+        caution_progression:"활력이 끊어지지 않고 계속 소모됩니다",
+        collapse_type:"의지 고착화",
+        caution_summary:"쉬지 못하면 체력이 계속 소모됩니다",
+        final_state:"건강 회복 우선 흐름",final_explanation:"의지가 아니라 충분한 회복이 핵심",
+        good_path:"건강 회복 → 자기 점검 → 새 활력",
+        bad_path:"의지 유지 → 체력 손실 반복",
+        final_key:"의지가 아니라 회복 타이밍",
+        final_action_statement:"지금의 선택이 이후 몇 달의 활력을 결정합니다"
+      }
+    },
+    career: {
+      advance: {
+        flow_type:"직장 진전·기회 단계",core_decision:"이 직장 흐름을 자연스럽게 잡는 것",
+        structure_sentence:"직장 흐름이 열려있어 자연스러운 진전이 가능한 시기입니다",
+        user_strength:"기회를 보는 안목",user_hidden:"실행 준비된 상태",
+        flow_visible:"긍정적 직장 신호",flow_real:"진짜 기회 형성",
+        flow_dynamic:"직장 기회 포착",counter_dynamic:"실행 의지",
+        positive_result:"자연스러운 직장 진전",negative_result:"성급한 결정의 부담",
+        essence_summary:"직장 기회와 준비가 맞물리는 시기",
+        action_1:"직장 기회 1가지를 구체적으로 점검",action_result_1:"진전 방향이 명확해집니다",
+        action_2:"준비된 강점 1가지를 작은 행동으로",action_result_2:"흐름이 손에 잡힙니다",
+        avoid_action:"성급한 이직·전환이나 일방적 통보",risk_effect:"직장 부담",
+        action_core:"공격적 결정보다 자연스러운 진전이 결과를 만드는 시점",
+        timing_core:"직장 흐름이 이미 열려 있습니다 — 망설일수록 손해",
+        caution_1:"과속 결정 — 직장 흐름 무시",caution_2:"확신 강요로 일방 결정",
+        caution_progression:"직장 흐름이 일방적으로 기울어집니다",
+        collapse_type:"결정 부담 회피",
+        caution_summary:"직장 균형을 무시하면 흐름이 식습니다",
+        final_state:"직장 진전 가능 상태",final_explanation:"직장 흐름을 자연스럽게 받아들이는 것이 핵심",
+        good_path:"자연스러운 직장 진전 — 결실로 이어집니다",
+        final_key:"직장 타이밍은 잡되 속도는 조절하라",
+        final_action_statement:"지금은 직장을 자연스럽게 키워가는 시점"
+      },
+      maintain: {
+        flow_type:"직장 탐색 단계",core_decision:"성급한 결정 대신 직장 흐름 관찰",
+        structure_sentence:"직장 기준 정립이 흐름의 방향을 결정하는 시기입니다",
+        user_strength:"신중한 직장 판단",user_hidden:"커리어 기준 정립 중",
+        flow_visible:"중립적 직장 신호",flow_real:"방향성 보류 중",
+        flow_dynamic:"직장 탐색",counter_dynamic:"관찰",
+        positive_result:"커리어 기준 정립 → 안정 진입",negative_result:"애매한 태도가 정체로 굳어짐",
+        essence_summary:"직장 흐름보다 커리어 기준이 결과를 좌우하는 시점",
+        action_1:"직장 흐름 1가지를 객관 점검",action_result_1:"진전 방향이 보이기 시작합니다",
+        action_2:"커리어 기준 1가지를 명확히 정립",action_result_2:"직장 흐름이 정리됩니다",
+        avoid_action:"애매한 태도 또는 무리한 추측",risk_effect:"방향 모호",
+        action_core:"지금은 결정보다 점검이 우선인 시점",
+        timing_core:"지금은 밀어붙이기보다 직장 흐름을 읽는 시점",
+        caution_1:"애매한 태도 지속",caution_2:"기준 없는 결정",
+        caution_progression:"직장 정체가 점점 굳어집니다",
+        collapse_type:"관성적 정체",
+        caution_summary:"커리어 기준 부족이 가장 큰 적입니다",
+        final_state:"현 직장 흐름 유지하며 관찰",final_explanation:"성급한 결정 대신 기준 정립",
+        good_path:"현 직장 유지하며 누적 — 기준 정립이 진전",
+        bad_path:"방향성 부재가 직장 정체로 굳어집니다 — 명확한 기준 필요",
+        final_key:"시간이 직장 답을 만든다",
+        final_action_statement:"지금은 관찰하며 직장 흐름을 읽을 시점"
+      },
+      realign: {
+        flow_type:"커리어 재정비 단계",core_decision:"감정이 아닌 커리어 방식의 변화",
+        structure_sentence:"단순한 직장 변화가 아니라 커리어 구조 자체의 조정 시기입니다",
+        user_strength:"객관적 커리어 인식",user_hidden:"커리어 정리 중",
+        flow_visible:"직장 약화 신호",flow_real:"커리어 구조 조정 중",
+        flow_dynamic:"커리어 점검",counter_dynamic:"재정비",
+        positive_result:"커리어 방식 전환으로 새 균형",negative_result:"같은 패턴 반복으로 고착",
+        essence_summary:"직장은 있어도 같은 방식으로는 더 이상 안 통하는 시기",
+        action_1:"기존 커리어 방식 1가지를 객관 점검",action_result_1:"무엇이 안 통하는지 보입니다",
+        action_2:"새 커리어 방식 1가지를 시도",action_result_2:"재정비 방향이 명확해집니다",
+        avoid_action:"같은 방식 반복 또는 감정 이직",risk_effect:"고착화",
+        action_core:"활동보다 커리어 점검이 회복을 만드는 시점",
+        caution_1:"감정 기반 대응 — 직장 부담 증가",caution_2:"답 없는 상태에서 추가 무리",
+        caution_progression:"커리어를 잃고 정체가 더 굳어집니다",
+        collapse_type:"커리어 고착",
+        caution_summary:"커리어 방식이 바뀌지 않으면 결과도 바뀌지 않습니다",
+        final_state:"커리어 방식 전환 필요",final_explanation:"감정이 아닌 구조의 변경이 핵심",
+        good_path:"커리어 전환으로 새 흐름 — 재정비 결실",
+        bad_path:"감정에 휘둘려 같은 패턴 반복 — 커리어 고착화",
+        final_key:"커리어가 바뀌지 않으면 결과도 바뀌지 않는다",
+        final_action_statement:"지금은 직장에 더 쏟는 시점이 아니라 커리어를 바꾸는 시점"
+      },
+      close: {
+        flow_type:"커리어 정리 + 점검 단계",core_decision:"무리한 추진 대신 정리와 안정 우선",
+        structure_sentence:"이 시기는 직장 흐름이 식고 있는 구간입니다. 새로운 추진은 보류하고, 기존 커리어를 점검·정리하는 시기입니다",
+        user_strength:"커리어 정리 인식",user_hidden:"미련과 안정 사이",
+        flow_visible:"명백한 직장 약화",flow_real:"커리어 동력 소진",
+        flow_dynamic:"커리어 정리",counter_dynamic:"안정",
+        positive_result:"정리 후 커리어 점검 → 새 방향",negative_result:"미련 유지 → 손실 누적",
+        essence_summary:"붙잡으려 하면 더 식어가는 시기 — 무리한 추진보다 정리와 안정 우선이 핵심",
+        action_1:"새로운 추진 보류 — 기존 커리어 점검",action_result_1:"손실 노출이 줄고 시야가 회복됩니다",
+        action_2:"커리어 안정 우선 — 무리한 확장 자제",action_result_2:"커리어 외부에서 회복 시작",
+        avoid_action:"무리한 추진이나 충동적 이직",risk_effect:"커리어 가속 손실",
+        action_core:"붙잡는 직장이 아니라 정리하는 커리어가 답인 시점",
+        caution_1:"감정 이직 — 흐름 역행",caution_2:"무리한 추진 — 손실 가속",
+        caution_progression:"커리어가 끊어지지 않고 계속 소모됩니다",
+        collapse_type:"미련 고착화",
+        caution_summary:"끊지 못하면 커리어가 계속 소모됩니다",
+        final_state:"커리어 정리 권장 흐름",final_explanation:"회복 가능성이 아니라 정리 타이밍이 핵심",
+        good_path:"커리어 정리 → 자기 점검 → 새 방향",
+        bad_path:"미련 유지 → 커리어 손실 반복",
+        final_key:"회복 가능성이 아니라 정리 타이밍",
+        final_action_statement:"지금의 선택이 이후 몇 달의 커리어를 결정합니다"
+      }
+    },
+    // ═════════════════════════════════════════════════════════════
+    // [V25.33] 4종 도메인 override — today/general/newyear/etc
+    //   PRO 3종(wealth/health/career)과 다르게 일반 운세 어휘 사용
+    // ═════════════════════════════════════════════════════════════
+    today: {
+      advance: {
+        flow_type:"오늘 진전 흐름",core_decision:"오늘 흐름을 자연스럽게 잡는 것",
+        structure_sentence:"오늘 흐름이 열려있어 자연스러운 진전이 가능한 시기입니다",
+        user_strength:"오늘 흐름을 보는 감각",user_hidden:"행동 준비된 상태",
+        flow_visible:"긍정적 신호",flow_real:"진짜 기회 형성",
+        flow_dynamic:"기회 인식",counter_dynamic:"실행 의지",
+        positive_result:"자연스러운 오늘 진전",negative_result:"성급함이 부담으로 전환",
+        essence_summary:"오늘 기회와 준비가 맞물리는 시기",
+        action_1:"오늘 할 수 있는 일 1가지를 구체적으로 점검",action_result_1:"방향이 명확해집니다",
+        action_2:"준비된 것 1가지를 작은 행동으로",action_result_2:"흐름이 손에 잡힙니다",
+        avoid_action:"성급한 결정이나 무리한 추진",risk_effect:"흐름 부담",
+        action_core:"오늘은 행동보다 자연스러운 흐름이 결과를 만드는 시점",
+        timing_core:"오늘 흐름이 이미 열려 있습니다 — 망설일수록 손해",
+        caution_1:"과속 진행 — 흐름의 속도 무시",caution_2:"감정 기반 판단",
+        caution_progression:"오늘 흐름이 일방적으로 기울어집니다",
+        collapse_type:"흐름 회피",
+        caution_summary:"균형을 무시하면 오늘이 흩어집니다",
+        final_state:"오늘 진전 가능 상태",final_explanation:"오늘 흐름을 자연스럽게 받아들이는 것이 핵심",
+        good_path:"자연스러운 오늘 진전 — 결실로 이어집니다",
+        final_key:"오늘 타이밍은 잡되 속도는 조절하라",
+        final_action_statement:"지금은 오늘 흐름을 자연스럽게 키워가는 시점"
+      },
+      maintain: {
+        flow_type:"오늘 탐색 단계",core_decision:"성급한 결정 대신 오늘 흐름 관찰",
+        structure_sentence:"오늘은 기준 정립이 흐름의 방향을 결정하는 시기입니다",
+        user_strength:"오늘 신중함",user_hidden:"기준 정립 중",
+        flow_visible:"중립적 신호",flow_real:"방향성 보류 중",
+        flow_dynamic:"오늘 탐색",counter_dynamic:"관찰",
+        positive_result:"기준 정립 → 안정 진입",negative_result:"애매함이 정체로 굳어짐",
+        essence_summary:"오늘 흐름보다 행동 기준이 결과를 좌우하는 시점",
+        action_1:"오늘 흐름 1가지를 객관 점검",action_result_1:"방향성이 보입니다",
+        action_2:"행동 기준 1가지를 명확히",action_result_2:"오늘 흐름이 정리됩니다",
+        avoid_action:"애매한 태도 또는 과도한 추측",risk_effect:"방향 모호",
+        action_core:"지금은 결정보다 점검이 우선인 시점",
+        timing_core:"지금은 밀어붙이기보다 오늘 흐름을 읽는 시점",
+        caution_1:"애매한 태도 지속",caution_2:"기준 없는 행동",
+        caution_progression:"오늘 정체가 점점 굳어집니다",
+        collapse_type:"관성적 정체",
+        caution_summary:"명확성 부족이 가장 큰 적입니다",
+        final_state:"오늘 흐름 유지하며 관찰",final_explanation:"성급한 결정 대신 기준 정립",
+        good_path:"오늘 흐름 유지하며 누적 — 기준 정립이 진전",
+        bad_path:"방향성 부재가 오늘 정체로 굳어집니다 — 명확한 기준 필요",
+        final_key:"오늘은 시간이 답을 만든다",
+        final_action_statement:"지금은 관찰하며 오늘 흐름을 읽을 시점"
+      },
+      realign: {
+        flow_type:"오늘 재정비 단계",core_decision:"감정이 아닌 방식의 변화",
+        structure_sentence:"단순한 오늘 변화가 아니라 행동 방식 자체의 조정 시기입니다",
+        user_strength:"객관적 인식",user_hidden:"오늘 정리 중",
+        flow_visible:"오늘 약화 신호",flow_real:"행동 방식 조정 중",
+        flow_dynamic:"오늘 점검",counter_dynamic:"재정비",
+        positive_result:"방식 전환으로 새 균형",negative_result:"같은 패턴 반복으로 고착",
+        essence_summary:"오늘 흐름은 있어도 같은 방식으로는 안 통하는 시기",
+        action_1:"기존 방식 1가지를 객관 점검",action_result_1:"무엇이 안 통하는지 보입니다",
+        action_2:"새 방식 1가지를 시도",action_result_2:"재정비 방향이 명확해집니다",
+        avoid_action:"같은 방식 반복 또는 감정 대응",risk_effect:"고착화",
+        action_core:"오늘은 행동보다 방식 점검이 회복을 만드는 시점",
+        caution_1:"감정 기반 대응 — 부담 증가",caution_2:"답 없는 상태에서 추가 시도",
+        caution_progression:"오늘 흐름을 잃고 정체가 더 굳어집니다",
+        collapse_type:"고착 모드",
+        caution_summary:"방식이 바뀌지 않으면 오늘도 바뀌지 않습니다",
+        final_state:"오늘 방식 전환 필요",final_explanation:"감정이 아닌 구조의 변경이 핵심",
+        good_path:"방식 전환으로 새 흐름 — 재정비 결실",
+        bad_path:"감정에 휘둘려 같은 패턴 반복 — 오늘 고착화",
+        final_key:"방식이 바뀌지 않으면 오늘도 바뀌지 않는다",
+        final_action_statement:"지금은 오늘에 더 쏟는 시점이 아니라 방식을 바꾸는 시점"
+      },
+      close: {
+        flow_type:"오늘 정리 + 회복 단계",core_decision:"무리한 추진 대신 오늘 보호와 안정 우선",
+        structure_sentence:"오늘 흐름이 식고 있는 구간입니다. 새로운 시도는 보류하고, 기본을 점검·정리하는 시기입니다",
+        user_strength:"오늘 정리 인식",user_hidden:"의지와 흐름 사이",
+        flow_visible:"명백한 약화",flow_real:"오늘 동력 소진",
+        flow_dynamic:"오늘 보호",counter_dynamic:"안정",
+        positive_result:"정리 후 점검 → 새 방향",negative_result:"무리 유지 → 손실 누적",
+        essence_summary:"붙잡으려 하면 더 식어가는 오늘 — 무리한 시도보다 보호와 안정 우선이 핵심",
+        action_1:"새로운 시도 보류 — 기본 점검",action_result_1:"손실 노출이 줄고 시야가 회복됩니다",
+        action_2:"오늘은 안정 우선 — 무리한 확장 자제",action_result_2:"흐름 외부에서 회복 시작",
+        avoid_action:"무리한 추진이나 충동적 결정",risk_effect:"손실 가속",
+        action_core:"붙잡는 오늘이 아니라 정리하는 오늘이 답인 시점",
+        caution_1:"감정 결정 — 흐름 역행",caution_2:"무리한 추진 — 손실 가속",
+        caution_progression:"오늘이 끊어지지 않고 계속 소모됩니다",
+        collapse_type:"미련 고착화",
+        caution_summary:"끊지 못하면 오늘이 계속 소모됩니다",
+        final_state:"오늘 보호 우선 흐름",final_explanation:"회복 가능성이 아니라 보호 타이밍이 핵심",
+        good_path:"오늘 정리 → 점검 → 새 방향",
+        bad_path:"미련 유지 → 오늘 손실 반복",
+        final_key:"회복 가능성이 아니라 보호 타이밍",
+        final_action_statement:"오늘의 선택이 며칠의 흐름을 결정합니다"
+      }
+    },
+    general: {
+      advance: {
+        flow_type:"전반 진전 단계",core_decision:"이 전반 흐름을 자연스럽게 잡는 것",
+        structure_sentence:"전반 흐름이 열려있어 자연스러운 진전이 가능한 시기입니다",
+        user_strength:"흐름을 보는 안목",user_hidden:"준비된 상태",
+        flow_visible:"긍정적 전반 신호",flow_real:"진짜 기회 형성",
+        flow_dynamic:"기회 인식",counter_dynamic:"실행 의지",
+        positive_result:"자연스러운 전반 진전",negative_result:"성급함이 부담으로 전환",
+        essence_summary:"전반 기회와 준비가 맞물리는 시기",
+        action_1:"전반 흐름 1가지를 구체적으로 점검",action_result_1:"방향이 명확해집니다",
+        action_2:"준비된 것 1가지를 작은 행동으로",action_result_2:"흐름이 손에 잡힙니다",
+        avoid_action:"성급한 확장이나 일방적 결정",risk_effect:"흐름 부담",
+        action_core:"행동보다 자연스러운 흐름이 결과를 만드는 시점",
+        timing_core:"전반 흐름이 이미 열려 있습니다 — 망설일수록 손해",
+        caution_1:"과속 진행 — 흐름의 속도 무시",caution_2:"감정 강요로 일방 결정",
+        caution_progression:"전반 흐름이 일방적으로 기울어집니다",
+        collapse_type:"흐름 회피",
+        caution_summary:"균형을 무시하면 전반이 식습니다",
+        final_state:"전반 진전 가능 상태",final_explanation:"전반 흐름을 자연스럽게 받아들이는 것이 핵심",
+        good_path:"자연스러운 전반 진전 — 결실로 이어집니다",
+        final_key:"전반 타이밍은 잡되 속도는 조절하라",
+        final_action_statement:"지금은 전반 흐름을 자연스럽게 키워가는 시점"
+      },
+      maintain: {
+        flow_type:"전반 탐색 단계",core_decision:"성급한 결정 대신 전반 흐름 관찰",
+        structure_sentence:"전반 기준 정립이 흐름의 방향을 결정하는 시기입니다",
+        user_strength:"전반 신중함",user_hidden:"기준 정립 중",
+        flow_visible:"중립적 신호",flow_real:"방향성 보류 중",
+        flow_dynamic:"전반 탐색",counter_dynamic:"관찰",
+        positive_result:"기준 정립 → 안정 진입",negative_result:"애매함이 정체로 굳어짐",
+        essence_summary:"전반 흐름보다 행동 기준이 결과를 좌우하는 시점",
+        action_1:"전반 흐름 1가지를 객관 점검",action_result_1:"방향성이 보입니다",
+        action_2:"행동 기준 1가지를 명확히",action_result_2:"전반 흐름이 정리됩니다",
+        avoid_action:"애매한 태도 또는 과도한 추측",risk_effect:"방향 모호",
+        action_core:"지금은 결정보다 점검이 우선인 시점",
+        timing_core:"지금은 밀어붙이기보다 전반 흐름을 읽는 시점",
+        caution_1:"애매한 태도 지속",caution_2:"기준 없는 행동",
+        caution_progression:"전반 정체가 점점 굳어집니다",
+        collapse_type:"관성적 정체",
+        caution_summary:"명확성 부족이 가장 큰 적입니다",
+        final_state:"전반 흐름 유지하며 관찰",final_explanation:"성급한 결정 대신 기준 정립",
+        good_path:"전반 흐름 유지하며 누적 — 기준 정립이 진전",
+        bad_path:"방향성 부재가 전반 정체로 굳어집니다 — 명확한 기준 필요",
+        final_key:"전반 시간이 답을 만든다",
+        final_action_statement:"지금은 관찰하며 전반 흐름을 읽을 시점"
+      },
+      realign: {
+        flow_type:"전반 재정비 단계",core_decision:"감정이 아닌 방식의 변화",
+        structure_sentence:"단순한 전반 변화가 아니라 흐름 방식 자체의 조정 시기입니다",
+        user_strength:"객관적 인식",user_hidden:"흐름 정리 중",
+        flow_visible:"전반 약화 신호",flow_real:"방식 조정 중",
+        flow_dynamic:"전반 점검",counter_dynamic:"재정비",
+        positive_result:"방식 전환으로 새 균형",negative_result:"같은 패턴 반복으로 고착",
+        essence_summary:"전반 흐름은 있어도 같은 방식으로는 안 통하는 시기",
+        action_1:"기존 방식 1가지를 객관 점검",action_result_1:"무엇이 안 통하는지 보입니다",
+        action_2:"새 방식 1가지를 시도",action_result_2:"재정비 방향이 명확해집니다",
+        avoid_action:"같은 방식 반복 또는 감정 대응",risk_effect:"고착화",
+        action_core:"행동보다 방식 점검이 회복을 만드는 시점",
+        caution_1:"감정 기반 대응 — 부담 증가",caution_2:"답 없는 상태에서 추가 시도",
+        caution_progression:"전반 흐름을 잃고 정체가 더 굳어집니다",
+        collapse_type:"고착 모드",
+        caution_summary:"방식이 바뀌지 않으면 결과도 바뀌지 않습니다",
+        final_state:"전반 방식 전환 필요",final_explanation:"감정이 아닌 구조의 변경이 핵심",
+        good_path:"방식 전환으로 새 흐름 — 재정비 결실",
+        bad_path:"감정에 휘둘려 같은 패턴 반복 — 전반 고착화",
+        final_key:"방식이 바뀌지 않으면 결과도 바뀌지 않는다",
+        final_action_statement:"지금은 흐름에 더 쏟는 시점이 아니라 방식을 바꾸는 시점"
+      },
+      close: {
+        flow_type:"전반 정리 + 회복 단계",core_decision:"무리한 추진 대신 보호와 안정 우선",
+        structure_sentence:"전반 흐름이 식고 있는 구간입니다. 새로운 시도는 보류하고, 기존을 점검·정리하는 시기입니다",
+        user_strength:"전반 정리 인식",user_hidden:"의지와 흐름 사이",
+        flow_visible:"명백한 약화",flow_real:"전반 동력 소진",
+        flow_dynamic:"전반 보호",counter_dynamic:"안정",
+        positive_result:"정리 후 점검 → 새 방향",negative_result:"무리 유지 → 손실 누적",
+        essence_summary:"붙잡으려 하면 더 식어가는 시기 — 무리한 시도보다 보호와 안정 우선이 핵심",
+        action_1:"새로운 시도 보류 — 기본 점검",action_result_1:"손실 노출이 줄고 시야가 회복됩니다",
+        action_2:"안정 우선 — 무리한 확장 자제",action_result_2:"흐름 외부에서 회복 시작",
+        avoid_action:"무리한 추진이나 충동적 결정",risk_effect:"손실 가속",
+        action_core:"붙잡는 흐름이 아니라 정리하는 흐름이 답인 시점",
+        caution_1:"감정 결정 — 흐름 역행",caution_2:"무리한 추진 — 손실 가속",
+        caution_progression:"전반이 끊어지지 않고 계속 소모됩니다",
+        collapse_type:"미련 고착화",
+        caution_summary:"끊지 못하면 흐름이 계속 소모됩니다",
+        final_state:"전반 보호 우선 흐름",final_explanation:"회복 가능성이 아니라 보호 타이밍이 핵심",
+        good_path:"전반 정리 → 점검 → 새 방향",
+        bad_path:"미련 유지 → 흐름 손실 반복",
+        final_key:"회복 가능성이 아니라 보호 타이밍",
+        final_action_statement:"지금의 선택이 이후 몇 주의 흐름을 결정합니다"
+      }
+    },
+    newyear: {
+      advance: {
+        flow_type:"한 해 진전·확장 단계",core_decision:"올해 흐름을 자연스럽게 잡는 것",
+        structure_sentence:"올해 흐름이 열려있어 자연스러운 확장이 가능한 시기입니다",
+        user_strength:"한 해 흐름을 보는 안목",user_hidden:"준비된 상태",
+        flow_visible:"긍정적 한 해 신호",flow_real:"진짜 확장 기회",
+        flow_dynamic:"한 해 기회 포착",counter_dynamic:"실행 의지",
+        positive_result:"자연스러운 한 해 결실",negative_result:"성급한 확장의 부담",
+        essence_summary:"올해 기회와 준비가 맞물리는 시기",
+        action_1:"한 해 핵심 목표 1가지를 구체적으로 설정",action_result_1:"한 해 방향이 명확해집니다",
+        action_2:"준비된 것 1가지를 첫 분기에 시작",action_result_2:"한 해 흐름이 손에 잡힙니다",
+        avoid_action:"성급한 확장이나 무리한 다중 추진",risk_effect:"한 해 부담",
+        action_core:"올해는 단계적 진전이 결과를 만드는 시기",
+        timing_core:"한 해 흐름이 이미 열려 있습니다 — 망설일수록 손해",
+        caution_1:"과속 추진 — 한 해 흐름 무시",caution_2:"감정 결정으로 다중 시도",
+        caution_progression:"한 해가 일방적으로 기울어집니다",
+        collapse_type:"확장 부담 회피",
+        caution_summary:"한 해 균형을 무시하면 흐름이 식습니다",
+        final_state:"한 해 진전 가능 상태",final_explanation:"한 해 흐름을 자연스럽게 받아들이는 것이 핵심",
+        good_path:"자연스러운 한 해 진전 — 결실로 이어집니다",
+        final_key:"올해 타이밍은 잡되 속도는 조절하라",
+        final_action_statement:"올해는 한 해를 자연스럽게 키워가는 시기"
+      },
+      maintain: {
+        flow_type:"한 해 탐색 단계",core_decision:"성급한 추진 대신 한 해 흐름 관찰",
+        structure_sentence:"한 해 기준 정립이 흐름의 방향을 결정하는 시기입니다",
+        user_strength:"한 해 신중함",user_hidden:"기준 정립 중",
+        flow_visible:"중립적 한 해 신호",flow_real:"방향성 보류 중",
+        flow_dynamic:"한 해 탐색",counter_dynamic:"관찰",
+        positive_result:"한 해 기준 정립 → 안정 진입",negative_result:"애매함이 정체로 굳어짐",
+        essence_summary:"한 해 흐름보다 가치관 정립이 결과를 좌우하는 시점",
+        action_1:"한 해 흐름 1가지를 객관 점검",action_result_1:"한 해 방향성이 보입니다",
+        action_2:"한 해 기준 1가지를 명확히",action_result_2:"흐름이 정리됩니다",
+        avoid_action:"애매한 추진 또는 과도한 추측",risk_effect:"방향 모호",
+        action_core:"지금은 결정보다 한 해 점검이 우선인 시점",
+        timing_core:"올해는 밀어붙이기보다 한 해 흐름을 읽는 시점",
+        caution_1:"애매한 태도 지속",caution_2:"기준 없는 한 해 추진",
+        caution_progression:"한 해 정체가 점점 굳어집니다",
+        collapse_type:"관성적 정체",
+        caution_summary:"한 해 명확성 부족이 가장 큰 적입니다",
+        final_state:"한 해 흐름 유지하며 관찰",final_explanation:"성급한 결정 대신 가치관 정립",
+        good_path:"한 해 흐름 유지하며 누적 — 가치관 정립이 진전",
+        bad_path:"방향성 부재가 한 해 정체로 굳어집니다 — 명확한 기준 필요",
+        final_key:"한 해는 시간이 답을 만든다",
+        final_action_statement:"올해는 관찰하며 한 해 흐름을 읽을 시점"
+      },
+      realign: {
+        flow_type:"한 해 재정비 단계",core_decision:"감정이 아닌 방향의 변화",
+        structure_sentence:"단순한 한 해 변화가 아니라 인생 방향 자체의 조정 시기입니다",
+        user_strength:"객관적 한 해 인식",user_hidden:"한 해 정리 중",
+        flow_visible:"한 해 약화 신호",flow_real:"방향 조정 중",
+        flow_dynamic:"한 해 점검",counter_dynamic:"재정비",
+        positive_result:"방향 전환으로 새 균형",negative_result:"같은 패턴 반복으로 고착",
+        essence_summary:"한 해 흐름은 있어도 같은 방향으로는 안 통하는 시기",
+        action_1:"기존 방향 1가지를 객관 점검",action_result_1:"무엇이 안 통하는지 보입니다",
+        action_2:"새 방향 1가지를 시도",action_result_2:"재정비 방향이 명확해집니다",
+        avoid_action:"같은 방향 반복 또는 감정 대응",risk_effect:"고착화",
+        action_core:"올해는 추진보다 방향 점검이 회복을 만드는 시점",
+        caution_1:"감정 기반 대응 — 한 해 부담 증가",caution_2:"답 없는 상태에서 추가 시도",
+        caution_progression:"한 해 흐름을 잃고 정체가 더 굳어집니다",
+        collapse_type:"방향 고착",
+        caution_summary:"방향이 바뀌지 않으면 한 해도 바뀌지 않습니다",
+        final_state:"한 해 방향 전환 필요",final_explanation:"감정이 아닌 인생 방향의 변경이 핵심",
+        good_path:"방향 전환으로 새 흐름 — 재정비 결실",
+        bad_path:"감정에 휘둘려 같은 패턴 반복 — 한 해 고착화",
+        final_key:"방향이 바뀌지 않으면 한 해도 바뀌지 않는다",
+        final_action_statement:"올해는 한 해에 더 쏟는 시점이 아니라 방향을 바꾸는 시점"
+      },
+      close: {
+        flow_type:"한 해 정리 + 점검 단계",core_decision:"무리한 추진 대신 정리와 안정 우선",
+        structure_sentence:"올해 흐름이 식고 있는 구간입니다. 새로운 추진은 보류하고, 기존을 점검·정리하는 시기입니다",
+        user_strength:"한 해 정리 인식",user_hidden:"미련과 안정 사이",
+        flow_visible:"명백한 한 해 약화",flow_real:"한 해 동력 소진",
+        flow_dynamic:"한 해 정리",counter_dynamic:"안정",
+        positive_result:"정리 후 점검 → 새 방향",negative_result:"미련 유지 → 손실 누적",
+        essence_summary:"붙잡으려 하면 더 식어가는 한 해 — 무리한 추진보다 정리와 안정 우선이 핵심",
+        action_1:"새로운 추진 보류 — 한 해 점검",action_result_1:"손실 노출이 줄고 시야가 회복됩니다",
+        action_2:"한 해 안정 우선 — 무리한 확장 자제",action_result_2:"흐름 외부에서 회복 시작",
+        avoid_action:"무리한 추진이나 충동적 결정",risk_effect:"한 해 손실 가속",
+        action_core:"붙잡는 한 해가 아니라 정리하는 한 해가 답인 시점",
+        caution_1:"감정 결정 — 흐름 역행",caution_2:"무리한 추진 — 손실 가속",
+        caution_progression:"한 해가 끊어지지 않고 계속 소모됩니다",
+        collapse_type:"미련 고착화",
+        caution_summary:"끊지 못하면 한 해가 계속 소모됩니다",
+        final_state:"한 해 보호 우선 흐름",final_explanation:"회복 가능성이 아니라 정리 타이밍이 핵심",
+        good_path:"한 해 정리 → 점검 → 새 방향",
+        bad_path:"미련 유지 → 한 해 손실 반복",
+        final_key:"회복 가능성이 아니라 정리 타이밍",
+        final_action_statement:"올해의 선택이 다음 1~2년의 흐름을 결정합니다"
+      }
+    },
+    etc: {
+      advance: {
+        flow_type:"진전 가능 흐름",core_decision:"이 흐름을 자연스럽게 잡는 것",
+        structure_sentence:"흐름이 열려있어 자연스러운 진전이 가능한 시기입니다",
+        user_strength:"흐름을 보는 감각",user_hidden:"준비된 상태",
+        flow_visible:"긍정적 신호",flow_real:"진짜 기회 형성",
+        flow_dynamic:"기회 인식",counter_dynamic:"실행 의지",
+        positive_result:"자연스러운 진전",negative_result:"성급함이 부담으로 전환",
+        essence_summary:"기회와 준비가 맞물리는 시기",
+        action_1:"기회 1가지를 구체적으로 점검",action_result_1:"방향이 명확해집니다",
+        action_2:"준비된 것 1가지를 작은 행동으로",action_result_2:"흐름이 손에 잡힙니다",
+        avoid_action:"성급한 결정이나 일방적 추진",risk_effect:"흐름 부담",
+        action_core:"행동보다 자연스러운 흐름이 결과를 만드는 시점",
+        timing_core:"흐름이 이미 열려 있습니다 — 망설일수록 손해",
+        caution_1:"과속 진행 — 흐름의 속도 무시",caution_2:"감정 강요로 일방 결정",
+        caution_progression:"흐름이 일방적으로 기울어집니다",
+        collapse_type:"흐름 회피",
+        caution_summary:"균형을 무시하면 흐름이 식습니다",
+        final_state:"진전 가능 상태",final_explanation:"흐름을 자연스럽게 받아들이는 것이 핵심",
+        good_path:"자연스러운 진전 — 결실로 이어집니다",
+        final_key:"타이밍은 잡되 속도는 조절하라",
+        final_action_statement:"지금은 흐름을 자연스럽게 키워가는 시점"
+      }
+    }
+  }
+};
+
+function getFortuneContent(subtype, scoreCategory) {
+  const base = FORTUNE_CONTENT_V1.base[scoreCategory] || FORTUNE_CONTENT_V1.base.maintain;
+  const override = (FORTUNE_CONTENT_V1.overrides[subtype] && FORTUNE_CONTENT_V1.overrides[subtype][scoreCategory]) || {};
+  return Object.assign({}, base, override);
+}
+
+// ──────────────────────────────────────────────────────────────────
+// [8] 6 박스 빌더
+// ──────────────────────────────────────────────────────────────────
+function buildFortuneCoreInsight(content, flowArrow, metaPattern, cards, revFlags, fortuneSubType) {
+  const rf = revFlags || [false, false, false];
+  const past    = cards && cards[0];
+  const present = cards && cards[1];
+  const future  = cards && cards[2];
+  const pastPhrase    = getFortuneCardPhrase(past,    rf[0], fortuneSubType) || '시작 흐름';
+  const presentPhrase = getFortuneCardPhrase(present, rf[1], fortuneSubType) || '현재 흐름';
+  const futurePhrase  = getFortuneCardPhrase(future,  rf[2], fortuneSubType) || '미래 흐름';
+  
+  const pastName    = past    ? (typeof past    === 'string' ? past    : past.name)    : '';
+  const presentName = present ? (typeof present === 'string' ? present : present.name) : '';
+  const futureName  = future  ? (typeof future  === 'string' ? future  : future.name)  : '';
+  const pastRev    = rf[0] ? ' 역방향' : '';
+  const presentRev = rf[1] ? ' 역방향' : '';
+  const futureRev  = rf[2] ? ' 역방향' : '';
+  
+  const line1 = (pastName && presentName && futureName)
+    ? `이 흐름은 '${pastPhrase} → ${presentPhrase} → ${futurePhrase}' 구조입니다.`
+    : `[현재 흐름의 본질은] ${content.core_keyword} 상태입니다.`;
+  
+  const line2 = (pastName && presentName && futureName)
+    ? `${pastName}${pastRev}로 시작된 흐름은 ${presentName}${presentRev}에서 ${pastPhrase}${josa(pastPhrase,'i')} ${presentPhrase}${josa(presentPhrase,'ro')} 변하고, ${futureName}${futureRev}${josa(futureName + futureRev,'ro')} 향하고 있습니다.`
+    : `겉으로는 ${content.surface_state}처럼 보이지만, 실제 흐름은 ${content.hidden_flow}에 가깝습니다.`;
+  
+  const line3 = `이 흐름은 ${content.flow_type} 구조이며, ${content.structure_sentence}.`;
+  const line4 = `이미 흐름의 중심축은 ${content.dominant_side} 쪽으로 기울어져 있습니다.`;
+  const line5 = `겉으로는 ${content.surface_state}처럼 보이지만, 실제 흐름은 ${content.hidden_flow}${josa(content.hidden_flow,'i')} 작동하는 단계입니다.`;
+  
+  return {
+    line1, line2, line3, line4, line5,
+    coreKey: content.core_decision, flowArrow, metaPattern
+  };
+}
+
+function buildFortuneEssence(content, cards, revFlags, fortuneSubType) {
+  return {
+    userBlock: {
+      strength: content.user_strength,
+      hidden:   content.user_hidden
+    },
+    flowBlock: {
+      visible: content.flow_visible,
+      real:    content.flow_real
+    },
+    dynamic: content.flow_dynamic, counterDynamic: content.counter_dynamic,
+    positiveResult: content.positive_result, negativeResult: content.negative_result,
+    coreKey: content.essence_summary
+  };
+}
+
+function buildFortuneActionGuide(content) {
+  return {
+    action1: content.action_1, actionResult1: content.action_result_1,
+    action2: content.action_2, actionResult2: content.action_result_2,
+    avoidAction: content.avoid_action, riskEffect: content.risk_effect,
+    coreKey: content.action_core
+  };
+}
+
+function buildFortuneTiming(content, numerologyText) {
+  return {
+    shortTerm: content.short_term, shortFlow: content.short_flow,
+    midTerm: content.mid_term, midFlow: content.mid_flow,
+    longTerm: content.long_term, longFlow: content.long_flow,
+    criticalTiming: content.critical_timing,
+    timingNow: content.timing_now, timingNext: content.timing_next,
+    numerology: numerologyText || '안정적인 시간대',
+    coreKey: content.timing_core
+  };
+}
+
+function buildFortuneCaution(content) {
+  return {
+    caution1: content.caution_1, caution2: content.caution_2,
+    cautionProgression: content.caution_progression,
+    triggerCondition: content.trigger_condition, collapseType: content.collapse_type,
+    coreKey: content.caution_summary
+  };
+}
+
+function buildFortuneFinal(content, scoreCategory) {
+  const branches = FORTUNE_PATH_BRANCHES[scoreCategory] || FORTUNE_PATH_BRANCHES.maintain;
+  return {
+    finalState: content.final_state, finalExplanation: content.final_explanation,
+    goodPath: content.good_path || branches.good, badPath: content.bad_path || branches.bad,
+    finalKey: content.final_key, coreKey: content.final_action_statement
+  };
+}
+
+function buildFortuneProEnhancement(metaPattern) {
+  const hiddenDriver = FORTUNE_HIDDEN_DRIVERS[metaPattern] || FORTUNE_HIDDEN_DRIVERS["일반 흐름 패턴"];
+  return {
+    metaPattern,
+    metaDescription: `이 흐름은 일반적인 운세가 아니라 '${metaPattern}' 구조입니다.`,
+    hiddenDriver: `실제 흐름을 움직이는 것은: ${hiddenDriver}`,
+    longTermNote: "이 패턴을 이해하지 못하면 같은 문제가 반복될 가능성이 매우 높습니다."
+  };
+}
+
+// ── MASTER ──
+function buildFortuneOracleV25_32({ totalScore, cards, revFlags, fortuneSubType, numerology }) {
+  const subtype = fortuneSubType || 'wealth';
+  const scoreCategory = getFortuneScoreCategory(totalScore);
+  const content = getFortuneContent(subtype, scoreCategory);
+  const past = cards[0], present = cards[1], future = cards[2];
+  const flowArrow = getFortuneFlowArrow(past, present, future, revFlags, subtype);
+  const metaPattern = getFortuneMetaPattern(past, present, future, revFlags, subtype);
+  return {
+    version: 'V25.32', score: totalScore, scoreCategory, subtype, flowArrow, metaPattern,
+    boxes: {
+      coreInsight: buildFortuneCoreInsight(content, flowArrow, metaPattern, cards, revFlags, subtype),
+      essence:     buildFortuneEssence(content, cards, revFlags, subtype),
+      actionGuide: buildFortuneActionGuide(content),
+      timing:      buildFortuneTiming(content, numerology),
+      caution:     buildFortuneCaution(content),
+      final:       buildFortuneFinal(content, scoreCategory)
+    },
+    proEnhancement: buildFortuneProEnhancement(metaPattern),
+    _meta: {
+      cardTypes: [
+        getCardFortuneType(past, revFlags && revFlags[0], subtype),
+        getCardFortuneType(present, revFlags && revFlags[1], subtype),
+        getCardFortuneType(future, revFlags && revFlags[2], subtype)
+      ]
+    }
+  };
+}
+
+// ══════════════════════════════════════════════════════════════════
 // ✨ 일반 운세 메트릭
 // ══════════════════════════════════════════════════════════════════
 function buildFortuneMetrics({ totalScore, cleanCards, prompt, fortuneSubType, reversedFlags }) {
@@ -5755,6 +6938,16 @@ function buildFortuneMetrics({ totalScore, cleanCards, prompt, fortuneSubType, r
     : `👉 지금은 '운이 약해지는 시기'가 아니라\n👉 '내면 정돈이 다음 선택을 만드는 구간'입니다.\n👉 정리하지 않으면 정체 / 정돈하면 회복`;
 
   return {
+    // [V25.31 F-2] type 필드 — fortuneSubType별 차별화 (5차원 라벨 매핑용)
+    //   wealth/health/career/today/newyear/etc → 각자 도메인 라벨
+    //   general/그외 → 'life' (기본 운세 라벨)
+    type: (fortuneSubType === 'wealth')  ? 'wealth'
+        : (fortuneSubType === 'health')  ? 'health'
+        : (fortuneSubType === 'career')  ? 'career'
+        : (fortuneSubType === 'today')   ? 'today'
+        : (fortuneSubType === 'newyear') ? 'newyear'
+        : (fortuneSubType === 'etc')     ? 'etc'
+        : 'life',
     queryType: "life",
     executionMode: riskGate.triggered ? 'WATCH' : (netScore >= 0 ? 'ACTIVE' : 'WATCH'),
     riskLevelScore: calcScore(cleanCards, 'risk'),
@@ -5794,6 +6987,20 @@ function buildFortuneMetrics({ totalScore, cleanCards, prompt, fortuneSubType, r
     // [V25.14+V25.19] 5차원 영성 레이더 차트 데이터
     //   reversedFlags 전달 — 역방향 카드 정확 시각화
     cardDimensions: buildCardDimensionsArray(cleanCards, reversedFlags || []),
+    // [V25.32+V25.33] 100% JS Layered Matrix Oracle (6박스 + PRO 메타)
+    //   V25.32: wealth/health/career (PRO 우선)
+    //   V25.33: today/general/newyear/etc 추가 (전체 7종 운세 통일)
+    oracleV25_32: (fortuneSubType === 'wealth' || fortuneSubType === 'health' || fortuneSubType === 'career'
+                || fortuneSubType === 'today'  || fortuneSubType === 'general' || fortuneSubType === 'newyear'
+                || fortuneSubType === 'etc')
+      ? buildFortuneOracleV25_32({
+          totalScore,
+          cards: cleanCards.map(c => ({ name: typeof c === 'string' ? c : (c?.name || '') })),
+          revFlags: reversedFlags || [false, false, false],
+          fortuneSubType,
+          numerology: finalTimingText
+        })
+      : null,
     // [V22.4 + V24.0] 운세 5계층 데이터
     layers: {
       decision: {
@@ -7065,6 +8272,107 @@ ${metrics.oracleV25_24.scoreCategory === 'close' ? `
 🚫 귀하는 그 결론과 충돌하는 다른 결론을 제시할 수 없습니다.
 ✅ 귀하의 역할은 카드 3장의 의미를 풍부하고 따뜻하게 풀어내는 서술자.
 ✅ 결론·판단·행동 강요는 V25.26이 담당. 귀하는 카드 의미와 흐름의 공감만.
+✅ 사용자 질문에 대한 공감 + 카드 그림과 상징의 풀이에 집중.
+` : ''}
+
+${(queryType === 'life' && metrics && metrics.oracleV25_32) ? `
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[V25.32 FORTUNE 결론 톤 강제 정렬 — 절대 준수]
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+이 점사의 최종 결론은 시스템(V25.32 FORTUNE Oracle)이 이미 도출했습니다.
+귀하의 본문은 반드시 다음 결론과 정렬되어야 합니다:
+
+📌 도메인:        ${metrics.oracleV25_32.subtype} (재물/건강/직장)
+📌 score 카테고리: ${metrics.oracleV25_32.scoreCategory}
+📌 흐름 패턴:     ${metrics.oracleV25_32.flowArrow}
+📌 메타 패턴:     ${metrics.oracleV25_32.metaPattern}
+📌 핵심 결론:     "${metrics.oracleV25_32.boxes.final.coreKey}"
+📌 최종 키:       "${metrics.oracleV25_32.boxes.final.finalKey}"
+📌 좋은 길:       "${metrics.oracleV25_32.boxes.final.goodPath}"
+📌 나쁜 길:       "${metrics.oracleV25_32.boxes.final.badPath}"
+
+[필수 정렬 규칙 — 도메인 × 카테고리]
+${metrics.oracleV25_32.scoreCategory === 'close' ? `
+✅ 본문은 "정리·보호·회복 우선" 톤으로 작성하라.
+✅ "흐름 회복 가능", "기회 형성 중", "적극 진입" 같은 표현은 절대 금지.
+${metrics.oracleV25_32.subtype === 'wealth' ? `
+✅ 적절한 어휘: "자산 보호", "손실 차단", "기존 자산 점검", "무리한 확장 자제".
+✅ 금지 어휘: "공격적 진입", "신규 진입 적기", "비중 확대 우호".
+` : metrics.oracleV25_32.subtype === 'health' ? `
+✅ 적절한 어휘: "충분한 휴식", "체력 보호", "전문가 상담", "회복 우선".
+✅ 금지 어휘: "활력 강화", "운동 강도 증가", "의지로 극복".
+` : metrics.oracleV25_32.subtype === 'career' ? `
+✅ 적절한 어휘: "커리어 정리", "안정 우선", "무리한 추진 자제", "자기 점검".
+✅ 금지 어휘: "이직 적기", "공격적 추진", "확장 우호".
+` : metrics.oracleV25_32.subtype === 'today' ? `
+✅ 적절한 어휘: "오늘 보호", "기본 점검", "무리한 시도 자제", "안정 우선".
+✅ 금지 어휘: "오늘 적극 추진", "공격적 결정", "무리한 시도 권장".
+` : metrics.oracleV25_32.subtype === 'newyear' ? `
+✅ 적절한 어휘: "한 해 정리", "방향 점검", "무리한 확장 자제", "안정 우선".
+✅ 금지 어휘: "올해 공격적 확장", "다중 시도 권장", "한 해 풍요 진입".
+` : `
+✅ 적절한 어휘: "흐름 정리", "점검", "무리한 추진 자제", "안정 우선".
+✅ 금지 어휘: "공격적 진입", "확장 우호", "추진 적기".
+`}
+✅ 결론은 반드시 "정리 → 점검 → 새 방향" 방향으로 수렴.
+` : metrics.oracleV25_32.scoreCategory === 'realign' ? `
+✅ 본문은 "방식 전환·재정비" 톤으로 작성하라.
+✅ "기존 방식 유지", "이대로 충분" 같은 표현은 금지.
+${metrics.oracleV25_32.subtype === 'wealth' ? `
+✅ 적절한 어휘: "운용 방식 전환", "포트폴리오 재정비", "객관적 점검".
+` : metrics.oracleV25_32.subtype === 'health' ? `
+✅ 적절한 어휘: "관리 방식 점검", "습관 재정비", "근본 원인 점검".
+` : metrics.oracleV25_32.subtype === 'career' ? `
+✅ 적절한 어휘: "커리어 방향 점검", "직무 방식 재정비", "객관적 평가".
+` : metrics.oracleV25_32.subtype === 'today' ? `
+✅ 적절한 어휘: "오늘 방식 점검", "행동 재정비", "객관적 점검".
+` : metrics.oracleV25_32.subtype === 'newyear' ? `
+✅ 적절한 어휘: "한 해 방향 점검", "인생 방향 재정비", "객관적 평가".
+` : `
+✅ 적절한 어휘: "방식 점검", "재정비", "객관적 점검".
+`}
+✅ 결론은 반드시 "방식이 바뀌어야 결과가 바뀐다" 방향으로 수렴.
+` : metrics.oracleV25_32.scoreCategory === 'maintain' ? `
+✅ 본문은 "관찰·기준 정립" 톤으로 작성하라.
+✅ "성급한 결정", "공격적 진입" 같은 표현은 금지.
+${metrics.oracleV25_32.subtype === 'wealth' ? `
+✅ 적절한 어휘: "자산 흐름 관찰", "투자 기준 정립", "신중한 점검".
+` : metrics.oracleV25_32.subtype === 'health' ? `
+✅ 적절한 어휘: "몸 신호 관찰", "건강 기준 정립", "신중한 점검".
+` : metrics.oracleV25_32.subtype === 'career' ? `
+✅ 적절한 어휘: "직장 흐름 관찰", "커리어 기준 정립", "신중한 점검".
+` : metrics.oracleV25_32.subtype === 'today' ? `
+✅ 적절한 어휘: "오늘 흐름 관찰", "행동 기준 정립", "신중한 점검".
+` : metrics.oracleV25_32.subtype === 'newyear' ? `
+✅ 적절한 어휘: "한 해 흐름 관찰", "가치관 정립", "신중한 점검".
+` : `
+✅ 적절한 어휘: "흐름 관찰", "기준 정립", "신중한 점검".
+`}
+✅ 결론은 반드시 "기준 정립이 답을 만든다" 방향으로 수렴.
+` : `
+✅ 본문은 "진전·자연스러운 형성" 톤으로 작성하라.
+✅ "성급한 확장", "무리한 추진" 같은 표현은 금지.
+${metrics.oracleV25_32.subtype === 'wealth' ? `
+✅ 적절한 어휘: "자연스러운 자산 형성", "단계적 진입", "흐름 포착".
+` : metrics.oracleV25_32.subtype === 'health' ? `
+✅ 적절한 어휘: "자연스러운 활력 회복", "단계적 강화", "흐름 활용".
+` : metrics.oracleV25_32.subtype === 'career' ? `
+✅ 적절한 어휘: "자연스러운 직장 진전", "단계적 추진", "흐름 활용".
+` : metrics.oracleV25_32.subtype === 'today' ? `
+✅ 적절한 어휘: "자연스러운 오늘 진전", "단계적 행동", "흐름 활용".
+` : metrics.oracleV25_32.subtype === 'newyear' ? `
+✅ 적절한 어휘: "자연스러운 한 해 확장", "단계적 진전", "흐름 포착".
+` : `
+✅ 적절한 어휘: "자연스러운 진전", "단계적 추진", "흐름 활용".
+`}
+✅ 결론은 반드시 "타이밍을 잡되 속도 조절" 방향으로 수렴.
+`}
+
+[방안 E 핵심 — 귀하의 역할 재정의 (FORTUNE)]
+🚫 V25.32 FORTUNE Oracle 시스템이 이미 6박스 결론을 별도로 출력합니다.
+🚫 귀하는 그 결론과 충돌하는 다른 결론을 제시할 수 없습니다.
+✅ 귀하의 역할은 카드 3장의 의미를 풍부하게 풀어내는 서술자.
+✅ 결론·판단·행동 강요는 V25.32가 담당. 귀하는 카드 의미와 흐름의 톤만.
 ✅ 사용자 질문에 대한 공감 + 카드 그림과 상징의 풀이에 집중.
 ` : ''}
 `;
