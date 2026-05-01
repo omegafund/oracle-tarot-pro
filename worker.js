@@ -496,7 +496,7 @@ const CARD_MEANING = {
   "Seven of Swords":{flow:"속임수·회피", signal:"정보 왜곡 주의 — 신중한 검증 필요"},
   "Eight of Swords":{flow:"속박·시야 차단", signal:"판단력 제한 구간 — 섣부른 진입 금지"},
   "Nine of Swords":{flow:"불안·악몽", signal:"과도한 공포 심리 — 냉정한 판단 필요"},
-  "Ten of Swords":{flow:"최악·바닥", signal:"최대 하락 에너지 — 신규 진입 절대 금지"},
+  "Ten of Swords":{flow:"최악·바닥", signal:"최대 하락 에너지 — 신규 진입 보류가 고려될 수 있는 구간"},
   "Page of Swords":{flow:"정보 수집·경계", signal:"시장 데이터 수집 강화 — 관찰 구간"},
   "Knight of Swords":{flow:"급진·성급함", signal:"과격한 진입 에너지 — 리스크 확대"},
   "Queen of Swords":{flow:"냉철·분석", signal:"객관적 판단 우세 — 전략적 진입"},
@@ -2457,7 +2457,7 @@ function buildStockMetrics({ totalScore, riskScore, cleanCards, isLeverage, quer
       criticalRules = [
         "수익 구간 진입 시 욕심 금지 — 분할 익절",
         "반등만 보고 보유 유지 금지",
-        "단기 반등에 추가 매수 절대 금지"
+        "단기 반등 시 추가 진입은 추가 리스크로 이어질 가능성이 있는 구간으로 해석됩니다"
       ];
     }
   } else {
@@ -2471,7 +2471,7 @@ function buildStockMetrics({ totalScore, riskScore, cleanCards, isLeverage, quer
     } else if (hasMidstreamObstacle || hasReversedSignal) {
       criticalRules = [
         "초반 진입 후 빠른 수익 실현",
-        "장기 보유 절대 금지",
+        "장기 보유는 변동성 노출을 확대할 가능성이 있는 구간으로 해석됩니다",
         "재진입 신호 확인 후에만 추가"
       ];
     } else if (totalScore >= 6) {
@@ -2483,7 +2483,7 @@ function buildStockMetrics({ totalScore, riskScore, cleanCards, isLeverage, quer
     } else {
       criticalRules = [
         "수익 구간 진입 시 욕심 금지 — 분할 매도 원칙",
-        "계획 없는 추가 매수 절대 금지",
+        "계획 없는 추가 진입은 추가 리스크로 이어질 가능성이 있어 신중한 접근이 도움이 될 수 있습니다",
         "손절 기준 무조건 준수 — 감정적 보유 금지"
       ];
     }
@@ -2492,14 +2492,17 @@ function buildStockMetrics({ totalScore, riskScore, cleanCards, isLeverage, quer
   // ════════════════════════════════════════════════════════════
   // [V20.9] Risk Cautions — 3가지 (변경 없음)
   // ════════════════════════════════════════════════════════════
+  // [V25.9.2] 명령형 → 가능성·해석 톤 변환 (사장님 진단)
+  //   기존: "고점 추격 금지" / "장기 보유 금지" → 명령형 = 법무 리스크
+  //   해결: "~로 이어질 수 있는 구간으로 해석됩니다" 가능성 톤
   const riskCautions = [];
-  if (hasReversedSignal) riskCautions.push("역방향 카드 신호 — 추세 지속성 약화 가능");
-  if (hasMidstreamObstacle) riskCautions.push("현재 카드 정체 신호 — 단기 변동성 ↑");
-  if (totalScore <= -3) riskCautions.push("하락 압력 — 급반등 후 재하락 패턴 주의");
-  if (reversedCount >= 2) riskCautions.push("다수 역방향 — 진입 시점 신중 판단 필요");
+  if (hasReversedSignal) riskCautions.push("역방향 카드 신호 — 추세 지속성이 약화될 가능성이 있는 흐름");
+  if (hasMidstreamObstacle) riskCautions.push("현재 카드 정체 신호 — 단기 변동성 확대 가능성");
+  if (totalScore <= -3) riskCautions.push("하락 압력 — 급반등 후 재하락 패턴이 나타날 수 있는 흐름");
+  if (reversedCount >= 2) riskCautions.push("다수 역방향 — 진입 시점에 대한 신중한 판단이 도움이 될 수 있습니다");
   if (riskCautions.length < 3) {
-    riskCautions.push("고점 추격 금지");
-    riskCautions.push("수익 미실현 상태 장기 보유 금지");
+    riskCautions.push("고점 추격은 추가 리스크로 이어질 수 있는 구간으로 해석됩니다");
+    riskCautions.push("수익 미실현 상태에서의 장기 보유는 변동성 노출을 확대할 가능성이 있습니다");
   }
   const finalRiskCautions = riskCautions.slice(0, 3);
 
@@ -2890,29 +2893,23 @@ function buildStockMetrics({ totalScore, riskScore, cleanCards, isLeverage, quer
 
   // [V24.5 PATCH 5] 게이트 발동 시 criticalInterpretation 강제 교체
   if (_uncOverride) {
-    // [V24.7+V25.9+V25.9.1] sell intent + 게이트 발동 시 — 가능성 표현 톤
+    // [V24.7+V25.9+V25.9.1+V25.9.2] sell intent + 게이트 발동 시
+    //   사장님 진단 (V25.9.2): "🔥 핵심 해석 섹션이 중복 출력됨 → 통일 필요"
+    //   해결: 3문장 통합안 적용 (도메인별 구분 없이 통일된 흐름)
     if (stockIntent === 'sell') {
       const _isStrongSell = totalScore <= -3 || volGate.isHighVolatility || volGate.hasExtremeCard;
-      const _sellGeneralMsg = _isStrongSell
-        ? `현재 카드 조합은 추세 지속보다 흐름 재평가를 시사하며, '버티면 해결'이라 단정하기 어려운 구간으로 해석됩니다.`
-        : `현재 카드 조합은 회복 신뢰도가 낮은 구간으로, 포지션 조정과 흐름 재평가를 함께 고려할 수 있는 시점입니다.`;
-      const _sellFlavorMsg = _isStrongSell
-        ? `포지션 일부를 선제적으로 축소하는 전략이 고려될 수 있으며, 손실 제한 기준을 사전에 설정하는 접근이 리스크 관리에 도움이 될 수 있습니다.`
-        : `포지션 일부 조정, 단기 흐름 회복 시 보수적 대응, 손실 제한 기준 점검이 균형 접근으로 해석될 수 있습니다.`;
-      const _sellClosing = _uncOverride.gateAwareCriticalClosing
-        || `방치도 결단도 한쪽 답은 아닐 수 있으며, 포지션 조정과 흐름 재평가가 균형 접근으로 고려될 수 있습니다.`;
-      criticalInterpretation = `${_sellGeneralMsg}\n${_sellFlavorMsg}\n${_sellClosing}`;
+      // 사장님 통합안 — 3문장 흐름으로 단일화
+      criticalInterpretation = _isStrongSell
+        ? `현재 카드 조합은 추세 지속보다 흐름 재평가 구간을 시사하며, '버티면 해결'이라 단정하기 어려운 흐름으로 해석됩니다.\n따라서 포지션 일부 축소와 손실 제한 기준 점검을 병행하는 보수적 접근이 리스크 관리에 도움이 될 수 있습니다.\n특히 무대응 전략은 변동성 노출을 확대할 가능성이 있어, 일정 기간 내 흐름을 능동적으로 점검하는 접근이 유효한 선택지로 해석될 수 있습니다.`
+        : `현재 카드 조합은 회복 신뢰도가 낮은 구간으로 흐름 재평가가 고려될 수 있는 시점으로 해석됩니다.\n포지션 일부 조정과 단기 흐름 회복 시점에서의 보수적 대응을 병행하는 접근이 균형 잡힌 선택지로 해석될 수 있습니다.\n무대응도 결단도 한쪽으로 치우친 선택일 수 있어, 능동적 흐름 점검이 리스크 관리에 도움이 될 수 있습니다.`;
     } else {
-      // buy intent (기존)
+      // buy intent — 동일한 3문장 통합 흐름
       const _gateGeneralMsg = volGate.isHighVolatility
-        ? `${volGate.extremeCardName || '변동성 카드'}의 단독 변동성 신호가 진입 신뢰도를 낮추고 있습니다.`
+        ? `${volGate.extremeCardName || '변동성 카드'}의 단독 변동성 신호가 진입 신뢰도를 낮추는 구간으로 해석됩니다.`
         : (riskGate.decisionMajority?.majorityCaution
-            ? `3장 중 ${riskGate.decisionMajority.cautionCount}장이 신중·관망 카드 — 점수 합산보다 본질 의미가 우선합니다.`
-            : `관망 카드 가중치가 진입 신뢰도를 흐리고 있습니다.`);
-      const _gateFlavorMsg = `객관적 트리거(거래량·이평선·추세) 충족 전까지 0% 포지션을 유지하십시오.`;
-      const _gateClosing = _uncOverride.gateAwareCriticalClosing
-        || `점수가 아닌 카드의 본질 의미를 따르십시오 — 게이트 발동 구간에서는 인내가 최고의 전략입니다.`;
-      criticalInterpretation = `${_gateGeneralMsg}\n${_gateFlavorMsg}\n${_gateClosing}`;
+            ? `3장 중 ${riskGate.decisionMajority.cautionCount}장이 신중·관망 카드로 본질 의미가 점수 합산보다 우선될 수 있는 흐름입니다.`
+            : `관망 카드 가중치가 진입 신뢰도를 흐리는 구간으로 해석됩니다.`);
+      criticalInterpretation = `${_gateGeneralMsg}\n따라서 객관적 신호(거래량·이평선·추세) 확인 전 신규 진입 보류가 보수적 접근으로 고려될 수 있습니다.\n특히 점수보다 카드의 본질 의미를 따르는 접근이 게이트 발동 구간에서 유효한 선택지로 해석될 수 있습니다.`;
     }
   }
 
@@ -3043,14 +3040,14 @@ function buildStockMetrics({ totalScore, riskScore, cleanCards, isLeverage, quer
         cautions: _uncOverride
           ? (stockIntent === 'sell'
               ? (() => {
-                  // [V24.7] 사장님 진단: cautions도 능동 탈출 톤으로
+                  // [V24.7+V25.9.2] 능동 탈출 톤 + 가능성·해석 어미
                   const _isStrong = totalScore <= -3 || volGate.isHighVolatility || volGate.hasExtremeCard;
                   return [
                     ...finalRiskCautions,
                     _isStrong
-                      ? '"기다리면 해결" 구조 아님 — 선제 비중 축소 필수'
-                      : '무대응 = 추가 하락 방치 — 분할 정리로 방어선 구축',
-                    '손절선 사전 설정 — 감정적 보유 차단을 위한 트리거 자동화',
+                      ? '"기다리면 해결"이라 단정하기 어려운 흐름 — 포지션 일부 축소가 고려될 수 있는 구간으로 해석됩니다'
+                      : '무대응 전략은 변동성 노출을 확대할 가능성이 있어 분할 정리가 보수적 접근으로 고려될 수 있습니다',
+                    '손실 제한 기준 사전 설정은 감정적 보유 차단을 통한 리스크 관리에 도움이 될 수 있습니다',
                     '일정 기간 내 흐름 개선이 없을 경우 흐름 재평가가 필요할 수 있습니다',
                     '평단 조정 시도는 추가 리스크 노출 가능성을 신중히 고려할 필요가 있습니다'
                   ];
@@ -3058,8 +3055,8 @@ function buildStockMetrics({ totalScore, riskScore, cleanCards, isLeverage, quer
               : [
                   ...finalRiskCautions,
                   volGate.isHighVolatility
-                    ? '변동성·전환 카드 우세 — 급락 가능성 동시 대비'
-                    : '관망 카드 우세 — 객관적 트리거 확인 전 진입 자제',
+                    ? '변동성·전환 카드 우세 — 급락 가능성에 대한 동시 대비가 도움이 될 수 있습니다'
+                    : '관망 카드 우세 — 객관적 신호 확인 전 진입 보류가 고려될 수 있습니다',
                   '단기 저점 약화 시 진입 신호 재평가가 필요할 수 있으며, 다음 점사까지 관망이 고려될 수 있습니다',
                   '추세 약세 흐름 시 신규 진입에 대한 보수적 검토가 도움이 될 수 있습니다',
                   '진입 시 손실 제한 기준 사전 설정이 도움이 될 수 있습니다'
@@ -3373,17 +3370,18 @@ function buildRealEstateMetrics({ totalScore, riskScore, cleanCards, intent, pro
     }
   }
 
+  // [V25.9.2] 부동산도 V25.9.2 가능성·해석 톤 통일
   const interpretSell =
-    netScore >= 5 ? `현재 부동산 에너지는 강한 상승장 구간입니다. ${keyCard}의 기운은 호가를 견고하게 유지해도 거래 성사 가능성이 높음을 시사합니다. 지금 시즌을 놓치지 않는 결단이 유리할 수 있습니다.`
-  : netScore >= 2 ? `흐름은 완만한 상승장으로 매도에 우호적입니다. ${keyCard}의 기운은 약간의 호가 유연성이 거래 속도를 바꿀 수 있음을 암시합니다. 시장 반응을 살피며 조건을 조율하는 전략이 유효합니다.`
-  : netScore >= 0 ? `시장은 방향성을 탐색하는 균형 구간입니다. ${keyCard}의 에너지는 무리한 호가보다 '적정가·빠른 거래'에 무게를 두라 조언합니다. 등록 후 반응을 확인하며 조건을 유연하게 운용하십시오.`
-  : `에너지는 하락장으로 기울어 있습니다. ${worstCard}의 기운은 호가 집착이 장기 미거래로 이어질 수 있음을 경고합니다. 현실적인 호가 조정 또는 다음 성수기를 기다리는 전략이 안정적입니다.`;
+    netScore >= 5 ? `현재 부동산 에너지는 강한 상승장 구간으로 해석됩니다. ${keyCard}의 기운은 호가를 견고하게 유지해도 거래 성사 가능성이 높은 흐름을 시사합니다. 이번 시즌을 활용한 적극적 대응이 유효한 선택지로 해석될 수 있습니다.`
+  : netScore >= 2 ? `흐름은 완만한 상승장으로 매도에 우호적인 구간으로 해석됩니다. ${keyCard}의 기운은 약간의 호가 유연성이 거래 속도를 바꿀 수 있음을 암시합니다. 시장 반응을 살피며 조건을 조율하는 접근이 도움이 될 수 있습니다.`
+  : netScore >= 0 ? `시장은 방향성을 탐색하는 균형 구간으로 해석됩니다. ${keyCard}의 에너지는 무리한 호가보다 '적정가·빠른 거래' 방향이 도움이 될 수 있음을 암시합니다. 등록 후 반응을 확인하며 조건을 유연하게 운용하는 접근이 고려될 수 있습니다.`
+  : `에너지는 하락장으로 기울어 있는 흐름으로 해석됩니다. ${worstCard}의 기운은 호가 집착이 장기 미거래로 이어질 수 있음을 시사합니다. 현실적인 호가 조정 또는 다음 성수기를 기다리는 접근이 보수적 선택지로 해석될 수 있습니다.`;
 
   const interpretBuy =
-    netScore >= 5 ? `부동산 에너지는 강한 상승장 구간에 있어 매수자에게는 신중함이 필요합니다. ${keyCard}의 기운은 정상 매물도 놓치지 말고 선점할 가치가 있음을 시사합니다. 이사철 전 집중 임장과 계약 준비가 핵심입니다.`
-  : netScore >= 2 ? `에너지는 완만한 상승 구간입니다. ${keyCard}의 기운은 '정상 매물'보다 '급매·조건 우위 매물'에서 기회가 나타남을 암시합니다. 신중한 탐색과 조건 협상이 본 구간의 유효 전략입니다.`
-  : netScore >= 0 ? `흐름은 방향성을 탐색하는 균형 구간입니다. ${keyCard}의 에너지는 서두른 취득이 후회로 이어질 수 있음을 알립니다. 자금 여력을 유지하며 명확한 신호를 기다리십시오.`
-  : `에너지는 하락장 구간으로 매수자에게 유리한 환경입니다. ${worstCard}의 기운은 추가 조정 가능성을 시사하므로 급하게 취득하기보다 저점에서 급매를 선별하는 전략이 유효합니다. 금리·규제 변수도 함께 점검하십시오.`;
+    netScore >= 5 ? `부동산 에너지는 강한 상승장 구간으로 매수자에게는 신중함이 필요한 흐름으로 해석됩니다. ${keyCard}의 기운은 정상 매물도 선점할 가치가 있음을 시사합니다. 이사철 전 집중 임장과 계약 준비가 유효한 접근으로 고려될 수 있습니다.`
+  : netScore >= 2 ? `에너지는 완만한 상승 구간으로 해석됩니다. ${keyCard}의 기운은 '정상 매물'보다 '급매·조건 우위 매물'에서 기회가 나타날 가능성을 암시합니다. 신중한 탐색과 조건 협상이 유효한 선택지로 해석될 수 있습니다.`
+  : netScore >= 0 ? `흐름은 방향성을 탐색하는 균형 구간으로 해석됩니다. ${keyCard}의 에너지는 서두른 취득이 후회로 이어질 가능성이 있음을 시사합니다. 자금 여력 유지와 명확한 신호 대기가 도움이 될 수 있습니다.`
+  : `에너지는 하락장 구간으로 매수자에게 유리한 환경으로 해석됩니다. ${worstCard}의 기운은 추가 조정 가능성을 시사하므로, 급하게 취득하기보다 저점에서 급매를 선별하는 접근이 유효한 선택지로 해석될 수 있습니다. 금리·규제 변수도 함께 점검하는 것이 도움이 될 수 있습니다.`;
 
   // ═══════════════════════════════════════════════════════════
   // [V20.0] 부동산 5계층 구조
@@ -3495,7 +3493,7 @@ function buildRealEstateMetrics({ totalScore, riskScore, cleanCards, intent, pro
           "공인중개사 의견 적극 수렴"
         ]
       : [
-          "충동 계약 절대 금지 — 시세 검증 필수",
+          "충동적 계약은 추가 리스크로 이어질 수 있어 시세 검증이 도움이 될 수 있습니다",
           "융자·세금 계산 사전 완료",
           "현장 임장 최소 2회 이상 권장"
         ];
@@ -3667,7 +3665,7 @@ function buildRealEstateMetrics({ totalScore, riskScore, cleanCards, intent, pro
           isFutureDanger ? [
             "희망가보다 2~3% 낮은 전략적 매도 검토",
             "시장 상승 기대 금지 — 빠른 거래 성사 우선",
-            "장기 보유 리스크 高 — 이 시즌 내 반드시 정리"
+            "장기 보유는 변동성 노출 확대 가능성이 있어 이번 시즌 내 흐름 재평가가 도움이 될 수 있습니다"
           ] : netScore >= 2 ? [
             "희망가 유지 + 시즌 활용",
             "초기 반응 양호하면 호가 고수",
@@ -5056,6 +5054,35 @@ export default {
             ? "유저님은 이미 해당 종목을 보유 중이며 매도 타이밍을 묻고 있다. 매도/익절/청산 관점으로만 서술하라. '매수하라'는 표현 절대 금지."
             : "유저님은 신규 매수를 고려 중이다. 매수/진입/타이밍 관점으로 서술하라.";
 
+          // [V25.9.2] 법무 안전 표현 가이드 — LLM이 직접 지시 표현 생성 차단
+          //   사장님 진단: "전략적 접근이 필수적입니다" 같은 LLM 단정 표현이 출력됨
+          //   해결: LLM 프롬프트에 가능성·해석 어미 강제
+          const legalSafetyGuide = `
+[법무 안전 표현 — 매우 중요, 모든 문장에 반드시 적용]
+한국 자본시장법 + 미국 SEC 영역 회피를 위해 다음 규칙을 엄격히 준수하라:
+
+1. 직접 지시 표현 절대 사용 금지:
+   ❌ "선제 30% 매도", "5거래일 손절", "20일선 이탈 시 청산"
+   ❌ "필수입니다", "필수적입니다", "반드시 ~하라", "절대 금지"
+   ❌ 구체적 비중(%), 가격 트리거(+/-N%), 시간(N거래일)
+
+2. 가능성·해석 어미 사용:
+   ✅ "~이 고려될 수 있습니다"
+   ✅ "~이 도움이 될 수 있습니다"
+   ✅ "~이 필요할 수 있습니다"
+   ✅ "~로 해석될 수 있습니다"
+   ✅ "~로 이어질 수 있는 구간으로 해석됩니다"
+   ✅ "~한 흐름으로 해석됩니다"
+   ✅ "~유효한 선택지로 해석될 수 있습니다"
+
+3. 표현 변환 예시:
+   "전략적 접근이 필수적입니다" → "전략적 접근이 유효한 선택지로 해석될 수 있습니다"
+   "선제 비중 축소" → "포지션 일부를 선제적으로 축소하는 전략이 고려될 수 있습니다"
+   "손절 기준 설정 필수" → "손실 제한 기준 설정이 리스크 관리에 도움이 될 수 있습니다"
+   "고점 추격 금지" → "고점 추격은 추가 리스크로 이어질 수 있는 구간으로 해석됩니다"
+
+4. 본문 톤: 명령/지시 0%, 가능성/해석 100%`;
+
           // [V19.11] 각 카드의 정확한 의미를 프롬프트에 직접 주입 (AI 환각 방지)
           // [V20.7] 양면성/깊은 해석 추가 — 사장님 통찰 반영
           //   부정 카드도 "묵은 것의 정화 → 새 출발"의 가능성 제시
@@ -5094,6 +5121,7 @@ ${reversedNote}
 ${synergyNote}
 진입 전략: ${metrics.entryStrategy}
 청산 전략: ${metrics.exitStrategy}
+${legalSafetyGuide}
 
 🃏 [각 카드의 정확한 의미 — 반드시 이 의미만 사용하라]
 ${cardMeaningGuide}
