@@ -5868,11 +5868,12 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
                      layers.decision?.blockLevel === 'BOTTOM' ? 'WATCH'   :
                      layers.decision?.blockLevel === 'MEDIUM' ? 'WATCH'   : null);
                 const isWatchMode   = _execMode === 'BLOCKED' || _execMode === 'WATCH';
+                // [V25.16] 사장님 진단: "비중 할당 금지" → 가능성·해석 톤
                 const displayWeight = isWatchMode
-                    ? '0% — 신호 확인 전까지 비중 할당 금지'
+                    ? '0% — 객관적 신호 확인 전까지 관망이 안정적인 흐름입니다'
                     : (exec.weight || '-');
-                const displayStop   = isWatchMode ? '진입 없음' : (exec.stopLoss || '-');
-                const displayTarget = isWatchMode ? '진입 없음' : (exec.target  || '-');
+                const displayStop   = isWatchMode ? '진입 전 단계' : (exec.stopLoss || '-');
+                const displayTarget = isWatchMode ? '진입 전 단계' : (exec.target  || '-');
 
                 executionHTML = `
                 <div style="margin-bottom:14px; padding:12px 14px;
@@ -6260,10 +6261,8 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
                     </div>
                 </div>` : ''}
 
-                <!-- 해석 텍스트 -->
-                <div style="margin-top:12px; padding:12px 14px; background:rgba(0,0,0,0.4); border-left:3px solid var(--gold); line-height:1.8; font-size:0.9rem; color:rgba(255,255,255,0.92);">
-                    ${finalOracleHTML}
-                </div>
+                <!-- [V25.17] 사장님 진단: 핵심 해석 중복 출력 제거 (산일전기 화면)
+                     layers.criticalInterpretation이 별도 박스에서 V25.15 안으로 출력됨 -->
                 <!-- [V23.7] 면책은 PRO Hook 뒤 최하단으로 이동됨 -->
             </div>`;
         }
@@ -6311,10 +6310,9 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
                         ${title}
                     </h3>
                     ${layer5HTML}
-                    <!-- 해석 텍스트 -->
-                    <div style="margin-top:12px; padding:12px 14px; background:rgba(0,0,0,0.4); border-left:3px solid var(--gold); line-height:1.8; font-size:0.9rem; color:rgba(255,255,255,0.92);">
-                        ${finalOracleHTML}
-                    </div>
+                    <!-- [V25.17] 사장님 진단: 핵심 해석 중복 출력 제거
+                         layers.criticalInterpretation이 별도 박스에 출력되므로
+                         여기서 finalOracle을 또 출력하면 중복됨 -->
                 </div>`;
             }
 
@@ -7045,27 +7043,62 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
         })() : ''}
         ${investBlock}
         ${_zeusProHook}
-        <!-- [V24.0+V25.13] 면책 고지 — 도메인별 차별화 (사장님 안)
-             운세(life/general): 가벼운 톤 (UX 친화)
-             그 외: 강한 법무 (자본시장법/공인중개사법 회피) -->
-        ${(ACTIVE_DOMAIN_BAR === 'life' || ACTIVE_DOMAIN_BAR === 'general')
-          ? `<div style="margin-top:18px; padding:12px 14px; font-size:0.72rem;
-                    color:rgba(255,255,255,0.6); text-align:center;
-                    line-height:1.7; letter-spacing:0.01em;
-                    border:1px solid rgba(255,255,255,0.08); border-radius:8px;">
-                ※ 본 신탁은 흐름 해석을 돕기 위한 참고 콘텐츠입니다.<br>
-                중요한 결정은 개인 상황을 기준으로 신중히 판단하시기 바랍니다.
-            </div>`
-          : `<div style="margin-top:18px; padding:12px 14px; font-size:0.70rem;
-                    color:rgba(255,255,255,0.55); text-align:center;
-                    line-height:1.7; letter-spacing:0.01em;
-                    border:1px solid rgba(255,255,255,0.08); border-radius:8px;">
+        <!-- [V24.0+V25.13+V25.14.2] 면책 고지 — 도메인별 4단계 차별화
+             사장님 화면 진단 (V25.14.2): 연애에 무거운 법무 노출됨
+             해결: 4도메인 정확 분기
+               • love:        가장 따뜻한 톤 (관계 본질)
+               • life/general: 가벼운 안내 (V25.13)
+               • realestate:  공인중개사법 회피
+               • stock/crypto: 자본시장법 회피 (가장 강한 법무) -->
+        ${(() => {
+            const _disclaimerDomain = (typeof ACTIVE_DOMAIN_BAR !== 'undefined' && ACTIVE_DOMAIN_BAR) || '';
+            
+            // [연애] 가장 따뜻한 톤
+            if (_disclaimerDomain === 'love') {
+                return `<div style="margin-top:18px; padding:12px 14px; font-size:0.72rem;
+                            color:rgba(255,255,255,0.6); text-align:center;
+                            line-height:1.7; letter-spacing:0.01em;
+                            border:1px solid rgba(255,255,255,0.08); border-radius:8px;">
+                    ※ 본 신탁은 두 분의 관계 흐름을 비추는 참고 해석입니다.<br>
+                    실제 관계의 방향과 결론은 두 분의 진심과 대화를 통해 함께 만들어가시기 바랍니다.
+                </div>`;
+            }
+            
+            // [운세] 가벼운 톤
+            if (_disclaimerDomain === 'life' || _disclaimerDomain === 'general') {
+                return `<div style="margin-top:18px; padding:12px 14px; font-size:0.72rem;
+                            color:rgba(255,255,255,0.6); text-align:center;
+                            line-height:1.7; letter-spacing:0.01em;
+                            border:1px solid rgba(255,255,255,0.08); border-radius:8px;">
+                    ※ 본 신탁은 흐름 해석을 돕기 위한 참고 콘텐츠입니다.<br>
+                    중요한 결정은 개인 상황을 기준으로 신중히 판단하시기 바랍니다.
+                </div>`;
+            }
+            
+            // [부동산] 공인중개사법 회피 + 전문가 자문 권유
+            if (_disclaimerDomain === 'realestate') {
+                return `<div style="margin-top:18px; padding:12px 14px; font-size:0.70rem;
+                            color:rgba(255,255,255,0.6); text-align:center;
+                            line-height:1.7; letter-spacing:0.01em;
+                            border:1px solid rgba(255,255,255,0.08); border-radius:8px;">
+                    ※ 본 신탁은 부동산 흐름 해석을 위한 참고 콘텐츠로,<br>
+                    공인중개사법상 중개·자문 서비스가 아닙니다.<br>
+                    실제 계약 및 거래 결정은 전문가 상담과 함께 신중히 판단하시기 바랍니다.
+                </div>`;
+            }
+            
+            // [주식/코인 + 기본] 자본시장법 회피 — 가장 강한 법무
+            return `<div style="margin-top:18px; padding:12px 14px; font-size:0.70rem;
+                        color:rgba(255,255,255,0.55); text-align:center;
+                        line-height:1.7; letter-spacing:0.01em;
+                        border:1px solid rgba(255,255,255,0.08); border-radius:8px;">
                 ⚠️ <b>본 서비스는 타로 카드를 활용한 엔터테인먼트 콘텐츠</b>로,<br>
-                투자자문업·금융상품판매업·공인중개사법상 등록된 서비스가 아닙니다.<br>
-                특정 종목·자산·부동산의 매매 권유나 투자 결정의 근거가 될 수 없으며,<br>
+                투자자문업·금융상품판매업상 등록된 서비스가 아닙니다.<br>
+                특정 종목·자산의 매매 권유나 투자 결정의 근거가 될 수 없으며,<br>
                 본 콘텐츠를 참고한 모든 투자·거래 결정의 결과는 사용자 본인에게 귀속됩니다.<br>
-                <span style="opacity:0.65;">Not financial / legal / tax / real-estate advice — Entertainment use only.</span>
-            </div>`}
+                <span style="opacity:0.65;">Not financial / legal / tax advice — Entertainment use only.</span>
+            </div>`;
+        })()}
     </div>`;
 
         return publicSections + futureCardHTML + oracleHTML;
