@@ -5497,9 +5497,16 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
     let _coreInsightHTML = '';
     const _checkFreeSubtype = (typeof FORTUNE_SUBTYPE !== 'undefined') ? FORTUNE_SUBTYPE : '';
     const _isFreeSubtype = (_checkFreeSubtype === 'today' || _checkFreeSubtype === 'general');
+
+    // [V25.25] V25.24 LOVE Oracle이 활성화된 경우 Gemini Core Insight 박스 중복 차단
+    //   V25.24가 자체 Core Insight 박스(6박스 중 첫번째)를 생성하므로 중복 출력 방지
+    const _v25_24LoveActive = !!(typeof window !== 'undefined'
+        && window._serverMetrics
+        && window._serverMetrics.oracleV25_24
+        && window._serverMetrics.oracleV25_24.boxes);
     
     const _coreInsightMatch = text.match(/핵심\s*흐름\s*해석\s*\n([\s\S]+?)(?=\n\n[━─\-]{3,}|\n\n[가-힣A-Z][^\n]*[\n:]|\n\n\[|$)/);
-    if (_coreInsightMatch && !_isFreeSubtype) {
+    if (_coreInsightMatch && !_isFreeSubtype && !_v25_24LoveActive) {
         const _coreContent = _coreInsightMatch[1].trim()
             .replace(/^[─━\-]+$/gm, '')
             .replace(/\n{3,}/g, '\n\n')
@@ -5534,6 +5541,9 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
         }
     } else if (_isFreeSubtype && _coreInsightMatch) {
         // 무료 영역 — Core Insight 본문에서 제거 (차별화)
+        text = text.replace(/핵심\s*흐름\s*해석\s*\n[\s\S]+?(?=\n\n[━─\-]{3,}|\n\n[가-힣A-Z][^\n]*[\n:]|\n\n\[|$)/, '\n');
+    } else if (_v25_24LoveActive && _coreInsightMatch) {
+        // [V25.25] V25.24 활성 시 Gemini Core Insight 본문 제거 (V25.24 박스로 대체)
         text = text.replace(/핵심\s*흐름\s*해석\s*\n[\s\S]+?(?=\n\n[━─\-]{3,}|\n\n[가-힣A-Z][^\n]*[\n:]|\n\n\[|$)/, '\n');
     }
     // _coreInsightHTML은 아래 oracleHTML 직후에 삽입
@@ -7437,8 +7447,8 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
                         </button>
                     </div>`;
 
-                return freeContent + proHookHTML + `
-                <div style="margin-top:14px; padding:14px 16px; background:rgba(212,175,55,0.07); border-left:3px solid var(--gold); border-radius:0 8px 8px 0; font-size:0.9rem; line-height:1.8; color:rgba(255,255,255,0.9);">${lucky}</div>`;
+                return freeContent + proHookHTML + (v25_24Oracle ? '' : `
+                <div style="margin-top:14px; padding:14px 16px; background:rgba(212,175,55,0.07); border-left:3px solid var(--gold); border-radius:0 8px 8px 0; font-size:0.9rem; line-height:1.8; color:rgba(255,255,255,0.9);">${lucky}</div>`);
             }
 
             // ✨ 일반 운세: 기존 지표 박스 유지 (연애 용어 배제)
@@ -7661,6 +7671,14 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
             
             // PRO 결제 전이면 표시 안 함 (Blur 박스에서 유도)
             if (typeof isPaid !== 'undefined' && !isPaid) return '';
+            
+            // [V25.25] 연애 도메인 + V25.24 LOVE Oracle 활성 시 중복 차단
+            //   V25.24 자체 Action Guide 박스(6박스 중 3번째)가 이미 있음
+            if (_domain === 'love' && window._serverMetrics && window._serverMetrics.oracleV25_24
+                && window._serverMetrics.oracleV25_24.boxes
+                && window._serverMetrics.oracleV25_24.boxes.actionGuide) {
+                return '';
+            }
             
             const _smX = window._serverMetrics;
             const _scoreX = (_smX && _smX.opportunityWindow) || 50;
