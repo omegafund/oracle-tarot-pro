@@ -4385,24 +4385,30 @@ function getCardLoveType(card, isReversed) {
   if (/Queen of Swords|Knight of Swords|Seven of Swords|King of Swords|Two of Swords|Justice/i.test(name)) return 'defense';
   
   // 안정형 (균형·지속·완성)
-  if (/Four of Wands|The World|Ten of Pentacles|The Empress|Three of Pentacles|Nine of Pentacles|The Hierophant/i.test(name) && !rev) return 'stable';
+  if (/Four of Wands|The World|Ten of Pentacles|The Empress|Three of Pentacles|Nine of Pentacles|The Hierophant|Six of Pentacles|Six of Wands/i.test(name) && !rev) return 'stable';
   
   // 결핍형 (부족·갈망)
-  if (/Five of Pentacles|Three of Swords|The Hermit|Four of Cups|Five of Cups|Seven of Cups/i.test(name)) return 'lack';
+  if (/Five of Pentacles|Three of Swords|The Hermit|Four of Cups|Five of Cups|Seven of Cups|Eight of Swords/i.test(name)) return 'lack';
   
   // 갈등형 (충돌·균열)
-  if (/Five of Wands|The Tower|Seven of Wands|Five of Swords/i.test(name)) return 'conflict';
+  if (/Five of Wands|The Tower|Seven of Wands|Five of Swords|Nine of Wands/i.test(name)) return 'conflict';
   
   // 회복형 (치유·재기·균형 회복)
-  if (/The Star|Temperance|Six of Cups|Six of Swords|Strength|Judgement/i.test(name) && !rev) return 'recover';
+  if (/The Star|Temperance|Six of Cups|Six of Swords|Strength|Judgement|Ace of Cups|Ace of Wands|Ace of Pentacles/i.test(name) && !rev) return 'recover';
   if (/Strength|Judgement/i.test(name) && rev) return 'lack';
   if (/Six of Cups/i.test(name) && rev) return 'lack';
   
   // 거리형 (이별·분리·정체)
-  if (/Eight of Cups|Death|The Hanged Man|Four of Swords/i.test(name)) return 'distance';
+  if (/Eight of Cups|Death|The Hanged Man|Four of Swords|Two of Pentacles/i.test(name)) return 'distance';
   
   // 짊어짐형 (부담·과부하·집착)
-  if (/Ten of Wands|The Devil|Nine of Swords|Ten of Swords/i.test(name)) return 'burden';
+  if (/Ten of Wands|The Devil|Nine of Swords|Ten of Swords|Four of Pentacles/i.test(name)) return 'burden';
+  
+  // 추진형 (계획·확장·새 시작)
+  if (/Two of Wands|Three of Wands|Eight of Wands|Ace of Swords/i.test(name) && !rev) return 'positive';
+  
+  // 노력형 (꾸준함·인내)
+  if (/Eight of Pentacles|Seven of Pentacles/i.test(name) && !rev) return 'stable';
   
   // 시험형 (탐색·망설임)
   if (/Page of Swords|Page of Cups|Page of Wands|Page of Pentacles|The Fool/i.test(name)) return rev ? 'lack' : 'positive';
@@ -4462,6 +4468,12 @@ function getFlowArrow(past, present, future, revFlags) {
     "positive-stable-stable":"안정 → 발전 → 결속",
     "stable-stable-positive":"안정 → 발전 → 결속",
     "stable-stable-stable":"안정 → 유지 → 결속",
+    "stable-distance-stable":"안정 → 흔들림 → 회복",
+    "stable-distance-recover":"안정 → 흔들림 → 회복",
+    "stable-distance-positive":"안정 → 흔들림 → 회복",
+    "positive-distance-stable":"안정 → 흔들림 → 회복",
+    "positive-distance-positive":"안정 → 흔들림 → 회복",
+    "recover-distance-stable":"안정 → 흔들림 → 회복",
     "recover-positive-positive":"감정 회복 → 주도권 전환",
     "positive-defense-positive":"이성적 검증 → 재접근",
     "stable-defense-recover":"안정 → 점검 → 회복",
@@ -4530,6 +4542,11 @@ const META_PATTERNS_V25_24 = {
   "stable-stable-positive":"안정 결속 패턴","positive-stable-positive":"안정 결속 패턴",
   "positive-positive-stable":"안정 결속 패턴","stable-stable-stable":"안정 결속 패턴",
   "stable-positive-stable":"안정 결속 패턴",
+  // 균형 조율 패턴 (안정 → 흔들림 → 회복) ★ 사장님 King-2Pent-Queen 케이스
+  "stable-distance-stable":"균형 조율 패턴","stable-distance-recover":"균형 조율 패턴",
+  "stable-distance-positive":"균형 조율 패턴","positive-distance-stable":"균형 조율 패턴",
+  "positive-distance-positive":"균형 조율 패턴","stable-distance-distance":"균형 조율 패턴",
+  "recover-distance-stable":"균형 조율 패턴","positive-distance-recover":"균형 조율 패턴",
   // 주도권 전환 패턴 (회복 후 변화)
   "lack-recover-positive":"주도권 전환 패턴","burden-recover-positive":"주도권 전환 패턴",
   "distance-recover-positive":"주도권 전환 패턴","conflict-recover-positive":"주도권 전환 패턴",
@@ -4555,6 +4572,7 @@ const HIDDEN_DRIVERS_V25_24 = {
   "갈등 고착 패턴":"같은 충돌의 반복 — 거리 두기가 유일한 해법",
   "정체에서 전환 패턴":"내려놓기를 통한 흐름 재개 — 변화 수용이 핵심",
   "안정 결속 패턴":"신뢰 누적 흐름 — 무리 없는 진행이 핵심",
+  "균형 조율 패턴":"흔들림 통과 후 회복 — 속도 조절과 인내가 핵심",
   "주도권 전환 패턴":"기다림 끝 변화 — 자기 회복이 핵심",
   "재접근 시험 패턴":"거리 후 재시도 — 신중한 속도가 핵심",
   "신뢰 구축 진행 패턴":"단계적 결속 형성 — 자연스러움이 핵심",
@@ -4668,7 +4686,23 @@ const CARD_LOVE_PHRASE = {
   "King of Cups":      { upright:"성숙한 감정",        reversed:"감정 억제" },
   "Knight of Wands":   { upright:"열정 추진",          reversed:"열정 분산" },
   "Queen of Wands":    { upright:"확신과 매력",        reversed:"불안한 매력" },
-  "King of Wands":     { upright:"비전 주도",          reversed:"통제 강요" }
+  "King of Wands":     { upright:"비전 주도",          reversed:"통제 강요" },
+  // [V25.30 L-1] 누락 14장 일괄 보강 — Two of Pentacles 등 자주 등장 카드
+  "Ace of Swords":     { upright:"명확한 진실·돌파",   reversed:"혼란·결단 지연" },
+  "Six of Swords":     { upright:"전환·이동의 시작",   reversed:"전환 지연" },
+  "Eight of Swords":   { upright:"제약·자기 속박",     reversed:"속박 풀림" },
+  "Ace of Wands":      { upright:"새로운 추진력 시작", reversed:"의지 약화" },
+  "Two of Wands":      { upright:"계획·관망",          reversed:"계획 흔들림" },
+  "Three of Wands":    { upright:"확장·기다림",        reversed:"확장 지연" },
+  "Six of Wands":      { upright:"승리·인정",          reversed:"인정 지연" },
+  "Eight of Wands":    { upright:"빠른 전개",          reversed:"전개 정체" },
+  "Nine of Wands":     { upright:"마지막 경계",        reversed:"방어 소진" },
+  "Ace of Pentacles":  { upright:"안정 기반 시작",     reversed:"기반 흔들림" },
+  "Two of Pentacles":  { upright:"균형 조율·다중 부담",reversed:"균형 붕괴·과부하" },
+  "Four of Pentacles": { upright:"안정 유지·고집",    reversed:"안정 흔들림" },
+  "Six of Pentacles":  { upright:"균형 있는 베풂",    reversed:"불균형 베풂" },
+  "Seven of Pentacles":{ upright:"기다림·재평가",      reversed:"인내 한계" },
+  "Eight of Pentacles":{ upright:"꾸준한 노력",        reversed:"노력 흐트러짐" }
 };
 
 // ──────────────────────────────────────────────────────────────────
