@@ -626,9 +626,13 @@ function detectVolatilityGate(cardNames) {
 
   let reason = null;
   if (hasExtremeCard) {
-    reason = `단일 극값 카드 감지 (${extremeCardName}: vol=${CARD_SCORE_MULTI[extremeCardName]?.vol}, unc=${CARD_SCORE_MULTI[extremeCardName]?.uncertainty}) — game-changer 카드 단독 게이트`;
+    // [V25.21] 사장님 진단: 영어 + 내부 수치 노출 → 자연 한국어
+    //   기존: "단일 극값 카드 감지 (Card: vol=40, unc=75) — game-changer 카드 단독 게이트"
+    //   신규: "현재 카드 (Card)의 흐름 신호가 추세 재평가를 시사하는 구간"
+    reason = `현재 카드 (${extremeCardName})의 흐름 신호가 추세 재평가를 시사하는 구간으로 해석됩니다`;
   } else if (isHighByAvg) {
-    reason = `변동성·리스크 카드 합산 평균 ${Math.round(composite)}점 (임계값 55) — 급변 가능성 높음`;
+    // [V25.21] 합산 평균 점수도 자연 한국어 — 내부 수치 ${composite}는 유지하되 톤 부드럽게
+    reason = `변동성·리스크 카드 흐름이 우세한 구간으로 해석됩니다 (합산 ${Math.round(composite)}점)`;
   }
 
   return {
