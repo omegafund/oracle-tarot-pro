@@ -4288,6 +4288,481 @@ function buildRealEstateMetrics({ totalScore, riskScore, cleanCards, intent, pro
 }
 
 // ══════════════════════════════════════════════════════════════════
+// 💘 [V25.24] LOVE ORACLE — 100% JS, Layered Matrix, Gemini OFF
+// ══════════════════════════════════════════════════════════════════
+// 설계 철학: AI는 보조, 구조는 코드가 100% 통제
+// 데이터:    Layered Matrix (base + override)
+// 박스 수:   6 + 1(PRO 업셀)
+// 배포일:    2026-05-01
+// ══════════════════════════════════════════════════════════════════
+
+function getLoveScoreCategory(score) {
+  if (score >= 3)   return 'advance';
+  if (score >= -2)  return 'maintain';
+  if (score >= -5)  return 'realign';
+  return 'close';
+}
+
+function getCardLoveType(card, isReversed) {
+  if (!card) return 'neutral';
+  const name = typeof card === 'string' ? card : (card.name || '');
+  const rev = isReversed === true;
+  if (/Ten of Cups|The Lovers|Two of Cups|The Sun|Ace of Cups/i.test(name) && !rev) return 'positive';
+  if (/Queen of Swords|Knight of Swords|Seven of Swords|King of Swords/i.test(name)) return 'defense';
+  if (/Four of Wands|The World|Ten of Pentacles|The Empress/i.test(name) && !rev) return 'stable';
+  if (/Five of Pentacles|Three of Swords|The Hermit|Four of Cups|Five of Cups/i.test(name)) return 'lack';
+  if (/Five of Wands|The Tower|Seven of Wands/i.test(name)) return 'conflict';
+  if (/The Star|Temperance|Six of Cups|Six of Swords/i.test(name) && !rev) return 'recover';
+  if (/Eight of Cups|Death|The Hanged Man/i.test(name)) return 'distance';
+  if (/Ten of Wands|The Devil|Nine of Swords/i.test(name)) return 'burden';
+  if (/Page of Swords|Page of Cups|Page of Wands|The Fool/i.test(name)) return rev ? 'lack' : 'positive';
+  if (/The Magician|The Emperor|The Chariot|King of Wands/i.test(name)) return rev ? 'conflict' : 'stable';
+  if (/The High Priestess|The Moon/i.test(name)) return 'defense';
+  return 'neutral';
+}
+
+function getFlowArrow(past, present, future, revFlags) {
+  const rf = revFlags || [false, false, false];
+  const p = getCardLoveType(past, rf[0]);
+  const c = getCardLoveType(present, rf[1]);
+  const f = getCardLoveType(future, rf[2]);
+  const key = `${p}-${c}-${f}`;
+  const exactMap = {
+    "positive-defense-conflict":"호감 → 불균형 → 시험",
+    "burden-defense-neutral":"방어 → 거리 → 재정렬",
+    "burden-defense-distance":"방어 → 거리 → 재정렬",
+    "burden-defense-lack":"방어 → 거리 → 재정렬",
+    "burden-defense-positive":"방어 → 거리 → 재정렬",
+    "stable-conflict-recover":"안정 → 균열 → 회복",
+    "lack-distance-positive":"결핍 → 정체 → 전환",
+    "lack-stable-positive":"결핍 → 정체 → 전환",
+    "lack-defense-positive":"결핍 → 정체 → 전환",
+    "conflict-distance-distance":"갈등 → 분리 → 정리",
+    "conflict-burden-distance":"갈등 → 분리 → 정리",
+    "conflict-conflict-distance":"갈등 → 분리 → 정리",
+    "stable-positive-positive":"안정 → 발전 → 결속",
+    "lack-recover-positive":"감정 회복 → 주도권 전환",
+    "burden-recover-positive":"감정 회복 → 주도권 전환",
+    "distance-defense-positive":"거리 → 탐색 → 재접근",
+    "distance-positive-positive":"거리 → 탐색 → 재접근",
+    "positive-positive-positive":"안정 → 발전 → 결속",
+    "burden-defense-conflict":"방어 → 거리 → 재정렬",
+    "lack-defense-recover":"결핍 → 정체 → 전환",
+    "positive-conflict-distance":"갈등 → 분리 → 정리",
+    "positive-stable-stable":"안정 → 발전 → 결속",
+    "stable-stable-positive":"안정 → 발전 → 결속",
+    "recover-positive-positive":"감정 회복 → 주도권 전환",
+    "positive-defense-positive":"이성적 검증 → 재접근",
+    "stable-defense-recover":"안정 → 점검 → 회복",
+    "neutral-defense-lack":"방어 → 거리 → 재정렬",
+    "neutral-defense-positive":"방어 → 거리 → 재접근"
+  };
+  if (exactMap[key]) return exactMap[key];
+  if (c === 'defense') return (f === 'positive' || f === 'recover') ? "방어 → 거리 → 재접근" : "방어 → 거리 → 재정렬";
+  if (c === 'positive' && f === 'positive') return "안정 → 발전 → 결속";
+  if (c === 'conflict') return "갈등 → 분리 → 정리";
+  if (c === 'recover' || f === 'recover') return "감정 회복 → 주도권 전환";
+  if (c === 'distance' && f === 'positive') return "거리 → 탐색 → 재접근";
+  if (c === 'distance') return "거리 → 탐색 → 정리 분기";
+  if (c === 'lack' && f === 'positive') return "결핍 → 정체 → 전환";
+  if (c === 'lack') return "결핍 → 정체 → 관찰 구간";
+  if (c === 'burden') return "부담 → 조정 → 재정렬";
+  if (p === 'stable' && c === 'conflict') return "안정 → 균열 → 회복";
+  if (c === 'stable' && f === 'positive') return "안정 → 발전 → 결속";
+  if (c === 'stable') return "안정 → 유지 → 관찰";
+  return "감정 흐름 변화 구간";
+}
+
+const META_PATTERNS_V25_24 = {
+  "burden-defense-distance":"불균형 의존 패턴","burden-defense-neutral":"불균형 의존 패턴",
+  "burden-defense-lack":"불균형 의존 패턴","burden-defense-conflict":"불균형 의존 패턴",
+  "burden-defense-positive":"불균형 의존 패턴","stable-conflict-recover":"성장통 통과 패턴",
+  "lack-stagnant-positive":"잠재 회복 패턴","lack-distance-positive":"잠재 회복 패턴",
+  "lack-defense-positive":"잠재 회복 패턴","positive-defense-conflict":"이성적 검증 패턴",
+  "positive-defense-positive":"이성적 검증 패턴","conflict-distance-distance":"자연 정리 패턴",
+  "conflict-burden-distance":"자연 정리 패턴","conflict-conflict-distance":"자연 정리 패턴",
+  "stable-positive-positive":"안정 결속 패턴","positive-positive-positive":"안정 결속 패턴",
+  "stable-stable-positive":"안정 결속 패턴","lack-recover-positive":"주도권 전환 패턴",
+  "burden-recover-positive":"주도권 전환 패턴","distance-defense-positive":"재접근 시험 패턴",
+  "distance-positive-positive":"재접근 시험 패턴","neutral-defense-lack":"이성적 검증 패턴",
+  "neutral-defense-positive":"재접근 시험 패턴"
+};
+
+const HIDDEN_DRIVERS_V25_24 = {
+  "불균형 의존 패턴":"한쪽의 책임 과부하 — 균형 회복이 핵심",
+  "성장통 통과 패턴":"기존 방식의 한계 — 새 룰 정립이 핵심",
+  "잠재 회복 패턴":"감정 정체 후 새 흐름 — 인내가 핵심",
+  "이성적 검증 패턴":"감정보다 기준 우선 — 명확한 소통이 핵심",
+  "자연 정리 패턴":"관계 동력 소진 — 정리 후 새 시작",
+  "안정 결속 패턴":"신뢰 누적 흐름 — 무리 없는 진행이 핵심",
+  "주도권 전환 패턴":"기다림 끝 변화 — 자기 회복이 핵심",
+  "재접근 시험 패턴":"거리 후 재시도 — 신중한 속도가 핵심",
+  "일반 흐름 패턴":"감정과 구조 사이 균형 — 객관적 관찰이 핵심"
+};
+
+function getMetaPattern(past, present, future, revFlags) {
+  const rf = revFlags || [false, false, false];
+  const p = getCardLoveType(past, rf[0]);
+  const c = getCardLoveType(present, rf[1]);
+  const f = getCardLoveType(future, rf[2]);
+  return META_PATTERNS_V25_24[`${p}-${c}-${f}`] || "일반 흐름 패턴";
+}
+
+const PATH_BRANCHES_V25_24 = {
+  advance: { good:"다음 단계로 자연스럽게 진입 — 신뢰가 깊어집니다", bad:"성급함이 흐름을 깨뜨립니다 — 속도 조절 필수" },
+  maintain:{ good:"현 흐름 유지하며 신뢰 누적 — 안정 구간 통과", bad:"애매한 태도가 거리감으로 굳습니다 — 명확성 필요" },
+  realign: { good:"방식 전환으로 새 균형 형성 — 관계 재정의 가능", bad:"감정에 휘둘려 같은 패턴 반복 — 정체 고착화" },
+  close:   { good:"정리 후 새로운 방향 발견 — 자기 회복 진행", bad:"미련이 자기 회복을 막습니다 — 단절 결단 필요" }
+};
+
+const CARD_LOVE_EXPRESSION_V25_24 = {
+  "positive":{strength:"자연스러운 끌림",weakness:"감정 과잉 가능성"},
+  "defense": {strength:"이성적 판단력",  weakness:"감정 표현 부족"},
+  "stable":  {strength:"안정된 신뢰",    weakness:"변화 회피 경향"},
+  "lack":    {strength:"깊은 갈망",      weakness:"감정 결핍감"},
+  "conflict":{strength:"솔직한 대립",    weakness:"감정 충돌"},
+  "recover": {strength:"회복 의지",      weakness:"여전한 잔재"},
+  "distance":{strength:"객관적 거리감",  weakness:"정서적 단절"},
+  "burden":  {strength:"책임감",         weakness:"과부하·소진"},
+  "neutral": {strength:"균형 감각",      weakness:"방향성 모호"}
+};
+
+function getCardExpression(card, isReversed, axis) {
+  const type = getCardLoveType(card, isReversed);
+  const expr = CARD_LOVE_EXPRESSION_V25_24[type] || CARD_LOVE_EXPRESSION_V25_24.neutral;
+  return axis === 'strength' ? expr.strength : expr.weakness;
+}
+
+// ──────────────────────────────────────────────────────────────────
+// LOVE_CONTENT_V3 — Layered Matrix (base + overrides)
+// ──────────────────────────────────────────────────────────────────
+const LOVE_CONTENT_V3 = {
+  base: {
+    advance: {
+      core_keyword:"흐름이 열린",surface_state:"조심스러운 접근",hidden_flow:"자연스러운 결속을 향한 흐름",
+      relationship_type:"상호 신뢰 기반",dominant_side:"균형 잡힌 양방향",core_decision:"지금 이 흐름을 잡는 것",
+      structure_sentence:"관계의 방향성이 새로 정의되는 시점입니다",
+      user_strength:"감정에 솔직한 자세",user_hidden:"이미 마음이 정해진 상태",
+      partner_visible:"긍정적 반응 표현",partner_real:"진심으로 받아들이는 중",
+      relation_dynamic:"교감",counter_dynamic:"신뢰",
+      positive_result:"자연스러운 다음 단계 진입",negative_result:"성급함으로 인한 균열",
+      essence_summary:"끌림과 신뢰가 동시에 작동하는 구간",
+      action_1:"솔직한 감정 1가지 자연스럽게 표현",action_result_1:"상대의 진심도 함께 드러납니다",
+      action_2:"다음 만남 또는 대화 자연스럽게 이어가기",action_result_2:"관계 단계가 명확해집니다",
+      avoid_action:"과한 확인 요구나 일방적 결정 통보",risk_effect:"성급한 부담",
+      action_core:"지금은 행동보다 자연스러운 흐름이 결과를 만듭니다",
+      short_term:"오늘~3일",short_flow:"자연스러운 접촉의 적기",
+      mid_term:"1~2주",mid_flow:"관계 단계 정의되는 구간",
+      long_term:"1~2개월",long_flow:"안정적 결속 형성 가능",
+      critical_timing:"이번 주 후반 또는 다음 주말",
+      timing_now:"지금이 가장 좋은 타이밍입니다",timing_next:"오늘~내일 사이가 유리합니다",
+      timing_core:"흐름이 이미 열려 있습니다 — 망설일수록 손해",
+      risk_1:"과속 진행 — 상대 속도 무시",risk_2:"확신을 강요하는 태도",
+      risk_progression:"관계가 일방적으로 기울어집니다",
+      trigger_condition:"상대 반응이 미온적인데도 밀어붙이는",collapse_type:"부담 회피 모드",
+      risk_summary:"균형 무시하면 식습니다",
+      final_state:"다음 단계 진입 가능",final_explanation:"자연스러운 흐름 유지",
+      good_path:"다음 단계로 자연스럽게 진입 — 신뢰가 깊어집니다",
+      bad_path:"성급함이 흐름을 깨뜨립니다 — 속도 조절 필수",
+      final_key:"타이밍을 잡되 속도를 조절하라",
+      final_action_statement:"지금 흐름을 자연스럽게 받아들이는 것이 정답"
+    },
+    maintain: {
+      core_keyword:"관찰이 필요한",surface_state:"표면적 평온",hidden_flow:"방향성 탐색 중인 흐름",
+      relationship_type:"탐색 단계",dominant_side:"어느 한쪽도 확정 안 된 균형",
+      core_decision:"성급한 결정 대신 흐름 관찰",
+      structure_sentence:"끌림보다 유지 방식이 더 중요한 구간입니다",
+      user_strength:"신중한 판단력",user_hidden:"확신을 망설이는 상태",
+      partner_visible:"중립적 태도",partner_real:"내심 관찰 중",
+      relation_dynamic:"탐색",counter_dynamic:"관찰",
+      positive_result:"신뢰 누적으로 안정 구간 진입",negative_result:"애매함이 거리감으로 굳어짐",
+      essence_summary:"감정보다 구조가 관계를 좌우하는 시점",
+      action_1:"짧은 안부 또는 일상 공유 1회",action_result_1:"상대의 반응 패턴이 드러납니다",
+      action_2:"반응 보고 다음 행동 자연스럽게 결정",action_result_2:"방향성이 명확해집니다",
+      avoid_action:"애매한 태도 유지 또는 과도한 의미 부여",risk_effect:"방향 모호",
+      action_core:"지금은 선택보다 관찰이 우선입니다",
+      short_term:"2~3일",short_flow:"자연스러운 접촉 시도 가능",
+      mid_term:"1주~2주",mid_flow:"방향성 확인되는 구간",
+      long_term:"1개월",long_flow:"관계 정의 분기점",
+      critical_timing:"다음 주 중반",
+      timing_now:"조심스러운 접근이 가능한 시점입니다",timing_next:"2~3일 후 접근이 안정적입니다",
+      timing_core:"지금은 밀어붙이기보다 흐름을 읽는 시점",
+      risk_1:"애매한 태도 지속",risk_2:"의도 불명확한 메시지",
+      risk_progression:"거리감이 점점 굳어집니다",
+      trigger_condition:"확실한 답을 보류한 채 계속 연락하는",collapse_type:"관성적 거리감",
+      risk_summary:"명확성 부족이 가장 큰 적입니다",
+      final_state:"현 흐름 유지하며 관찰",final_explanation:"성급한 결정 대신 신뢰 누적",
+      good_path:"현 흐름 유지하며 신뢰 누적 — 안정 구간 통과",
+      bad_path:"애매한 태도가 거리감으로 굳습니다 — 명확성 필요",
+      final_key:"시간이 답을 만든다",
+      final_action_statement:"지금은 관찰하며 흐름을 읽을 시점"
+    },
+    realign: {
+      core_keyword:"재정렬이 필요한",surface_state:"표면적 거리감",hidden_flow:"관계 구조 자체가 조정되는 흐름",
+      relationship_type:"구조 재편 단계",dominant_side:"에너지가 한쪽으로 기울어진 상태",
+      core_decision:"감정이 아닌 방식의 변화",
+      structure_sentence:"단순한 감정 변화가 아니라 구조 조정 구간입니다",
+      user_strength:"객관적 인식력",user_hidden:"감정 정리 중인 상태",
+      partner_visible:"거리감 유지",partner_real:"관계 방식에 의문",
+      relation_dynamic:"방어",counter_dynamic:"거리",
+      positive_result:"방식 전환으로 새 균형 형성",negative_result:"감정 휘둘림으로 같은 패턴 반복",
+      essence_summary:"감정보다 방식이 관계를 결정하는 구간",
+      action_1:"거리 두며 자기 흐름 1가지 정리",action_result_1:"감정 소모가 줄어들고 객관성이 회복됩니다",
+      action_2:"관계 방식 점검 — 무엇이 반복되는지 확인",action_result_2:"재정렬 방향이 명확해집니다",
+      avoid_action:"감정 호소나 답 없는 추가 연락",risk_effect:"주도권 상실",
+      action_core:"지금은 행동보다 거리가 회복을 만듭니다",
+      short_term:"1주",short_flow:"최소 거리 두기 권장",
+      mid_term:"2~3주",mid_flow:"관계 방식 재점검 구간",
+      long_term:"1~2개월",long_flow:"재정렬 또는 자연 정리 분기점",
+      critical_timing:"거리 두기 1주 경과 시점",
+      timing_now:"지금은 연락 타이밍이 아닙니다",timing_next:"최소 1주일 거리 두기 권장",
+      timing_core:"거리가 답입니다 — 감정 아닌 구조 변경",
+      risk_1:"감정 표현 — 상대 부담 증가",risk_2:"답 없는 상태에서 추가 연락",
+      risk_progression:"주도권을 잃고 거리가 더 굳어집니다",
+      trigger_condition:"상대 반응 없는데 반복 시도하는",collapse_type:"회피 모드",
+      risk_summary:"방식이 바뀌지 않으면 결과도 바뀌지 않습니다",
+      final_state:"방식 전환 필요",final_explanation:"감정이 아닌 구조의 변경",
+      good_path:"방식 전환으로 새 균형 형성 — 관계 재정의 가능",
+      bad_path:"감정에 휘둘려 같은 패턴 반복 — 정체 고착화",
+      final_key:"방식이 바뀌지 않으면 결과도 바뀌지 않는다",
+      final_action_statement:"지금은 감정이 아닌 방식을 바꾸는 것이 핵심"
+    },
+    close: {
+      core_keyword:"정리가 필요한",surface_state:"관계 형식 유지",hidden_flow:"에너지가 이미 빠진 흐름",
+      relationship_type:"정리 단계",dominant_side:"양쪽 모두 소진된 상태",
+      core_decision:"단절 또는 거리 두기 결단",
+      structure_sentence:"지금의 선택이 관계의 방향을 결정합니다",
+      user_strength:"정리하려는 의지",user_hidden:"미련과 회복욕 사이",
+      partner_visible:"냉담 또는 무반응",partner_real:"이미 마음이 빠진 상태",
+      relation_dynamic:"단절",counter_dynamic:"회피",
+      positive_result:"정리 후 자기 회복 진행",negative_result:"미련이 회복을 막음",
+      essence_summary:"정리는 끝이 아니라 자기 회복의 시작",
+      action_1:"연락 멈추고 자기 회복 활동 1가지 시작",action_result_1:"감정 소모가 줄고 시야가 회복됩니다",
+      action_2:"일상 루틴 회복 — 새 관심사 탐색",action_result_2:"관계 외부에서 자존감이 회복됩니다",
+      avoid_action:"충동적 재연락이나 미련 표현",risk_effect:"회복 지연",
+      action_core:"지금은 정리가 가장 빠른 회복입니다",
+      short_term:"2~3주",short_flow:"완전한 거리 두기 필수",
+      mid_term:"1~2개월",mid_flow:"자기 회복 집중 구간",
+      long_term:"3개월 이상",long_flow:"새로운 방향 탐색 가능",
+      critical_timing:"거리 두기 2주 경과 시점",
+      timing_now:"당분간 거리 두기가 필요합니다",timing_next:"1~2개월 자기 회복 우선",
+      timing_core:"정리 후에야 새 흐름이 보입니다",
+      risk_1:"충동적 재연락 — 정리 과정 역행",risk_2:"SNS 모니터링 — 감정 소모 누적",
+      risk_progression:"회복이 늦어지고 자존감이 더 떨어집니다",
+      trigger_condition:"외로움이 커질 때 충동적으로",collapse_type:"미련 고착화",
+      risk_summary:"미련이 회복을 막는 가장 큰 적입니다",
+      final_state:"관계 정리 검토",final_explanation:"단절 후 자기 회복 우선",
+      good_path:"정리 후 새로운 방향 발견 — 자기 회복 진행",
+      bad_path:"미련이 자기 회복을 막습니다 — 단절 결단 필요",
+      final_key:"정리는 끝이 아니라 새 시작",
+      final_action_statement:"지금은 자기 회복이 가장 빠른 답"
+    }
+  },
+  overrides: {
+    marriage: {
+      advance:{relationship_type:"결혼 본질 합의 단계",action_1:"결혼 준비 항목 1가지 구체적 합의",
+        action_result_1:"본질적 합의가 진전됩니다",action_2:"장기 계획 1가지 솔직히 공유",
+        critical_timing:"다음 만남 또는 가족 일정 시점",final_state:"결혼 진행 합의 가능",
+        final_explanation:"신뢰 기반 본질 합의",final_action_statement:"본질적 합의가 결혼의 핵심"},
+      maintain:{relationship_type:"결혼 검토 단계",action_1:"결혼에 대한 진심 1가지 솔직히 공유",
+        action_2:"양가·실무 1가지 논의",avoid_action:"결정 회피나 일방적 진행",
+        final_state:"추가 점검 필요",final_explanation:"본질적 합의 보완 필요"},
+      realign:{relationship_type:"결혼 시기 재검토",action_1:"결혼 진행 보류 후 본질 점검 시간 확보",
+        action_2:"의구심 항목 1가지 정리",avoid_action:"사소한 갈등 키우거나 결혼 압박",
+        final_state:"결혼 시기 조정 필요",final_explanation:"의구심 누적 시 시간 두고 재점검",
+        final_action_statement:"결혼은 시기보다 본질이 더 중요"},
+      close:{relationship_type:"결혼 재고 단계",action_1:"결혼 진행 일시 보류 — 본질 합의 부재 인정",
+        avoid_action:"외부 압박으로 강행",final_state:"결혼 결정 보류",
+        final_explanation:"본질적 차이 인정",final_action_statement:"신중한 시간이 가장 빠른 답"}
+    },
+    breakup: {
+      advance:{core_keyword:"정리 흐름이 진행 중인",action_1:"현 정리 흐름 자연스럽게 유지",
+        action_2:"새로운 관심사 1가지 시작",avoid_action:"충동적 재연락",
+        final_state:"정리 진전 — 회복 진행 중",final_explanation:"자기 회복 자연 진행"},
+      maintain:{action_1:"감정 거리 두기 — 연락 자제",action_2:"자기 돌봄 시간 확보",
+        avoid_action:"SNS 모니터링이나 미련 표현",final_state:"감정 정리 진행 중"},
+      realign:{action_1:"자기 회복 활동 집중",action_2:"감정 정리 1가지 글로 적기",
+        final_state:"정리 흐름 진입",final_explanation:"감정 거리가 핵심"},
+      close:{action_1:"완전한 단절 — 연락처·SNS 정리",final_state:"완전한 정리 필요",
+        final_action_statement:"단절이 가장 빠른 회복"}
+    },
+    reunion: {
+      advance:{core_keyword:"재회 흐름이 열린",action_1:"부담 없는 안부 메시지 1회",
+        action_result_1:"상대 반응으로 진정성 확인 가능",action_2:"답장 보고 자연스럽게 다음 단계",
+        critical_timing:"오늘~3일 이내",final_state:"재회 가능성 높음",final_explanation:"가벼운 시작이 핵심"},
+      maintain:{action_1:"짧은 안부 1회 — 감정 표현 없이",action_2:"답장 48시간 기다린 후 판단",
+        avoid_action:"감정 호소나 과거 갈등 언급",final_state:"재회 시도 가능 — 신중하게"},
+      realign:{action_1:"연락 시도 자제 — 자기 시간 확보",action_2:"자기 회복 후 자연스러운 기회 기다리기",
+        avoid_action:"충동 연락이나 반복 시도",final_state:"재회 시도 보류",final_explanation:"자기 회복이 우선"},
+      close:{action_1:"재회 시도 중단 — 완전한 단절",avoid_action:"미련이나 일방적 시도",
+        final_state:"재회 부적합",final_action_statement:"정리가 다음 인연을 만듭니다"}
+    },
+    compatibility: {
+      advance:{relationship_type:"본질적 궁합 양호",core_keyword:"궁합이 맞아가는",
+        action_1:"가치관 1가지 솔직하게 공유",action_2:"장기 비전 1가지 같이 그려보기",
+        final_state:"본질 궁합 — 노력의 의미 큼",final_explanation:"본질적 합 — 방향성 명확"},
+      maintain:{action_1:"차이점 1가지 인정 후 합의",action_result_1:"조건부 궁합 — 노력 방향 명확해집니다",
+        action_2:"갈등 해결 방식 1가지 점검",final_state:"조건부 궁합 — 차이 인정 필요",
+        final_explanation:"본질을 알면 노력 방향이 보입니다"},
+      realign:{action_1:"본질적 차이 객관 점검",action_2:"장기 호환성 평가 — 표면 끌림 배제",
+        avoid_action:"표면적 끌림만 보거나 한쪽만 노력",final_state:"본질 차이 — 신중 검토 필요",
+        final_explanation:"노력 방향이 핵심"},
+      close:{final_state:"본질 궁합 부적합",final_action_statement:"차이를 인정하는 것이 답"}
+    },
+    crush: {
+      advance:{action_1:"자연스러운 접근 — 호감 표현 1단계",action_2:"공통 관심사 1가지 대화 주제로",
+        final_state:"호감 표현 단계 진입 가능"},
+      maintain:{action_1:"친근한 분위기 만들기 — 부담 없이",action_2:"상대 반응 보며 거리 조율"},
+      realign:{action_1:"호감 표현 보류 — 친구 거리 유지",avoid_action:"일방적 호감 표현 강요"},
+      close:{action_1:"호감 정리 — 다른 가능성 열기",final_action_statement:"정리가 새 인연의 시작"}
+    },
+    contact: {
+      advance:{action_1:"오늘 안부 메시지 1회 — 자연스럽게",timing_now:"지금이 연락 타이밍입니다",
+        timing_next:"오늘 저녁 또는 내일 오전"},
+      maintain:{action_1:"2~3일 안에 짧은 안부 1회",timing_now:"조심스러운 연락 가능한 시점"},
+      realign:{action_1:"연락 보류 — 1주 거리 두기",timing_now:"지금은 연락 타이밍이 아닙니다"},
+      close:{action_1:"연락 완전 중단 — 단절",timing_now:"당분간 연락 부적합"}
+    },
+    mindread: {
+      advance:{partner_visible:"긍정적 신호 표현",partner_real:"당신을 좋게 보는 중 — 진심",
+        action_1:"상대 행동 패턴 1가지 객관 관찰",action_2:"추측 대신 자연스러운 대화 시도"},
+      maintain:{partner_visible:"중립적 태도",partner_real:"관찰 중 — 결정 보류",
+        action_1:"상대 반응 패턴 관찰만 — 추측 금지"},
+      realign:{partner_visible:"거리감 있는 반응",partner_real:"관계 부담 또는 거리 원함",
+        avoid_action:"추측만으로 결정 또는 SNS 분석"},
+      close:{partner_visible:"냉담·무반응",partner_real:"이미 마음이 빠진 상태"}
+    },
+    thumb: {
+      advance:{partner_visible:"관심·호감 명확",partner_real:"긍정적 평가 진행 중"},
+      maintain:{partner_visible:"탐색 중인 호감",partner_real:"결정 보류 상태"},
+      realign:{partner_visible:"낮은 관심도",partner_real:"다른 우선순위"},
+      close:{partner_visible:"관심 없음",partner_real:"이미 마음 정리"}
+    }
+  }
+};
+
+function getLoveContent(subtype, scoreCategory) {
+  const base = LOVE_CONTENT_V3.base[scoreCategory] || LOVE_CONTENT_V3.base.maintain;
+  const override = (LOVE_CONTENT_V3.overrides[subtype] && LOVE_CONTENT_V3.overrides[subtype][scoreCategory]) || {};
+  return Object.assign({}, base, override);
+}
+
+function splitCardsByRole(cards, revFlags) {
+  const rf = revFlags || [false, false, false];
+  return {
+    selfCard: cards[0] || null, bridgeCard: cards[1] || null, partnerCard: cards[2] || null,
+    selfRev: rf[0] === true, bridgeRev: rf[1] === true, partnerRev: rf[2] === true
+  };
+}
+
+// ── 6 박스 빌더 ──
+function buildLoveCoreInsight(content, flowArrow, metaPattern) {
+  return {
+    line1: `[현재 관계의 본질은] ${content.core_keyword} 상태입니다.`,
+    line2: `겉으로는 ${content.surface_state}처럼 보이지만, 실제 흐름은 ${content.hidden_flow}에 가깝습니다.`,
+    line3: `이 관계는 단순한 호감이 아니라 ${content.relationship_type} 구조를 형성하고 있으며,`,
+    line4: `이미 감정의 중심축은 ${content.dominant_side} 쪽으로 기울어져 있습니다.`,
+    line5: `${content.structure_sentence}.`,
+    coreKey: content.core_decision, flowArrow, metaPattern
+  };
+}
+
+function buildLoveRelationEssence(content, cards, revFlags) {
+  const split = splitCardsByRole(cards, revFlags);
+  return {
+    userBlock: {
+      strength: content.user_strength || getCardExpression(split.selfCard, split.selfRev, 'strength'),
+      hidden:   content.user_hidden   || getCardExpression(split.selfCard, split.selfRev, 'weakness')
+    },
+    partnerBlock: {
+      visible: content.partner_visible || getCardExpression(split.partnerCard, split.partnerRev, 'strength'),
+      real:    content.partner_real    || getCardExpression(split.partnerCard, split.partnerRev, 'weakness')
+    },
+    dynamic: content.relation_dynamic, counterDynamic: content.counter_dynamic,
+    positiveResult: content.positive_result, negativeResult: content.negative_result,
+    coreKey: content.essence_summary
+  };
+}
+
+function buildLoveActionGuide(content) {
+  return {
+    action1: content.action_1, actionResult1: content.action_result_1,
+    action2: content.action_2, actionResult2: content.action_result_2,
+    avoidAction: content.avoid_action, riskEffect: content.risk_effect,
+    coreKey: content.action_core
+  };
+}
+
+function buildLoveTiming(content, numerologyText) {
+  return {
+    shortTerm: content.short_term, shortFlow: content.short_flow,
+    midTerm: content.mid_term, midFlow: content.mid_flow,
+    longTerm: content.long_term, longFlow: content.long_flow,
+    criticalTiming: content.critical_timing,
+    timingNow: content.timing_now, timingNext: content.timing_next,
+    numerology: numerologyText || '안정적인 시간대',
+    coreKey: content.timing_core
+  };
+}
+
+function buildLoveRisk(content) {
+  return {
+    risk1: content.risk_1, risk2: content.risk_2,
+    riskProgression: content.risk_progression,
+    triggerCondition: content.trigger_condition, collapseType: content.collapse_type,
+    coreKey: content.risk_summary
+  };
+}
+
+function buildLoveFinal(content, scoreCategory) {
+  const branches = PATH_BRANCHES_V25_24[scoreCategory] || PATH_BRANCHES_V25_24.maintain;
+  return {
+    finalState: content.final_state, finalExplanation: content.final_explanation,
+    goodPath: content.good_path || branches.good, badPath: content.bad_path || branches.bad,
+    finalKey: content.final_key, coreKey: content.final_action_statement
+  };
+}
+
+function buildLoveProEnhancement(metaPattern) {
+  const hiddenDriver = HIDDEN_DRIVERS_V25_24[metaPattern] || HIDDEN_DRIVERS_V25_24["일반 흐름 패턴"];
+  return {
+    metaPattern,
+    metaDescription: `이 관계는 일반적인 흐름이 아니라 '${metaPattern}' 구조입니다.`,
+    hiddenDriver: `실제 관계를 움직이는 것은: ${hiddenDriver}`,
+    longTermNote: "이 패턴을 이해하지 못하면 같은 문제가 반복될 가능성이 매우 높습니다."
+  };
+}
+
+// ── MASTER ──
+function buildLoveOracleV25_24({ totalScore, cards, revFlags, loveSubType, numerology }) {
+  const subtype = loveSubType || 'general';
+  const scoreCategory = getLoveScoreCategory(totalScore);
+  const content = getLoveContent(subtype, scoreCategory);
+  const past = cards[0], present = cards[1], future = cards[2];
+  const flowArrow = getFlowArrow(past, present, future, revFlags);
+  const metaPattern = getMetaPattern(past, present, future, revFlags);
+  return {
+    version: 'V25.24', score: totalScore, scoreCategory, subtype, flowArrow, metaPattern,
+    boxes: {
+      coreInsight: buildLoveCoreInsight(content, flowArrow, metaPattern),
+      relationEssence: buildLoveRelationEssence(content, cards, revFlags),
+      actionGuide: buildLoveActionGuide(content),
+      timing: buildLoveTiming(content, numerology),
+      risk: buildLoveRisk(content),
+      final: buildLoveFinal(content, scoreCategory)
+    },
+    proEnhancement: buildLoveProEnhancement(metaPattern),
+    _meta: {
+      cardTypes: [
+        getCardLoveType(past, revFlags && revFlags[0]),
+        getCardLoveType(present, revFlags && revFlags[1]),
+        getCardLoveType(future, revFlags && revFlags[2])
+      ]
+    }
+  };
+}
+
+// ══════════════════════════════════════════════════════════════════
 // 💘 연애 메트릭
 // ══════════════════════════════════════════════════════════════════
 // [V2.1] 카드 파워 합산으로 월상(月相) 결정 — 랜덤 금지
@@ -4699,6 +5174,14 @@ ${actionGuide.oneLine}`;
     cardNarrative: cleanCards.map((c, i) => `${['과거','현재','미래'][i]}(${c}): ${getLoveCardFlavor(c, false)}`),
     // [V25.14] 5차원 영성 레이더 차트 데이터 (Claude 2순위)
     cardDimensions: buildCardDimensionsArray(cleanCards, []),
+    // [V25.24] 100% JS Layered Matrix Oracle (6박스 + PRO)
+    oracleV25_24: buildLoveOracleV25_24({
+      totalScore,
+      cards: cleanCards.map(c => ({ name: typeof c === 'string' ? c : (c?.name || '') })),
+      revFlags: [false, false, false],
+      loveSubType,
+      numerology: finalTimingText
+    }),
     finalOracle: compatSummary || criticalInterpretation,
     layers: {
       emotionFlow,
