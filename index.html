@@ -3440,8 +3440,23 @@ async function renderStream(fetchPromise, cards) {
             investmentData = buildInvestmentData(cards, seedInput); 
         }
 
+        // [V25.10] 도메인별 후처리 필터 적용 — 사장님 안 (이중 안전망)
+        //   사장님 진단: "결혼운에 '리스크', '포지션' 같은 투자 용어가 새어나옴"
+        //   해결: LLM 본문 출력 직전에 도메인별 금지어 자동 치환
+        const _sm_for_filter = window._serverMetrics;
+        const _typeRaw = _sm_for_filter?.type || '';
+        const _activeDomain = _typeRaw.startsWith('realestate') ? 'realestate'
+                            : _typeRaw === 'love'   ? 'love'
+                            : _typeRaw === 'stock'  ? 'stock'
+                            : _typeRaw === 'crypto' ? 'crypto'
+                            : _typeRaw === 'life'   ? 'general'
+                            : (ACTIVE_DOMAIN_BAR || 'general');
+        const _filteredText = (typeof applyDomainFilter === 'function')
+            ? applyDomainFilter(fullText, _activeDomain)
+            : fullText;
+
         // 2️⃣ [최종 렌더링] 결제 여부(isPaidUser)에 따라 미래와 지표 노출 결정
-        contentEl.innerHTML = renderText(fullText, cards, investmentData, isPaidUser, isFinance);
+        contentEl.innerHTML = renderText(_filteredText, cards, investmentData, isPaidUser, isFinance);
 
         // [V23.4] 수치 메트릭 박스 — 서버 metrics 있을 때 결과 하단에 추가
         const _sm = window._serverMetrics;
@@ -5862,15 +5877,16 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
                             border-left: 3px solid ${colors.risk};
                             border-radius: 6px;">
                     <div style="color:${colors.risk}; font-size:0.78rem; font-weight:900; letter-spacing:0.08em; margin-bottom:8px;">
-                        ⚠️ 리스크 분석
+                        ${domain === 'love' ? '💔 관계 흐름 점검' : '⚠️ 리스크 분석'}
                     </div>
                     <div style="font-size:0.85rem; color:rgba(255,255,255,0.92); line-height:1.85;">
                         ${domain !== 'love' ? `<div>• 리스크 수준: <b style="color:${riskColor};">${rsk.level || '보통'}</b></div>
-                        <div>• 변동성: ${rsk.volatility || '보통'}</div>` : ''}
+                        <div>• 변동성: ${rsk.volatility || '보통'}</div>` : `<div>• 관계 부담도: <b style="color:${riskColor};">${rsk.level || '보통'}</b></div>
+                        <div>• 감정 변동성: ${rsk.volatility || '보통'}</div>`}
                         ${(rsk.cautions && rsk.cautions.length) ? `
-                        ${domain !== 'love' ? `<div style="margin-top:6px; font-size:0.78rem; opacity:0.9;">• 주의 포인트:</div>` : ''}
+                        ${domain !== 'love' ? `<div style="margin-top:6px; font-size:0.78rem; opacity:0.9;">• 주의 포인트:</div>` : `<div style="margin-top:6px; font-size:0.78rem; opacity:0.9;">• 점검 포인트:</div>`}
                         <ul style="margin:4px 0 0 16px; padding:0; font-size:0.82rem; line-height:1.7;">
-                            ${rsk.cautions.map(c => `<li style="color:rgba(255,255,255,0.85);">${c}</li>`).join('')}
+                            ${rsk.cautions.map(c => `<li style="color:rgba(255,255,255,0.85);">${applyDomainFilter(c, domain)}</li>`).join('')}
                         </ul>` : ''}
                     </div>
                 </div>`;
@@ -8540,14 +8556,75 @@ function closePaymentMethodModal() {
 }
 
 // ══════════════════════════════════════════════════════════════════
-// [V23.4] renderMetrics — 수치 메트릭 UI (사장님 설계)
-//   Worker에서 받은 수치를 결과 하단에 카드형으로 표시
-//   도메인별 해당 필드만 표시 (없으면 숨김)
+// [V23.4+V25.10] renderMetrics — 도메인별 라벨 변환 (사장님 안)
+//   사장님 진단: "결혼운에 '리스크', '포지션' 같은 투자 용어가 새어나옴"
+//   해결: 도메인별 라벨 매핑 + 후처리 금지어 필터 (이중 안전망)
 // ══════════════════════════════════════════════════════════════════
+
+// [V25.10] 도메인별 금지어 → 안전 표현 매핑 (사장님 설계 그대로)
+const DOMAIN_LABEL_MAP = {
+    love: {
+        // 투자 용어 → 감정/관계 용어
+        '리스크 분석': '관계 흐름 점검',
+        '리스크 수준': '관계 부담도',
+        '리스크': '관계 부담도',
+        '변동성': '감정 변동성',
+        '고위험 구간': '감정 변동 구간',
+        '고위험': '감정 변동',
+        '신중한 포지션 관리 필요': '신중한 판단이 필요한 시점입니다',
+        '포지션': '관계 자세',
+        '손절': '관계 정리',
+        '매수': '관계 시작',
+        '매도': '관계 종결',
+        '익절': '관계 마무리',
+        '청산': '관계 정리',
+        '진입': '관계 진전',
+        '저점': '감정 저점',
+        '고점': '감정 고점',
+        '추세': '감정 흐름',
+    },
+    realestate: {
+        // 부동산은 '거래·시장' 용어 OK, '연애 전용 용어'만 차단
+        '연인': '거래 상대',
+    },
+    general: {
+        // 운세도 '리스크' 같은 강한 단어는 부드럽게
+        '리스크 분석': '주의 흐름 점검',
+        '리스크 수준': '주의도',
+        '고위험 구간': '주의 필요 구간',
+    },
+    stock: {},   // 주식은 그대로 OK
+    crypto: {},
+};
+
+// [V25.10] 도메인 인지 텍스트 변환 함수 — 후처리 안전망
+function applyDomainFilter(text, domain) {
+    if (!text || !domain) return text;
+    const map = DOMAIN_LABEL_MAP[domain];
+    if (!map) return text;
+    let result = text;
+    for (const [bad, good] of Object.entries(map)) {
+        // 단어 경계 안전 처리 — 같은 단어가 다른 의미로 쓰일 수 있어 단순 치환
+        result = result.split(bad).join(good);
+    }
+    return result;
+}
+
 function renderMetrics(metrics) {
     if (!metrics) return '';
 
-    // [V23.7 P1-2] riskLevelScore 수치 기반 고위험 경고 배너
+    // [V25.10] 도메인 식별 — type 필드에서 추출
+    //   server에서 type: 'love' | 'stock' | 'crypto' | 'realestate_sell' | 'life' 등
+    const _typeRaw = metrics.type || '';
+    const _domain = _typeRaw.startsWith('realestate') ? 'realestate'
+                  : _typeRaw === 'love'      ? 'love'
+                  : _typeRaw === 'stock'     ? 'stock'
+                  : _typeRaw === 'crypto'    ? 'crypto'
+                  : _typeRaw === 'life'      ? 'general'
+                  : 'general';
+    const _isLove = (_domain === 'love');
+
+    // [V23.7 P1-2] riskLevelScore 수치 기반 경고 배너 — 도메인별 라벨
     const rls = metrics.riskLevelScore;
     const riskWarningHTML = (rls !== undefined && rls > 70) ? `
     <div style="margin-bottom:8px; padding:8px 14px;
@@ -8556,31 +8633,54 @@ function renderMetrics(metrics) {
                 border-radius: 8px; text-align:center;
                 font-size:0.78rem; font-weight:800; color:#FF8080;
                 letter-spacing:0.04em;">
-        ⚠️ 고위험 구간 (리스크 ${rls}%) — 신중한 포지션 관리 필요
+        ${_isLove
+          ? `⚠️ 감정 변동 구간 (관계 부담도 ${rls}%) — 신중한 판단이 필요한 시점입니다`
+          : `⚠️ 고위험 구간 (리스크 ${rls}%) — 신중한 포지션 관리 필요`}
     </div>` : '';
 
-    // 표시할 항목 구성
+    // 표시할 항목 구성 — [V25.10] 도메인별 라벨 분기
     const items = [];
-    if (metrics.attractionScore      !== undefined) items.push({ icon: '💘', label: '매력도',    value: metrics.attractionScore + '%' });
-    if (metrics.conflictIndex        !== undefined) items.push({ icon: '⚔️', label: '갈등지수',  value: metrics.conflictIndex + '%' });
+    if (metrics.attractionScore      !== undefined) items.push({ icon: '💘', label: '호감도',    value: metrics.attractionScore + '%' });
+    if (metrics.conflictIndex        !== undefined) items.push({ icon: '⚔️', label: _isLove ? '긴장도' : '갈등지수',  value: metrics.conflictIndex + '%' });
     if (metrics.reconnectProbability !== undefined) items.push({ icon: '🔁', label: '재연결 가능성', value: metrics.reconnectProbability + '%' });
-    // [V23.7] riskLevelScore 우선 표시 (있으면), 없으면 기존 riskScore
+    // [V25.10] riskLevelScore — 도메인별 라벨
     if (rls !== undefined) {
         const riskColor = rls > 70 ? '#FF8080' : rls > 40 ? '#F39C12' : '#2ecc71';
-        items.push({ icon: '⚠️', label: '리스크', value: rls + '%', color: riskColor });
+        items.push({
+            icon: _isLove ? '💔' : '⚠️',
+            label: _isLove ? '관계 부담도' : '리스크',
+            value: rls + '%',
+            color: riskColor
+        });
     } else if (metrics.riskScore !== undefined) {
-        items.push({ icon: '⚠️', label: '리스크', value: metrics.riskScore + '%' });
+        items.push({
+            icon: _isLove ? '💔' : '⚠️',
+            label: _isLove ? '관계 부담도' : '리스크',
+            value: metrics.riskScore + '%'
+        });
     }
     if (metrics.opportunityWindow    !== undefined) items.push({ icon: '🎯', label: '기회지수',  value: metrics.opportunityWindow + '%' });
     if (metrics.actionType) {
-        const actionLabel = { wait: '⏸ 대기', move: '🚀 행동', observe: '👁 관찰' };
+        const actionLabel = _isLove
+            ? { wait: '⏸ 관망', move: '🚀 표현', observe: '👁 관찰' }
+            : { wait: '⏸ 대기', move: '🚀 행동', observe: '👁 관찰' };
         items.push({ icon: '🧭', label: '행동', value: actionLabel[metrics.actionType] || metrics.actionType });
     }
-    if (metrics.volatilityScore      !== undefined) items.push({ icon: '📊', label: '변동성',    value: metrics.volatilityScore + '%' });
+    if (metrics.volatilityScore      !== undefined) items.push({
+        icon: '📊',
+        label: _isLove ? '감정 변동성' : '변동성',
+        value: metrics.volatilityScore + '%'
+    });
     if (metrics.dealConfidence       !== undefined) items.push({ icon: '🏠', label: '거래확률',  value: metrics.dealConfidence + '%' });
     if (metrics.entryTiming) {
-        const timingLabel = { NOW: '✅ 지금', LATER: '⏳ 나중', AVOID: '❌ 보류' };
-        items.push({ icon: '⏱', label: '진입', value: timingLabel[metrics.entryTiming] || metrics.entryTiming });
+        const timingLabel = _isLove
+            ? { NOW: '✅ 지금', LATER: '⏳ 나중', AVOID: '❌ 보류' }
+            : { NOW: '✅ 지금', LATER: '⏳ 나중', AVOID: '❌ 보류' };
+        items.push({
+            icon: '⏱',
+            label: _isLove ? '대화 타이밍' : '진입',
+            value: timingLabel[metrics.entryTiming] || metrics.entryTiming
+        });
     }
 
     if (!items.length && !riskWarningHTML) return '';
