@@ -3302,10 +3302,21 @@ async function startRitual() {
     const question = document.getElementById('seed-input').value.trim();
     if (!question) { alert('질문을 입력해주세요.'); return; }
 
-    // 질문에서 이름 추출 시도 — "홍길동입니다" "저는 김철수" 패턴
-    const nameMatch = question.match(/^([가-힣]{2,4})(입니다|이에요|예요|이야|야|님)/);
-    if (nameMatch) window._oracleUserName = nameMatch[1] + '님';
-    else window._oracleUserName = '유저님';
+    // [V25.22] 사용자 호칭 결정 우선순위:
+    //   1. localStorage 'zeus_user_nickname' (사용자 직접 입력 — 최우선)
+    //   2. 질문에서 이름 패턴 추출 ("홍길동입니다")
+    //   3. 빈 문자열 (Gemini 프롬프트가 주어 생략 모드 작동)
+    const _savedNick = (() => {
+        try { return localStorage.getItem('zeus_user_nickname') || ''; }
+        catch(e) { return ''; }
+    })();
+    if (_savedNick) {
+        window._oracleUserName = _savedNick + '님';
+    } else {
+        const nameMatch = question.match(/^([가-힣]{2,4})(입니다|이에요|예요|이야|야|님)/);
+        if (nameMatch) window._oracleUserName = nameMatch[1] + '님';
+        else window._oracleUserName = '';  // 빈 값 = 주어 생략 모드
+    }
 
     // [V25.3] A안 — Begin 버튼 클릭 시점에 카드 영역 노출 (의식적 등장)
     //   사장님 안: 빈 카드 미리 보이지 않게 → 점사 의식감 극대화
@@ -3512,7 +3523,7 @@ async function startStreamFetch(userQuestion, cards) {
                 cardPositions: cardPositions,
                 // [V19.1] 역방향 플래그 CSV 전송 (셔플 단계에서 결정된 값)
                 isReversed:    (window._reversedFlags || [false,false,false]).join(','),
-                userName:      (window._oracleUserName || '유저님'),
+                userName:      (window._oracleUserName || ''),
                 queryMode:     CURRENT_MODE,
                 loveSubType:   LOVE_SUBTYPE,
                 stockSubType:  STOCK_SUBTYPE,
@@ -4406,8 +4417,11 @@ function analyzeCardsZeus(cards, queryType = 'stock') {
     };
 }
 
-// 2️⃣ [의사결정] 사용자 제안 로직 기반 최종 지표 산출
-function getFinalDecision(score, maxRisk, avgRisk, hasCritical, isVolatile, queryType, intent) {
+// [V25.25 비활성화] 이 첫 번째 getFinalDecision 정의는 아래 line 4736의 두 번째 정의에 덮어써지므로
+//   실제로는 호출되지 않습니다 (스택트레이스로 확인 — 호출처 0건).
+//   .mjs 모듈 모드 검증 시 "Identifier already declared" 에러 방지를 위해 이름 변경.
+//   기능 보존 — 두 번째 정의가 더 완전한 시그니처 (power, uncertaintySum 추가)를 가짐.
+function _getFinalDecision_legacy_disabled(score, maxRisk, avgRisk, hasCritical, isVolatile, queryType, intent) {
     let res = { 
         trendLabel: "", decision: "", position: "0%", 
         stop: "-", target: "-", riskLabel: "보통" 
@@ -4512,13 +4526,8 @@ function getComboNote(cardData, queryType) {
 // 🔥 카드 점수 기반 타이밍 엔진
 //    매수/매도/코인 의도를 감지하여 카드 power 합산으로 최적 날/시간 산출
 //    랜덤이 아닌 결정론적 — 같은 카드 조합 + 같은 질문이면 항상 같은 결과
+//    [V25.25] 중복 calcCardPower 정의 제거 — line 4491의 CARD_DB 기반 버전 사용
 // ════════════════════════════════════
-function calcCardPower(cards) {
-    return cards.reduce((sum, c) => {
-        const name = (c.name || '').split(' (')[0];
-        return sum + ((CARD_STATE_MAP[name] || DEFAULT_CARD).power);
-    }, 0);
-}
 
 function getCardBasedTiming(cards, queryType, intent, qRaw) {
     const totalPower = calcCardPower(cards);
@@ -5482,6 +5491,53 @@ function buildFortuneIndicators(cards, qRaw, loveSubType = '') {
     return { trend, action, timing, risk };
 }
 function renderText(text, cards, investData, isPaid = false, isFinanceQuery = false) {
+    // [V25.23] Core Insight 추출 — Gemini가 생성한 "핵심 흐름 해석" 섹션 분리
+    //   사장님 V25.23 안: 7블록 구조 — ORACLE 본문과 별도 박스로 노출
+    //   무료 운세(today/general)에서는 차단 (사장님 무료/유료 차별화 원칙)
+    let _coreInsightHTML = '';
+    const _checkFreeSubtype = (typeof FORTUNE_SUBTYPE !== 'undefined') ? FORTUNE_SUBTYPE : '';
+    const _isFreeSubtype = (_checkFreeSubtype === 'today' || _checkFreeSubtype === 'general');
+    
+    const _coreInsightMatch = text.match(/핵심\s*흐름\s*해석\s*\n([\s\S]+?)(?=\n\n[━─\-]{3,}|\n\n[가-힣A-Z][^\n]*[\n:]|\n\n\[|$)/);
+    if (_coreInsightMatch && !_isFreeSubtype) {
+        const _coreContent = _coreInsightMatch[1].trim()
+            .replace(/^[─━\-]+$/gm, '')
+            .replace(/\n{3,}/g, '\n\n')
+            .trim();
+        if (_coreContent.length > 60 && _coreContent.length < 800) {
+            // V25.22 호칭 규칙 후처리 (혹시 잔존 "유저님" 제거)
+            const _cleanedCore = _coreContent
+                .replace(/유저님의\s+/g, '')
+                .replace(/유저님께서?는\s+/g, '')
+                .replace(/유저님께\s+/g, '')
+                .replace(/유저님은\s+/g, '')
+                .replace(/유저님,?\s+/g, '');
+            
+            _coreInsightHTML = `
+            <div style="margin: 18px 0 16px;
+                        padding: 18px 20px;
+                        background: linear-gradient(135deg, rgba(212,175,55,0.10), rgba(155,89,182,0.05));
+                        border: 1px solid rgba(212,175,55,0.4);
+                        border-left: 4px solid var(--gold);
+                        border-radius: 10px;
+                        box-shadow: 0 0 16px rgba(212,175,55,0.12);">
+                <div style="color: #FFD970; font-size: 0.84rem; font-weight: 900; letter-spacing: 0.08em; margin-bottom: 12px; display: flex; align-items: center; gap: 8px;">
+                    <span style="font-size: 1.05rem;">🧠</span>
+                    <span>핵심 흐름 해석</span>
+                    <span style="margin-left: auto; font-size: 0.62rem; color: rgba(212,175,55,0.7); font-weight: 700; letter-spacing: 0.1em;">CORE INSIGHT · PRO</span>
+                </div>
+                <div style="font-size: 0.94rem; color: rgba(255,255,255,0.95); line-height: 1.95; font-weight: 500; white-space: pre-line;">${_cleanedCore.replace(/\n/g, '<br>')}</div>
+            </div>`;
+            
+            // 본문에서 핵심 흐름 해석 섹션 제거 (중복 출력 방지)
+            text = text.replace(/핵심\s*흐름\s*해석\s*\n[\s\S]+?(?=\n\n[━─\-]{3,}|\n\n[가-힣A-Z][^\n]*[\n:]|\n\n\[|$)/, '\n');
+        }
+    } else if (_isFreeSubtype && _coreInsightMatch) {
+        // 무료 영역 — Core Insight 본문에서 제거 (차별화)
+        text = text.replace(/핵심\s*흐름\s*해석\s*\n[\s\S]+?(?=\n\n[━─\-]{3,}|\n\n[가-힣A-Z][^\n]*[\n:]|\n\n\[|$)/, '\n');
+    }
+    // _coreInsightHTML은 아래 oracleHTML 직후에 삽입
+    
     // 1. 텍스트 정화: 본문 내 "과거:", "현재:", "미래:" 중복 삭제
     let cleanText = text
         .replace(/안녕하세요.*유저님\.?/g, '')
@@ -7038,9 +7094,10 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
             })()}
         </div>
         ${(() => {
-            // [V25.21] 사장님 진단: V25.19 본질 엔진 결과가 화면에 안 보임
-            //   해결: 운세 PRO (재물/건강/직장) 서브타입일 때
-            //         본질 엔진 결과를 Gemini 본문 위에 우선 노출
+            // [V25.21+V25.22] 본질 엔진 박스 — 사장님 V25.22 안
+            //   • 카드명+시그널 한 줄 통합 ("과거 — Card명 시그널")
+            //   • 점수 기반 일관 메시지 (Timing 충돌 0%)
+            //   • V25.19 78장 본질 매핑 활용
             const _sm = window._serverMetrics;
             if (!_sm || !_sm.contextKey || !_sm.contextSignals || !_sm.contextSignals.length) return '';
             
@@ -7095,19 +7152,18 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
                     <div style="height: 100%; width: ${_scoreBarWidth}%; background: ${_scoreColor}; border-radius: 2px; transition: width 0.6s ease;"></div>
                 </div>
                 
-                <!-- 3카드 본질 시그널 -->
+                <!-- [V25.22] 카드명+시그널 한 줄 통합 -->
                 ${_signals.map(s => `
-                    <div style="display: flex; align-items: flex-start; gap: 10px; padding: 6px 0; font-size: 0.85rem; line-height: 1.55;">
-                        <span style="min-width: 38px; color: ${_ctxConfig.color}; font-weight: 800;">${s.role}</span>
-                        <span style="flex: 1; color: rgba(255,255,255,0.92);">
-                            <span style="color: rgba(255,255,255,0.6); font-size: 0.78rem;">${s.name}${s.isReversed ? ' (역)' : ''}</span><br>
-                            ${s.signal}
-                        </span>
+                    <div style="padding: 7px 0; font-size: 0.86rem; line-height: 1.6; border-bottom: 1px solid rgba(255,255,255,0.06);">
+                        <span style="display: inline-block; min-width: 42px; color: ${_ctxConfig.color}; font-weight: 800;">${s.role}</span>
+                        <span style="color: rgba(255,255,255,0.55); font-weight: 600; font-size: 0.83rem;">${s.name}${s.isReversed ? ' (역)' : ''}</span>
+                        <span style="color: rgba(255,255,255,0.92); margin-left: 6px;">${s.signal}</span>
                     </div>
                 `).join('')}
             </div>`;
         })()}
         <div style="line-height: 1.8; color: rgba(255,255,255,0.95); font-size: 0.96rem; margin-bottom: 20px;">${formatChunk(oracleContent)}</div>
+        ${typeof _coreInsightHTML !== 'undefined' ? _coreInsightHTML : ''}
         ${!isFinanceQuery ? (() => {
             const qRaw2 = (document.getElementById('seed-input')?.value || '').toLowerCase();
             // [V24.14] LOVE_SUBTYPE 전달 — 도메인별 적합 메시지 출력
@@ -7192,21 +7248,371 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
             })();
             return `
                 <div style="margin-top:14px;padding:14px 16px;background:rgba(212,175,55,0.07);border-left:3px solid var(--gold);border-radius:0 8px 8px 0;font-size:0.9rem;line-height:1.8;color:rgba(255,255,255,0.9);margin-bottom:14px;">${lucky}</div>
+                ${(() => {
+                    // [V25.22] Timing 충돌 해결 — contextScore 기반 일관 분기
+                    //   사장님 진단: 상단 "긍정 에너지" + 하단 "결정 보류" 충돌
+                    //   해결: 점수 기반 단일 메시지 → 충돌 0%
+                    const _sm = window._serverMetrics;
+                    const _ctxScore = (_sm && _sm.contextScore) || 50;
+                    const _ctxKey = (_sm && _sm.contextKey) || null;
+                    
+                    // 컨텍스트 점수가 있으면 (재물/건강/직장) 점수 기반 통일,
+                    // 없으면 (오늘/전반/신년/etc) 기존 fi 데이터 사용
+                    let _trendText, _actionText;
+                    if (_ctxKey && _sm) {
+                        // 컨텍스트별 어휘
+                        const _ctxVocab = _ctxKey === 'wealth' ? {
+                            high:   { trend: '자산 확장 구간 (진입 우호 흐름)',
+                                      action: '진입 허용 — 단계적 확장 검토' },
+                            mid:    { trend: '자산 재정비 구간 (확장 전 정리 단계)',
+                                      action: '신규 진입 보류 — 기존 자산 구조 점검 우선' },
+                            low:    { trend: '자산 보호 구간 (위험 회피 단계)',
+                                      action: '관망 우선 — 자산 안정 회복 흐름' }
+                        } : _ctxKey === 'health' ? {
+                            high:   { trend: '활력 회복 구간 (건강 우호 흐름)',
+                                      action: '활력 활용 — 새 습관 도입 검토' },
+                            mid:    { trend: '건강 점검 구간 (균형 정비 단계)',
+                                      action: '생활 정비 — 균형 점검 우선' },
+                            low:    { trend: '건강 회복 구간 (휴식 우선 단계)',
+                                      action: '휴식 우선 — 신호 관찰 흐름' }
+                        } : {
+                            // career
+                            high:   { trend: '커리어 확장 구간 (결단 우호 흐름)',
+                                      action: '결단 허용 — 진입·확장 검토' },
+                            mid:    { trend: '커리어 조율 구간 (전략 정비 단계)',
+                                      action: '전략 수립 — 균형 조율 우선' },
+                            low:    { trend: '커리어 재정비 구간 (역량 보호 단계)',
+                                      action: '재정비 우선 — 역량 보호 흐름' }
+                        };
+                        const _vocab = _ctxScore >= 70 ? _ctxVocab.high
+                                     : _ctxScore >= 45 ? _ctxVocab.mid
+                                     : _ctxVocab.low;
+                        _trendText = _vocab.trend;
+                        _actionText = _vocab.action;
+                    } else {
+                        _trendText = fi.trend;
+                        _actionText = fi.action;
+                    }
+                    
+                    // [V25.22] 수비학 1~9 자연 한국어 의미 매핑
+                    const _numerologyMap = {
+                        1: '시작·새 출발 흐름',
+                        2: '균형·관계 흐름',
+                        3: '성장·표현 흐름',
+                        4: '안정·구조 흐름',
+                        5: '변화·변동성 흐름',
+                        6: '조화·책임 흐름',
+                        7: '통찰·깊이 흐름',
+                        8: '결실·성취 흐름',
+                        9: '완성·전환 흐름'
+                    };
+                    // fi.timing에서 (수비학 N) 패턴 추출
+                    const _numMatch = (fi.timing || '').match(/수비학\s*(\d)/);
+                    const _numKey = _numMatch ? parseInt(_numMatch[1]) : null;
+                    const _numMeaning = (_numKey && _numerologyMap[_numKey]) ? _numerologyMap[_numKey] : null;
+                    const _enrichedTiming = _numMeaning
+                        ? (fi.timing || '').replace(/\(수비학\s*\d\)/, `(수비학 ${_numKey}: ${_numMeaning})`)
+                        : (fi.timing || '');
+                    
+                    return `
                 <div style="padding:14px 16px;background:rgba(46,204,113,0.05);border:1px solid rgba(46,204,113,0.2);border-radius:8px;font-size:0.88rem;line-height:1.9;">
                     <div style="color:#2ecc71;font-size:0.78rem;font-weight:900;letter-spacing:0.1em;margin-bottom:10px;">✦ 운세 에너지 지표</div>
-                    <div style="margin-bottom:4px;">📈 흐름: <span style="color:rgba(255,255,255,0.9);">${fi.trend}</span></div>
-                    <div style="margin-bottom:4px;">🧭 행동: <span style="color:rgba(255,255,255,0.9);">${fi.action}</span></div>
-                    <div style="margin-bottom:4px;">⚡ 타이밍: <span style="color:rgba(255,255,255,0.9);">${fi.timing}</span></div>
+                    <div style="margin-bottom:4px;">📈 흐름: <span style="color:rgba(255,255,255,0.9);">${_trendText}</span></div>
+                    <div style="margin-bottom:4px;">🧭 행동: <span style="color:rgba(255,255,255,0.9);">${_actionText}</span></div>
+                    <div style="margin-bottom:4px;">⚡ 타이밍: <span style="color:rgba(255,255,255,0.9);">${_enrichedTiming}</span></div>
                     <div style="margin-top:10px; padding-top:10px; border-top:1px solid rgba(46,204,113,0.15); font-size:0.85rem;">
                         <div style="color:#2ecc71; font-weight:700; margin-bottom:6px;">🛡️ 흐름 주의 포인트</div>
                         <div style="margin-left:6px; line-height:1.7; color:rgba(255,255,255,0.88);">
                             ${_fortuneGuide}
                         </div>
                     </div>
+                </div>
+                ${(() => {
+                    // [V25.23 PRO 전용] 🎯 실행 가이드 — 사장님 V25.23 안 (돈값 핵심)
+                    //   • PRO 운세 (재물/건강/직장/신년/etc)에서만 노출
+                    //   • 무료 운세 (today/general)는 차단 (차별화)
+                    //   • contextScore + 도메인 어휘 기반 결정형 출력
+                    const _checkSub = (typeof FORTUNE_SUBTYPE !== 'undefined') ? FORTUNE_SUBTYPE : '';
+                    const _isFree = (_checkSub === 'today' || _checkSub === 'general');
+                    if (_isFree) return '';
+                    
+                    const _smG = window._serverMetrics;
+                    const _ctxKeyG = (_smG && _smG.contextKey) || null;
+                    const _ctxScoreG = (_smG && _smG.contextScore) || 50;
+                    
+                    // 도메인 + 점수 기반 실행 가이드 어휘
+                    const _guideVocab = (() => {
+                        if (_ctxKeyG === 'wealth') {
+                            return _ctxScoreG >= 70 ? {
+                                action: '자산 흐름이 우호적인 구간 — 단계적 진입과 확장 검토',
+                                trigger: '신호 확인 후 분할 진입 (일괄 진입 금지)',
+                                avoid: '감정적 추격 매수·과도한 레버리지'
+                            } : _ctxScoreG >= 45 ? {
+                                action: '기존 자산 구조 점검 + 자금 계획 재정립',
+                                trigger: '명확한 가격 메리트 확인 시 선별 진입',
+                                avoid: '구조 점검 없이 신규 진입·무리한 확장'
+                            } : {
+                                action: '자산 보호 우선 — 위험 노출 축소 검토',
+                                trigger: '하락 흐름 안정화 신호 확인 후 재평가',
+                                avoid: '저가 추격·평단 조정·감정 매수'
+                            };
+                        }
+                        if (_ctxKeyG === 'health') {
+                            return _ctxScoreG >= 70 ? {
+                                action: '활력 활용 — 새 건강 습관 도입 검토',
+                                trigger: '체력 신호 안정 확인 후 점진적 강도 증가',
+                                avoid: '무리한 단련·기존 패턴 급변경'
+                            } : _ctxScoreG >= 45 ? {
+                                action: '균형 점검 + 생활 정비 (수면·식사·운동)',
+                                trigger: '컨디션 안정 신호 확인 후 변화 시도',
+                                avoid: '스트레스 누적 무시·신호 외면'
+                            } : {
+                                action: '휴식 우선 — 회복 신호 관찰',
+                                trigger: '체력 회복 후 단계적 활동 재개',
+                                avoid: '무리한 활동·진단 미루기'
+                            };
+                        }
+                        if (_ctxKeyG === 'career') {
+                            return _ctxScoreG >= 70 ? {
+                                action: '커리어 결단 우호 흐름 — 진입·확장 검토',
+                                trigger: '구체적 기회 확인 후 단계적 결정',
+                                avoid: '준비 없는 충동 결단·과도한 확장'
+                            } : _ctxScoreG >= 45 ? {
+                                action: '전략 정비 + 역량 점검 우선',
+                                trigger: '명확한 방향성 확인 후 실행',
+                                avoid: '방향 없는 시도·즉흥 결정'
+                            } : {
+                                action: '재정비 우선 — 역량 보호와 회복',
+                                trigger: '내부 안정 후 점진적 도전',
+                                avoid: '소진 상태에서 무리한 결단'
+                            };
+                        }
+                        // newyear / etc — 일반
+                        return _ctxScoreG >= 70 ? {
+                            action: '흐름이 우호적인 시기 — 작은 선택을 적극 활용',
+                            trigger: '명확한 신호 확인 시 단계적 실행',
+                            avoid: '과도한 기대·즉흥 결정'
+                        } : _ctxScoreG >= 45 ? {
+                            action: '기준 정리 + 방향성 점검 우선',
+                            trigger: '내부 명확화 후 작은 선택 실행',
+                            avoid: '주변 의견 추종·기준 없는 결정'
+                        } : {
+                            action: '내면 정리 + 회복 시간 확보',
+                            trigger: '에너지 회복 후 점진적 시도',
+                            avoid: '소진 상태 무시·강행'
+                        };
+                    })();
+                    
+                    return `
+                <div style="margin-top: 14px; padding: 14px 16px;
+                            background: rgba(255,217,112,0.05);
+                            border: 1px solid rgba(255,217,112,0.25);
+                            border-radius: 8px;
+                            font-size: 0.88rem; line-height: 1.85;">
+                    <div style="color: #FFD970; font-size: 0.78rem; font-weight: 900; letter-spacing: 0.1em; margin-bottom: 10px; display: flex; align-items: center; gap: 6px;">
+                        <span>🎯 실행 가이드</span>
+                        <span style="margin-left: auto; font-size: 0.62rem; color: rgba(212,175,55,0.7); letter-spacing: 0.1em;">PRO</span>
+                    </div>
+                    <div style="display: flex; gap: 8px; margin-bottom: 6px;">
+                        <span style="color: #2ecc71; font-weight: 800; min-width: 90px; font-size: 0.82rem;">✔ 해야 할 행동</span>
+                        <span style="color: rgba(255,255,255,0.9); flex: 1;">${_guideVocab.action}</span>
+                    </div>
+                    <div style="display: flex; gap: 8px; margin-bottom: 6px;">
+                        <span style="color: #5DADE2; font-weight: 800; min-width: 90px; font-size: 0.82rem;">✔ 진입 기준</span>
+                        <span style="color: rgba(255,255,255,0.9); flex: 1;">${_guideVocab.trigger}</span>
+                    </div>
+                    <div style="display: flex; gap: 8px;">
+                        <span style="color: #ff8080; font-weight: 800; min-width: 90px; font-size: 0.82rem;">✘ 금지 행동</span>
+                        <span style="color: rgba(255,255,255,0.9); flex: 1;">${_guideVocab.avoid}</span>
+                    </div>
                 </div>`;
+                })()}`;
+                })()}`;
         })() : ''}
         ${investBlock}
+        ${(() => {
+            // [V25.24 옵션 B] 사장님 V25.23 안 — 4도메인 일관성 확보
+            //   운세는 위에서 이미 처리됨, 여기는 연애/주식/부동산 전용
+            //   • 운세 도메인: 이미 운세 에너지 지표 박스 안에 통합됨 → 차단
+            //   • PRO 결제 후에만 노출 (isPaid 조건은 _zeusProHook이 처리)
+            //   • 도메인별 어휘 + 점수 기반 분기
+            const _domain = (typeof ACTIVE_DOMAIN_BAR !== 'undefined' && ACTIVE_DOMAIN_BAR) || '';
+            
+            // 운세는 위에서 이미 노출됨 → 중복 방지
+            if (_domain === 'life' || _domain === 'general') return '';
+            
+            // PRO 결제 전이면 표시 안 함 (Blur 박스에서 유도)
+            if (typeof isPaid !== 'undefined' && !isPaid) return '';
+            
+            const _smX = window._serverMetrics;
+            const _scoreX = (_smX && _smX.opportunityWindow) || 50;
+            const _riskX = (_smX && _smX.riskScore) || 50;
+            
+            // 도메인별 어휘 매핑
+            let _vocabX = null;
+            if (_domain === 'love') {
+                // 연애 — 점수 기반 (관계 우호도)
+                _vocabX = _scoreX >= 70 ? {
+                    action: '관계 우호 흐름 — 자연스러운 진전 검토',
+                    trigger: '상대 신호 확인 후 단계적 표현',
+                    avoid: '조급한 압박·과도한 기대'
+                } : _scoreX >= 45 ? {
+                    action: '관계 점검 + 소통 기준 정립',
+                    trigger: '대화 흐름 안정 후 다음 단계',
+                    avoid: '추측에 의존한 행동·반복 연락'
+                } : {
+                    action: '거리 정비 + 내면 정리 우선',
+                    trigger: '관계 회복 신호 확인 후 재시도',
+                    avoid: '감정적 결정·일방적 시도'
+                };
+            } else if (_domain === 'stock' || _domain === 'crypto') {
+                // 주식/코인 — 매수/매도 의도별
+                const _intent = (_smX && _smX.stockIntent) || 'buy';
+                if (_intent === 'sell') {
+                    _vocabX = _scoreX >= 70 ? {
+                        action: '단계적 청산 검토 — 비중 축소 흐름',
+                        trigger: '손익 기준 명확화 후 분할 매도',
+                        avoid: '일괄 청산·감정적 손절'
+                    } : _scoreX >= 45 ? {
+                        action: '포지션 점검 + 손익 기준 재정립',
+                        trigger: '저항선 도달 후 부분 정리',
+                        avoid: '미루기·기대치만 의존'
+                    } : {
+                        action: '손실 제한 우선 — 추가 노출 차단',
+                        trigger: '명확한 반등 신호 확인 후 재평가',
+                        avoid: '평단 조정·물타기 추격'
+                    };
+                } else {
+                    _vocabX = _scoreX >= 70 ? {
+                        action: '진입 흐름 우호 — 분할 매수 검토',
+                        trigger: '지지선·신호 확인 후 단계적 진입',
+                        avoid: '일괄 진입·고점 추격'
+                    } : _scoreX >= 45 ? {
+                        action: '시장 흐름 점검 + 매수 기준 정립',
+                        trigger: '명확한 가격 메리트 확인 시 진입',
+                        avoid: '소문 의존·즉흥 매수'
+                    } : {
+                        action: '진입 보류 — 시장 안정 대기',
+                        trigger: '추세 전환 신호 확인 후 재고',
+                        avoid: '저가 추격·감정 매수'
+                    };
+                }
+            } else if (_domain === 'realestate') {
+                // 부동산 — 매도/매수/보유/재개발 분기 (서브타입 활용 가능)
+                const _reSub = (typeof REALESTATE_SUBTYPE !== 'undefined') ? REALESTATE_SUBTYPE : '';
+                if (_reSub === 'sell') {
+                    _vocabX = _scoreX >= 70 ? {
+                        action: '매도 흐름 우호 — 가격 협상 진행 검토',
+                        trigger: '매수 문의 빈도 확인 후 협상',
+                        avoid: '조급한 가격 인하·일괄 결정'
+                    } : _scoreX >= 45 ? {
+                        action: '시세 흐름 점검 + 매도 기준 정립',
+                        trigger: '실거래 흐름 안정 후 매물 등록',
+                        avoid: '단기 시세만 의존·기대치 과다'
+                    } : {
+                        action: '매도 보류 — 시장 회복 관찰',
+                        trigger: '거래량 회복 신호 후 재고',
+                        avoid: '급매·감정적 매도'
+                    };
+                } else {
+                    // buy / hold / redev
+                    _vocabX = _scoreX >= 70 ? {
+                        action: '시장 우호 흐름 — 진입 검토',
+                        trigger: '입지·가격 메리트 확인 후 단계적 결정',
+                        avoid: '청약 후회·일괄 결정'
+                    } : _scoreX >= 45 ? {
+                        action: '시장 점검 + 자금 기준 정립',
+                        trigger: '명확한 가격 메리트 확인 시 진입',
+                        avoid: '대출 무리·계약 서두르기'
+                    } : {
+                        action: '진입 보류 — 시장 안정 대기',
+                        trigger: '거래량·금리 흐름 확인 후 재고',
+                        avoid: '저가 추격·감정 매수'
+                    };
+                }
+            }
+            
+            if (!_vocabX) return '';
+            
+            // 도메인별 색상
+            const _colorX = _domain === 'love' ? '#FF7BAC'
+                          : (_domain === 'stock' || _domain === 'crypto') ? '#FFD970'
+                          : _domain === 'realestate' ? '#5DADE2'
+                          : '#FFD970';
+            
+            return `
+            <div style="margin-top: 16px; padding: 14px 16px;
+                        background: rgba(255,217,112,0.05);
+                        border: 1px solid rgba(255,217,112,0.25);
+                        border-radius: 8px;
+                        font-size: 0.88rem; line-height: 1.85;">
+                <div style="color: ${_colorX}; font-size: 0.78rem; font-weight: 900; letter-spacing: 0.1em; margin-bottom: 10px; display: flex; align-items: center; gap: 6px;">
+                    <span>🎯 실행 가이드</span>
+                    <span style="margin-left: auto; font-size: 0.62rem; color: rgba(212,175,55,0.7); letter-spacing: 0.1em;">PRO</span>
+                </div>
+                <div style="display: flex; gap: 8px; margin-bottom: 6px;">
+                    <span style="color: #2ecc71; font-weight: 800; min-width: 90px; font-size: 0.82rem;">✔ 해야 할 행동</span>
+                    <span style="color: rgba(255,255,255,0.9); flex: 1;">${_vocabX.action}</span>
+                </div>
+                <div style="display: flex; gap: 8px; margin-bottom: 6px;">
+                    <span style="color: #5DADE2; font-weight: 800; min-width: 90px; font-size: 0.82rem;">✔ 진입 기준</span>
+                    <span style="color: rgba(255,255,255,0.9); flex: 1;">${_vocabX.trigger}</span>
+                </div>
+                <div style="display: flex; gap: 8px;">
+                    <span style="color: #ff8080; font-weight: 800; min-width: 90px; font-size: 0.82rem;">✘ 금지 행동</span>
+                    <span style="color: rgba(255,255,255,0.9); flex: 1;">${_vocabX.avoid}</span>
+                </div>
+            </div>`;
+        })()}
         ${_zeusProHook}
+        ${(() => {
+            // [V25.22] 닉네임 박스 — 포스트-경험 개인화 (사장님 V25.22 안)
+            //   사장님 안 핵심: "결과 본 후 닉네임 요청 → 거부감 0 → 전환율 ↑↑"
+            //   • localStorage 자동 저장
+            //   • 다음 점사부터 즉시 반영 (호칭 1회 + 주어 생략)
+            //   • 미입력 = 주어 생략 모드 (한국어 점사 정통 톤)
+            
+            // 이미 저장된 닉네임이 있으면 박스 노출 안 함 (재방문 사용자)
+            let _alreadySaved = '';
+            try { _alreadySaved = localStorage.getItem('zeus_user_nickname') || ''; }
+            catch(e) {}
+            if (_alreadySaved) return '';
+            
+            return `
+            <div id="zeus-nickname-box" style="margin-top:20px; padding:16px 18px;
+                        background: linear-gradient(135deg, rgba(212,175,55,0.08), rgba(155,89,182,0.05));
+                        border: 1px solid rgba(212,175,55,0.3);
+                        border-radius: 12px;">
+                <div style="text-align:center; color: var(--gold); font-size: 0.82rem; font-weight: 800; letter-spacing: 0.05em; margin-bottom: 8px;">
+                    ✨ 결과를 더 개인화할까요?
+                </div>
+                <div style="text-align:center; font-size: 0.75rem; color: rgba(255,255,255,0.6); margin-bottom: 14px; line-height: 1.6;">
+                    닉네임을 입력하시면 다음 신탁부터 맞춤형 호칭이 사용됩니다 (선택)
+                </div>
+                <div style="display: flex; gap: 8px; max-width: 320px; margin: 0 auto;">
+                    <input type="text" id="zeus-nickname-input"
+                        maxlength="10"
+                        placeholder="예: 지수, 민호, 별빛"
+                        style="flex: 1; padding: 10px 14px;
+                               background: rgba(0,0,0,0.4);
+                               border: 1px solid rgba(212,175,55,0.4);
+                               border-radius: 8px;
+                               color: #fff;
+                               font-size: 0.9rem;
+                               outline: none;"
+                        onkeydown="if(event.key==='Enter') saveZeusNickname()">
+                    <button onclick="saveZeusNickname()"
+                        style="padding: 10px 18px;
+                               background: linear-gradient(135deg, #D4AF37, #F1C40F);
+                               color: #1a1a2e; border: none; border-radius: 8px;
+                               font-weight: 800; font-size: 0.85rem; cursor: pointer;
+                               white-space: nowrap;">
+                        저장
+                    </button>
+                </div>
+                <div id="zeus-nickname-status" style="text-align:center; margin-top:10px; font-size:0.74rem; color:rgba(46,204,113,0.85); min-height:18px;"></div>
+            </div>`;
+        })()}
         <!-- [V24.0+V25.13+V25.14.2] 면책 고지 — 도메인별 4단계 차별화
              사장님 화면 진단 (V25.14.2): 연애에 무거운 법무 노출됨
              해결: 4도메인 정확 분기
@@ -8203,8 +8609,61 @@ function zeusKakaoChannel() {
 
 
 // ════════════════════════════════════
-// 결제 모달 & 유료 전환
+// [V25.22] 닉네임 저장 — 포스트-경험 개인화
+//   사장님 V25.22 안: 결과 본 후 닉네임 입력 → 자동 저장 → 재입력 없음
 // ════════════════════════════════════
+function saveZeusNickname() {
+    const input = document.getElementById('zeus-nickname-input');
+    const status = document.getElementById('zeus-nickname-status');
+    const box = document.getElementById('zeus-nickname-box');
+    if (!input) return;
+    
+    const nick = (input.value || '').trim();
+    
+    // 검증: 빈 값 / 한글 1~10자 또는 영문 2~10자
+    if (!nick) {
+        if (status) {
+            status.style.color = '#FFB75E';
+            status.textContent = '닉네임을 입력해주세요';
+        }
+        return;
+    }
+    if (nick.length > 10) {
+        if (status) {
+            status.style.color = '#FFB75E';
+            status.textContent = '10자 이내로 입력해주세요';
+        }
+        return;
+    }
+    
+    // localStorage 저장
+    try {
+        localStorage.setItem('zeus_user_nickname', nick);
+    } catch(e) {
+        console.warn('nickname save failed:', e);
+    }
+    
+    // 즉시 전역 변수 반영 (다음 점사부터 즉시 사용)
+    window._oracleUserName = nick + '님';
+    
+    // 성공 메시지 → 박스 페이드아웃
+    if (status) {
+        status.style.color = '#2ecc71';
+        status.textContent = `✓ "${nick}님"으로 저장되었습니다 — 다음 신탁부터 적용됩니다`;
+    }
+    
+    // 3초 후 박스 부드럽게 사라짐
+    setTimeout(() => {
+        if (box) {
+            box.style.transition = 'opacity 0.6s ease, max-height 0.6s ease';
+            box.style.opacity = '0';
+            box.style.maxHeight = '0';
+            box.style.overflow = 'hidden';
+            setTimeout(() => { if (box && box.parentNode) box.remove(); }, 700);
+        }
+    }, 3000);
+}
+
 // ════════════════════════════════════
 // 결제 모달 & 유료 전환
 // ════════════════════════════════════
