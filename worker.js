@@ -1717,17 +1717,17 @@ function buildCriticalInterpretation(cards, revFlags, domain, intent) {
 
     if (signal === "BUY") {
       loveText = isMarriage
-        ? `현재 카드 흐름은 관계 확장 가능성과 함께, 내면적 감정 점검과 방향 정리가 필요한 구간으로 해석됩니다. 외형적 진행보다 관계의 '기준 정립'이 우선되는 흐름입니다.\n\n👉 핵심: "감정의 깊이보다 방향의 일치가 중요합니다"`
-        : `현재 카드 흐름은 관계 진전 가능성과 함께, 서로의 진심을 확인하는 과정이 필요한 구간으로 해석됩니다. 즉각적 표현보다 관계의 '방향성 점검'이 우선되는 흐름입니다.\n\n👉 핵심: "감정 표현보다 진심의 합치가 중요합니다"`;
+        ? `현재 카드 흐름은 관계 확장 가능성과 함께, 내면적 감정 점검과 방향 정리가 필요한 구간으로 해석됩니다. 외형적 진행보다 관계의 '기준 정립'이 우선되는 흐름입니다.\n\n👉 결론: "감정의 깊이보다 방향의 일치가 중요합니다"`
+        : `현재 카드 흐름은 관계 진전 가능성과 함께, 서로의 진심을 확인하는 과정이 필요한 구간으로 해석됩니다. 즉각적 표현보다 관계의 '방향성 점검'이 우선되는 흐름입니다.\n\n👉 결론: "감정 표현보다 진심의 합치가 중요합니다"`;
     } else if (signal === "SELL") {
       loveText = isMarriage
-        ? `현재 카드 흐름은 결혼 결정 앞에서 미뤄둔 의문과 감정 정리가 필요한 구간으로 해석됩니다. 형식적 진행보다 관계의 '본질적 합의'가 우선되는 흐름입니다.\n\n👉 핵심: "결혼의 형식보다 두 분의 합의가 먼저입니다"`
-        : `현재 카드 흐름은 관계 안에 쌓인 거리감과 감정 정리가 필요한 구간으로 해석됩니다. 무리한 지속보다 관계의 '재정립 시점'이 우선되는 흐름입니다.\n\n👉 핵심: "관계 유지보다 진심의 정리가 먼저입니다"`;
+        ? `현재 카드 흐름은 결혼 결정 앞에서 미뤄둔 의문과 감정 정리가 필요한 구간으로 해석됩니다. 형식적 진행보다 관계의 '본질적 합의'가 우선되는 흐름입니다.\n\n👉 결론: "결혼의 형식보다 두 분의 합의가 먼저입니다"`
+        : `현재 카드 흐름은 관계 안에 쌓인 거리감과 감정 정리가 필요한 구간으로 해석됩니다. 무리한 지속보다 관계의 '재정립 시점'이 우선되는 흐름입니다.\n\n👉 결론: "관계 유지보다 진심의 정리가 먼저입니다"`;
     } else {
       // HOLD
       loveText = isMarriage
-        ? `현재 카드 흐름은 결혼 결정 앞에서 가치관과 미래 인식의 일치 점검이 필요한 구간으로 해석됩니다. 한쪽 결단보다 두 분의 '본질 합의'가 우선되는 흐름입니다.\n\n👉 핵심: "한쪽 결정보다 두 분의 합치가 핵심입니다"`
-        : `현재 카드 흐름은 관계 깊이를 위한 관찰과 진심 확인의 시기로 해석됩니다. 결과 재촉보다 관계의 '자연스러운 흐름'이 우선되는 시점입니다.\n\n👉 핵심: "결과보다 흐름의 자연스러움이 중요합니다"`;
+        ? `현재 카드 흐름은 결혼 결정 앞에서 가치관과 미래 인식의 일치 점검이 필요한 구간으로 해석됩니다. 한쪽 결단보다 두 분의 '본질 합의'가 우선되는 흐름입니다.\n\n👉 결론: "한쪽 결정보다 두 분의 합치가 핵심입니다"`
+        : `현재 카드 흐름은 관계 깊이를 위한 관찰과 진심 확인의 시기로 해석됩니다. 결과 재촉보다 관계의 '자연스러운 흐름'이 우선되는 시점입니다.\n\n👉 결론: "결과보다 흐름의 자연스러움이 중요합니다"`;
     }
 
     // 면책 — V25.14.2 안 그대로 (관계 도메인 적합)
@@ -1835,7 +1835,7 @@ function buildCriticalInterpretation(cards, revFlags, domain, intent) {
     ? `※ 본 신탁은 흐름 해석을 돕기 위한 참고 콘텐츠입니다. 중요한 결정은 개인 상황을 기준으로 신중히 판단하시기 바랍니다.`
     : `※ 본 신탁은 흐름에 대한 참고 콘텐츠입니다. 실제 판단은 본인의 상황을 기준으로 신중히 판단하시기 바랍니다.`;
 
-  return `${para1} ${para2}\n\n👉 핵심: ${keyInsight}\n\n${disclaimer}`;
+  return `${para1} ${para2}\n\n👉 결론: ${keyInsight}\n\n${disclaimer}`;
 }
 
 
@@ -2187,30 +2187,36 @@ function applyCryptoVocabulary(metrics, stockSubType, stockIntent) {
     if (metrics.layers.zeusGuide && Array.isArray(metrics.layers.zeusGuide)) {
       metrics.layers.zeusGuide = [v.action1, v.action2, v.action3];
     }
-    // ── 핵심 해석 — 코인 어휘로 교체 (V25.38 핫픽스: string 형태 유지)
-    //   사장님 진단: "[object Object]" 출력 차단
-    //   원인: 객체로 변환 시 클라이언트 ${} 보간 실패
-    //   해결: 항상 string 형태로 유지 — keyInsight를 본문 끝에 자연스럽게 추가
+    // ── 핵심 해석 — 코인 어휘로 교체 (V25.38 사장님 진단 안 적용)
+    //   사장님 진단 1: "[object Object]" 출력 차단 → string 유지
+    //   사장님 진단 2: 결론 중복 제거 — 결론은 화면에 단 1번만
+    //   [V25.38 라벨 차별화] 모든 도메인 → '👉 결론:' 통일 (일관성)
+    //   효과: 주식·코인·부동산·연애·운세 모두 결론 라벨 단일화
     if (metrics.layers.criticalInterpretation) {
       const crit = metrics.layers.criticalInterpretation;
       if (typeof crit === 'string') {
-        // 기존 본문 + 코인 어휘 keyInsight 추가 (자연스러운 결합)
-        // 본문에 이미 "👉 핵심:" 또는 "면책 문구"가 있으면 그 앞에 삽입
-        const cryptoLine = `\n\n🪙 코인 핵심: "${v.coreKey}"`;
-        if (crit.includes('※ 본 신탁')) {
+        // 코인용 결론 라인 — coreKey가 코인 도메인 시그니처 메시지
+        const cryptoLine = `👉 결론: "${v.coreKey}"`;
+        // 기존 "👉 결론: ..." 라인이 있으면 코인 어휘로 교체 (도메인 통일)
+        if (/👉 결론:/.test(crit)) {
+          metrics.layers.criticalInterpretation = crit.replace(
+            /👉 결론:[^\n]*/,
+            cryptoLine
+          );
+        } else if (crit.includes('※ 본 신탁')) {
           // 면책 문구 앞에 코인 라인 삽입
           metrics.layers.criticalInterpretation = crit.replace(
             /(\n\n※ 본 신탁)/,
-            `${cryptoLine}$1`
+            `\n\n${cryptoLine}$1`
           );
         } else {
-          // 면책 문구 없으면 끝에 추가
-          metrics.layers.criticalInterpretation = crit + cryptoLine;
+          metrics.layers.criticalInterpretation = crit + `\n\n${cryptoLine}`;
         }
       } else if (typeof crit === 'object' && crit.body) {
-        // 이미 객체 형태로 와있으면 다시 string으로 변환 (안전망)
+        // 객체 형태 안전망 — string으로 변환 + 코인 어휘만 사용
+        const body = crit.body.replace(/👉 결론:[^\n]*/, '').replace(/\n{3,}/g, '\n\n').trim();
         metrics.layers.criticalInterpretation =
-          `${crit.body}\n\n🪙 코인 핵심: "${v.coreKey}"`;
+          `${body}\n\n👉 결론: "${v.coreKey}"`;
       }
     }
     // ── 라벨 메타 (클라이언트가 활용)
