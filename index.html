@@ -1914,6 +1914,12 @@
                 <button class="sit-btn" data-type="short" onclick="setSituation(this,'short','stock')">📈 단타 분석</button>
                 <button class="sit-btn" data-type="long"  onclick="setSituation(this,'long','stock')">🏦 중장기 투자</button>
                 <button class="sit-btn" data-type="risk"  onclick="setSituation(this,'risk','stock')">🛡️ 리스크 체크</button>
+                <!-- [V25.38] 코인 5개 서브타입 — 주식 탭 안에 추가 (사장님 결정: A안) -->
+                <button class="sit-btn" data-type="crypto_buy"  onclick="setSituation(this,'crypto_buy','crypto')">🪙 코인 매수</button>
+                <button class="sit-btn" data-type="crypto_sell" onclick="setSituation(this,'crypto_sell','crypto')">💎 코인 매도</button>
+                <button class="sit-btn" data-type="scalping"    onclick="setSituation(this,'scalping','crypto')">⚡ 스캘핑</button>
+                <button class="sit-btn" data-type="holding"     onclick="setSituation(this,'holding','crypto')">💎 홀딩</button>
+                <button class="sit-btn" data-type="crypto_risk" onclick="setSituation(this,'crypto_risk','crypto')">🛡️ 코인 리스크</button>
             </div>
             <!-- 부동산 세부 전략 -->
             <div class="situation-tabs" id="situation-tabs-realestate" style="display:none;">
@@ -3009,6 +3015,16 @@ function setSituation(btn, type, domain) {
     } else if (domain === 'stock') {
         STOCK_SUBTYPE = type;
         LOVE_SUBTYPE = ''; RE_SUBTYPE = '';
+        // [V25.38] 코인에서 주식으로 전환 시 도메인 복구
+        if (typeof ACTIVE_DOMAIN_BAR !== 'undefined') ACTIVE_DOMAIN_BAR = 'stock';
+    } else if (domain === 'crypto') {
+        // [V25.38] 코인 도메인 — STOCK_SUBTYPE에 저장 (서버에서 queryType=crypto 분리 처리)
+        //   사장님 결정: 코인 5버튼은 주식 탭 안에 통합 노출
+        //   서버에서 crypto_buy/crypto_sell/scalping/holding/crypto_risk로 식별
+        STOCK_SUBTYPE = type;
+        LOVE_SUBTYPE = ''; RE_SUBTYPE = '';
+        // ACTIVE_DOMAIN_BAR 'stock' → 'crypto'로 명시 변경 (서버 라우팅 정확성)
+        if (typeof ACTIVE_DOMAIN_BAR !== 'undefined') ACTIVE_DOMAIN_BAR = 'crypto';
     } else if (domain === 'realestate') {
         RE_SUBTYPE    = type;
         LOVE_SUBTYPE = ''; STOCK_SUBTYPE = '';
@@ -6316,6 +6332,18 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
                 entryColor: '#2ecc71',
                 exitColor:  '#ff5252'
             };
+            
+            // [V25.38] 코인 5 서브타입 라벨 — cryptoLabels로 덮어쓰기
+            //   서버가 보낸 cryptoLabels (서브타입별 어휘 매트릭스) 우선 사용
+            const cl = d._server?.layers?.cryptoLabels || d.layers?.cryptoLabels;
+            if (d.type === 'crypto' && cl) {
+                if (cl.timingTitle) labels.timing = `⚡ ${cl.timingTitle} ⚡`;
+                if (cl.entryLabel)  labels.entry  = cl.entryLabel;
+                if (cl.exitLabel)   labels.exit   = cl.exitLabel;
+                if (cl.positionLabel) labels.position = `📊 ${cl.positionLabel}`;
+                if (cl.stopLabel)   labels.stopLoss = `🛑 ${cl.stopLabel}`;
+                if (cl.targetLabel) labels.target = `🎯 ${cl.targetLabel}`;
+            }
 
             const finalOracleHTML = (d.finalOracle || '').toString().replace(/\n/g, '<br>');
 
@@ -10295,8 +10323,35 @@ function renderCardRadarChart(cardDimensions, domain) {
                 { key: 'vol',         label: '흐름 변화' },
                 { key: 'uncertainty', label: '불확실성' }
             ];
+        } else if (domain === 'stock') {
+            // [V25.38] 주식 전용 라벨 — "관계 에너지" 같은 부적합 어휘 제거
+            return [
+                { key: 'base',        label: '기본 점수' },
+                { key: 'love',        label: '추세 강도' },
+                { key: 'risk',        label: '리스크' },
+                { key: 'vol',         label: '변동성' },
+                { key: 'uncertainty', label: '불확실성' }
+            ];
+        } else if (domain === 'crypto') {
+            // [V25.38] 코인 전용 라벨 — 변동성 강조
+            return [
+                { key: 'base',        label: '기본 점수' },
+                { key: 'love',        label: '모멘텀' },
+                { key: 'risk',        label: '리스크' },
+                { key: 'vol',         label: '변동성' },
+                { key: 'uncertainty', label: '불확실성' }
+            ];
+        } else if (domain === 'realestate') {
+            // [V25.38] 부동산 전용 라벨 — 거래 시장 어휘
+            return [
+                { key: 'base',        label: '기본 점수' },
+                { key: 'love',        label: '시장 강도' },
+                { key: 'risk',        label: '리스크' },
+                { key: 'vol',         label: '변동성' },
+                { key: 'uncertainty', label: '불확실성' }
+            ];
         }
-        // stock / crypto / realestate
+        // fallback (기타)
         return [
             { key: 'base',        label: '기본 점수' },
             { key: 'love',        label: '관계 에너지' },
