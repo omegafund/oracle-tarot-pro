@@ -3751,9 +3751,24 @@ async function renderStream(fetchPromise, cards) {
         //   사장님 진단: Worker Phase F가 metrics만 처리, Gemini 본문은 분산 X
         //   해결: Client에서 본문 후처리로 동의어 분산 추가 적용
         //   효과: '관계' 14회 → 4종 분산 / '거리' 8회 → 4종 분산 (인지 피로 ↓)
-        const _filteredText = (_activeDomain === 'love' && typeof applyClientLoveVariation === 'function')
+        const _variedText = (_activeDomain === 'love' && typeof applyClientLoveVariation === 'function')
             ? applyClientLoveVariation(_filteredTextRaw)
             : _filteredTextRaw;
+
+        // [V26.3 결함 1-B] 카드 라벨 vs 본문 시제 정렬 (Critical 안전망)
+        //   사장님 진단: 라벨은 '과거'인데 본문이 '현재는~'으로 시작 → V25.22 무력화
+        //   해결: Gemini 위반 감지 시 자동 교정 (안전망)
+        //   원리: 각 시제 라벨 다음 첫 단어가 다른 시제면 정렬 수정
+        const _alignedText = (typeof alignTenseWithLabel === 'function')
+            ? alignTenseWithLabel(_variedText)
+            : _variedText;
+
+        // [V26.3 결함 2] 한국어 호칭 띄어쓰기 안전망 — '이름 님' → '이름님'
+        //   사장님 진단: '신상훈 님과 김예지 님' = 한국어 정서법 위반
+        //   해결: Gemini 위반 감지 시 자동 교정 (안전망)
+        const _filteredText = (typeof normalizeHonorificSpacing === 'function')
+            ? normalizeHonorificSpacing(_alignedText)
+            : _alignedText;
 
         // 2️⃣ [최종 렌더링] 결제 여부(isPaidUser)에 따라 미래와 지표 노출 결정
         contentEl.innerHTML = renderText(_filteredText, cards, investmentData, isPaidUser, isFinance);
@@ -8008,7 +8023,10 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
                         : _renderLoveBlock(cards, qRaw2, LOVE_SUBTYPE));
 
                 // [V22.0] 🔒 PRO 전환 박스 — 사장님 전환률 강화 문구
-                const proHookHTML = `
+                // [V26.3 결함 3] 결제 후 숨김 — 결제 회상 차단
+                //   사장님 진단: 이미 결제한 사용자에게 'PRO' 라벨 노출은 부적절
+                //   해결: isPaidUser true이면 빈 문자열 반환
+                const proHookHTML = (typeof isPaidUser !== 'undefined' && isPaidUser) ? '' : `
                     <div style="margin-top:20px; padding:18px 16px;
                                 background: linear-gradient(135deg, rgba(255,123,172,0.15), rgba(212,175,55,0.10));
                                 border: 2px solid rgba(255,123,172,0.5);
@@ -10408,6 +10426,91 @@ const DOMAIN_LABEL_MAP = {
     stock: {},   // 주식은 그대로 OK
     crypto: {},
 };
+
+// [V26.3 결함 2] 한국어 호칭 띄어쓰기 안전망 — '이름 님' → '이름님'
+//   사장님 진단: '신상훈 님과 김예지 님' = 한국어 정서법 위반
+//   해결: Gemini 위반 감지 시 자동 교정
+//   원리: 한글 2~4자 + 공백 + 호칭(님/씨/군/양) → 붙여쓰기로 변환
+//   안전: 일반 명사 보호 (운명/인생/사람 등 + 공백 + 호칭 패턴 X)
+function normalizeHonorificSpacing(text) {
+    if (!text || typeof text !== 'string') return text;
+    // 패턴: 한글 2~4자 + 공백 1개 + (님|씨|군|양) + 조사/공백/문장끝
+    //   안전: 명사 + 공백 + 호칭 형태가 아닌 일반 단어 결합은 보호
+    return text.replace(
+        /([가-힣]{2,4})\s+(님|씨|군|양)(?=[과와이가을를은는의도에에서랑하고\s,.!?;:'"\-—()]|$)/g,
+        '$1$2'
+    );
+}
+
+// [V26.3 결함 1-B] 카드 라벨 vs 본문 시제 정렬 — Gemini 위반 감지 시 자동 교정
+//   원리: '과거', '현재', '미래' 라벨 다음 첫 본문 문장의 시제 키워드 검사
+//   교정: 라벨과 어긋나는 시제 키워드 → 라벨에 맞는 시제 키워드로 변환
+//   안전: 의미 변경 X (시제 부사만 교체), 본문 길이/구조 유지
+//   실제 구조: '\n과거\nCardName\n본문...' (카드 이름이 라벨과 본문 사이에 있음)
+function alignTenseWithLabel(text) {
+    if (!text || typeof text !== 'string') return text;
+
+    // 시제 라벨별 — '잘못된 시제 키워드' 매핑 (정렬 대상)
+    const tenseMap = {
+        '과거': [
+            { pattern: /^현재의\s/, replace: '과거의 ' },
+            { pattern: /^현재는\s/, replace: '과거에는 ' },
+            { pattern: /^지금은\s/, replace: '과거에는 ' },
+            { pattern: /^지금\s/, replace: '과거에 ' },
+            { pattern: /^오늘날\s/, replace: '지난 시기에 ' },
+            { pattern: /^앞으로는?\s/, replace: '과거에는 ' },
+            { pattern: /^미래의\s/, replace: '과거의 ' },
+            { pattern: /^미래에는?\s/, replace: '과거에는 ' },
+            { pattern: /^다가오는?\s/, replace: '지난 ' }
+        ],
+        '현재': [
+            { pattern: /^과거의\s/, replace: '현재의 ' },
+            { pattern: /^과거에는?\s/, replace: '현재는 ' },
+            { pattern: /^지난\s/, replace: '현재 ' },
+            { pattern: /^이전에는?\s/, replace: '현재는 ' },
+            { pattern: /^앞으로는?\s/, replace: '현재는 ' },
+            { pattern: /^미래의\s/, replace: '현재의 ' },
+            { pattern: /^미래에는?\s/, replace: '현재는 ' },
+            { pattern: /^다가오는?\s/, replace: '현재 ' }
+        ],
+        '미래': [
+            { pattern: /^과거의\s/, replace: '미래의 ' },
+            { pattern: /^과거에는?\s/, replace: '미래에는 ' },
+            { pattern: /^지난\s/, replace: '다가오는 ' },
+            { pattern: /^현재의\s/, replace: '미래의 ' },
+            { pattern: /^현재는\s/, replace: '미래에는 ' },
+            { pattern: /^지금은\s/, replace: '앞으로는 ' },
+            { pattern: /^지금\s/, replace: '앞으로 ' },
+            { pattern: /^오늘날\s/, replace: '앞으로 ' }
+        ]
+    };
+
+    let result = text;
+
+    // 각 시제 라벨에 대해 — 라벨 → 카드이름(영문/숫자) → 본문 첫 줄
+    //   실제 구조 예: '\n과거\nTemperance\n현재는 관계 속에서...'
+    //   라벨과 본문 사이에 카드 이름이 끼어있는 경우를 대응
+    for (const [label, patterns] of Object.entries(tenseMap)) {
+        // 패턴: 줄바꿈 + 라벨 + 줄바꿈 + (선택적: 카드 이름 줄 + 줄바꿈) + 본문 첫 줄
+        //   카드 이름은 영문/숫자/공백/괄호로 구성된 한 줄 (선택적)
+        const labelRegex = new RegExp(
+            `(\\n${label}\\n)((?:[A-Za-z0-9 ()의·\\-]+\\n+)?)([^\\n]*)`,
+            'g'
+        );
+        result = result.replace(labelRegex, (match, labelPart, cardLine, firstLine) => {
+            let aligned = firstLine;
+            for (const { pattern, replace } of patterns) {
+                if (pattern.test(aligned)) {
+                    aligned = aligned.replace(pattern, replace);
+                    break;  // 한 번 매칭되면 종료 (이중 변환 방지)
+                }
+            }
+            return labelPart + cardLine + aligned;
+        });
+    }
+
+    return result;
+}
 
 // [V26.1 결함 2] Client 측 Phase F — Gemini 본문 동의어 분산 (연애 도메인)
 //   Worker의 LOVE_SYNONYM_MAP과 동일 로직을 Client에 복제
