@@ -8566,6 +8566,41 @@ export default {
             const hasWeakOnly = p.includes('그') && !hasTarget && !hasContext;
             if (hasWeakOnly) return false;
 
+            // [V26.1 결함 1-A] 두 이름 패턴 자동 감지 — 사장님 진단 안
+            //   사장님 통찰: 한국 사용자 입력 100%가 두 가지 패턴
+            //     패턴 1: '나와 김예지' (자기 생략 — '나는 이미 나니까')
+            //     패턴 2: '신상훈 김예지' (두 이름 모두)
+            //   해결: 두 패턴 모두 감지 → compatibility 의도 명확 인식
+            //   정밀화: 시간어/일반명사 오인 차단 (내일/오늘/나의 등)
+
+            // 부정 키워드: 일반 운세/시간 의도 (두 사람 매칭 차단)
+            //   '연애운'·'재회운'·'결혼운' 등 '운'으로 끝나는 합성어 포함
+            //   '나의'(소유격) = 자기 점사 의도 (혼자, 두 사람 X)
+            const _negativeKeywords = ['운세','기운','에너지','타이밍','시점','오늘','내일','내년','이번주','이번달','시간 흐름','연애운','재회운','결혼운','금전운','직장운','건강운','나의'];
+            const _hasNegative = _negativeKeywords.some(k => p.includes(k));
+
+            const _twoPersonPatterns = [
+              // [패턴 1: 자기 생략형] '나/저 + 와/랑/하고 + 한글이름'
+              //   주의: '내가/내는'은 자기지칭, '내일/내년'은 시간 → 단어 경계 명확화
+              //   허용: '나와', '나랑', '나하고', '저랑', '저와', '저하고'
+              /(?:^|[\s])(?:나|저)(?:와|랑|하고)\s*[가-힣]{2,4}/,
+              // '내가/내는' + 명사 + 좋아/싫어/만나 등 동사 (감정 표현)
+              /(?:^|[\s])내가\s+[가-힣]{2,4}(?:을|를|이|가)?\s*(?:좋아|싫어|만나|사귀|기다리|보고)/,
+              // '내 + 관계명사' (구체적 관계 호칭)
+              /(?:^|[\s])내\s*(?:남친|여친|남자친구|여자친구|애인|와이프|남편|짝)/,
+              // [패턴 2: 두 이름] '한글이름1 한글이름2' (공백 구분)
+              //   주의: '오늘 운세' / '내일 흐름' 같은 시간+명사는 _negativeKeywords로 차단
+              /[가-힣]{2,4}\s+[가-힣]{2,4}(?:\s|$|와|과|이|가|을|를|은|는|의|랑|하고)/,
+              // 두 이름 + 조사 결합 ('이름1과 이름2' / '이름1이랑 이름2')
+              //   '님/씨' 호칭 포함
+              /[가-힣]{2,4}(?:님|씨)?(?:과|와|이랑|랑|하고)\s*[가-힣]{2,4}(?:님|씨)?/,
+              // 두 이름 + 구분자 ('이름1·이름2' / '이름1, 이름2')
+              /[가-힣]{2,4}\s*[·,/]\s*[가-힣]{2,4}/
+            ];
+            const hasTwoPersons = _twoPersonPatterns.some(re => re.test(p));
+            // 두 이름 패턴 매칭 + 부정 키워드 없음 → 진짜 두 사람
+            if (hasTwoPersons && !_hasNegative) return true;
+
             return hasTarget || (hasGender && hasContext);
           }
 
@@ -8574,6 +8609,14 @@ export default {
           if (loveSubType === 'compatibility' && !hasTargetPerson(prompt)) {
             // 궁합 버튼 눌렀지만 질문에 대상이 없음 → 개인 연애운으로 교정
             finalLoveSubType = '';  // 일반 연애운 처리
+          }
+
+          // [V26.1 결함 1-B] 안전망 — 카드 미선택 + 두 사람 패턴 → compatibility 추정
+          //   사장님 진단: 사용자가 카드 직접 선택 안 한 케이스
+          //   해결: loveSubType 빈 + 두 사람 패턴 감지 → compatibility 자동 매칭
+          //   효과: 'general'(혼자 연애운) 잘못 매칭 → 'compatibility'(두 사람) 정확
+          if (!finalLoveSubType && hasTargetPerson(prompt)) {
+            finalLoveSubType = 'compatibility';
           }
 
           metrics = buildLoveMetrics({ totalScore, cleanCards, prompt, loveSubType: finalLoveSubType });
