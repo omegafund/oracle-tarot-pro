@@ -2187,17 +2187,30 @@ function applyCryptoVocabulary(metrics, stockSubType, stockIntent) {
     if (metrics.layers.zeusGuide && Array.isArray(metrics.layers.zeusGuide)) {
       metrics.layers.zeusGuide = [v.action1, v.action2, v.action3];
     }
-    // ── 핵심 해석 — 코인 어휘로 교체
+    // ── 핵심 해석 — 코인 어휘로 교체 (V25.38 핫픽스: string 형태 유지)
+    //   사장님 진단: "[object Object]" 출력 차단
+    //   원인: 객체로 변환 시 클라이언트 ${} 보간 실패
+    //   해결: 항상 string 형태로 유지 — keyInsight를 본문 끝에 자연스럽게 추가
     if (metrics.layers.criticalInterpretation) {
       const crit = metrics.layers.criticalInterpretation;
-      if (typeof crit === 'object' && crit.body) {
-        // body는 유지 (점수/카드 진단 텍스트), keyInsight만 코인 어휘로
-        crit.keyInsight = `"${v.coreKey}"`;
-      } else if (typeof crit === 'string') {
-        metrics.layers.criticalInterpretation = {
-          body: crit,
-          keyInsight: `"${v.coreKey}"`
-        };
+      if (typeof crit === 'string') {
+        // 기존 본문 + 코인 어휘 keyInsight 추가 (자연스러운 결합)
+        // 본문에 이미 "👉 핵심:" 또는 "면책 문구"가 있으면 그 앞에 삽입
+        const cryptoLine = `\n\n🪙 코인 핵심: "${v.coreKey}"`;
+        if (crit.includes('※ 본 신탁')) {
+          // 면책 문구 앞에 코인 라인 삽입
+          metrics.layers.criticalInterpretation = crit.replace(
+            /(\n\n※ 본 신탁)/,
+            `${cryptoLine}$1`
+          );
+        } else {
+          // 면책 문구 없으면 끝에 추가
+          metrics.layers.criticalInterpretation = crit + cryptoLine;
+        }
+      } else if (typeof crit === 'object' && crit.body) {
+        // 이미 객체 형태로 와있으면 다시 string으로 변환 (안전망)
+        metrics.layers.criticalInterpretation =
+          `${crit.body}\n\n🪙 코인 핵심: "${v.coreKey}"`;
       }
     }
     // ── 라벨 메타 (클라이언트가 활용)

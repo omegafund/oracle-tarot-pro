@@ -6284,8 +6284,23 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
             // ────────────────────────────────────────────────
             // [V20.10] 🔥 Critical Interpretation — 핵심 해석 (NEW)
             //   다른 어떤 타로앱도 없는 차별화 포인트
+            //   [V25.38 핫픽스] 객체로 와도 string 변환 — [object Object] 차단
             // ────────────────────────────────────────────────
-            const criticalInterpHTML = layers.criticalInterpretation ? `
+            const _critRaw = layers.criticalInterpretation;
+            const _critText = (() => {
+                if (!_critRaw) return '';
+                if (typeof _critRaw === 'string') return _critRaw;
+                if (typeof _critRaw === 'object') {
+                    // 객체 형태 — body + keyInsight 결합
+                    const body = _critRaw.body || '';
+                    const key = _critRaw.keyInsight || '';
+                    if (body && key) return `${body}\n\n🪙 코인 핵심: ${key}`;
+                    if (body) return body;
+                    if (key) return `🪙 코인 핵심: ${key}`;
+                }
+                return '';
+            })();
+            const criticalInterpHTML = _critText ? `
                 <div style="margin-top:18px; margin-bottom:14px; padding:16px 18px;
                             background: linear-gradient(135deg, rgba(255,107,107,0.15), rgba(255,107,107,0.06));
                             border: 2px solid rgba(255,107,107,0.45);
@@ -6295,7 +6310,7 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
                         🔥 핵심 해석
                     </div>
                     <div style="font-size:0.95rem; color:#fff; font-weight:600; line-height:1.8; white-space:pre-line;">
-                        ${layers.criticalInterpretation}
+                        ${_critText}
                     </div>
                 </div>` : '';
 
@@ -6362,12 +6377,16 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
             
             // [V25.38] 코인 5 서브타입 라벨 — cryptoLabels로 덮어쓰기
             //   서버가 보낸 cryptoLabels (서브타입별 어휘 매트릭스) 우선 사용
+            //   사장님 진단: weight 라벨도 동기화 (5계층 박스 어휘 완전 통일)
             const cl = d._server?.layers?.cryptoLabels || d.layers?.cryptoLabels;
             if (d.type === 'crypto' && cl) {
                 if (cl.timingTitle) labels.timing = `⚡ ${cl.timingTitle} ⚡`;
                 if (cl.entryLabel)  labels.entry  = cl.entryLabel;
                 if (cl.exitLabel)   labels.exit   = cl.exitLabel;
-                if (cl.positionLabel) labels.position = `📊 ${cl.positionLabel}`;
+                if (cl.positionLabel) {
+                    labels.position = `📊 ${cl.positionLabel}`;
+                    labels.weight   = `💰 ${cl.positionLabel}`;  // 박스 안 첫 줄도 동기화
+                }
                 if (cl.stopLabel)   labels.stopLoss = `🛑 ${cl.stopLabel}`;
                 if (cl.targetLabel) labels.target = `🎯 ${cl.targetLabel}`;
             }
