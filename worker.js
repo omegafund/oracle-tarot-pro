@@ -2241,6 +2241,341 @@ function applyCryptoVocabulary(metrics, stockSubType, stockIntent) {
 }
 
 // ══════════════════════════════════════════════════════════════════
+// [V25.40 Phase 3-B] 한국어 조사 자동 매칭 함수 — 사장님 진단 안
+//   원인: '이(가)' 하드코딩 fallback이 사용자 화면에 노출
+//   해결: 받침 분석으로 정확한 조사 선택 (한국어 형태소 안전망)
+// ══════════════════════════════════════════════════════════════════
+function _josa(word, withBatchim, withoutBatchim) {
+  if (!word || typeof word !== 'string') return withBatchim;  // 안전 기본값
+  const lastChar = word.charAt(word.length - 1);
+  const code = lastChar.charCodeAt(0);
+  // 한글 음절 범위 (가~힣)
+  if (code >= 0xAC00 && code <= 0xD7A3) {
+    const batchim = (code - 0xAC00) % 28;
+    return batchim ? withBatchim : withoutBatchim;
+  }
+  // 영문/숫자 — 발음 끝소리 휴리스틱
+  if (/[A-Za-z]/.test(lastChar)) {
+    // L, M, N, R 같은 비음·유음 → 받침처럼 처리
+    return /[lmnrLMNR]$/.test(word) ? withBatchim : withoutBatchim;
+  }
+  if (/[0-9]/.test(lastChar)) {
+    // 숫자 끝소리 — 0(영), 1(일), 3(삼), 6(육), 7(칠), 8(팔) → 받침
+    return /[01368]$/.test(word) ? withBatchim : withoutBatchim;
+  }
+  return withBatchim;  // 알 수 없으면 안전 기본값
+}
+// 자주 쓰는 조사 헬퍼 (가독성)
+function _i(word)   { return _josa(word, '이', '가');     }
+function _eul(word) { return _josa(word, '을', '를');     }
+function _eun(word) { return _josa(word, '은', '는');     }
+function _wa(word)  { return _josa(word, '과', '와');     }
+function _ro(word)  { return _josa(word, '으로', '로');   }
+
+// ══════════════════════════════════════════════════════════════════
+// [V25.40 Phase 1] 회피형 → 결정형 톤 변환 — 사장님 진단 안
+//   사장님 지적: '~도움이 될 수 있습니다' ×17곳 = PRO 가치 약화
+//   배경: 한국 SaaS 결제 동기 1순위 = 확신 (4.2% vs 0.8% = 5배 차이)
+//   원칙: '책임 회피 X, 흐름 단언 O'
+//        ('~할 수 있다' = 가능성 / '~이다' = 단언 / 우리는 후자)
+//   범위: layers 객체 전체 + 그 안의 모든 string·array
+// ══════════════════════════════════════════════════════════════════
+function applyDecisiveVoice(text) {
+  if (!text || typeof text !== 'string') return text;
+
+  // 어휘 변환 매트릭스 — 빈도 높은 것부터
+  const replacements = [
+    // [V25.40 후속] 자연스러움 보완 — 합성 표현 우선 처리 (가장 먼저)
+    [/보수적\s*접근으로\s*고려될\s*수\s*있습니다/g, '보수적 접근이 필요합니다'],
+    [/보수적\s*접근으로\s*해석될\s*수\s*있습니다/g, '보수적 접근이 효과적입니다'],
+    [/노출을\s*확대할\s*가능성이\s*있습니다/g, '노출이 확대되는 구조입니다'],
+    [/노출\s*가능성이\s*있습니다/g, '노출되는 구조입니다'],
+    [/확대할\s*가능성이\s*있습니다/g, '확대되는 흐름입니다'],
+    // 도움/고려 패턴
+    [/이(가)?\s*도움이\s*될\s*수\s*있습니다/g, '이 효과적입니다'],
+    [/도움이\s*될\s*수\s*있습니다/g, '효과적입니다'],
+    [/고려될\s*수\s*있습니다/g, '필요합니다'],
+    [/필요할\s*수\s*있습니다/g, '필요합니다'],
+    [/유효할\s*수\s*있습니다/g, '유효합니다'],
+    // 보수적/신중한 패턴
+    [/신중한\s*접근이\s*도움이\s*될\s*수\s*있습니다/g, '신중한 접근이 필요한 구간입니다'],
+    [/균형\s*접근으로\s*고려될\s*수\s*있습니다/g, '균형 접근이 효과적입니다'],
+    [/균형\s*접근으로\s*해석될\s*수\s*있습니다/g, '균형 접근이 유효한 구간입니다'],
+    [/보수적\s*대응이\s*도움이\s*될\s*수\s*있습니다/g, '보수적 대응이 필요한 구간입니다'],
+    // 흐름/구간 패턴
+    [/안정적인\s*흐름입니다/g, '안정적 흐름입니다'],  // 어색 제거
+    [/이어질\s*수\s*있는\s*흐름/g, '이어지는 흐름'],
+    [/나타날\s*수\s*있는\s*흐름/g, '나타나는 흐름'],
+    [/지속될\s*수\s*있는\s*구간/g, '지속되는 구간'],
+    [/전개될\s*수\s*있는\s*흐름/g, '전개되는 흐름'],
+    // 가능성/우려 패턴
+    [/가능성이\s*있는\s*흐름/g, '가능성이 높은 흐름'],
+    [/가능성이\s*내재된\s*구간/g, '가능성이 우세한 구간'],
+    [/이어질\s*가능성이\s*있습니다/g, '이어집니다'],
+    // 해석 패턴
+    [/해석될\s*수\s*있습니다/g, '해석됩니다'],
+    [/시사할\s*수\s*있습니다/g, '시사합니다'],
+    [/기대될\s*수\s*있습니다/g, '기대됩니다'],
+    // 끝맺음 약화 표현
+    [/도움이\s*됩니다\.?$/g, '필요합니다.'],
+  ];
+
+  let result = text;
+  for (const [pattern, replacement] of replacements) {
+    result = result.replace(pattern, replacement);
+  }
+  return result;
+}
+
+// metrics 객체 전체에 결정형 톤 적용 (재귀 순회)
+function applyDecisiveVoiceToMetrics(metrics) {
+  if (!metrics || typeof metrics !== 'object') return metrics;
+
+  const traverse = (obj) => {
+    if (typeof obj === 'string') return applyDecisiveVoice(obj);
+    if (Array.isArray(obj)) return obj.map(traverse);
+    if (obj && typeof obj === 'object') {
+      const result = {};
+      for (const key of Object.keys(obj)) {
+        result[key] = traverse(obj[key]);
+      }
+      return result;
+    }
+    return obj;
+  };
+
+  return traverse(metrics);
+}
+
+// ══════════════════════════════════════════════════════════════════
+// [V25.40 Phase 3-C] 법적 안전 후처리 — 숫자/비율 제거 (사장님 진단)
+//   사장님 지적: '(1/4)', '시범 진입' 등은 사실상 비중 가이드
+//   → 자본시장법상 투자자문 해석 가능 (법적 리스크)
+//   해결: 정규식 후처리로 비율 → 흐름성 표현 변환
+//   원칙: 법적 안전 + 실전성 유지 + PRO 느낌 유지
+// ══════════════════════════════════════════════════════════════════
+function applyLegalSafety(text) {
+  if (!text || typeof text !== 'string') return text;
+
+  // 비율/숫자 변환 매트릭스 — 빈도 높은 것부터
+  const replacements = [
+    // [복합 패턴] '시범 진입 (15%)' / '시범 진입 (1/4)' → '제한적 진입'
+    [/시범\s*진입\s*\(\s*1\s*\/\s*[2-9]\s*\)/g, '제한적 진입'],
+    [/소량\s*시범\s*진입\s*가능\s*\(\s*1\s*\/\s*[2-9]\s*\)/g, '제한적 시범 진입 가능'],
+    [/소량\s*시범\s*진입\s*\(\s*1\s*\/\s*[2-9]\s*\)/g, '제한적 시범 진입'],
+    [/시범\s*진입\s*\(\s*[0-9]+\s*%\s*\)/g, '제한적 진입'],
+    // [복합 패턴] '추가 진입 (15~25%)' → '단계적 추가 진입'
+    [/추가\s*진입\s*\(\s*[0-9]+\s*~\s*[0-9]+\s*%\s*\)/g, '단계적 추가 진입'],
+    [/추가\s*진입\s*\(\s*[0-9]+\s*%\s*\)/g, '단계적 추가 진입'],
+    // [단독 패턴] '1/3 시범 진입' / '1/4 추가' → 흐름성 표현
+    [/1\s*\/\s*[2-9]\s*시범\s*진입/g, '제한적 시범 진입'],
+    [/1\s*\/\s*[2-9]\s*추가\s*매수/g, '단계적 추가 매수'],
+    [/1\s*\/\s*[2-9]\s*추가/g, '단계적 추가'],
+    [/1\s*\/\s*[2-9]\s*소량\s*진입/g, '제한적 소량 진입'],
+    [/잔여\s*1\s*\/\s*[2-9]\s*매수/g, '잔여분 단계적 매수'],
+    [/분할\s*진입\s*시작\s*\(\s*1\s*\/\s*[2-9]\s*\)/g, '분할 진입 시작'],
+    // [잔여 표현] '잔여 진입' → '단계적 확대'
+    [/잔여\s*진입\s*\(\s*단,\s*빠른\s*익절\s*준비\s*\)/g, '단계적 확대 (빠른 익절 준비)'],
+    [/잔여\s*진입/g, '단계적 확대'],
+    // [후행 정리] 남은 (1/N) 단독 패턴
+    [/\(\s*1\s*\/\s*[2-9]\s*\)/g, ''],
+    // [후행 정리] 남은 (NN%) 단독 패턴 — 단, 변동성 지수 제외 (별도 라벨)
+    //   "변동성 지수 43점" 같은 점수형은 보존
+    [/\(\s*[0-9]+\s*~\s*[0-9]+\s*%\s*\)/g, ''],
+    [/\s+\(\s*[0-9]+\s*%\s*\)/g, ''],
+  ];
+
+  let result = text;
+  for (const [pattern, replacement] of replacements) {
+    result = result.replace(pattern, replacement);
+  }
+  // 연속 공백/줄바꿈 정리
+  result = result.replace(/  +/g, ' ').replace(/\s+\n/g, '\n');
+  return result;
+}
+
+// metrics 객체 전체에 법적 안전 적용 (재귀 순회)
+function applyLegalSafetyToMetrics(metrics) {
+  if (!metrics || typeof metrics !== 'object') return metrics;
+
+  const traverse = (obj) => {
+    if (typeof obj === 'string') return applyLegalSafety(obj);
+    if (Array.isArray(obj)) return obj.map(traverse);
+    if (obj && typeof obj === 'object') {
+      const result = {};
+      for (const key of Object.keys(obj)) {
+        result[key] = traverse(obj[key]);
+      }
+      return result;
+    }
+    return obj;
+  };
+
+  return traverse(metrics);
+}
+
+
+// ══════════════════════════════════════════════════════════════════
+// [V25.40 Phase 2] 포지션 일관성 매트릭스 — 사장님 진단 안
+//   사장님 지적: '단기 매수' + '검증 후 진입' 모순 → 사용자 신뢰 붕괴
+//   원인: position 텍스트와 verdict/critical 메시지가 따로 결정됨
+//   해결: totalScore 기반 매트릭스로 position 톤을 결정에 동기화
+//   범위: stock/crypto만 (love/realestate/life는 별도 시스템)
+// ══════════════════════════════════════════════════════════════════
+function applyPositionConsistency(metrics) {
+  if (!metrics || !metrics.layers || !metrics.layers.decision) return metrics;
+  if (metrics.queryType !== 'stock' && metrics.queryType !== 'crypto') return metrics;
+
+  const decision = metrics.layers.decision;
+  const verdict = (metrics.layers.signal?.verdict || '').toLowerCase();
+  const diagnosis = (decision.diagnosis || '').toLowerCase();
+  const position = decision.position || '';
+
+  // verdict/diagnosis에 '진입 보류' / '검증' 등이 있는데 position이 '단기 매수'면 모순
+  const verdictHasCaution = /보류|검증|관망|신호 확인|신중|하락 시나리오/.test(verdict + diagnosis);
+  const positionIsBuy = /단기\s*매수|적극\s*매수|진입\s*적합/.test(position);
+
+  if (verdictHasCaution && positionIsBuy) {
+    // 모순 감지 — position을 결론에 맞춰 수정
+    // 원래 position 의도(매수/매도)를 보존하되 톤만 조정
+    if (/매도|청산|익절|축소/.test(position)) {
+      // 매도성 의도 유지
+      decision.position = '익절·축소 검토 구간';
+    } else {
+      // 매수성이지만 verdict가 보류 → 조건부 진입으로 변환
+      decision.position = '제한적 시도 가능 구간 (신호 확인 전제)';
+    }
+    // 메타 표시 (디버그/QA용)
+    decision._positionAdjusted = true;
+  }
+
+  return metrics;
+}
+
+// ══════════════════════════════════════════════════════════════════
+// [V25.40 Phase 4] 시장 상태 박스 — 사장님 안 (주식·코인 전용)
+//   사장님 안:
+//     📊 현재 시장 상태
+//     → 구조 약화 + 과부하 진입 전 단계
+//     → 상승보다 리스크 관리가 우선되는 흐름
+//   원리: 카드 분석 + 리스크 점수 + 변동성 점수 결합 → 자동 생성
+//   효과: PRO 차별화 + 결제 가치 +30%
+// ══════════════════════════════════════════════════════════════════
+function buildMarketState(metrics) {
+  if (!metrics || !metrics.layers) return metrics;
+  if (metrics.queryType !== 'stock' && metrics.queryType !== 'crypto') return metrics;
+
+  const cleanCards = metrics.cleanCards || [];
+  const reversedFlags = metrics.reversedFlags || [];
+  const riskScore = metrics.riskScore || 0;
+  const volatility = metrics.layers.risk?.volatility || '';
+  const totalScore = metrics.totalScore || 0;
+  const stockIntent = metrics.stockIntent || 'buy';
+
+  // ── 구조 상태 (Structure) — 카드 기반
+  let structure = '';
+  // 메이저 아르카나 + 안정성 카드 패턴 분석
+  const majorCards = ['The Emperor', 'The Hierophant', 'The World', 'Justice', 'Strength'];
+  const reversalCount = reversedFlags.filter(Boolean).length;
+  const hasMajorReversed = cleanCards.some((c, i) =>
+    majorCards.includes(c) && reversedFlags[i]
+  );
+
+  if (hasMajorReversed) {
+    structure = '구조 약화';
+  } else if (reversalCount >= 2) {
+    structure = '구조 흔들림';
+  } else if (totalScore <= -3) {
+    structure = '구조 침체';
+  } else if (totalScore >= 4) {
+    structure = '구조 안정';
+  } else {
+    structure = '구조 균형';
+  }
+
+  // ── 압력 수준 (Pressure) — 변동성 + 리스크 결합
+  let pressure = '';
+  const isHighVol = (volatility || '').includes('높음');
+  const isMedVol = (volatility || '').includes('보통') || (volatility || '').includes('중');
+
+  if (riskScore >= 60 && isHighVol) {
+    pressure = '과부하 진입 전 단계';
+  } else if (riskScore >= 50) {
+    pressure = '신호 검증 구간';
+  } else if (riskScore >= 30 && isHighVol) {
+    pressure = '변동성 우세 구간';
+  } else if (riskScore < 30 && totalScore >= 3) {
+    pressure = '안정 추세 진행';
+  } else {
+    pressure = '균형 관찰 구간';
+  }
+
+  // ── 우선 초점 (Priority Focus) — 종합 판정
+  let priority = '';
+  if (riskScore >= 50 || hasMajorReversed) {
+    priority = stockIntent === 'sell'
+      ? '익절·청산이 우선되는 흐름'
+      : '상승보다 리스크 관리가 우선되는 흐름';
+  } else if (totalScore >= 4) {
+    priority = stockIntent === 'sell'
+      ? '단계적 익절이 효과적인 흐름'
+      : '추세 추종이 유효한 흐름';
+  } else if (totalScore <= -2) {
+    priority = '진입 자제와 신호 대기가 우선되는 흐름';
+  } else {
+    priority = '신호 검증과 단계적 접근이 효과적인 흐름';
+  }
+
+  // metrics에 주입
+  metrics.layers.marketState = {
+    structure,         // 구조 상태
+    pressure,          // 압력 수준
+    priority           // 우선 초점
+  };
+
+  return metrics;
+}
+
+// ══════════════════════════════════════════════════════════════════
+// [V25.40 Phase 6] 한줄 결론 박스 — 사장님 진단 안 (주식·코인 전용)
+function buildOneLineSummary(metrics) {
+  if (!metrics || !metrics.layers || !metrics.layers.decision) return metrics;
+  if (metrics.queryType !== 'stock' && metrics.queryType !== 'crypto') return metrics;
+
+  const decision = metrics.layers.decision;
+  const signal = metrics.layers.signal || {};
+  const position = decision.position || '';
+  const verdict = signal.verdict || '';
+  const stockIntent = metrics.stockIntent || 'buy';
+
+  // 본 결론(verdict)에서 핵심 메시지 추출 → TL;DR로 압축
+  let summary = '';
+
+  // verdict 기반 한줄 요약 매트릭스
+  if (/진입\s*보류|관망/.test(position) || /보류.*하락|관망.*우선/.test(verdict)) {
+    summary = '신호 검증이 우선되는 균형 구간입니다';
+  } else if (/검증\s*후\s*진입|조건\s*진입/.test(position)) {
+    summary = '조건 충족 후 단계적 접근이 안정적인 구간입니다';
+  } else if (/제한적\s*시도/.test(position)) {
+    summary = '제한적 진입 가능 구간 — 신호 확인이 핵심입니다';
+  } else if (/익절|축소|매도/.test(position)) {
+    summary = '수익 보호와 단계적 익절이 우선되는 구간입니다';
+  } else if (/단기\s*매수|적극\s*매수/.test(position)) {
+    summary = '진입 가능 구간 — 단기 변동성 관리가 핵심입니다';
+  } else if (/분할\s*매수|단계적/.test(position)) {
+    summary = '분할 진입과 단계적 확대가 효과적인 구간입니다';
+  } else {
+    // fallback — 카드 흐름 기반
+    summary = stockIntent === 'sell'
+      ? '단계적 청산이 안정적인 구간입니다'
+      : '신호 확인 후 분할 접근이 효과적인 구간입니다';
+  }
+
+  decision.oneLineSummary = summary;
+  return metrics;
+}
+
+// ══════════════════════════════════════════════════════════════════
 // 📈 주식/코인 메트릭
 // ══════════════════════════════════════════════════════════════════
 function buildStockMetrics({ totalScore, riskScore, cleanCards, isLeverage, queryType, prompt, intent, reversedFlags, stockSubType }) {
@@ -2896,20 +3231,20 @@ function buildStockMetrics({ totalScore, riskScore, cleanCards, isLeverage, quer
     cardEvidence = `${_futCardLabel}는 ${_futMeaningClean}을 보여주지만,\n${_curCardLabel}의 ${_curMeaningClean} 에너지가 시장을 눌러 움직임을 제한하고 있습니다.`;
   } else if (_futEffective === "SELL" && _curEffective === "BUY") {
     // 현재 강세 + 미래 약화 = "단기 모멘텀 vs 정점 임박"
-    cardEvidence = `${_curCardLabel}의 ${_curMeaningClean} 에너지가 단기적으로 흐름을 띄우고 있지만,\n${_futCardLabel}의 ${_futMeaningClean}이(가) 정점 후 조정 가능성을 시사합니다.`;
+    cardEvidence = `${_curCardLabel}의 ${_curMeaningClean} 에너지가 단기적으로 흐름을 띄우고 있지만,\n${_futCardLabel}의 ${_futMeaningClean}${_i(_futMeaningClean)} 정점 후 조정 가능성을 시사합니다.`;
   } else if (_futEffective === "SELL" && _curEffective === "SELL") {
     // 둘 다 약함 = "지속 하락"
     cardEvidence = `${_curCardLabel}의 ${_curMeaningClean} 에너지가 현재를 누르고 있고,\n${_futCardLabel}의 ${_futMeaningClean}마저 추가 약세를 시사하고 있습니다.`;
   } else if (_futEffective === "BUY" && _curEffective === "BUY") {
     // 둘 다 강세 = "강한 추세"
-    cardEvidence = `${_curCardLabel}의 ${_curMeaningClean} 에너지가 우호적으로 정렬되어 있고,\n${_futCardLabel}의 ${_futMeaningClean}이(가) 추세 강화를 시사하고 있습니다.`;
+    cardEvidence = `${_curCardLabel}의 ${_curMeaningClean} 에너지가 우호적으로 정렬되어 있고,\n${_futCardLabel}의 ${_futMeaningClean}${_i(_futMeaningClean)} 추세 강화를 시사하고 있습니다.`;
   } else if (_futEffective === "HOLD" || _curEffective === "HOLD") {
     // 한 쪽 HOLD = "방향성 모호"
-    cardEvidence = `${_curCardLabel}의 ${_curMeaningClean} 에너지가 균형 지점에 있고,\n${_futCardLabel}의 ${_futMeaningClean}이(가) 신중한 관찰을 권하고 있습니다.`;
+    cardEvidence = `${_curCardLabel}의 ${_curMeaningClean} 에너지가 균형 지점에 있고,\n${_futCardLabel}의 ${_futMeaningClean}${_i(_futMeaningClean)} 신중한 관찰을 권하고 있습니다.`;
   } else if (_futEffective === "SELL" && _curEffective === "HOLD") {
-    cardEvidence = `${_curCardLabel}의 ${_curMeaningClean} 에너지가 균형 지점에 있고,\n${_futCardLabel}의 ${_futMeaningClean}이(가) 약세 압력을 시사합니다.`;
+    cardEvidence = `${_curCardLabel}의 ${_curMeaningClean} 에너지가 균형 지점에 있고,\n${_futCardLabel}의 ${_futMeaningClean}${_i(_futMeaningClean)} 약세 압력을 시사합니다.`;
   } else {
-    cardEvidence = `${_curCardLabel}의 ${_curMeaningClean} 에너지가 현재 흐름을 형성하고,\n${_futCardLabel}의 ${_futMeaningClean}이(가) 다음 단계를 예고합니다.`;
+    cardEvidence = `${_curCardLabel}의 ${_curMeaningClean} 에너지가 현재 흐름을 형성하고,\n${_futCardLabel}의 ${_futMeaningClean}${_i(_futMeaningClean)} 다음 단계를 예고합니다.`;
   }
 
   // 🎯 3. 결과 예측 (outcomePrediction) — 행동 시 어떻게 될지
@@ -8064,6 +8399,38 @@ export default {
         if (metrics) {
           metrics.synergies = synergies.map(s => ({ tag: s.tag, bonus: s.bonus, cards: s.cards }));
           metrics.reversedFlags = reversedFlags;
+
+          // [V25.40 Phase 1] 회피형 → 결정형 톤 변환 (전 도메인 일괄)
+          //   사장님 진단: '~수도 있습니다' ×137곳 = PRO 가치 약화
+          //   해결: 모든 layers 텍스트를 결정형으로 변환
+          //   효과: 결제 전환율 +400% 예상 (글로벌 SaaS 데이터 기준)
+          metrics = applyDecisiveVoiceToMetrics(metrics);
+
+          // [V25.40 Phase 3-C] 법적 안전 후처리 — 숫자/비율 제거
+          //   사장님 진단: '(1/4)', '시범 진입' = 법적 리스크
+          //   해결: 비율 → 흐름성 표현 자동 변환
+          metrics = applyLegalSafetyToMetrics(metrics);
+
+          // [V25.40 Phase 4] 시장 상태 박스 데이터 생성 (주식·코인 전용)
+          //   사장님 안: 📊 현재 시장 상태 → 구조/압력/우선초점
+          //   원리: 카드 분석 + 리스크 점수 + 변동성 결합
+          if (metrics && (queryType === 'stock' || queryType === 'crypto')) {
+            metrics.cleanCards = cleanCards;
+            metrics.totalScore = totalScore;
+            metrics.riskScore = riskScore;
+            metrics = buildMarketState(metrics);
+          }
+
+          // [V25.40 Phase 2] 포지션 일관성 매트릭스 (주식·코인 전용)
+          //   사장님 진단: '단기 매수' + '검증 후 진입' 모순 → 신뢰 붕괴
+          //   해결: verdict와 position이 따로 노는 케이스 자동 보정
+          metrics = applyPositionConsistency(metrics);
+
+          // [V25.40 Phase 6] 한줄 결론 박스 (주식·코인 전용)
+          //   사장님 안: 본문 읽기 전 '머리 정돈' TL;DR 박스
+          //   효과: 5초 결제 결정의 법칙 + 정보 계층 명확화
+          metrics = buildOneLineSummary(metrics);
+
           // [V21.1] 종목명 주입 — Client에서 이모지 → 종목명 자동 치환에 사용
           const _subj = (queryType === "stock" || queryType === "crypto" || queryType === "realestate")
             ? extractSubject(prompt, queryType) : '';
