@@ -3743,9 +3743,17 @@ async function renderStream(fetchPromise, cards) {
                             : _typeRaw === 'crypto' ? 'crypto'
                             : _typeRaw === 'life'   ? 'general'
                             : (ACTIVE_DOMAIN_BAR || 'general');
-        const _filteredText = (typeof applyDomainFilter === 'function')
+        const _filteredTextRaw = (typeof applyDomainFilter === 'function')
             ? applyDomainFilter(fullText, _activeDomain)
             : fullText;
+
+        // [V26.1 결함 2] Client 측 Phase F — Gemini 본문 동의어 분산 (연애 도메인 한정)
+        //   사장님 진단: Worker Phase F가 metrics만 처리, Gemini 본문은 분산 X
+        //   해결: Client에서 본문 후처리로 동의어 분산 추가 적용
+        //   효과: '관계' 14회 → 4종 분산 / '거리' 8회 → 4종 분산 (인지 피로 ↓)
+        const _filteredText = (_activeDomain === 'love' && typeof applyClientLoveVariation === 'function')
+            ? applyClientLoveVariation(_filteredTextRaw)
+            : _filteredTextRaw;
 
         // 2️⃣ [최종 렌더링] 결제 여부(isPaidUser)에 따라 미래와 지표 노출 결정
         contentEl.innerHTML = renderText(_filteredText, cards, investmentData, isPaidUser, isFinance);
@@ -6913,7 +6921,7 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
                 <div style="${boxBase} ${goldBorder}">
                     <div style="display:flex; align-items:center; gap:6px; margin-bottom:10px;">
                         <div style="${labelGold}">🧠 핵심 흐름 해석</div>
-                        <div style="margin-left:auto; font-size:0.62rem; color:rgba(212,175,55,0.85); font-weight:700; letter-spacing:0.1em;">CORE INSIGHT · PRO</div>
+                        ${(typeof isPaidUser === 'undefined' || !isPaidUser) ? `<div style="margin-left:auto; font-size:0.62rem; color:rgba(212,175,55,0.85); font-weight:700; letter-spacing:0.1em;">CORE INSIGHT · PRO</div>` : ''}
                     </div>
                     <div style="font-size:0.9rem; color:rgba(255,255,255,0.92);">
                         <div>${b.coreInsight.line1}</div>
@@ -7005,8 +7013,9 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
                         <div style="padding:6px 10px; background:rgba(46,204,113,0.06); border-radius:6px; font-size:0.82rem; color:rgba(255,255,255,0.85); margin-bottom:6px;">
                             👉 ${tm.timingNext}
                         </div>
-                        <div style="font-size:0.78rem; color:rgba(255,255,255,0.65); font-style:italic;">
-                            🌙 ${tm.numerology}
+                        <div style="font-size:0.78rem; color:rgba(255,255,255,0.78); padding:8px 10px; background:rgba(155,89,182,0.06); border-radius:6px; line-height:1.7;">
+                            <div style="color:#BB8FCE; font-weight:700; margin-bottom:4px;">🌙 황금 시간대</div>
+                            <div style="font-size:0.78rem; color:rgba(255,255,255,0.85);">${(tm.numerology || '').replace(/·/g, '<br>·').replace(/\//g, '<br>/')}</div>
                         </div>
                     </div>
                     ${coreKey(tm.coreKey)}
@@ -7060,16 +7069,11 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
                     </div>
                 </div>`;
 
-            // ── PRO Enhancement (메타 패턴) ──
-            const proBox = pro ? `
-                <div style="${boxBase} background:linear-gradient(135deg, rgba(155,89,182,0.10), rgba(212,175,55,0.06)); border:1px solid rgba(155,89,182,0.45); border-left:3px solid #9B59B6; margin-top:14px;">
-                    <div style="color:#C39BD3; font-size:0.78rem; font-weight:900; letter-spacing:0.12em; margin-bottom:8px;">✨ 메타 패턴 분석 · PRO</div>
-                    <div style="font-size:0.86rem; color:rgba(255,255,255,0.92); line-height:1.85;">
-                        <div style="margin-bottom:6px;">※ ${pro.metaDescription}</div>
-                        <div style="margin-bottom:6px; color:#FFE08A;">${pro.hiddenDriver}</div>
-                        <div style="font-size:0.78rem; color:rgba(255,255,255,0.7); font-style:italic;">${pro.longTermNote}</div>
-                    </div>
-                </div>` : '';
+            // [V26.1 결함 3] 메타 패턴 박스 제거 — 사장님 진단 안
+            //   사장님 진단: '결론 박스 끝에 또 결론 (중복 느낌) + 가치 모호'
+            //   해결: PRO 메타 박스 비활성화 — Top Verdict + FINAL VERDICT로 충분
+            //   (V25.40 결론 단일성 정신: '결론은 화면에 단 1번')
+            const proBox = '';
 
             return `
             <div class="final-oracle final-oracle-love" style="padding:18px; background:rgba(46,204,113,0.04); border:1px solid rgba(46,204,113,0.45); border-radius:12px; margin-top:25px;">
@@ -10404,6 +10408,53 @@ const DOMAIN_LABEL_MAP = {
     stock: {},   // 주식은 그대로 OK
     crypto: {},
 };
+
+// [V26.1 결함 2] Client 측 Phase F — Gemini 본문 동의어 분산 (연애 도메인)
+//   Worker의 LOVE_SYNONYM_MAP과 동일 로직을 Client에 복제
+//   Gemini가 직접 출력한 본문에서도 중복 단어 분산 적용
+//   첫 2번 보존, 3번째부터 동의어 순환 + 받침 분석으로 조사 자동 결합
+const CLIENT_LOVE_SYNONYM_MAP = {
+    '거리':   ['거리', '간격', '물러섬', '공백'],
+    '방식':   ['방식', '접근', '태도', '방법'],
+    '구조':   ['구조', '틀', '형태', '체계'],
+    '전환':   ['전환', '변화', '이동', '전이'],
+    '감정':   ['감정', '마음', '속내', '정서'],
+    '관계':   ['관계', '사이', '연결', '교류'],
+    '패턴':   ['패턴', '습관', '경향', '흐름'],
+    '정체':   ['정체', '멈춤', '지연', '제자리'],
+    '흐름':   ['흐름', '기류', '진행', '추세']
+};
+
+function applyClientLoveVariation(text) {
+    if (!text || typeof text !== 'string') return text;
+    let result = text;
+    for (const [keyword, synonyms] of Object.entries(CLIENT_LOVE_SYNONYM_MAP)) {
+        const escKw = keyword.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        // 키워드 + 선택적 조사 패턴
+        const regex = new RegExp(`${escKw}(이|가|을|를|은|는|과|와|으로|로)?`, 'g');
+        let count = 0;
+        result = result.replace(regex, (match, josa) => {
+            count++;
+            if (count <= 2) return match;  // 첫 2번 보존
+            const idx = ((count - 3) % (synonyms.length - 1)) + 1;
+            const synonym = synonyms[idx];
+            if (!josa) return synonym;
+            // 받침 분석으로 조사 자동 선택
+            const lastChar = synonym.charAt(synonym.length - 1);
+            const code = lastChar.charCodeAt(0);
+            const hasBatchim = (code >= 0xAC00 && code <= 0xD7A3) && (((code - 0xAC00) % 28) !== 0);
+            const josaMap = {
+                '이': hasBatchim ? '이' : '가', '가': hasBatchim ? '이' : '가',
+                '을': hasBatchim ? '을' : '를', '를': hasBatchim ? '을' : '를',
+                '은': hasBatchim ? '은' : '는', '는': hasBatchim ? '은' : '는',
+                '과': hasBatchim ? '과' : '와', '와': hasBatchim ? '과' : '와',
+                '으로': hasBatchim ? '으로' : '로', '로': hasBatchim ? '으로' : '로'
+            };
+            return synonym + (josaMap[josa] || josa);
+        });
+    }
+    return result;
+}
 
 // [V25.10] 도메인 인지 텍스트 변환 함수 — 후처리 안전망
 function applyDomainFilter(text, domain) {
