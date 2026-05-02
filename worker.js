@@ -5723,6 +5723,177 @@ function buildLoveProEnhancement(metaPattern) {
 }
 
 // ── MASTER ──
+// ══════════════════════════════════════════════════════════════════
+// [V26.0 Phase A] LOVE_VERDICT_MATRIX — 사장님 직접 작성 9개 셋트
+//   원칙: '구조는 하나, 어휘는 도메인별' (V25.22 코드 통제 정신)
+//   효과: AI 변동성 0 + 결정형 단언 + 결제 전환율 ↑
+// [V26.0 Phase E] intensity — 강도 매트릭스 (사장님 안)
+//   1.0 = 강한 단정 (궁합/결혼) → 0.4 = 약한 탐색 (연애운)
+// ══════════════════════════════════════════════════════════════════
+const LOVE_VERDICT_MATRIX = {
+  // 💞 궁합
+  compatibility: {
+    verdict: '이 관계는 감정은 존재하지만, 구조적 균형이 맞지 않으면 오래 유지되기 어려운 흐름입니다',
+    action:  '감정보다 관계 유지 방식(소통·역할)을 먼저 조정해야 합니다',
+    risk:    '지금 방식 유지 시, 반복 충돌 후 소진 구조로 흘러갈 가능성이 있습니다',
+    intensity: 1.0
+  },
+  // 💍 결혼
+  marriage: {
+    verdict: '현재 흐름은 감정보다 현실 조건의 정합성이 핵심 변수로 작용하는 구간입니다',
+    action:  '경제·생활·가치관의 실제 결합 가능성을 구체적으로 점검해야 합니다',
+    risk:    '감정만으로 결정할 경우, 장기적으로 구조 충돌이 발생할 수 있습니다',
+    intensity: 1.0
+  },
+  // 💫 썸
+  thumb: {
+    verdict: '지금은 확정 단계가 아니라 흐름을 유지하며 균형을 맞춰야 하는 구간입니다',
+    action:  '관계를 정의하려 하기보다 자연스러운 교류 빈도 유지가 유리합니다',
+    risk:    '성급한 확정 시도는 상대의 거리 확보로 이어질 수 있습니다',
+    intensity: 0.6
+  },
+  // 💕 짝사랑
+  crush: {
+    verdict: '감정은 형성되어 있으나, 현재는 일방 구조에서 벗어나지 못한 흐름입니다',
+    action:  '노출을 줄이고 자신의 흐름을 먼저 회복하는 것이 우선입니다',
+    risk:    '지속적인 표현은 상대에게 부담으로 작용할 가능성이 있습니다',
+    intensity: 0.7
+  },
+  // 🔮 상대 마음
+  mindread: {
+    verdict: '상대는 감정은 일부 존재하지만, 관계를 적극적으로 움직일 의지는 낮은 상태입니다',
+    action:  '상대의 반응을 유도하기보다 관찰과 거리 유지가 필요합니다',
+    risk:    '확답 요구 또는 압박은 관계 후퇴로 이어질 수 있습니다',
+    intensity: 0.8
+  },
+  // 💑 재회
+  reunion: {
+    verdict: '재회 가능성은 존재하지만, 현재는 접근보다 거리 확보가 우선되는 구간입니다',
+    action:  '즉각적인 연락 시도보다 일정 기간 간격 유지가 필요합니다',
+    risk:    '지금 접근 시 관계가 완전히 닫힐 가능성이 있습니다',
+    intensity: 0.8
+  },
+  // 📱 연락
+  contact: {
+    verdict: '지금은 연락의 \u2018내용\u2019보다 \u2018타이밍\u2019이 더 중요한 흐름입니다',
+    action:  '즉각 반응보다 간격 조절 후 신중한 접근이 유리합니다',
+    risk:    '연속된 시도는 무응답 고착으로 이어질 수 있습니다',
+    intensity: 0.6
+  },
+  // 💔 이별
+  breakup: {
+    verdict: '이 관계는 감정 소진 이후 구조적 종료 흐름에 진입한 상태입니다',
+    action:  '정리 과정에 집중하고 감정 회복을 우선해야 합니다',
+    risk:    '미련 기반 재접근은 동일 패턴 반복으로 이어질 수 있습니다',
+    intensity: 0.7
+  },
+  // 💗 연애운
+  general: {
+    verdict: '현재는 새로운 인연보다 기존 흐름 정리가 우선되는 시기입니다',
+    action:  '외부 확장보다 내면 정비와 기준 재설정이 필요합니다',
+    risk:    '불완전한 상태에서의 시작은 단기 소모로 끝날 가능성이 있습니다',
+    intensity: 0.4
+  }
+};
+
+// ══════════════════════════════════════════════════════════════════
+// [V26.0 Phase F] 연애 동의어 매트릭스 — 중복 단어 분산
+//   사장님 진단: '거리(8)/방식(11)/구조(9)/감정(13)/관계(14)' 등 5~14회 반복
+//   해결: 첫 2번은 보존, 3번째부터 동의어 순환 치환
+//   효과: 사용자 인지 '같은 말 반복' → '풍부한 표현' (프리미엄 가치 ↑)
+// ══════════════════════════════════════════════════════════════════
+const LOVE_SYNONYM_MAP = {
+  '거리':   ['거리', '간격', '물러섬', '공백'],
+  '방식':   ['방식', '접근', '태도', '방법'],
+  '구조':   ['구조', '틀', '형태', '체계'],
+  '전환':   ['전환', '변화', '이동', '전이'],
+  '감정':   ['감정', '마음', '속내', '정서'],
+  '관계':   ['관계', '사이', '연결', '교류'],
+  '패턴':   ['패턴', '습관', '경향', '흐름'],
+  '정체':   ['정체', '멈춤', '지연', '제자리'],
+  '흐름':   ['흐름', '기류', '진행', '추세']
+};
+
+// 동의어 변환 함수 — N번째 등장부터 분산 치환
+function applyLoveVocabularyVariation(text) {
+  if (!text || typeof text !== 'string') return text;
+  let result = text;
+
+  // [V26.0 Phase F] 동의어 변환 + 조사 안전 결합 (한 번에 처리)
+  //   원리: 동의어 치환 시점에 다음 글자가 조사면 받침 분석 후 교정
+  //   장점: '관계 사이' 같은 명사 끝 글자 오인 방지 (정밀 타게팅)
+  for (const [keyword, synonyms] of Object.entries(LOVE_SYNONYM_MAP)) {
+    const escKw = keyword.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    // 키워드 + 선택적 조사 패턴 (조사가 있으면 함께 캡쳐)
+    const regex = new RegExp(`${escKw}(이|가|을|를|은|는|과|와|으로|로)?`, 'g');
+    let count = 0;
+    result = result.replace(regex, (match, josa) => {
+      count++;
+      if (count <= 2) return match;  // 첫 2번 보존
+      const idx = ((count - 3) % (synonyms.length - 1)) + 1;
+      const synonym = synonyms[idx];
+      // 조사가 없으면 동의어만 반환
+      if (!josa) return synonym;
+      // 조사가 있으면 동의어의 마지막 글자 받침 분석 후 적절한 조사 선택
+      const lastChar = synonym.charAt(synonym.length - 1);
+      const code = lastChar.charCodeAt(0);
+      const hasBatchim = (code >= 0xAC00 && code <= 0xD7A3) && (((code - 0xAC00) % 28) !== 0);
+      const josaMap = {
+        '이': hasBatchim ? '이' : '가',
+        '가': hasBatchim ? '이' : '가',
+        '을': hasBatchim ? '을' : '를',
+        '를': hasBatchim ? '을' : '를',
+        '은': hasBatchim ? '은' : '는',
+        '는': hasBatchim ? '은' : '는',
+        '과': hasBatchim ? '과' : '와',
+        '와': hasBatchim ? '과' : '와',
+        '으로': /[ㄹ]$/.test(lastChar) || !hasBatchim ? '로' : '으로',
+        '로':  /[ㄹ]$/.test(lastChar) || !hasBatchim ? '로' : '으로'
+      };
+      return synonym + (josaMap[josa] || josa);
+    });
+  }
+  return result;
+}
+
+// metrics 객체 전체에 동의어 분산 적용 (재귀 순회)
+function applyLoveVariationToMetrics(metrics) {
+  if (!metrics || typeof metrics !== 'object') return metrics;
+  if (metrics.queryType !== 'love') return metrics;
+
+  const traverse = (obj) => {
+    if (typeof obj === 'string') return applyLoveVocabularyVariation(obj);
+    if (Array.isArray(obj)) return obj.map(traverse);
+    if (obj && typeof obj === 'object') {
+      const result = {};
+      for (const key of Object.keys(obj)) {
+        result[key] = traverse(obj[key]);
+      }
+      return result;
+    }
+    return obj;
+  };
+
+  return traverse(metrics);
+}
+
+// ══════════════════════════════════════════════════════════════════
+// [V26.0 Phase D] 호칭 정규화 — '신차장님과 양소장님' 어색 차단
+//   사장님 진단: '님' 중복 / 어순 불명확
+//   해결: 한국어 호칭 정규화 (이미 '님' 있으면 그대로, 없으면 자동 추가)
+// ══════════════════════════════════════════════════════════════════
+function normalizeHonorific(name) {
+  if (!name || typeof name !== 'string') return name;
+  const trimmed = name.trim();
+  if (!trimmed) return trimmed;
+  // 이미 존댓말 호칭이 끝에 있으면 그대로 (사용자 의도 보존)
+  if (/(님|씨|군|양|선배|후배|오빠|언니|누나|형|동생)$/.test(trimmed)) {
+    return trimmed;
+  }
+  // 호칭 없으면 '님' 자동 추가
+  return trimmed + '님';
+}
+
 function buildLoveOracleV25_24({ totalScore, cards, revFlags, loveSubType, numerology }) {
   const subtype = loveSubType || 'general';
   const scoreCategory = getLoveScoreCategoryV2(totalScore, cards, revFlags, subtype);
@@ -6203,7 +6374,23 @@ ${actionGuide.oneLine}`;
         summary:   attraction.signal,
         core:      blockDecision.reason
       },
-      criticalInterpretation
+      criticalInterpretation,
+      // [V26.0 Phase B+C] LOVE_VERDICT_MATRIX 통합 — Top Verdict 박스 데이터
+      //   사장님 9개 셋트 그대로 노출 (코드 100% 통제)
+      //   각 서브타입별 verdict / action / risk / intensity
+      topVerdict: (() => {
+        const subKey = loveSubType && LOVE_VERDICT_MATRIX[loveSubType]
+                     ? loveSubType
+                     : 'general';
+        const matrix = LOVE_VERDICT_MATRIX[subKey];
+        return {
+          verdict:   matrix.verdict,
+          action:    matrix.action,
+          risk:      matrix.risk,
+          intensity: matrix.intensity,
+          subKey
+        };
+      })()
     }
   };
 }
@@ -8405,6 +8592,14 @@ export default {
           //   해결: 모든 layers 텍스트를 결정형으로 변환
           //   효과: 결제 전환율 +400% 예상 (글로벌 SaaS 데이터 기준)
           metrics = applyDecisiveVoiceToMetrics(metrics);
+
+          // [V26.0 Phase F] 연애 도메인 동의어 분산 (중복 단어 자동 치환)
+          //   사장님 진단: '거리(8)/방식(11)/관계(14)/감정(13)' 5~14회 반복
+          //   해결: 첫 2번 보존, 3번째부터 동의어 순환 치환
+          //   효과: '같은 말 반복' → '풍부한 표현' (프리미엄 가치 ↑)
+          if (metrics && metrics.queryType === 'love') {
+            metrics = applyLoveVariationToMetrics(metrics);
+          }
 
           // [V25.40 Phase 3-C] 법적 안전 후처리 — 숫자/비율 제거
           //   사장님 진단: '(1/4)', '시범 진입' = 법적 리스크
