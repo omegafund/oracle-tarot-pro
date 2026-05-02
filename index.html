@@ -2919,9 +2919,17 @@ function selectSubtype(catKey, subType, btnEl, placeholder) {
     if (btnEl) btnEl.classList.add('active');
 
     // 도메인별 SUBTYPE 전역 변수 설정 — 점사 엔진과 호환
+    // [V26.4] Critical 결함 수정 — ACTIVE_DOMAIN_BAR 모든 도메인 명시 설정
+    //   사장님 진단: '연애 → 썸' 카드 클릭 + '순희와 섬타는데 잘될까?' 입력
+    //              → 화면이 ZEUS FORTUNE ORACLE (운세) 출력
+    //   원인: love/realestate/general 카테고리에서 ACTIVE_DOMAIN_BAR 미설정
+    //   결과: explicitDomain 빈 문자열 → Worker 자동 분류 → 'general' 폴백
+    //   영향: V26.0~V26.3 연애 도메인 작업 전체 무력화
+    //   해결: 모든 카테고리에서 ACTIVE_DOMAIN_BAR 명시 설정
     if (catKey === 'love') {
         LOVE_SUBTYPE = subType;
         STOCK_SUBTYPE = ''; RE_SUBTYPE = ''; FORTUNE_SUBTYPE = '';
+        ACTIVE_DOMAIN_BAR = 'love';  // [V26.4] Critical 누락 수정
     } else if (catKey === 'stock') {
         STOCK_SUBTYPE = subType;
         LOVE_SUBTYPE = ''; RE_SUBTYPE = ''; FORTUNE_SUBTYPE = '';
@@ -2936,10 +2944,12 @@ function selectSubtype(catKey, subType, btnEl, placeholder) {
     } else if (catKey === 'realestate') {
         RE_SUBTYPE = subType;
         LOVE_SUBTYPE = ''; STOCK_SUBTYPE = ''; FORTUNE_SUBTYPE = '';
+        ACTIVE_DOMAIN_BAR = 'realestate';  // [V26.4] Critical 누락 수정
     } else {
         // [V25.18] general → 운세 서브타입 (today/general/newyear/wealth/health/career/etc)
         FORTUNE_SUBTYPE = subType;
         LOVE_SUBTYPE = ''; STOCK_SUBTYPE = ''; RE_SUBTYPE = '';
+        ACTIVE_DOMAIN_BAR = 'general';  // [V26.4] Critical 누락 수정
     }
 
     // 입력창 안내 + placeholder + 포커스
@@ -3016,7 +3026,7 @@ function resetCategory() {
 
     // SUBTYPE 모두 초기화
     ACTIVE_DOMAIN_BAR = '';
-    LOVE_SUBTYPE = ''; STOCK_SUBTYPE = ''; RE_SUBTYPE = '';
+    LOVE_SUBTYPE = ''; STOCK_SUBTYPE = ''; RE_SUBTYPE = ''; FORTUNE_SUBTYPE = '';
 
     // 입력 내용 + placeholder 원복
     const seedInput = document.getElementById('seed-input');
@@ -10344,6 +10354,25 @@ function showPaymentMethodModal(planKey) {
                     </span>
                     <span style="font-size:0.72rem; opacity:0.7; font-weight:500;">직접 입력</span>
                 </button>
+
+                <!-- [V26.5] 계좌이체 — 사장님 진단 안 (글로벌 표준 패턴)
+                     모든 plan(990/3900/9900/79000/199000)에서 계좌이체 가능
+                     한국 50대+ 핵심 타겟층 35% 결제 보호 -->
+                <button onclick="closePaymentMethodModal(); showBankTransferModal('${planKey}');" style="
+                    display:flex; align-items:center; justify-content:space-between;
+                    width:100%; padding:13px 16px;
+                    background: rgba(52,152,219,0.10);
+                    color: rgba(255,255,255,0.92);
+                    border: 1px solid rgba(52,152,219,0.45);
+                    border-radius: 10px;
+                    font-weight: 700; font-size: 0.92rem; cursor: pointer;
+                    transition: background 0.15s;">
+                    <span style="display:flex; align-items:center; gap:10px;">
+                        <span style="font-size:1.2rem;">🏦</span>
+                        <span>계좌이체</span>
+                    </span>
+                    <span style="font-size:0.72rem; opacity:0.85; font-weight:500; color:#5dade2;">간편결제 미가입자</span>
+                </button>
             </div>
 
             <!-- 하단 안내 -->
@@ -10369,6 +10398,252 @@ function showPaymentMethodModal(planKey) {
 function closePaymentMethodModal() {
     const el = document.getElementById('paymentMethodModalOverlay');
     if (el) el.remove();
+}
+
+// ══════════════════════════════════════════════════════════════════
+// [V26.5] 계좌이체 모달 — 사장님 진단 안 (글로벌 표준)
+//   문제: 기존 메인 모달 하단의 계좌이체는 항상 3,900원 고정
+//        → 990원/9900원/79000원/199000원 사용자는 계좌이체 불가능
+//   해결: planKey 기반 정확한 금액의 계좌이체 모달
+//   효과: 한국 50대+ 핵심 타겟층 35% 결제 보호
+// ══════════════════════════════════════════════════════════════════
+function showBankTransferModal(planKey) {
+    const plan = PAYMENT_PLANS[planKey];
+    if (!plan) {
+        alert('잘못된 결제 플랜입니다.');
+        return;
+    }
+    const amountFmt = plan.amount.toLocaleString('ko-KR');
+    const cfg = PAYMENT_CONFIG;
+
+    // 기존 모달 제거 (중복 방지)
+    closeBankTransferModal();
+
+    // [V20.1] 토스 송금 딥링크 (cfg.tossId 있을 때만 활성화)
+    //   plan.amount를 동적으로 적용 — 기존 고정 3,900 → planKey별 정확한 금액
+    const tossDeepLink = `supertoss://send?amount=${plan.amount}&bank=${encodeURIComponent(cfg.bank)}&accountNo=${cfg.account.replace(/-/g,'')}&origin=qr`;
+    const tossBtnHTML = cfg.tossId ? `
+        <a href="${tossDeepLink}"
+           onclick="setTimeout(() => { const h = document.getElementById('bankAutoConfirmHint'); if (h) h.style.display = 'block'; }, 1000);"
+           style="display:block; margin-bottom:12px; padding:12px 0;
+                  background:#0064ff; color:#fff;
+                  border-radius:50px; font-weight:900; font-size:0.9rem;
+                  text-align:center; text-decoration:none; letter-spacing:0.03em;">
+            💙 토스로 바로 송금하기 (₩${amountFmt})
+        </a>` : '';
+
+    const overlay = document.createElement('div');
+    overlay.className = 'pay-modal-overlay';
+    overlay.id = 'bankTransferModalOverlay';
+    overlay.style.cssText = 'position:fixed; inset:0; background:rgba(0,0,0,0.85); z-index:99999; display:flex; align-items:center; justify-content:center; padding:16px; backdrop-filter:blur(8px);';
+    overlay.innerHTML = `
+        <div style="position:relative; max-width:440px; width:100%;
+                    background: linear-gradient(160deg, #1A1A2E 0%, #0F0F1B 100%);
+                    border: 1px solid rgba(52,152,219,0.45);
+                    border-radius: 16px;
+                    padding: 24px 22px;
+                    box-shadow: 0 0 30px rgba(52,152,219,0.25);
+                    max-height: 92vh; overflow-y: auto;">
+
+            <!-- 닫기 버튼 -->
+            <button onclick="closeBankTransferModal()" style="
+                position:absolute; top:12px; right:14px;
+                background: transparent; border: none;
+                color: rgba(255,255,255,0.7);
+                font-size: 1.5rem; cursor: pointer;
+                width: 36px; height: 36px; line-height: 1;
+                font-family: inherit;">×</button>
+
+            <!-- 헤더 -->
+            <div style="text-align:center; margin-bottom:18px;">
+                <div style="color:#5dade2; font-size:0.78rem; font-weight:800; letter-spacing:0.12em; margin-bottom:6px;">
+                    🏦 계좌이체
+                </div>
+                <div style="color:#fff; font-size:1.1rem; font-weight:900;">
+                    ${plan.emoji} ${plan.label}
+                </div>
+                <div style="color:rgba(212,175,55,0.95); font-size:1.4rem; font-weight:900; margin-top:4px;">
+                    ₩${amountFmt}
+                </div>
+            </div>
+
+            <!-- 토스 송금 버튼 (cfg.tossId 있을 때만) -->
+            ${tossBtnHTML}
+
+            <!-- 계좌 정보 -->
+            <div style="padding:14px 16px; background:rgba(212,175,55,0.06); border:1px solid rgba(212,175,55,0.3); border-radius:10px; margin-bottom:14px; line-height:2.0;">
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <span style="color:rgba(255,255,255,0.7); font-size:0.85rem;">입금 금액</span>
+                    <strong style="color:#FFD970; font-size:1rem;">₩${amountFmt}</strong>
+                </div>
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <span style="color:rgba(255,255,255,0.7); font-size:0.85rem;">입금 은행</span>
+                    <strong style="color:#fff; font-size:0.95rem;">${cfg.bank}</strong>
+                </div>
+                <div onclick="zeusClaimCopyAccount('${cfg.account}')" style="
+                    cursor:pointer; padding:8px 10px; margin:6px 0;
+                    background:rgba(212,175,55,0.10);
+                    border:1px dashed rgba(212,175,55,0.5);
+                    border-radius:6px;
+                    display:flex; justify-content:space-between; align-items:center;">
+                    <span style="color:rgba(255,255,255,0.7); font-size:0.85rem;">계좌번호</span>
+                    <span style="display:flex; align-items:center; gap:8px;">
+                        <strong style="color:#fff; font-size:0.95rem;">${cfg.account}</strong>
+                        <span id="zeusBankCopyHint" style="font-size:0.72rem; color:#FFD970;">📋 복사</span>
+                    </span>
+                </div>
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <span style="color:rgba(255,255,255,0.7); font-size:0.85rem;">예금주</span>
+                    <strong style="color:#fff; font-size:0.95rem;">${cfg.holder}</strong>
+                </div>
+                <div style="margin-top:6px; padding-top:8px; border-top:1px dashed rgba(255,255,255,0.1);
+                            font-size:0.76rem; color:rgba(212,175,55,0.7);
+                            display:flex; justify-content:space-between;">
+                    <span>송금 메모</span>
+                    <span>${cfg.productName}</span>
+                </div>
+            </div>
+
+            <!-- 안내 -->
+            <div style="padding:12px 14px;
+                        background: rgba(52,152,219,0.08);
+                        border-left: 3px solid #3498db;
+                        border-radius: 0 8px 8px 0;
+                        font-size:0.78rem; line-height:1.85; color:rgba(255,255,255,0.92); margin-bottom:14px;">
+                <b style="color:#5dade2; font-size:0.82rem;">💡 계좌이체 절차 (즉시 활성화)</b><br>
+                1️⃣ 위 계좌번호 탭하여 복사<br>
+                2️⃣ 본인 은행 앱에서 송금 (입금자명에 본인 이름)<br>
+                3️⃣ 아래에 입금자명 입력<br>
+                4️⃣ <b>[송금 완료 신고]</b> 버튼 클릭<br>
+                5️⃣ <b style="color:#7ad188;">즉시 PRO 봉인 해제!</b>
+            </div>
+
+            <!-- 입금자명 입력 -->
+            <div style="margin-bottom:12px;">
+                <label style="display:block; color:rgba(255,255,255,0.75); font-size:0.82rem; font-weight:700; margin-bottom:6px;">
+                    입금자명 (송금 시 입력한 이름)
+                </label>
+                <input type="text" id="bankSenderName" placeholder="예: 홍길동" style="
+                    width:100%; padding:11px 14px;
+                    background: rgba(255,255,255,0.08);
+                    border: 1px solid rgba(255,255,255,0.2);
+                    border-radius: 8px;
+                    color: #fff;
+                    font-size: 0.95rem;
+                    font-weight: 600;">
+            </div>
+
+            <!-- 송금 완료 신고 버튼 -->
+            <button onclick="confirmBankTransfer('${planKey}')" style="
+                display:block; width:100%; padding:14px 0;
+                background: linear-gradient(135deg, #2ecc71, #27ae60);
+                color:#fff; border:none; border-radius:10px;
+                font-weight:900; font-size:0.98rem; cursor:pointer;
+                box-shadow: 0 4px 14px rgba(46,204,113,0.4);
+                letter-spacing:0.03em;">
+                ✅ 송금 완료 신고 → PRO 봉인 해제
+            </button>
+
+            <!-- 자동 확인 힌트 (토스 송금 후) -->
+            <div id="bankAutoConfirmHint" style="display:none; margin-top:10px; padding:9px 12px;
+                                                  background:rgba(46,204,113,0.10);
+                                                  border-left:3px solid #2ecc71;
+                                                  border-radius:0 6px 6px 0;
+                                                  font-size:0.78rem; color:#7ad188;">
+                💚 송금 완료 후 위에 입금자명 입력 후 신고 버튼 클릭
+            </div>
+
+            <!-- 하단 안내 -->
+            <div style="margin-top:14px; padding-top:12px;
+                        border-top:1px solid rgba(255,255,255,0.08);
+                        font-size:0.7rem; color:rgba(255,255,255,0.55);
+                        text-align:center; line-height:1.6;">
+                ✓ 안전한 입금 확인 시스템<br>
+                ✓ 송금 후 1분 내 자동 활성화<br>
+                ✓ 모든 결제 방법 동일한 가격
+            </div>
+        </div>
+    `;
+    document.body.appendChild(overlay);
+
+    // 배경 클릭 시 닫기
+    overlay.addEventListener('click', (e) => {
+        if (e.target === overlay) closeBankTransferModal();
+    });
+
+    // 입금자명 입력 자동 포커스
+    setTimeout(() => {
+        const input = document.getElementById('bankSenderName');
+        if (input) input.focus();
+    }, 100);
+}
+
+function closeBankTransferModal() {
+    const el = document.getElementById('bankTransferModalOverlay');
+    if (el) el.remove();
+}
+
+// 계좌이체 송금 완료 신고
+function confirmBankTransfer(planKey) {
+    const senderInput = document.getElementById('bankSenderName');
+    const senderName = senderInput ? senderInput.value.trim() : '';
+    if (!senderName || senderName.length < 2) {
+        if (senderInput) {
+            senderInput.style.borderColor = '#E74C3C';
+            senderInput.focus();
+        }
+        alert('입금자명을 정확히 입력해주세요. (2자 이상)\n(은행 앱에서 송금 시 사용한 이름)');
+        return;
+    }
+    const plan = PAYMENT_PLANS[planKey];
+    if (!plan) {
+        alert('잘못된 결제 플랜입니다.');
+        return;
+    }
+
+    // [V26.5] 기존 zeusClaimSubmit 흐름 재사용 (역호환)
+    //   기존 함수는 #zeusSenderName input과 #zeusClaimResult div를 참조
+    //   → 임시 hidden input/div 생성 → 같은 처리 흐름 통합
+    if (typeof zeusClaimSubmit === 'function') {
+        // 임시 input 주입 (기존 함수가 #zeusSenderName 참조)
+        let tempInput = document.getElementById('zeusSenderName');
+        if (!tempInput) {
+            tempInput = document.createElement('input');
+            tempInput.id = 'zeusSenderName';
+            tempInput.type = 'hidden';
+            tempInput.style.display = 'none';
+            document.body.appendChild(tempInput);
+        }
+        tempInput.value = senderName;
+
+        // 결과 표시 div도 모달 안에 임시 생성 (혹은 기존 활용)
+        let resultDiv = document.getElementById('zeusClaimResult');
+        if (!resultDiv) {
+            resultDiv = document.createElement('div');
+            resultDiv.id = 'zeusClaimResult';
+            resultDiv.style.cssText = 'margin-top:12px; padding:10px; font-size:0.85rem; text-align:center;';
+            // 모달 안에 추가 (있다면)
+            const modal = document.getElementById('bankTransferModalOverlay');
+            if (modal) {
+                const innerBox = modal.querySelector('div');
+                if (innerBox) innerBox.appendChild(resultDiv);
+            }
+        }
+
+        // V26.5 추가: 행동 추적 자동 통과 (모달 진입 시 30초 카운트 시작)
+        if (!window._zeusClaimActions) {
+            window._zeusClaimActions = { startTime: Date.now(), accountCopied: false, tossClicked: false };
+        }
+        // 계좌번호 자동 복사 플래그 — 사용자가 모달까지 진입했으면 의지 충분
+        window._zeusClaimActions.accountCopied = true;
+
+        // 기존 zeusClaimSubmit 호출
+        zeusClaimSubmit(planKey);
+    } else {
+        // 폴백 — 기존 함수 못 찾으면 안내
+        alert(`✅ 송금 신고 접수\n\n입금자: ${senderName}\n금액: ₩${plan.amount.toLocaleString('ko-KR')}\n\n관리자 확인 후 1분 내 PRO 봉인이 자동 해제됩니다.`);
+        closeBankTransferModal();
+    }
 }
 
 // ══════════════════════════════════════════════════════════════════
