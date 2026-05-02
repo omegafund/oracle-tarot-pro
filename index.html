@@ -2780,7 +2780,26 @@ const CATEGORY_CONFIG = {
               placeholder: '예: 장기로 보유해도 괜찮은 종목인가요?' },
             { type: 'risk_check',  icon: '🛡️', label: '리스크 체크',
               hint: '하락 위험과 손절 라인을 점사합니다',
-              placeholder: '예: 지금 추가 매수해도 안전한가요?' }
+              placeholder: '예: 지금 추가 매수해도 안전한가요?' },
+            // [V25.38] 코인 5 서브타입 — 사장님 결정: 주식 탭 안에 통합 (A안)
+            //   서버에서 stockSubType으로 식별 후 queryType='crypto' 처리
+            //   selectSubtype 함수가 ACTIVE_DOMAIN_BAR='crypto'로 자동 전환
+            //   사장님 진단 안 적용: placeholder/label/hint 명료화
+            { type: 'crypto_buy',  icon: '🪙', label: '코인 매수', isCrypto: true,
+              hint: '코인 진입 타이밍과 분할 매수 전략을 점사합니다',
+              placeholder: '예: 비트코인 지금 들어가도 될까요?' },
+            { type: 'crypto_sell', icon: '💎', label: '코인 매도', isCrypto: true,
+              hint: '코인 청산 타이밍과 분할 익절 전략을 점사합니다',
+              placeholder: '예: 이더리움 보유 중인데 언제 팔까요?' },
+            { type: 'scalping',    icon: '⚡', label: '스캘핑', isCrypto: true,
+              hint: '분·시간 단위 빠른 매매 전략을 점사합니다',
+              placeholder: '예: 지금 스캘핑 진입 가능한가요?' },
+            { type: 'holding',     icon: '💎', label: '홀딩 (DCA)', isCrypto: true,
+              hint: '장기 분할 매수와 펀더멘털 관점을 점사합니다',
+              placeholder: '예: 비트코인 장기 홀딩 어떨까요?' },
+            { type: 'crypto_risk', icon: '🛡️', label: '코인 리스크', isCrypto: true,
+              hint: '청산가·레버리지·거래소 리스크를 점사합니다',
+              placeholder: '예: 지금 레버리지 포지션 안전한가요?' }
         ]
     },
     realestate: {
@@ -2906,6 +2925,14 @@ function selectSubtype(catKey, subType, btnEl, placeholder) {
     } else if (catKey === 'stock') {
         STOCK_SUBTYPE = subType;
         LOVE_SUBTYPE = ''; RE_SUBTYPE = ''; FORTUNE_SUBTYPE = '';
+        // [V25.38] 코인 서브타입이면 ACTIVE_DOMAIN_BAR를 'crypto'로 전환 (사장님 진단 안)
+        //   사용자 클릭 → 서버 라우팅 정확히 queryType='crypto'로 분류
+        //   includes() 배열 매칭 — 명시성 + 디버깅 용이성 (사장님 결정)
+        if (['crypto_buy','crypto_sell','scalping','holding','crypto_risk'].includes(subType)) {
+            ACTIVE_DOMAIN_BAR = 'crypto';
+        } else {
+            ACTIVE_DOMAIN_BAR = 'stock';
+        }
     } else if (catKey === 'realestate') {
         RE_SUBTYPE = subType;
         LOVE_SUBTYPE = ''; STOCK_SUBTYPE = ''; FORTUNE_SUBTYPE = '';
