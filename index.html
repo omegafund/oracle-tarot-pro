@@ -3769,21 +3769,81 @@ async function renderStream(fetchPromise, cards) {
         }
 
         // 3️⃣ [UI 정밀 제어] 결제 전에는 절대 도망갈 수 없습니다
+        // [V25.41] 오늘운세/전반운세는 예외 — 사장님 결정: 되돌아가기 버튼 + 프리미엄 안내
+        //   사장님 진단: '갇혀있다' 인식 = 결제 X, 자연스러운 흐름이 결제 동기 ↑
         const holdingMsg = document.getElementById('holding-message');
         const finalBtn   = document.getElementById('final-reset-btn');
 
         if (!isPaidUser) {
-            // ❌ 돈 안 낸 유저: [새 신탁 구하기] 버튼을 물리적으로 숨김
-            if (finalBtn) finalBtn.style.display = 'none';
-            
-            // 🟢 대신 결제를 유도하는 경건한 문구와 잠금 화면 유지
-            if (holdingMsg) {
-                holdingMsg.style.display = 'block';
-                holdingMsg.innerHTML = `
-                    <div style="color: #50C878; font-size: 1.1rem; font-weight: 900; animation: emerald-glow 2s infinite alternate;">
-                        제우스의 최종 신탁 수치가 도출되었습니다.<br>운명의 봉인을 해제하여 확인하십시오.
-                    </div>
-                `;
+            // [V25.41] 오늘운세/전반운세 식별 — 무료 점사 중 핵심 진입점
+            const _isFreeBasicFortune = (typeof FORTUNE_SUBTYPE !== 'undefined') &&
+                                        (FORTUNE_SUBTYPE === 'today' || FORTUNE_SUBTYPE === 'general');
+
+            if (_isFreeBasicFortune) {
+                // [V25.41] 사장님 결정: 무료 기본 운세는 자연스러운 선택권 제공
+                //   ① 되돌아가기 버튼 노출 (결제 버튼 위, 동일 크기)
+                //   ② 프리미엄 안내 문구 추가 (결제 동기 자극)
+                //   ③ 봉인 메시지 유지 (결제 유도 흐름 보존)
+                if (holdingMsg) {
+                    holdingMsg.style.display = 'block';
+                    holdingMsg.innerHTML = `
+                        <div style="color: #50C878; font-size: 1.1rem; font-weight: 900; animation: emerald-glow 2s infinite alternate; margin-bottom: 22px;">
+                            제우스의 최종 신탁 수치가 도출되었습니다.<br>운명의 봉인을 해제하여 확인하십시오.
+                        </div>
+
+                        <!-- [V25.41] 되돌아가기 버튼 (결제 버튼 위, 동일 크기) -->
+                        <button onclick="location.reload()" style="
+                            background: linear-gradient(135deg, rgba(212,175,55,0.18), rgba(212,175,55,0.05));
+                            color: var(--gold);
+                            padding: 12px 35px;
+                            border-radius: 30px;
+                            font-weight: 900;
+                            border: 2px solid rgba(212,175,55,0.55);
+                            cursor: pointer;
+                            font-size: 0.92rem;
+                            letter-spacing: 0.06em;
+                            margin-bottom: 18px;
+                            transition: all 0.2s;
+                        " onmouseover="this.style.background='rgba(212,175,55,0.28)'; this.style.borderColor='var(--gold)';"
+                          onmouseout="this.style.background='linear-gradient(135deg, rgba(212,175,55,0.18), rgba(212,175,55,0.05))'; this.style.borderColor='rgba(212,175,55,0.55)';">
+                            ✦ 다른 신탁 구하기 ✦
+                        </button>
+
+                        <!-- [V25.41] 프리미엄 안내 문구 (결제 동기 자극) -->
+                        <div style="margin: 14px 0 6px 0; padding: 14px 18px;
+                                    background: linear-gradient(135deg, rgba(80,200,120,0.10), rgba(80,200,120,0.02));
+                                    border: 1px solid rgba(80,200,120,0.35);
+                                    border-radius: 12px;
+                                    max-width: 460px;
+                                    margin-left: auto;
+                                    margin-right: auto;">
+                            <div style="color: #50C878; font-size: 0.95rem; font-weight: 800; margin-bottom: 8px; letter-spacing: 0.04em;">
+                                📿 제우스의 깊은 통찰을 받아보시겠습니까?
+                            </div>
+                            <div style="color: rgba(255,255,255,0.85); font-size: 0.84rem; font-weight: 500; line-height: 1.65;">
+                                잠긴 <b style="color:#FFEC9F;">미래 카드</b>와
+                                <b style="color:#FFEC9F;">5차원 영성 분석</b>을<br>
+                                프리미엄 신탁으로 펼쳐 드립니다
+                            </div>
+                        </div>
+                    `;
+                }
+                // 기존 finalBtn은 숨김 (잠금 해제 모달이 별도로 표시됨)
+                if (finalBtn) finalBtn.style.display = 'none';
+            } else {
+                // [기존 정책 유지] 그 외 무료 점사는 봉인 메시지만 (가두기 정책)
+                //   주식·코인·부동산·연애·재물·건강·직장·신년 등
+                //   사장님 결정: 오늘운세 + 전반운세만 되돌아가기 노출
+                if (finalBtn) finalBtn.style.display = 'none';
+
+                if (holdingMsg) {
+                    holdingMsg.style.display = 'block';
+                    holdingMsg.innerHTML = `
+                        <div style="color: #50C878; font-size: 1.1rem; font-weight: 900; animation: emerald-glow 2s infinite alternate;">
+                            제우스의 최종 신탁 수치가 도출되었습니다.<br>운명의 봉인을 해제하여 확인하십시오.
+                        </div>
+                    `;
+                }
             }
         } else {
             // ✅ 결제 완료 유저: 모든 봉인을 풀고 버튼을 노출함
@@ -5745,6 +5805,39 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
         if (!txt) return txt;
         let t = txt.trim();
 
+        // [V25.40 Phase 3-A] 종목명 잘못된 변형 차단 (사장님 진단)
+        //   결함: Gemini가 '티엘비를 매수' → '티엘비사서'로 잘못 형태소 분석
+        //   원인: AI 한국어 NLP 한계 — 동사 어간 + 조사 결합 오류
+        //   해결: 정확한 종목명을 코드가 100% 통제 (V25.22 사장님 철학)
+        if (_subjectName && _subjectName.length >= 2) {
+            // 동사 어간이 종목명에 잘못 결합된 패턴 차단
+            //   '티엘비사서', '티엘비사려고', '티엘비매수해' 등
+            const verbStems = [
+                '사서','사려','사고','살까','사면','사면서','샀다','산다','산',
+                '팔아','팔려','팔고','팔까','팔면','파는','팔지',
+                '매수해','매수하','매도해','매도하','매도하면',
+                '들어가','진입해','진입하','뽑으','뽑고','뽑아',
+                '보유해','보유하','청산해','청산하'
+            ];
+            // 종목명+동사어간 결합형을 찾아 '종목명 + 공백' 으로 분리
+            //   예: '티엘비사서' → '티엘비를 사서' 가 아니라 '티엘비 ' 로 단순화
+            //       문맥 흐름은 유지 (자연스러운 한국어)
+            verbStems.forEach(stem => {
+                const escName = _subjectName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                const escStem = stem.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                // 종목명 바로 뒤 동사 어간 → 종목명 + 공백 + 동사
+                const pattern = new RegExp(`${escName}${escStem}`, 'g');
+                t = t.replace(pattern, `${_subjectName} ${stem}`);
+            });
+            // 종목명 + 음절 1~3자 결합형 추가 차단 (휴리스틱)
+            //   '티엘비를사서' 처럼 조사+동사 붙은 경우 → 띄어쓰기 강제
+            const escSubj = _subjectName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            t = t.replace(
+                new RegExp(`(${escSubj})(을|를|에|에서|이|가|은|는|와|과)([가-힣])`, 'g'),
+                '$1$2 $3'
+            );
+        }
+
         // [V21.2] 종목명이 빠지고 이모지로 시작하는 모든 패턴 치환
         if (_subjectName) {
             // 1) 단락 첫 자리: 이모지 + 조사 (📈에 / 🏠의 / 💘에 / ✨을 등)
@@ -5919,6 +6012,40 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
                     <div style="font-size:0.92rem; color:rgba(255,255,255,0.92); font-weight:600; line-height:1.6; margin-bottom:14px;">
                         📌 ${strategyLabel}: ${layers.decision.strategy}
                     </div>
+
+                    ${layers.marketState ? `
+                    <!-- [V25.40 Phase 4] 시장 상태 박스 (사장님 안) — PRO 차별화 -->
+                    <!--   카드 분석 + 리스크 + 변동성 결합 자동 생성              -->
+                    <!--   포지션·전략 다음, 한줄 결론 직전 위치                    -->
+                    <div style="margin-top:4px; margin-bottom:10px; padding:11px 14px;
+                                background: linear-gradient(135deg, rgba(155,89,182,0.16), rgba(155,89,182,0.04));
+                                border: 1.5px solid rgba(155,89,182,0.45);
+                                border-radius: 10px;">
+                        <div style="font-size:0.74rem; color:#C39BD3; font-weight:800; letter-spacing:0.12em; margin-bottom:6px;">
+                            📊 현재 시장 상태
+                        </div>
+                        <div style="font-size:0.86rem; color:rgba(255,255,255,0.92); font-weight:600; line-height:1.7;">
+                            <div style="margin-bottom:3px;">→ ${layers.marketState.structure} + ${layers.marketState.pressure}</div>
+                            <div>→ ${layers.marketState.priority}</div>
+                        </div>
+                    </div>` : ''}
+
+                    ${layers.decision.oneLineSummary ? `
+                    <!-- [V25.40 Phase 6] 한줄 결론 박스 (사장님 안) — TL;DR 패턴 -->
+                    <!--   포지션·전략 다음, 5계층 본문 시작 전 위치                  -->
+                    <!--   효과: 본문 읽기 전 머리 정돈 + 5초 결제 결정의 법칙        -->
+                    <div style="margin-top:4px; margin-bottom:14px; padding:11px 14px;
+                                background: linear-gradient(135deg, rgba(255,236,159,0.18), rgba(255,236,159,0.05));
+                                border: 1.5px solid rgba(255,236,159,0.5);
+                                border-radius: 10px;
+                                box-shadow: 0 0 12px rgba(255,236,159,0.12);">
+                        <div style="font-size:0.74rem; color:#FFEC9F; font-weight:800; letter-spacing:0.12em; margin-bottom:5px;">
+                            👉 한줄 결론
+                        </div>
+                        <div style="font-size:0.96rem; color:#fff; font-weight:700; line-height:1.55;">
+                            "${layers.decision.oneLineSummary}"
+                        </div>
+                    </div>` : ''}
 
                     ${layers.decision.diagnosis ? `
                     <!-- [V22.3] 🔍 진단 (명확한 단일 메시지) -->
@@ -6209,24 +6336,43 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
                         ${signalTitle} (Signal Layer)
                     </div>
                     <div style="font-size:0.85rem; color:rgba(255,255,255,0.88); line-height:1.85; margin-bottom:8px;">
-                        ${hasImpact ? `
-                            <div style="margin-bottom:8px;">
-                                <div style="font-weight:700; color:#fff;">• ${sig.past || '-'}</div>
-                                <div style="margin-left:14px; color:rgba(255,255,255,0.78); font-size:0.82rem;">→ ${sig.pastImpact}</div>
-                            </div>
-                            <div style="margin-bottom:8px;">
-                                <div style="font-weight:700; color:#fff;">• ${sig.current || '-'}</div>
-                                <div style="margin-left:14px; color:rgba(255,255,255,0.78); font-size:0.82rem;">→ ${sig.currentImpact}</div>
-                            </div>
-                            <div style="margin-bottom:8px;">
-                                <div style="font-weight:700; color:#fff;">• ${sig.future || '-'}</div>
-                                <div style="margin-left:14px; color:rgba(255,255,255,0.78); font-size:0.82rem;">→ ${sig.futureImpact}</div>
-                            </div>
-                        ` : `
-                            <div>• ${sig.past || '-'}</div>
-                            <div>• ${sig.current || '-'}</div>
-                            <div>• ${sig.future || '-'}</div>
-                        `}
+                        ${(() => {
+                            // [V25.40 Phase 5] Signal Layer 가독성 개선 (사장님 안)
+                            //   BEFORE: "• 과거(Two of Cups): 조화·연결 — 균형..."
+                            //           "→ 조화·연결" (카드명 두 번 노출)
+                            //   AFTER:  "• 과거: 조화·연결 — 균형 잡힌 진입 — 협력 흐름"
+                            //           "  ⟡ Two of Cups" (카드명은 출처로 분리)
+                            //   효과: 의미 라인이 메인, 카드명은 보조 (시각 계층 명확)
+                            const parsePastLine = (line, pos) => {
+                                if (!line) return { meaning: '-', card: '' };
+                                // 패턴: "과거(Card Name): meaning" 또는 "과거(Card Name [역방향]): meaning"
+                                const m = line.match(/^(과거|현재|미래)\(([^)]+)\)\s*:?\s*(.*)$/);
+                                if (m) {
+                                    return {
+                                        meaning: m[3].trim() || '-',
+                                        card: m[2].trim()  // "Two of Cups" 또는 "The Emperor [역방향]"
+                                    };
+                                }
+                                return { meaning: line, card: '' };
+                            };
+                            const renderRow = (line, label, impact) => {
+                                const { meaning, card } = parsePastLine(line, label);
+                                return `
+                                    <div style="margin-bottom:10px;">
+                                        <div style="font-weight:700; color:#fff;">• ${label}: ${meaning}</div>
+                                        ${card ? `<div style="margin-left:14px; color:rgba(255,255,255,0.55); font-size:0.74rem; margin-top:2px; letter-spacing:0.02em;">⟡ ${card}</div>` : ''}
+                                        ${impact ? `<div style="margin-left:14px; color:rgba(255,255,255,0.78); font-size:0.82rem; margin-top:3px;">→ ${impact}</div>` : ''}
+                                    </div>`;
+                            };
+                            if (hasImpact) {
+                                return renderRow(sig.past, '과거', sig.pastImpact)
+                                     + renderRow(sig.current, '현재', sig.currentImpact)
+                                     + renderRow(sig.future, '미래', sig.futureImpact);
+                            }
+                            return renderRow(sig.past, '과거', '')
+                                 + renderRow(sig.current, '현재', '')
+                                 + renderRow(sig.future, '미래', '');
+                        })()}
                     </div>
                     ${sig.summary ? `<div style="margin-top:6px; padding:6px 10px; background:rgba(155,89,182,0.10); border-radius:5px; font-size:0.82rem; color:rgba(212,175,55,0.92); font-style:italic;">↳ ${sig.summary}</div>` : ''}
                     ${sig.verdict ? `<div style="margin-top:8px; padding:8px 10px; background:rgba(155,89,182,0.14); border-radius:5px; font-size:0.92rem; color:#fff; font-weight:700;">🌊 흐름 신호: ${sig.verdict}</div>` : ''}
