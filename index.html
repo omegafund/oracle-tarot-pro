@@ -6869,6 +6869,46 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
             const coreKey = (txt) => `<div style="margin-top:8px; padding:8px 12px; background:rgba(212,175,55,0.10); border-left:3px solid #D4AF37; border-radius:0 6px 6px 0; font-size:0.86rem; color:#FFE08A; font-weight:700;">👉 핵심: <b>"${txt}"</b></div>`;
 
             // ── Box 1: Core Insight (PRO 강조) ──
+            // [V26.0 Phase C] Top Verdict 박스 — 사장님 안 (Inverted Pyramid)
+            //   사장님 진단: '결론이 너무 아래 있음' → 제일 위로 끌어올림
+            //   효과: Bloomberg/WSJ/NYT 1면 패턴 + 5초 결제 결정의 법칙
+            //   범위: 9개 서브타입별 verdict/action/risk (사장님 직접 작성)
+            const tv = (window._serverMetrics && window._serverMetrics.layers && window._serverMetrics.layers.topVerdict) || null;
+            const topVerdictBox = tv ? `
+                <div style="margin-bottom:18px; padding:16px 18px;
+                            background: linear-gradient(135deg, rgba(231,76,60,0.10), rgba(212,175,55,0.06));
+                            border: 2px solid rgba(231,76,60,0.5);
+                            border-radius: 14px;
+                            box-shadow: 0 0 18px rgba(231,76,60,0.15);">
+                    <div style="display:flex; align-items:center; gap:8px; margin-bottom:12px; padding-bottom:10px; border-bottom:1px solid rgba(231,76,60,0.25);">
+                        <div style="color:#FF8E72; font-size:0.86rem; font-weight:900; letter-spacing:0.12em;">
+                            🔥 최종 결론
+                        </div>
+                        <div style="margin-left:auto; font-size:0.62rem; color:rgba(255,142,114,0.75); font-weight:700; letter-spacing:0.1em;">
+                            TOP VERDICT
+                        </div>
+                    </div>
+                    <div style="font-size:0.94rem; color:#fff; font-weight:700; line-height:1.7; margin-bottom:14px;">
+                        👉 ${tv.verdict}
+                    </div>
+                    <div style="padding:10px 12px; background:rgba(46,204,113,0.06); border-left:3px solid #2ecc71; border-radius:0 8px 8px 0; margin-bottom:10px;">
+                        <div style="color:#7ad188; font-size:0.72rem; font-weight:900; letter-spacing:0.1em; margin-bottom:5px;">
+                            🧭 지금 행동
+                        </div>
+                        <div style="font-size:0.88rem; color:rgba(255,255,255,0.92); font-weight:600; line-height:1.6;">
+                            ${tv.action}
+                        </div>
+                    </div>
+                    <div style="padding:10px 12px; background:rgba(241,196,15,0.05); border-left:3px solid #F1C40F; border-radius:0 8px 8px 0;">
+                        <div style="color:#F1C40F; font-size:0.72rem; font-weight:900; letter-spacing:0.1em; margin-bottom:5px;">
+                            ⚠️ 핵심 리스크
+                        </div>
+                        <div style="font-size:0.86rem; color:rgba(255,255,255,0.85); font-weight:500; line-height:1.6;">
+                            ${tv.risk}
+                        </div>
+                    </div>
+                </div>` : '';
+
             const box1 = `
                 <div style="${boxBase} ${goldBorder}">
                     <div style="display:flex; align-items:center; gap:6px; margin-bottom:10px;">
@@ -7037,6 +7077,7 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
                     💘 연애 흐름 신탁
                     <span style="display:block; font-size:0.7rem; color:rgba(212,175,55,0.85); letter-spacing:0.18em; margin-top:4px;">ZEUS LOVE ORACLE · V25.24</span>
                 </h3>
+                ${topVerdictBox}
                 ${box1}
                 ${box2}
                 ${box3}
