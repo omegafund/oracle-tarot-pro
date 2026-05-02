@@ -2107,7 +2107,46 @@ const PAYMENT_CONFIG = {
 // ══════════════════════════════════════════════════════════════════
 // [V19 Phase6] Toss Payments 설정 + 결제 플랜
 // ══════════════════════════════════════════════════════════════════
-const TOSS_CLIENT_KEY = 'test_ck_DLJOpm5Qrld55o27nMJ0rPNdxbWn'; // ★ 테스트 키 (공개 가능)
+// [V26.7] 테스트/라이브 키 자동 전환 — 사장님 운영 안
+//   목적: 1주일 후 라이브 전환 시 코드 1줄만 추가하면 자동 전환
+//   원리: 도메인 기반 자동 모드 감지 (가장 안전한 글로벌 SaaS 표준)
+//
+//   사용 방법 (1주일 후 라이브 전환):
+//     1. 토스에서 받은 라이브 키를 TOSS_CLIENT_KEY_LIVE에 입력
+//     2. Cloudflare 환경변수 ENABLE_TEST_MODE = 'false' 변경
+//     3. Cloudflare 환경변수 TOSS_SECRET_KEY = (라이브 시크릿 키)
+//     → 자동으로 라이브 모드 작동
+//
+//   안전장치:
+//     - 라이브 키 비어있으면 자동으로 테스트 키 사용 (실수 방지)
+//     - 도메인 자동 감지 (preview/localhost는 무조건 테스트)
+//     - 콘솔에 현재 모드 출력 (디버깅 용이)
+const TOSS_CLIENT_KEY_TEST = 'test_ck_DLJOpm5Qrld55o27nMJ0rPNdxbWn';  // ★ 테스트 키 (공개 가능)
+const TOSS_CLIENT_KEY_LIVE = '';  // ★ 라이브 키 — 1주일 후 토스에서 받아 입력 (예: 'live_ck_xxx')
+
+// 자동 모드 감지 (사장님 V25.22 정신 — 코드 100% 통제)
+const _IS_PREVIEW_OR_LOCAL = (function() {
+    const h = (typeof window !== 'undefined' && window.location) ? window.location.hostname : '';
+    // 미리보기/로컬은 무조건 테스트 모드
+    return h.includes('localhost')
+        || h.includes('127.0.0.1')
+        || h.includes('preview')
+        || h.includes('pages.dev')
+        || h.includes('workers.dev')
+        || h === '';
+})();
+
+// 라이브 키가 비어있거나 미리보기면 테스트 키 사용 (안전장치)
+const TOSS_CLIENT_KEY = (TOSS_CLIENT_KEY_LIVE && !_IS_PREVIEW_OR_LOCAL)
+    ? TOSS_CLIENT_KEY_LIVE
+    : TOSS_CLIENT_KEY_TEST;
+
+// 디버그: 현재 모드 콘솔 출력 (사장님 확인용)
+if (typeof console !== 'undefined' && console.log) {
+    const _mode = (TOSS_CLIENT_KEY === TOSS_CLIENT_KEY_LIVE) ? '🔴 LIVE' : '🟢 TEST';
+    console.log(`[ZEUS Payment] 현재 모드: ${_mode} (${TOSS_CLIENT_KEY.slice(0, 12)}...)`);
+}
+
 const WORKER_BASE_URL = 'https://tarot-api.omegafund01.workers.dev';
 
 const PAYMENT_PLANS = {
@@ -10087,7 +10126,14 @@ async function zeusClaimSubmit(plan) {
         // [V22.1] isPaidUser 즉시 활성화 (결과창 잠금 해제용)
         isPaidUser = true;
 
-        const planLabel = plan === 'month' ? '30일' : plan === 'day' ? '1일' : '1시간';
+        // [V26.6] 6 plan 모두 정확한 라벨 매핑
+        const planLabel = plan === 'lifetime' ? '평생'
+                        : plan === 'yearly'   ? '1년'
+                        : plan === 'monthly'  ? '월간'
+                        : plan === 'month'    ? '30일'
+                        : plan === 'day'      ? '1일'
+                        : plan === 'trial'    ? '1시간'
+                        : '1시간';
 
         resultDiv.innerHTML = `
             <div style="padding:12px; background:rgba(46,204,113,0.12); border:1px solid rgba(46,204,113,0.5); border-radius:6px;">
@@ -10107,8 +10153,13 @@ async function zeusClaimSubmit(plan) {
         //   사장님 UX 버그 수정: location.reload() 제거
         //   → 유저가 본 점사 결과 그대로 유지
         //   → 잠겨있던 미래 카드 + PRO 영역만 즉시 해제
+        // [V26.6] 계좌이체 모달도 함께 닫기 — 사장님 진단 안
+        //   문제: V26.5 새 모달(bankTransferModalOverlay)이 closePayModal로 안 닫힘
+        //   해결: 모든 결제 관련 모달 일괄 닫기
         setTimeout(() => {
             try { closePayModal(); } catch {}
+            try { closePaymentMethodModal(); } catch {}  // [V26.6]
+            try { closeBankTransferModal(); } catch {}   // [V26.6]
 
             // 결과창 PRO 봉인 해제 (manualTokenActivate와 동일 로직)
             const contentEl = document.getElementById('oracle-content');
@@ -10544,6 +10595,9 @@ function showBankTransferModal(planKey) {
                 ✅ 송금 완료 신고 → PRO 봉인 해제
             </button>
 
+            <!-- [V26.6] 처리 결과 표시 div — 사용자 피드백 명시 (ID 중복 방지) -->
+            <div id="zeusBankClaimResult" style="margin-top:12px; padding:10px; font-size:0.88rem; text-align:center; min-height:18px;"></div>
+
             <!-- 자동 확인 힌트 (토스 송금 후) -->
             <div id="bankAutoConfirmHint" style="display:none; margin-top:10px; padding:9px 12px;
                                                   background:rgba(46,204,113,0.10);
@@ -10601,9 +10655,11 @@ function confirmBankTransfer(planKey) {
         return;
     }
 
-    // [V26.5] 기존 zeusClaimSubmit 흐름 재사용 (역호환)
-    //   기존 함수는 #zeusSenderName input과 #zeusClaimResult div를 참조
-    //   → 임시 hidden input/div 생성 → 같은 처리 흐름 통합
+    // [V26.6] 사장님 결정 — 계좌이체도 카드/카카오페이와 동일하게 즉시 활성화
+    //   사장님 통찰: "계좌이체는 실시간 확인 불가능 → 1시간 대기 X"
+    //              "감내하는 손실이다 (사기 5% < 정상 95% 보호)"
+    //   글로벌 표준: Stripe/Toss/Notion 모두 즉시 활성화
+    //   해결: 30초 대기 + 계좌복사 검증 우회 (즉시 통과)
     if (typeof zeusClaimSubmit === 'function') {
         // 임시 input 주입 (기존 함수가 #zeusSenderName 참조)
         let tempInput = document.getElementById('zeusSenderName');
@@ -10616,28 +10672,44 @@ function confirmBankTransfer(planKey) {
         }
         tempInput.value = senderName;
 
-        // 결과 표시 div도 모달 안에 임시 생성 (혹은 기존 활용)
-        let resultDiv = document.getElementById('zeusClaimResult');
-        if (!resultDiv) {
-            resultDiv = document.createElement('div');
-            resultDiv.id = 'zeusClaimResult';
-            resultDiv.style.cssText = 'margin-top:12px; padding:10px; font-size:0.85rem; text-align:center;';
-            // 모달 안에 추가 (있다면)
-            const modal = document.getElementById('bankTransferModalOverlay');
-            if (modal) {
-                const innerBox = modal.querySelector('div');
-                if (innerBox) innerBox.appendChild(resultDiv);
+        // [V26.6] 결과 표시 div — 기존 zeusClaimSubmit이 #zeusClaimResult 참조
+        //   ID 중복 방지: 새 모달은 #zeusBankClaimResult, 기존 함수용은 #zeusClaimResult 임시 생성
+        //   → 처리 후 새 모달 div에 결과 미러링
+        let bridgeResult = document.getElementById('zeusClaimResult');
+        if (!bridgeResult) {
+            bridgeResult = document.createElement('div');
+            bridgeResult.id = 'zeusClaimResult';
+            bridgeResult.style.display = 'none';  // 화면에 안 보이게
+            document.body.appendChild(bridgeResult);
+        }
+        // 처리 결과 자동 미러링 (MutationObserver)
+        const userVisibleResult = document.getElementById('zeusBankClaimResult');
+        if (userVisibleResult && bridgeResult) {
+            // 기존 옵저버 정리
+            if (window._zeusBankResultObserver) {
+                try { window._zeusBankResultObserver.disconnect(); } catch {}
             }
+            // 새 옵저버: bridgeResult 변경 → 사용자에게 보이는 div로 복사
+            window._zeusBankResultObserver = new MutationObserver(() => {
+                userVisibleResult.innerHTML = bridgeResult.innerHTML;
+            });
+            window._zeusBankResultObserver.observe(bridgeResult, {
+                childList: true, subtree: true, characterData: true
+            });
         }
 
-        // V26.5 추가: 행동 추적 자동 통과 (모달 진입 시 30초 카운트 시작)
-        if (!window._zeusClaimActions) {
-            window._zeusClaimActions = { startTime: Date.now(), accountCopied: false, tossClicked: false };
-        }
-        // 계좌번호 자동 복사 플래그 — 사용자가 모달까지 진입했으면 의지 충분
-        window._zeusClaimActions.accountCopied = true;
+        // [V26.6] 즉시 활성화 — 30초 대기 검증 우회
+        //   _zeusClaimActions 강제 설정:
+        //     startTime: 31초 전으로 설정 (30초 검증 즉시 통과)
+        //     accountCopied: true (계좌 복사 검증 즉시 통과)
+        //   → zeusClaimSubmit이 즉시 송금 신고 → 즉시 PRO 활성화
+        window._zeusClaimActions = {
+            startTime: Date.now() - 31000,  // 31초 전 = 30초 대기 즉시 통과
+            accountCopied: true,             // 계좌 복사 즉시 통과
+            tossClicked: false
+        };
 
-        // 기존 zeusClaimSubmit 호출
+        // 기존 zeusClaimSubmit 호출 — 즉시 활성화 흐름 진입
         zeusClaimSubmit(planKey);
     } else {
         // 폴백 — 기존 함수 못 찾으면 안내
