@@ -6897,7 +6897,7 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
                         </div>
                     </div>
                     <div style="font-size:0.94rem; color:#fff; font-weight:700; line-height:1.7; margin-bottom:14px;">
-                        👉 ${tv.verdict}
+                        👉 ${(tv.verdict || '').replace(/\n/g, '<br>')}
                     </div>
                     <div style="padding:10px 12px; background:rgba(46,204,113,0.06); border-left:3px solid #2ecc71; border-radius:0 8px 8px 0; margin-bottom:10px;">
                         <div style="color:#7ad188; font-size:0.72rem; font-weight:900; letter-spacing:0.1em; margin-bottom:5px;">
