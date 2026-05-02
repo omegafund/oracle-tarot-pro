@@ -5733,9 +5733,15 @@ function buildLoveRisk(content) {
   };
 }
 
-function buildLoveFinal(content, scoreCategory) {
+function buildLoveFinal(content, scoreCategory, loveSubType) {
   const branches = PATH_BRANCHES_V25_24[scoreCategory] || PATH_BRANCHES_V25_24.maintain;
+  // [V26.8 결함 7] pivot 한방 문구 — FINAL 박스 최상단 트리거
+  //   사장님 진단: "재회 시도 가능 — 신중하게" 직전 강력 한방 문구 필요
+  //   해결: LOVE_PIVOT_PHRASE에서 서브타입별 매핑 (9개 일괄 일관)
+  //   fallback: general (서브타입 매칭 실패 시)
+  const pivot = LOVE_PIVOT_PHRASE[loveSubType] || LOVE_PIVOT_PHRASE.general;
   return {
+    pivot,
     finalState: content.final_state, finalExplanation: content.final_explanation,
     goodPath: content.good_path || branches.good, badPath: content.bad_path || branches.bad,
     finalKey: content.final_key, coreKey: content.final_action_statement
@@ -5751,6 +5757,30 @@ function buildLoveProEnhancement(metaPattern) {
     longTermNote: "이 패턴을 이해하지 못하면 같은 문제가 반복될 가능성이 매우 높습니다."
   };
 }
+
+// ══════════════════════════════════════════════════════════════════
+// [V26.8 결함 7] LOVE_PIVOT_PHRASE — 9개 서브타입 한방 문구 (NEW)
+//   사장님 진단: "FINAL VERDICT 위에 한방 문구 추가 — 트리거 약함"
+//   설계 원칙: TOP=현재 진단 / PIVOT=결과 분기 / FINAL=결론 (3단 임팩트)
+//   톤 패턴: [인정] + [, but] + [결정 변수] + [분기점/시점]
+//     인정    : 가능성/현실 부정 X
+//     단서    : 'but/보다'로 전환
+//     변수    : 사용자 통제 가능 (방식·타이밍·회복·정리)
+//     임팩트  : '분기점'·'시점' 키워드
+//   효과: Bloomberg 1면 헤드라인 패턴 + 5초 결정 + SaaS 전환율 ↑
+//   범위: 연애 9개 서브타입 일괄 적용 (서브타입별 본질 반영, tier 무관)
+// ══════════════════════════════════════════════════════════════════
+const LOVE_PIVOT_PHRASE = {
+  compatibility: '두 사람의 결은 맞지만, 차이를 다루는 방식이 관계를 결정합니다',
+  marriage:      '결혼은 감정의 정점이 아니라, 본질의 합의가 결정짓는 분기점입니다',
+  thumb:         '썸은 정의하는 순간 끝납니다 — 흐름을 유지할 수 있는가가 분기점입니다',
+  crush:         '고백 여부보다, 자기 회복이 먼저 되어야 결과가 달라지는 시점입니다',
+  mindread:      '상대 마음은 형성됐지만, 압박하면 닫히고 기다리면 열리는 분기점입니다',
+  reunion:       '재회 가능성은 열려 있지만, 접근 방식에 따라 완전히 갈리는 분기점입니다',
+  contact:       '연락의 내용보다, 보내는 타이밍이 관계의 방향을 결정짓습니다',
+  breakup:       '이 흐름의 핵심은 정리가 아니라, 미련을 끊는 결단이 다음을 여는 분기점입니다',
+  general:       '외부 인연을 찾기 전, 자신의 기준이 정리되어야 흐름이 열리는 시점입니다'
+};
 
 // ── MASTER ──
 // ══════════════════════════════════════════════════════════════════
@@ -5772,7 +5802,7 @@ const LOVE_VERDICT_MATRIX = {
       intensity: 1.0
     },
     neutral: {
-      verdict: '두 분의 관계는 방향이 형성되는 관찰 단계입니다\n먼저 서로의 페이스를 확인하는 것이 핵심입니다',
+      verdict: '두 분의 관계는 신중한 진전이 가능한 관찰 단계입니다\n서로의 페이스를 확인한 후 단계적 접근이 효과적입니다',
       action:  '판단을 서두르기보다 일상적인 교류 속에서 균형점을 찾아가야 합니다',
       risk:    '명확한 합의 없이 흐를 경우, 애매한 상태가 길어질 가능성이 있습니다',
       intensity: 1.0
@@ -5793,7 +5823,7 @@ const LOVE_VERDICT_MATRIX = {
       intensity: 1.0
     },
     neutral: {
-      verdict: '결혼 흐름은 판단이 필요한 분기 구간입니다\n먼저 핵심 조건을 객관적으로 정리하는 것이 핵심입니다',
+      verdict: '결혼 흐름은 신중한 진전이 가능한 분기 구간입니다\n핵심 조건을 객관적으로 정리한 후 단계적 합의가 효과적입니다',
       action:  '감정과 조건을 분리하여 합리적으로 점검하는 자세가 효과적입니다',
       risk:    '감정 우위로 결정할 경우, 현실 충돌이 후행으로 발생할 가능성이 있습니다',
       intensity: 1.0
@@ -5814,7 +5844,7 @@ const LOVE_VERDICT_MATRIX = {
       intensity: 0.6
     },
     neutral: {
-      verdict: '썸 흐름은 방향이 형성되는 관찰 단계입니다\n먼저 상대의 신호를 차분히 읽는 것이 핵심입니다',
+      verdict: '썸 흐름은 신중한 진전이 가능한 관찰 단계입니다\n상대의 신호를 차분히 읽으며 자연스럽게 접근하는 것이 효과적입니다',
       action:  '감정 표현보다 일상적인 접점을 늘리는 자세가 효과적입니다',
       risk:    '진전이 없는 상태가 길어질 경우, 흐름이 흐려질 가능성이 있습니다',
       intensity: 0.6
@@ -5835,7 +5865,7 @@ const LOVE_VERDICT_MATRIX = {
       intensity: 0.7
     },
     neutral: {
-      verdict: '짝사랑 흐름은 방향이 결정되는 관찰 단계입니다\n먼저 자신의 감정을 객관화하는 것이 핵심입니다',
+      verdict: '짝사랑 흐름은 신중한 행동이 가능한 관찰 단계입니다\n자신의 감정을 객관화한 후 점진적 노출이 효과적입니다',
       action:  '감정 강도를 점검하며 행동 여부를 신중하게 판단해야 합니다',
       risk:    '일방적 표현이 누적될 경우, 관계 형성 자체가 어려워질 가능성이 있습니다',
       intensity: 0.7
@@ -5856,7 +5886,7 @@ const LOVE_VERDICT_MATRIX = {
       intensity: 0.8
     },
     neutral: {
-      verdict: '상대의 마음은 판단이 보류된 관찰 단계입니다\n먼저 압박 없는 거리 유지가 핵심입니다',
+      verdict: '상대의 마음은 신중한 접근이 가능한 관찰 단계입니다\n압박 없는 거리를 유지하며 자연스러운 신호 교환이 효과적입니다',
       action:  '상대의 결정 속도를 존중하며 가벼운 교류만 이어가야 합니다',
       risk:    '확인을 자주 시도할 경우, 거리감이 굳어질 가능성이 있습니다',
       intensity: 0.8
@@ -5877,7 +5907,7 @@ const LOVE_VERDICT_MATRIX = {
       intensity: 0.8
     },
     neutral: {
-      verdict: '재회 흐름은 방향이 결정되는 관찰 구간입니다\n먼저 관계 종료 사유를 정리하는 것이 핵심입니다',
+      verdict: '재회 흐름은 신중한 시도가 가능한 관찰 구간입니다\n관계 종료 사유를 정리한 후 가벼운 접점부터 시작하는 것이 효과적입니다',
       action:  '감정 회복을 우선하며 재접근 여부를 객관적으로 판단해야 합니다',
       risk:    '미련에 기대 접근할 경우, 동일 패턴이 반복될 가능성이 있습니다',
       intensity: 0.8
@@ -5898,7 +5928,7 @@ const LOVE_VERDICT_MATRIX = {
       intensity: 0.6
     },
     neutral: {
-      verdict: '연락 흐름은 타이밍이 형성되는 관찰 단계입니다\n먼저 상대의 페이스를 읽는 것이 핵심입니다',
+      verdict: '연락 흐름은 신중한 시도가 가능한 관찰 단계입니다\n상대의 페이스를 읽으며 부담 없는 메시지부터 시작하는 것이 효과적입니다',
       action:  '즉각 답하기보다 간격을 두고 신중하게 접근해야 합니다',
       risk:    '서두를 경우, 의도가 과해 보일 가능성이 있습니다',
       intensity: 0.6
@@ -5919,7 +5949,7 @@ const LOVE_VERDICT_MATRIX = {
       intensity: 0.7
     },
     neutral: {
-      verdict: '이별 흐름은 정리가 진행되는 분기 단계입니다\n먼저 감정과 사실을 분리하는 것이 핵심입니다',
+      verdict: '이별 흐름은 정리가 진행되는 분기 단계입니다\n감정과 사실을 분리한 후 자기 회복에 집중하는 것이 효과적입니다',
       action:  '관계의 본질을 객관적으로 점검하며 회복 단계로 이행해가야 합니다',
       risk:    '미련에 흔들릴 경우, 정리 흐름이 길어질 가능성이 있습니다',
       intensity: 0.7
@@ -5940,7 +5970,7 @@ const LOVE_VERDICT_MATRIX = {
       intensity: 0.4
     },
     neutral: {
-      verdict: '연애 흐름은 방향이 형성되는 관찰 단계입니다\n먼저 자신의 기준을 정리하는 것이 핵심입니다',
+      verdict: '연애 흐름은 신중한 진전이 가능한 관찰 단계입니다\n자신의 기준을 정리한 후 자연스러운 교류부터 시작하는 것이 효과적입니다',
       action:  '외부 인연 탐색보다 내면 정비에 무게를 두는 자세가 효과적입니다',
       risk:    '기준이 흐릿한 상태로 시작할 경우, 단기 흐름으로 끝날 가능성이 있습니다',
       intensity: 0.4
@@ -6067,7 +6097,7 @@ function buildLoveOracleV25_24({ totalScore, cards, revFlags, loveSubType, numer
       actionGuide: buildLoveActionGuide(content),
       timing: buildLoveTiming(content, numerology, cards),
       risk: buildLoveRisk(content),
-      final: buildLoveFinal(content, scoreCategory)
+      final: buildLoveFinal(content, scoreCategory, subtype)
     },
     proEnhancement: buildLoveProEnhancement(metaPattern),
     _meta: {
@@ -6098,9 +6128,15 @@ function getMoonPhase(cleanCards) {
 // [V23.8-B] 수비학 기반 시간대 — 특정 시각 X, 시간대 구간 ✓
 //   사장님 진단: "오후 5시" → 사용자 상황과 불일치 시 신뢰 붕괴
 //   해결: 모든 매핑을 "○ 시간대 (○ 에너지)" 형식으로
+// [V26.8 결함 3] 수비학 정합성 — 월상과 같은 신호(signed sum) 사용
+//   사장님 진단: "수비학 8(완성 에너지) 매핑 검증 — 부정 카드도 절대값 크면 8 나옴"
+//   원인: Math.abs(score) 사용 → 부정 카드 -3+(-3)+(-2) = abs sum 8 → "완성 에너지" (모순)
+//   해결: signed sum으로 변경 → 월상(power)과 같은 신호 → 의미 정합성 보장
+//         음수 안전 처리: ((sum + 90) % 9) + 1 (음수 mod 처리)
+//   효과: 긍정 카드 → 수비학 8(완성), 부정 카드 → 수비학 1(시작) 자연스러운 매핑
 function getNumerologyTime(cleanCards) {
-  const sum = cleanCards.reduce((s, c) => s + Math.abs(CARD_SCORE[c] ?? 0), 0);
-  const num = ((sum - 1) % 9) + 1; // 1~9
+  const sum = cleanCards.reduce((s, c) => s + (CARD_SCORE[c] ?? 0), 0);
+  const num = ((sum + 90) % 9) + 1; // 1~9 (signed sum, 음수 안전)
   const mapping = {
     1: "심야 시간대 (시작 에너지)",
     2: "이른 아침 시간대 (균형 에너지)",
@@ -6427,7 +6463,12 @@ function buildLoveMetrics({ totalScore, cleanCards, prompt, loveSubType }) {
     '다음 주 (새 흐름의 시작)'
   ];
   const timingZone = _loveTimingZones[Math.abs(seed + Math.abs(netScore)) % _loveTimingZones.length];
-  const finalTimingText = `${timingZone} · ${numTime} / ${moon} (수비학 ${numNum})`;
+  // [V26.8 결함 3] 라벨 명시 — 두 차원의 의미 분리
+  //   사장님 진단: "월상과 수비학이 같이 노출되는데 둘이 같은 흐름인지 사용자 헷갈림"
+  //   해결: 월상=관계 분위기 / 수비학=행동 시간대 라벨 명시
+  //   변경 전: '주말 · 밤 늦은 시간대 / 상현달 (수비학 8)'
+  //   변경 후: '주말 · 행동 시간: 밤 늦은 시간대 · 관계 분위기: 상현달 (수비학 8)'
+  const finalTimingText = `${timingZone} · 행동 시간: ${numTime} · 관계 분위기: ${moon} (수비학 ${numNum})`;
 
   const timing = {
     type: loveBlockLevel === 'HARD' ? 'BLOCKED'
@@ -7960,7 +8001,9 @@ function buildFortuneMetrics({ totalScore, cleanCards, prompt, fortuneSubType, r
   // [V2.1] 카드 기반 수비학 시간 + 월상
   const moon = getMoonPhase(cleanCards);
   const { time: numTime, num: numNum } = getNumerologyTime(cleanCards);
-  const finalTimingText = `${luckyDay} · ${numTime} / ${moon} (수비학 ${numNum})`;
+  // [V26.8 결함 3] 라벨 명시 — LOVE와 동일한 두 차원 분리 (도메인 톤 일관성)
+  //   월상=운세 분위기 / 수비학=행동 시간대
+  const finalTimingText = `${luckyDay} · 행동 시간: ${numTime} · 운세 분위기: ${moon} (수비학 ${numNum})`;
 
   const cardNarrative = cleanCards.map((c, i) => {
     const m = cardMeaning(c);
