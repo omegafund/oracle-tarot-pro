@@ -6938,7 +6938,11 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
             const labelRed    = `color:#FFB090; font-size:0.78rem; font-weight:900; letter-spacing:0.12em; margin-bottom:8px;`;
             const labelYellow = `color:#F1C40F; font-size:0.86rem; font-weight:900; letter-spacing:0.10em; margin-bottom:10px;`;
 
-            const coreKey = (txt) => `<div style="margin-top:8px; padding:8px 12px; background:rgba(212,175,55,0.10); border-left:3px solid #D4AF37; border-radius:0 6px 6px 0; font-size:0.86rem; color:#FFE08A; font-weight:700;">👉 핵심: <b>"${txt}"</b></div>`;
+            // [V26.8 결함 2] '👉 핵심:' 라벨 7회 반복 → 박스별 차별화
+            //   사장님 진단: "박스마다 다른 메시지인데 라벨이 다 '핵심' → 진짜 핵심 못 찾음"
+            //   해결: 박스명을 매개변수로 받아 차별화 (흐름/본질/행동/타이밍/리스크)
+            //   효과: 시각 위계 명확 + 정보 차원 구분 + 9개 서브타입 자동 일괄 적용
+            const coreKey = (txt, label = '핵심') => `<div style="margin-top:8px; padding:8px 12px; background:rgba(212,175,55,0.10); border-left:3px solid #D4AF37; border-radius:0 6px 6px 0; font-size:0.86rem; color:#FFE08A; font-weight:700;">↳ ${label} 키: <b>"${txt}"</b></div>`;
 
             // ── Box 1: Core Insight (PRO 강조) ──
             // [V26.0 Phase C] Top Verdict 박스 — 사장님 안 (Inverted Pyramid)
@@ -6994,10 +6998,10 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
                         <div>${b.coreInsight.line4}</div>
                         <div style="margin-top:6px; color:rgba(212,175,55,0.95); font-style:italic;">${b.coreInsight.line5}</div>
                         <div style="margin-top:8px; padding:6px 10px; background:rgba(46,204,113,0.08); border-radius:6px; font-size:0.78rem; color:rgba(46,204,113,0.95);">
-                            ↳ 흐름 패턴: <b>${b.coreInsight.flowArrow}</b>
+                            ↳ 관계 흐름: <b>${b.coreInsight.flowArrow}</b>
                         </div>
                     </div>
-                    ${coreKey(b.coreInsight.coreKey)}
+                    ${coreKey(b.coreInsight.coreKey, '흐름')}
                 </div>`;
 
             // ── Box 2: Relation Essence (2:2 구조) ──
@@ -7026,7 +7030,7 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
                             </div>
                         </div>
                     </div>
-                    ${coreKey(re.coreKey)}
+                    ${coreKey(re.coreKey, '본질')}
                 </div>`;
 
             // ── Box 3: Action Guide ──
@@ -7051,7 +7055,7 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
                             <span style="font-size:0.78rem; color:rgba(255,140,100,0.85);">&nbsp;&nbsp;&nbsp;&nbsp;⤷ 관계를 ${ag.riskEffect} 방향으로 밀어버립니다</span>
                         </div>
                     </div>
-                    ${coreKey(ag.coreKey)}
+                    ${coreKey(ag.coreKey, '행동')}
                 </div>`;
 
             // ── Box 4: Timing ──
@@ -7082,7 +7086,7 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
                             <div style="font-size:0.78rem; color:rgba(255,255,255,0.85);">${(tm.numerology || '').replace(/·/g, '<br>·').replace(/\//g, '<br>/')}</div>
                         </div>
                     </div>
-                    ${coreKey(tm.coreKey)}
+                    ${coreKey(tm.coreKey, '타이밍')}
                 </div>`;
 
             // ── Box 5: Risk ──
@@ -7104,16 +7108,32 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
                             </div>
                         </div>
                     </div>
-                    ${coreKey(rk.coreKey)}
+                    ${coreKey(rk.coreKey, '리스크')}
                 </div>`;
 
             // ── Box 6: Final Verdict (강조 박스) ──
+            // [V26.8 결함 7] FINAL 박스 최상단에 한방 문구(pivot) 추가
+            //   사장님 진단: "FINAL VERDICT 위에 분기점 한방 문구 — 트리거 강화"
+            //   설계: TOP=현재 진단 / PIVOT=결과 분기 / FINAL=결론 (3단 임팩트)
+            //   범위: 9개 서브타입 일괄 적용 (LOVE_PIVOT_PHRASE에서 매핑)
             const fn = b.final;
             const box6 = `
                 <div style="${boxBase} ${finalBox} margin-top:18px; padding:18px 18px;">
                     <div style="text-align:center; margin-bottom:12px;">
                         <div style="color:#FFD970; font-size:0.74rem; font-weight:900; letter-spacing:0.18em;">FINAL VERDICT</div>
-                        <div style="color:#fff; font-size:1.15rem; font-weight:900; margin-top:6px;">👉 ${fn.finalState}</div>
+                    </div>
+                    ${fn.pivot ? `
+                    <div style="margin-bottom:14px; padding:13px 15px;
+                                background: linear-gradient(135deg, rgba(231,76,60,0.12), rgba(212,175,55,0.10));
+                                border-left: 4px solid #E74C3C;
+                                border-radius: 0 10px 10px 0;
+                                font-size:0.95rem; font-weight:800; color:#FFE08A;
+                                font-style:italic; line-height:1.65;
+                                box-shadow: 0 0 14px rgba(231,76,60,0.18);">
+                        👉 지금 흐름은 "${fn.pivot}"
+                    </div>` : ''}
+                    <div style="text-align:center; margin-bottom:12px;">
+                        <div style="color:#fff; font-size:1.15rem; font-weight:900;">👉 ${fn.finalState}</div>
                     </div>
                     <div style="font-size:0.88rem; color:rgba(255,255,255,0.92); text-align:center; margin-bottom:12px;">
                         ${fn.finalExplanation}
@@ -7209,10 +7229,10 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
                     ${ci.line5}
                 </div>
                 <div style="margin-top:12px; padding-top:10px; border-top:1px solid rgba(212,175,55,0.18); font-size:0.84rem; color:rgba(255,217,112,0.85);">
-                    ↳ 흐름 패턴: <b>${ci.flowArrow}</b>
+                    ↳ 운세 흐름: <b>${ci.flowArrow}</b>
                 </div>
                 <div style="margin-top:8px; padding:10px 12px; background: rgba(212,175,55,0.08); border-left:3px solid var(--gold); border-radius:0 8px 8px 0; font-size:0.88rem; color:rgba(255,255,255,0.95); font-weight:600;">
-                    👉 핵심: "${ci.coreKey}"
+                    ↳ 흐름 키: "${ci.coreKey}"
                 </div>
             </div>`;
             
@@ -7241,7 +7261,7 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
                     </div>
                 </div>
                 <div style="margin-top:10px; padding:10px 12px; background:rgba(212,175,55,0.08); border-left:3px solid var(--gold); border-radius:0 8px 8px 0; font-size:0.88rem; color:rgba(255,255,255,0.95); font-weight:600;">
-                    👉 핵심: "${es.coreKey}"
+                    ↳ 본질 키: "${es.coreKey}"
                 </div>
             </div>`;
             
@@ -7266,7 +7286,7 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
                     <div style="padding-left:24px; font-size:0.82rem; color:rgba(255,140,100,0.85);">⤷ 흐름을 ${ag.riskEffect}${_josa(ag.riskEffect, 'ro')} 밀어버립니다</div>
                 </div>
                 <div style="margin-top:10px; padding:10px 12px; background:rgba(46,204,113,0.08); border-left:3px solid #2ecc71; border-radius:0 8px 8px 0; font-size:0.88rem; color:rgba(255,255,255,0.95); font-weight:600;">
-                    👉 핵심: "${ag.coreKey}"
+                    ↳ 행동 키: "${ag.coreKey}"
                 </div>
             </div>`;
             
@@ -7298,7 +7318,7 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
                     </div>
                 </div>
                 <div style="margin-top:10px; padding:10px 12px; background:rgba(93,173,226,0.08); border-left:3px solid #5DADE2; border-radius:0 8px 8px 0; font-size:0.88rem; color:rgba(255,255,255,0.95); font-weight:600;">
-                    👉 핵심: "${tm.coreKey}"
+                    ↳ 타이밍 키: "${tm.coreKey}"
                 </div>
             </div>`;
             
@@ -7322,7 +7342,7 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
                     </div>
                 </div>
                 <div style="margin-top:10px; padding:10px 12px; background:rgba(243,156,18,0.08); border-left:3px solid #F39C12; border-radius:0 8px 8px 0; font-size:0.88rem; color:rgba(255,255,255,0.95); font-weight:600;">
-                    👉 핵심: "${ct.coreKey}"
+                    ↳ 주의 키: "${ct.coreKey}"
                 </div>
             </div>`;
             
@@ -9981,9 +10001,17 @@ function zeusClaimCopyAccount(accNum) {
     // [V24.14] 복사 성공 후 입금자 입력란으로 자동 시선 유도
     //   사장님 진단: "복사 후 입금자 입력란이 어디 있는지 못 찾음"
     //   해결: 복사 즉시 스크롤 + 입력창 펄스 강조 + 포커스
+    // [V26.8 결함 A] 새 모달(bankTransferModalOverlay) ID 호환
+    //   사장님 진단: "계좌번호 복사하면 갈매기 표시(✅) 안 뜨고 먹통"
+    //   원인: V26.5/6/7 새 모달은 id='zeusBankCopyHint'/'bankSenderName' 사용
+    //         그런데 함수는 옛 id='zeusCopyHint'/'zeusSenderName'만 찾음 → null → 먹통
+    //   해결: 양쪽 ID 모두 fallback으로 검색 (구·신 모달 동시 호환)
     const _afterCopy = () => {
+        if (!window._zeusClaimActions) window._zeusClaimActions = {};
         window._zeusClaimActions.accountCopied = true;
-        const hint = document.getElementById('zeusCopyHint');
+        // [V26.8] 양쪽 모달 ID 모두 시도
+        const hint = document.getElementById('zeusCopyHint')
+                  || document.getElementById('zeusBankCopyHint');
         if (hint) {
             hint.textContent = '✅ 복사 완료 — 아래 입금자 이름 입력';
             hint.style.color = '#7ad188';
@@ -9991,7 +10019,9 @@ function zeusClaimCopyAccount(accNum) {
         }
         // 입금자 입력란으로 자동 스크롤 + 강한 시각 강조
         setTimeout(() => {
-            const senderInput = document.getElementById('zeusSenderName');
+            // [V26.8] 양쪽 모달 ID 모두 시도
+            const senderInput = document.getElementById('zeusSenderName')
+                             || document.getElementById('bankSenderName');
             if (!senderInput) return;
             senderInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
             // 강한 펄스 애니메이션 — 사용자 눈에 안 띌 수 없게
@@ -10127,24 +10157,28 @@ async function zeusClaimSubmit(plan) {
         isPaidUser = true;
 
         // [V26.6] 6 plan 모두 정확한 라벨 매핑
-        const planLabel = plan === 'lifetime' ? '평생'
-                        : plan === 'yearly'   ? '1년'
-                        : plan === 'monthly'  ? '월간'
-                        : plan === 'month'    ? '30일'
-                        : plan === 'day'      ? '1일'
-                        : plan === 'trial'    ? '1시간'
-                        : '1시간';
+        // [V26.8 결함 B-2] 사장님 진단: "(1일) 표기 보고 '하루 기다리는 줄' 오해"
+        //   원인: '✅ PRO 활성화 완료! (1일)' — 1일은 plan 길이지만 사용자는 대기시간으로 인식
+        //   해결: 라벨을 '~이용권' 형태로 명확화 ("1일" → "1일 이용권")
+        //         + '잠시 후 PRO 신탁이 펼쳐집니다' → 'PRO 신탁이 펼쳐집니다' (즉시이므로)
+        const planLabel = plan === 'lifetime' ? '평생 이용권'
+                        : plan === 'yearly'   ? '연간 이용권'
+                        : plan === 'monthly'  ? '월간 이용권'
+                        : plan === 'month'    ? '30일 이용권'
+                        : plan === 'day'      ? '1일 이용권'
+                        : plan === 'trial'    ? '1시간 체험권'
+                        : '1시간 체험권';
 
         resultDiv.innerHTML = `
             <div style="padding:12px; background:rgba(46,204,113,0.12); border:1px solid rgba(46,204,113,0.5); border-radius:6px;">
                 <div style="color:#7ad188; font-weight:800; font-size:0.95rem; margin-bottom:6px;">
-                    ✅ PRO 활성화 완료! (${planLabel})
+                    ✅ ${planLabel} 활성화 완료!
                 </div>
                 <div style="color:rgba(255,255,255,0.85); font-size:0.82rem; line-height:1.6;">
                     ${data.message || '신탁의 봉인이 즉시 해제되었습니다.'}
                 </div>
                 <div style="margin-top:8px; color:#FFD970; font-size:0.78rem; font-weight:700;">
-                    잠시 후 PRO 신탁이 펼쳐집니다...
+                    PRO 신탁이 펼쳐집니다...
                 </div>
             </div>
         `;
@@ -10608,12 +10642,16 @@ function showBankTransferModal(planKey) {
             </div>
 
             <!-- 하단 안내 -->
+            <!-- [V26.8 결함 B-1] '송금 후 1분 내 자동 활성화' 제거
+                 사장님 진단: "1일/15초 같은 대기 문구 자체가 필요 없다 — 즉시이므로"
+                 원인: V25.x 시절 '확인 후 활성화' 잔재
+                 해결: '신고 즉시 PRO 활성화'로 통일 (카드/카카오페이와 동일 톤) -->
             <div style="margin-top:14px; padding-top:12px;
                         border-top:1px solid rgba(255,255,255,0.08);
                         font-size:0.7rem; color:rgba(255,255,255,0.55);
                         text-align:center; line-height:1.6;">
-                ✓ 안전한 입금 확인 시스템<br>
-                ✓ 송금 후 1분 내 자동 활성화<br>
+                ✓ 신고 즉시 PRO 봉인 해제<br>
+                ✓ 카드 결제와 동일한 즉시 활성화<br>
                 ✓ 모든 결제 방법 동일한 가격
             </div>
         </div>
@@ -10713,7 +10751,9 @@ function confirmBankTransfer(planKey) {
         zeusClaimSubmit(planKey);
     } else {
         // 폴백 — 기존 함수 못 찾으면 안내
-        alert(`✅ 송금 신고 접수\n\n입금자: ${senderName}\n금액: ₩${plan.amount.toLocaleString('ko-KR')}\n\n관리자 확인 후 1분 내 PRO 봉인이 자동 해제됩니다.`);
+        // [V26.8 결함 B-3] '관리자 확인 후 1분 내' → 즉시 활성화 톤으로 변경
+        //   사장님 결정 일관: 카드/카카오페이와 동일한 즉시 활성화
+        alert(`✅ 송금 신고 접수 — 즉시 PRO 활성화\n\n입금자: ${senderName}\n금액: ₩${plan.amount.toLocaleString('ko-KR')}\n\n페이지를 새로고침하면 PRO 봉인이 해제됩니다.`);
         closeBankTransferModal();
     }
 }
