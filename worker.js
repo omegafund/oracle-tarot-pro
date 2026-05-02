@@ -1757,9 +1757,11 @@ function buildCriticalInterpretation(cards, revFlags, domain, intent) {
         para2 = `지금은 시즌의 흐름을 활용해 호가를 견고하게 유지하는 접근이 더 적합한 흐름입니다.`;
         keyInsight = `"시즌 활용과 매도 기준 정립이 핵심입니다"`;
       } else {
-        para1 = `현재 흐름은 명확한 상승 또는 하락보다 시장 방향을 탐색하는 균형 구간으로 해석됩니다.`;
-        para2 = `지금은 한쪽 방향만 고집하기보다 시장 신호를 살피며 조건을 조율하는 접근이 안정적인 선택입니다.`;
-        keyInsight = `"성급한 결단보다 시장 신호의 확인이 먼저입니다"`;
+        // [V25.38] 결론 충돌 차단 — 매도 KEEP 시에도 매도 톤 유지
+        //   (이전: 무방향 어휘 → 위쪽 박스 결론과 불일치)
+        para1 = `현재 흐름은 매도자에게 시장 신호 점검이 필요한 균형 구간으로 해석됩니다.`;
+        para2 = `지금은 호가 집착보다 시장 반응 점검과 매도 시점 조율이 더 적합한 흐름입니다.`;
+        keyInsight = `"매도 시점 조율과 시장 신호 점검이 핵심입니다"`;
       }
     } else {
       if (signal === "SELL") {
@@ -2075,9 +2077,154 @@ function calcCardScores(cardNames, reversedCSV, queryType) {
 }
 
 // ══════════════════════════════════════════════════════════════════
+// 🪙 [V25.38] CRYPTO VOCABULARY — 코인 5 서브타입 어휘 후처리
+// ══════════════════════════════════════════════════════════════════
+// 설계: 주식 매트릭스 결과를 받아 코인 시장 특성으로 어휘 변환
+// 5 서브타입 별도 분기:
+//   crypto_buy      : 24시간 시장 / 분할 진입 / 모멘텀 추적
+//   crypto_sell     : 24시간 시장 / 분할 청산 / 익절 구간
+//   scalping        : 분/시간 단위 / 빠른 청산 / 슬리피지 관리
+//   holding         : 주/월 단위 / DCA / 펀더멘털 관점
+//   crypto_risk     : 청산가 / 변동성 / 거래소·지갑 리스크
+// ══════════════════════════════════════════════════════════════════
+
+function applyCryptoVocabulary(metrics, stockSubType, stockIntent) {
+  if (!metrics) return metrics;
+  
+  // 5 서브타입별 어휘 매트릭스
+  const VOCAB = {
+    crypto_buy: {
+      timingTitle:    '진입 타이밍 가이드',
+      entryLabel:     '코인 진입 적기',
+      exitLabel:      '익절 추천 구간',
+      observeLabel:   '관망 구간',
+      positionLabel:  '진입 비중',
+      stopLabel:      '손실 한도',
+      targetLabel:    '익절 구간',
+      executionTitle: '실전 코인 매수 전략',
+      actionGuideTitle:'제우스 코인 매수 지침',
+      criticalTitle:  '핵심 해석',
+      action1: '단일 진입보다 분할 매수가 변동성 관리에 유리합니다',
+      action2: '24시간 시장 특성상 시간대별 변동성 차이 점검이 필수입니다',
+      action3: '거래소·지갑 보안 점검이 자산 보호의 출발점입니다',
+      coreKey: '24시간 변동성 시장에서 분할 진입과 리스크 분산이 핵심입니다'
+    },
+    crypto_sell: {
+      timingTitle:    '청산 타이밍 가이드',
+      entryLabel:     '청산 시작 구간',
+      exitLabel:      '전량 청산 구간',
+      observeLabel:   '대기 구간',
+      positionLabel:  '청산 비중',
+      stopLabel:      '재진입 라인',
+      targetLabel:    '익절 단계',
+      executionTitle: '실전 코인 매도 전략',
+      actionGuideTitle:'제우스 코인 매도 지침',
+      criticalTitle:  '핵심 해석',
+      action1: '일괄 청산보다 분할 익절이 평균 단가 최적화에 유리합니다',
+      action2: '24시간 시장 — 주말·심야 변동성 구간 청산 가능성 점검 필수',
+      action3: '청산 후 자산 보관 방식(현금화·스테이블) 사전 결정이 도움이 됩니다',
+      coreKey: '코인 시장 24시간 특성상 분할 청산과 단계적 익절이 안정적입니다'
+    },
+    scalping: {
+      timingTitle:    '스캘핑 타이밍 가이드',
+      entryLabel:     '단기 진입 신호',
+      exitLabel:      '빠른 청산 구간',
+      observeLabel:   '진입 보류 구간',
+      positionLabel:  '단기 비중',
+      stopLabel:      '타이트 손절 라인',
+      targetLabel:    '단기 익절 구간',
+      executionTitle: '실전 스캘핑 전략',
+      actionGuideTitle:'제우스 스캘핑 지침',
+      criticalTitle:  '핵심 해석',
+      action1: '분·시간 단위 빠른 진입·청산 — 슬리피지 최소화가 수익의 핵심입니다',
+      action2: '거래량 급증 + 변동성 확대 구간이 스캘핑 적기입니다',
+      action3: '타이트한 손절 라인 사전 설정이 누적 손실 차단의 답입니다',
+      coreKey: '스캘핑은 빠른 결단과 즉각 청산 — 욕심이 가장 큰 적입니다'
+    },
+    holding: {
+      timingTitle:    '홀딩 진입 가이드',
+      entryLabel:     'DCA 분할 진입 적기',
+      exitLabel:      '장기 익절 단계',
+      observeLabel:   '관망 구간',
+      positionLabel:  '장기 분할 비중',
+      stopLabel:      '리밸런싱 기준',
+      targetLabel:    '단계별 익절 구간',
+      executionTitle: '실전 홀딩 전략',
+      actionGuideTitle:'제우스 홀딩 지침',
+      criticalTitle:  '핵심 해석',
+      action1: 'DCA(분할 매수 평균화) 전략으로 변동성 노출 분산이 핵심입니다',
+      action2: '단기 가격 변동에 흔들리지 않는 펀더멘털 점검이 답입니다',
+      action3: '주·월 단위 리밸런싱으로 비중 관리가 안정적인 흐름입니다',
+      coreKey: '홀딩은 시간이 답을 만듭니다 — 단기 변동성에 흔들리지 않는 인내가 핵심'
+    },
+    crypto_risk: {
+      timingTitle:    '리스크 점검 가이드',
+      entryLabel:     '점검 우선 구간',
+      exitLabel:      '비중 축소 단계',
+      observeLabel:   '관망 구간',
+      positionLabel:  '리스크 노출도',
+      stopLabel:      '청산 위협 라인',
+      targetLabel:    '안정 비중 목표',
+      executionTitle: '실전 리스크 점검',
+      actionGuideTitle:'제우스 리스크 지침',
+      criticalTitle:  '핵심 해석',
+      action1: '청산가 거리·레버리지 점검이 자산 보호의 첫 단계입니다',
+      action2: '거래소 분산·지갑 보관 비율 점검이 위험 관리의 핵심입니다',
+      action3: '변동성 확대 구간 진입 보류가 보수적 접근으로 고려됩니다',
+      coreKey: '코인 시장 리스크의 핵심은 청산가·레버리지·거래소 보안입니다'
+    }
+  };
+  
+  // fallback: 서브타입 미지정 시 crypto_buy 사용
+  const subtype = (VOCAB[stockSubType]) ? stockSubType
+                : (stockIntent === 'sell') ? 'crypto_sell'
+                : 'crypto_buy';
+  const v = VOCAB[subtype];
+  
+  // metrics.layers 구조 깊은 복제 후 어휘 변환
+  if (metrics.layers) {
+    // ── 행동 지침 (제우스 가이드) — 코인 어휘로 교체
+    if (metrics.layers.zeusGuide && Array.isArray(metrics.layers.zeusGuide)) {
+      metrics.layers.zeusGuide = [v.action1, v.action2, v.action3];
+    }
+    // ── 핵심 해석 — 코인 어휘로 교체
+    if (metrics.layers.criticalInterpretation) {
+      const crit = metrics.layers.criticalInterpretation;
+      if (typeof crit === 'object' && crit.body) {
+        // body는 유지 (점수/카드 진단 텍스트), keyInsight만 코인 어휘로
+        crit.keyInsight = `"${v.coreKey}"`;
+      } else if (typeof crit === 'string') {
+        metrics.layers.criticalInterpretation = {
+          body: crit,
+          keyInsight: `"${v.coreKey}"`
+        };
+      }
+    }
+    // ── 라벨 메타 (클라이언트가 활용)
+    metrics.layers.cryptoLabels = {
+      timingTitle:     v.timingTitle,
+      entryLabel:      v.entryLabel,
+      exitLabel:       v.exitLabel,
+      observeLabel:    v.observeLabel,
+      positionLabel:   v.positionLabel,
+      stopLabel:       v.stopLabel,
+      targetLabel:     v.targetLabel,
+      executionTitle:  v.executionTitle,
+      actionGuideTitle:v.actionGuideTitle,
+      criticalTitle:   v.criticalTitle
+    };
+  }
+  
+  // 도메인 식별자 명시
+  metrics.cryptoSubtype = subtype;
+  
+  return metrics;
+}
+
+// ══════════════════════════════════════════════════════════════════
 // 📈 주식/코인 메트릭
 // ══════════════════════════════════════════════════════════════════
-function buildStockMetrics({ totalScore, riskScore, cleanCards, isLeverage, queryType, prompt, intent, reversedFlags }) {
+function buildStockMetrics({ totalScore, riskScore, cleanCards, isLeverage, queryType, prompt, intent, reversedFlags, stockSubType }) {
   // [V19.9] intent 기본값 매수 (대부분의 주식 점사는 매수)
   const stockIntent = intent || "buy";
   const revFlags = reversedFlags || [false, false, false];
@@ -4503,6 +4650,18 @@ function getFlowArrow(past, present, future, revFlags) {
     "burden-stable-recover":"부담 정리 → 안정 → 회복",
     "burden-burden-recover":"부담 누적 → 정리 시작",
     "burden-burden-positive":"부담 누적 → 정리 시작",
+    // [V25.38] 결혼 검증 패턴
+    "positive-stable-defense":"안정 → 발전 → 검증",
+    "positive-positive-defense":"발전 → 누적 → 검증",
+    "stable-positive-defense":"안정 → 발전 → 검증",
+    "stable-stable-defense":"안정 → 유지 → 검증",
+    "positive-stable-distance":"안정 → 발전 → 거리 점검",
+    "stable-positive-distance":"안정 → 발전 → 거리 점검",
+    "stable-stable-distance":"안정 → 유지 → 거리 점검",
+    "positive-positive-distance":"발전 → 누적 → 거리 점검",
+    "positive-defense-stable":"발전 → 검증 → 안정",
+    "stable-defense-stable":"안정 → 검증 → 안정",
+    "positive-defense-positive":"발전 → 검증 → 진전",
     "positive-defense-positive":"이성적 검증 → 재접근",
     "stable-defense-recover":"안정 → 점검 → 회복",
     "neutral-defense-lack":"방어 → 거리 → 재정렬",
@@ -4631,7 +4790,20 @@ const META_PATTERNS_V25_24 = {
   "lack-burden-burden":"결핍 누적 → 부담 가중 패턴",
   "lack-burden-distance":"결핍 누적 → 부담 거리 패턴",
   "lack-distance-distance":"결핍 → 거리 확정 패턴",
-  "burden-burden-burden":"부담 가중 패턴"
+  "burden-burden-burden":"부담 가중 패턴",
+  // [V25.38] 결혼 검증 패턴 — Sun + Magician + 7 Swords 등
+  //   안정·발전 흐름이지만 미래에 "숨김·전략·검증" 신호 등장
+  "positive-stable-defense":"안정 발전 후 검증 패턴",
+  "positive-positive-defense":"안정 발전 후 검증 패턴",
+  "stable-positive-defense":"안정 발전 후 검증 패턴",
+  "stable-stable-defense":"안정 후 검증 필요 패턴",
+  "positive-stable-distance":"안정 후 거리 점검 패턴",
+  "stable-positive-distance":"안정 후 거리 점검 패턴",
+  "stable-stable-distance":"안정 후 거리 점검 패턴",
+  "positive-positive-distance":"발전 후 거리 점검 패턴",
+  "positive-defense-stable":"발전 후 검증 → 안정 패턴",
+  "stable-defense-stable":"안정 → 검증 → 안정 패턴",
+  "positive-defense-positive":"발전 → 검증 → 진전 패턴"
 };
 
 const HIDDEN_DRIVERS_V25_24 = {
@@ -4663,6 +4835,13 @@ const HIDDEN_DRIVERS_V25_24 = {
   "부담 가중 패턴":"부담이 계속 가중 중 — 정리의 결단이 회복의 시작",
   "부담 가중 → 거리 확정 패턴":"부담 가중 후 거리 확정 — 정리가 답",
   "부담 → 거리 → 부담 반복 패턴":"부담·거리 반복 — 흐름 끊는 결단이 답",
+  "안정 발전 후 검증 패턴":"발전 흐름 위 검증 단계 — 솔직한 소통과 본질 합의가 핵심",
+  "안정 후 검증 필요 패턴":"안정 위 검증 신호 — 객관적 점검과 솔직함이 답",
+  "안정 후 거리 점검 패턴":"안정 위 거리 신호 — 속도 조절과 본질 점검이 핵심",
+  "발전 후 거리 점검 패턴":"발전 흐름 위 거리 신호 — 본질 합의와 인내가 답",
+  "발전 후 검증 → 안정 패턴":"검증 단계 통과 후 안정 회복 — 솔직함이 결실",
+  "안정 → 검증 → 안정 패턴":"안정 → 검증 통과 → 재안정 — 신뢰 누적의 핵심",
+  "발전 → 검증 → 진전 패턴":"검증 통과 후 진전 — 본질 합의가 답",
   "균형 조율 패턴":"흔들림 통과 후 회복 — 속도 조절과 인내가 핵심",
   "주도권 전환 패턴":"기다림 끝 변화 — 자기 회복이 핵심",
   "재접근 시험 패턴":"거리 후 재시도 — 신중한 속도가 핵심",
@@ -5612,6 +5791,8 @@ ${getLoveCardFlavor(futCard, false)}
 ${actionGuide.oneLine}`;
 
   return {
+    // [V25.38] type 필드 — 클라이언트 도메인 식별용 (5차원 라벨 매핑)
+    type: 'love',
     queryType: 'love',
     executionMode: loveBlockLevel === 'HARD' ? 'BLOCKED'
                  : loveBlockLevel !== 'NONE' ? 'WATCH' : 'ACTIVE',
@@ -5806,6 +5987,15 @@ function getFortuneFlowArrow(past, present, future, revFlags, fortuneSubType) {
     "growing-thriving-caution":    `${tone} 발전 → 정점 → 점검`,
     "growing-growing-stable":      `${tone} 성장 → 누적 → 안정`,
     "growing-growing-caution":     `${tone} 성장 → 누적 → 점검`,
+    // [V25.38] 정점 후 급격 하락 패턴
+    "thriving-declining-declining":`${tone} 풍요 → 약화 → 하락`,
+    "thriving-declining-critical": `${tone} 풍요 → 약화 → 위험`,
+    "growing-declining-declining": `${tone} 발전 → 약화 → 하락`,
+    "growing-declining-critical":  `${tone} 발전 → 약화 → 위험`,
+    "thriving-caution-declining":  `${tone} 풍요 → 점검 → 약화`,
+    "growing-caution-declining":   `${tone} 발전 → 점검 → 약화`,
+    "stable-caution-declining":    `${tone} 안정 → 점검 → 약화`,
+    "stable-caution-critical":     `${tone} 안정 → 점검 → 위험`,
     "growing-thriving-thriving":   `${tone} 발전 → 정점 → 풍요`,
     "growing-growing-growing":     `${tone} 단계적 성장`,
     "stable-growing-growing":      `${tone} 안정 → 성장 → 누적`,
@@ -5908,6 +6098,15 @@ const FORTUNE_META_PATTERNS = {
   "stable-declining-stable":     "에너지 소진 패턴",
   "growing-declining-stable":    "에너지 소진 패턴",
   "growing-declining-caution":   "에너지 소진 패턴",
+  // [V25.38] 정점 후 급격 하락 패턴 — Eight Wands + Queen Cups (역) + Nine Swords 등
+  "thriving-declining-declining":"정점 후 급격 하락 패턴",
+  "thriving-declining-critical": "정점 후 급격 하락 패턴",
+  "growing-declining-declining": "정점 후 급격 하락 패턴",
+  "growing-declining-critical":  "정점 후 급격 하락 패턴",
+  "thriving-caution-declining":  "정점 후 약화 진행 패턴",
+  "growing-caution-declining":   "발전 후 약화 진행 패턴",
+  "stable-caution-declining":    "안정 후 약화 진행 패턴",
+  "stable-caution-critical":     "안정 후 위험 진행 패턴",
   "thriving-declining-caution":  "정점 통과 후 조정 패턴",
   "thriving-declining-stable":   "정점 통과 후 조정 패턴",
   "declining-declining-caution": "지속 약화 패턴",
@@ -5945,6 +6144,11 @@ const FORTUNE_HIDDEN_DRIVERS = {
   "정점 통과 후 안정 패턴":  "정점 통과 후 안정화 — 단계적 누적이 핵심",
   "성장 누적 후 안정 패턴":  "성장 누적 후 안정 진입 — 무리 없는 유지가 답",
   "성장 누적 후 점검 패턴":  "성장 누적 후 점검 — 기준 재정립이 핵심",
+  "정점 후 급격 하락 패턴":  "정점 통과 후 급격한 약화 — 자기 보호와 정리 결단이 핵심",
+  "정점 후 약화 진행 패턴":  "정점 후 약화 흐름 진행 — 보수적 점검과 자기 보호가 답",
+  "발전 후 약화 진행 패턴":  "발전 후 약화 진행 — 기준 정립과 흐름 점검이 핵심",
+  "안정 후 약화 진행 패턴":  "안정에서 약화로 전환 — 흐름 점검과 자기 보호가 답",
+  "안정 후 위험 진행 패턴":  "안정에서 위험으로 — 결단의 시점, 자기 보호 우선",
   "정점 통과 패턴":          "정점에서 조정 — 욕심을 내려놓고 수확하는 시기",
   "성장 누적 패턴":          "단계적 누적 — 인내가 결실을 만든다",
   "안정 발전 패턴":          "안정 위에 발전 — 기본기 강화가 핵심",
@@ -7770,12 +7974,34 @@ export default {
             stockIntent = 'buy';
           } else if (stockSubType === 'sell_timing') {
             stockIntent = 'sell';
+          } else if (stockSubType === 'crypto_buy') {
+            // [V25.38] 코인 매수 — 명시적 buy intent
+            stockIntent = 'buy';
+          } else if (stockSubType === 'crypto_sell') {
+            // [V25.38] 코인 매도 — 명시적 sell intent
+            stockIntent = 'sell';
+          } else if (stockSubType === 'scalping') {
+            // [V25.38] 코인 스캘핑 — 단기 매수 intent (분/시간 단위)
+            stockIntent = 'buy';
+          } else if (stockSubType === 'holding') {
+            // [V25.38] 코인 홀딩 — 장기 매수 intent (주/월 단위)
+            stockIntent = 'buy';
+          } else if (stockSubType === 'crypto_risk') {
+            // [V25.38] 코인 리스크 체크 — 보유 점검 intent (sell 톤 활용)
+            stockIntent = 'sell';
           } else {
             // 자동 감지 (자연어 분석)
             stockIntent = detectStockIntent(prompt);
           }
-          metrics = buildStockMetrics({ totalScore, riskScore, cleanCards, isLeverage, queryType, prompt, intent: stockIntent, reversedFlags });
+          metrics = buildStockMetrics({ totalScore, riskScore, cleanCards, isLeverage, queryType, prompt, intent: stockIntent, reversedFlags, stockSubType });
           metrics.stockIntent = stockIntent;  // 클라이언트가 알 수 있도록
+          metrics.stockSubType = stockSubType; // [V25.38] 코인 서브타입 식별용
+          
+          // [V25.38] 코인 도메인 + 5개 서브타입 — 어휘 후처리
+          //   주식 매트릭스 결과를 받아 코인 시장 특성으로 어휘 변환
+          if (queryType === 'crypto') {
+            metrics = applyCryptoVocabulary(metrics, stockSubType, stockIntent);
+          }
         }
         else if (queryType === "love") {
           // [V23.2] 방법 3 — 충돌 감지 후 분기 (사장님 설계 ⭐⭐⭐)
@@ -8504,6 +8730,52 @@ ${metrics.oracleV25_32.subtype === 'wealth' ? `
 ✅ 귀하의 역할은 카드 3장의 의미를 풍부하게 풀어내는 서술자.
 ✅ 결론·판단·행동 강요는 V25.32가 담당. 귀하는 카드 의미와 흐름의 톤만.
 ✅ 사용자 질문에 대한 공감 + 카드 그림과 상징의 풀이에 집중.
+` : ''}
+
+${(queryType === 'crypto' && metrics && metrics.cryptoSubtype) ? `
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[V25.38 CRYPTO 5 서브타입 결론 톤 강제 정렬 — 절대 준수]
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+이 점사의 최종 결론은 시스템(V25.38 CRYPTO Oracle)이 이미 도출했습니다.
+귀하의 본문은 반드시 다음 결론과 정렬되어야 합니다:
+
+📌 코인 서브타입: ${metrics.cryptoSubtype}
+📌 핵심 결론:    ${metrics.layers && metrics.layers.criticalInterpretation ? (metrics.layers.criticalInterpretation.keyInsight || '') : ''}
+
+[필수 정렬 규칙 — 코인 서브타입별]
+${metrics.cryptoSubtype === 'crypto_buy' ? `
+✅ 본문은 "분할 진입·24시간 변동성 관리" 톤으로 작성하라.
+✅ 적절한 어휘: "분할 매수", "DCA 전략", "24시간 시장", "변동성 관리", "거래소·지갑 보안", "리스크 분산".
+✅ 금지 어휘: "올인 진입", "단기 일확천금", "FOMO 매수", "묻지마 진입".
+✅ 결론은 반드시 "분할 진입과 변동성 관리" 방향으로 수렴.
+` : metrics.cryptoSubtype === 'crypto_sell' ? `
+✅ 본문은 "분할 청산·단계적 익절" 톤으로 작성하라.
+✅ 적절한 어휘: "분할 청산", "단계적 익절", "평균 단가 최적화", "주말·심야 변동성 점검", "현금화·스테이블 보관".
+✅ 금지 어휘: "일괄 청산 강요", "패닉 셀", "최고점 욕심", "버티기".
+✅ 결론은 반드시 "분할 청산과 단계적 익절" 방향으로 수렴.
+` : metrics.cryptoSubtype === 'scalping' ? `
+✅ 본문은 "분·시간 단위 빠른 매매·슬리피지 관리" 톤으로 작성하라.
+✅ 적절한 어휘: "스캘핑", "빠른 진입·청산", "타이트 손절", "거래량 급증 구간", "슬리피지 최소화", "단기 익절".
+✅ 금지 어휘: "장기 보유", "버티기", "물타기", "감정적 진입".
+✅ 결론은 반드시 "빠른 결단과 즉각 청산 — 욕심 차단" 방향으로 수렴.
+` : metrics.cryptoSubtype === 'holding' ? `
+✅ 본문은 "DCA 분할 매수·펀더멘털 관점·장기 인내" 톤으로 작성하라.
+✅ 적절한 어휘: "DCA", "분할 매수 평균화", "펀더멘털 점검", "주·월 단위 리밸런싱", "단기 변동성 무시", "장기 인내".
+✅ 금지 어휘: "단기 매매", "급등 추격", "단기 익절", "스캘핑".
+✅ 결론은 반드시 "시간이 답을 만든다 — 단기 변동성 무시 인내" 방향으로 수렴.
+` : `
+✅ 본문은 "리스크 점검·청산가·거래소 보안" 톤으로 작성하라.
+✅ 적절한 어휘: "청산가 거리", "레버리지 점검", "거래소 분산", "지갑 보관 비율", "변동성 확대 구간", "비중 축소".
+✅ 금지 어휘: "공격적 진입", "추가 매수", "레버리지 확대", "단기 수익 추구".
+✅ 결론은 반드시 "리스크 점검과 자산 보호 우선" 방향으로 수렴.
+`}
+
+[방안 E 핵심 — 귀하의 역할 재정의 (CRYPTO)]
+🚫 V25.38 CRYPTO Oracle 시스템이 이미 5계층 박스 결론을 별도로 출력합니다.
+🚫 귀하는 그 결론과 충돌하는 다른 결론을 제시할 수 없습니다.
+✅ 귀하의 역할은 카드 3장의 의미를 코인 시장 맥락에서 풀어내는 서술자.
+✅ 결론·판단·행동 강요는 V25.38이 담당. 귀하는 카드 의미와 흐름의 톤만.
+✅ 사용자 질문에 대한 공감 + 카드 그림과 상징의 코인 시장 풀이에 집중.
 ` : ''}
 `;
 
