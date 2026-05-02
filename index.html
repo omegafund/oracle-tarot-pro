@@ -5891,10 +5891,13 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
 
             // ────────────────────────────────────────────────
             // [V20.10] Decision Layer (도메인별 라벨)
+            // [V25.38 Phase 1] '🧭 최종 결론' → '🧭 진단 & 권장 흐름'
+            //   사장님 결론 1번 원칙 — 결론은 마지막 🔥 박스에서만
+            //   이 박스는 '진단(Diagnosis) + 권장 방향'으로 의미 차별화
             // ────────────────────────────────────────────────
-            const decisionLabel = (domain === 'love')        ? '🧭 최종 결론 (Decision Layer)'
-                                : (domain === 'realestate')   ? '🧭 최종 결론 (Decision Layer)'
-                                :                               '🧭 최종 결론 (Decision Layer)';
+            const decisionLabel = (domain === 'love')        ? '🧭 진단 & 권장 흐름'
+                                : (domain === 'realestate')   ? '🧭 진단 & 권장 흐름'
+                                :                               '🧭 진단 & 권장 흐름';
             const positionLabel = (domain === 'love')        ? '관계 상태'
                                 : (domain === 'realestate')   ? '포지션'
                                 :                               '포지션';
@@ -5911,10 +5914,10 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
                         ${decisionLabel}
                     </div>
                     <div style="font-size:1.05rem; color:#fff; font-weight:900; margin-bottom:6px; line-height:1.5;">
-                        👉 ${positionLabel}: ${layers.decision.position}
+                        📌 ${positionLabel}: ${layers.decision.position}
                     </div>
                     <div style="font-size:0.92rem; color:rgba(255,255,255,0.92); font-weight:600; line-height:1.6; margin-bottom:14px;">
-                        👉 ${strategyLabel}: ${layers.decision.strategy}
+                        📌 ${strategyLabel}: ${layers.decision.strategy}
                     </div>
 
                     ${layers.decision.diagnosis ? `
@@ -6226,7 +6229,7 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
                         `}
                     </div>
                     ${sig.summary ? `<div style="margin-top:6px; padding:6px 10px; background:rgba(155,89,182,0.10); border-radius:5px; font-size:0.82rem; color:rgba(212,175,55,0.92); font-style:italic;">↳ ${sig.summary}</div>` : ''}
-                    ${sig.verdict ? `<div style="margin-top:8px; padding:8px 10px; background:rgba(155,89,182,0.14); border-radius:5px; font-size:0.92rem; color:#fff; font-weight:700;">👉 결론: ${sig.verdict}</div>` : ''}
+                    ${sig.verdict ? `<div style="margin-top:8px; padding:8px 10px; background:rgba(155,89,182,0.14); border-radius:5px; font-size:0.92rem; color:#fff; font-weight:700;">🌊 흐름 신호: ${sig.verdict}</div>` : ''}
                 </div>`;
 
             // ────────────────────────────────────────────────
@@ -6254,13 +6257,27 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
                         <div>• 흐름 변화: ${rsk.volatility || '보통'}</div>`
                           : `<div>• 리스크 수준: <b style="color:${riskColor};">${rsk.level || '보통'}</b></div>
                         <div>• 변동성: ${rsk.volatility || '보통'}</div>`}
-                        ${(rsk.cautions && rsk.cautions.length) ? `
-                        ${domain === 'love' ? `<div style="margin-top:6px; font-size:0.78rem; opacity:0.9;">• 점검 포인트:</div>`
-                          : (domain === 'life' || domain === 'general') ? `<div style="margin-top:6px; font-size:0.78rem; opacity:0.9;">• 흐름 점검 포인트:</div>`
-                          : `<div style="margin-top:6px; font-size:0.78rem; opacity:0.9;">• 주의 포인트:</div>`}
-                        <ul style="margin:4px 0 0 16px; padding:0; font-size:0.82rem; line-height:1.7;">
-                            ${rsk.cautions.map(c => `<li style="color:rgba(255,255,255,0.85);">${applyDomainFilter(c, domain)}</li>`).join('')}
-                        </ul>` : ''}
+                        ${(rsk.cautions && rsk.cautions.length) ? (() => {
+                            // [V25.38 사장님 진단] 리스크 박스 3줄 컷 + "👉 핵심" 라인
+                            //   원인: cautions 7줄 누적 → 사용자 피로 ("길다 / 지친다")
+                            //   해결: slice(0,3) + 핵심 라인 1줄 = "전문적 + 가독성"
+                            const top3 = rsk.cautions.slice(0, 3);
+                            const headerLabel = (domain === 'love') ? '• 점검 포인트:'
+                                              : (domain === 'life' || domain === 'general') ? '• 흐름 점검 포인트:'
+                                              : '• 주의 포인트:';
+                            const coreLine = (domain === 'love') ? '"감정보다 관계의 본질이 핵심"'
+                                          : (domain === 'realestate') ? '"호가보다 시장 신호의 일치가 핵심"'
+                                          : (domain === 'life' || domain === 'general') ? '"섣부른 결정보다 흐름의 정리가 먼저"'
+                                          : '"확인 없는 진입이 가장 큰 리스크"';
+                            return `
+                        <div style="margin-top:6px; font-size:0.78rem; opacity:0.9;">${headerLabel}</div>
+                        <ul style="margin:4px 0 6px 16px; padding:0; font-size:0.82rem; line-height:1.7;">
+                            ${top3.map(c => `<li style="color:rgba(255,255,255,0.85);">${applyDomainFilter(c, domain)}</li>`).join('')}
+                        </ul>
+                        <div style="margin-top:6px; padding-top:6px; border-top:1px dashed rgba(230,126,34,0.25); font-size:0.85rem; color:#ffd687; font-weight:700;">
+                            👉 핵심: ${coreLine}
+                        </div>`;
+                        })() : ''}
                     </div>
                 </div>`;
 
@@ -6294,9 +6311,9 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
                     // 객체 형태 — body + keyInsight 결합
                     const body = _critRaw.body || '';
                     const key = _critRaw.keyInsight || '';
-                    if (body && key) return `${body}\n\n🪙 코인 핵심: ${key}`;
+                    if (body && key) return `${body}\n\n👉 결론: ${key}`;
                     if (body) return body;
-                    if (key) return `🪙 코인 핵심: ${key}`;
+                    if (key) return `👉 결론: ${key}`;
                 }
                 return '';
             })();
@@ -6307,7 +6324,7 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
                             border-radius: 12px;
                             box-shadow: 0 0 16px rgba(255,107,107,0.18);">
                     <div style="color:${colors.critical}; font-size:0.88rem; font-weight:900; letter-spacing:0.1em; margin-bottom:10px;">
-                        🔥 핵심 해석
+                        🔥 최종 결론
                     </div>
                     <div style="font-size:0.95rem; color:#fff; font-weight:600; line-height:1.8; white-space:pre-line;">
                         ${_critText}
