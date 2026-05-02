@@ -8367,36 +8367,44 @@ export default {
             ok: false, error: "입금자명을 정확히 입력해주세요 (2~30자)"
           }), { status: 400, headers: { ...corsHeaders(), "Content-Type": "application/json" } });
         }
-        if (!["trial", "day", "month"].includes(plan)) {
+        // [V26.7 결함 1] plan 배열 확장 — 사장님 진단 안
+        //   기존: ["trial", "day", "month"] → monthly/yearly/lifetime 자동 거부
+        //   영향: 9,900 + 79,000 + 199,000 = 287,900원 매출 100% 차단
+        //   해결: 6 plan 모두 허용 (기존 trial/day/month + monthly/yearly/lifetime)
+        if (!["trial", "day", "month", "monthly", "yearly", "lifetime"].includes(plan)) {
           return new Response(JSON.stringify({
             ok: false, error: "유효하지 않은 플랜입니다"
           }), { status: 400, headers: { ...corsHeaders(), "Content-Type": "application/json" } });
         }
 
-        // 2. 행동 점수 계산 (Behavior Score)
+        // [V26.7 결함 2] 행동점수 검증 완화 — 사장님 결정 안
+        //   사장님 통찰: "계좌이체는 실시간 확인 불가 (24시간 인간 대기 어려움)
+        //                일정부분 속이려 드는 사람 있어도 감내하는 손실"
+        //   기존 (V20.10): 행동점수 70점 미만 거부
+        //                  → Client 행동점수 그대로 신뢰 (DevTools 우회 가능)
+        //                  → V26.6 즉시 활성화 결정과 모순
+        //   해결: 행동점수 차단 제거 (글로벌 SaaS 표준 — Stripe/Toss와 일치)
+        //   유지: senderName 길이 검증 + KV 어뷰즈 카운트 (사후 추적)
+        //   효과: 카드/카카오페이와 동일한 즉시 활성화 + UX 일관성
+        // ⚠️ 보안 보완: KV 어뷰즈 차단 + 사장님 admin/list 사후 확인
         let behaviorScore = 0;
         if (accountCopied) behaviorScore += 30;
         if (stayTime >= 30) behaviorScore += 20;
         if (senderName.length >= 2) behaviorScore += 20;
         if (tossClicked) behaviorScore += 30;
-        // 최소 통과 기준: 70점 (계좌복사 + 체류 + 이름 = 70점)
-        if (behaviorScore < 70) {
-          return new Response(JSON.stringify({
-            ok: false,
-            error: "계좌번호 복사 + 30초 이상 체류 + 입금자명 입력이 모두 필요합니다",
-            score: behaviorScore
-          }), { status: 400, headers: { ...corsHeaders(), "Content-Type": "application/json" } });
-        }
+        // 행동점수는 KV 기록용으로만 사용 (차단 X) — 사장님 사후 분석 가능
 
-        // 3. 시간대 체크 (새벽 2~6시는 자동 발급 X)
-        const kstHour = (new Date().getUTCHours() + 9) % 24;
-        if (kstHour >= 2 && kstHour < 6) {
-          return new Response(JSON.stringify({
-            ok: false,
-            error: "야간(02:00~06:00)에는 자동 발급이 제한됩니다. 09:00 이후 다시 시도해주세요.",
-            nightTime: true
-          }), { status: 423, headers: { ...corsHeaders(), "Content-Type": "application/json" } });
-        }
+        // [V26.7 결함 3] 야간 02~06시 차단 제거 — 사장님 결정 안
+        //   사장님 통찰: "1시간이 아닌 즉시 점사가 나와야 한다"
+        //              "24시간 인간 대기 어려움 → 즉시 활성화"
+        //   기존 (V20.10): 새벽 02~06시 자동 발급 X (사장님 확인 후)
+        //                  → 야간 사용자 100% 결제 실패
+        //                  → 사주·타로 핵심 시간대 (점사 의지 ↑)
+        //                  → 사장님 '즉시 활성화' 결정과 정면 충돌
+        //   해결: 야간 차단 제거 (24시간 즉시 활성화)
+        //   ⚠️ 사장님 사후 추적: KV 기록에 시간대 포함 → 의심스러운 야간 결제 사후 차단 가능
+        //   효과: 야간 매출 보호 + 글로벌 SaaS 24h 운영 표준 부합
+        // (야간 차단 로직 제거 — KV 기록만 유지)
 
         // 4. 클라이언트 IP 추출
         const clientIP = request.headers.get("cf-connecting-ip") ||
