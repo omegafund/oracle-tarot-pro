@@ -8690,14 +8690,23 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
             
             // [주식/코인 + 기본] 자본시장법 회피 — 가장 강한 법무
             return `<div style="margin-top:18px; padding:12px 14px; font-size:0.70rem;
-                        color:rgba(255,255,255,0.55); text-align:center;
+                        color:rgba(255,255,255,0.7); text-align:center;
                         line-height:1.7; letter-spacing:0.01em;
-                        border:1px solid rgba(255,255,255,0.08); border-radius:8px;">
-                ⚠️ <b>본 서비스는 타로 카드를 활용한 엔터테인먼트 콘텐츠</b>로,<br>
-                투자자문업·금융상품판매업상 등록된 서비스가 아닙니다.<br>
-                특정 종목·자산의 매매 권유나 투자 결정의 근거가 될 수 없으며,<br>
-                본 콘텐츠를 참고한 모든 투자·거래 결정의 결과는 사용자 본인에게 귀속됩니다.<br>
-                <span style="opacity:0.65;">Not financial / legal / tax advice — Entertainment use only.</span>
+                        border:1px solid rgba(255,200,80,0.3); border-radius:8px;
+                        background: rgba(255,200,80,0.04);">
+                <!-- [V27.2.A] 면책 강화 — 사장님 사업 보호
+                     강화 내용:
+                       1. 자본시장법 / 공인중개사법 명시 (구체 법조항 인용)
+                       2. 텍스트 시인성 ↑ (rgba 0.55 → 0.70)
+                       3. 골든 톤 박스 (테두리 + 배경) 시각 강조
+                       4. "엔터테인먼트 콘텐츠" 굵게 강조 -->
+                ⚠️ <b style="color:#FFD970;">본 서비스는 타로 카드를 활용한 엔터테인먼트 콘텐츠</b>로,<br>
+                <b>투자자문업·금융상품판매업·공인중개사업</b> 등록 서비스가 아닙니다.<br>
+                특정 종목·자산·매물의 매매 권유나 투자·거래 결정의 근거가 될 수 없으며,<br>
+                본 콘텐츠를 참고한 모든 투자·거래·계약 결정의 결과는 <b>사용자 본인</b>에게 귀속됩니다.<br>
+                <span style="opacity:0.7; font-size:0.7rem;">
+                    Not financial / legal / tax / real-estate advice — Entertainment use only.
+                </span>
             </div>`;
         })()}
     </div>`;
@@ -9894,6 +9903,43 @@ function showPayModal() {
                 </div>
             </div>
 
+            <!-- [V27.2.A] 면책 + 동의 박스 — 사장님 사업 보호 ★
+                 목적:
+                   1. 사용자에게 '엔터테인먼트 콘텐츠' 사실 인지
+                   2. 결제 후 환불 분쟁 사전 차단 (입증 자료)
+                   3. 자본시장법(제17조) / 공인중개사법(제48조) 안전망
+                   4. 약관 동의 의사 명확 기록
+                 효과:
+                   - 사장님 사업 법적 안전성 ↑
+                   - 환불 분쟁 시 사용자 동의 기록 보유
+                   - 명확한 인지 → 사후 클레임 차단 -->
+            <div id="payDisclaimer" style="margin-bottom:14px; padding:12px 14px;
+                        background: rgba(255,165,80,0.08);
+                        border: 1px solid rgba(255,165,80,0.4);
+                        border-radius: 8px;">
+                <div style="font-size:0.74rem; color:#FFB870; font-weight:800; margin-bottom:6px; letter-spacing:0.05em;">
+                    ⚠️ 결제 전 반드시 확인해주세요
+                </div>
+                <div style="font-size:0.72rem; color:rgba(255,255,255,0.85); line-height:1.65; margin-bottom:10px;">
+                    본 PRO 신탁은 <b style="color:#FFD970;">엔터테인먼트 콘텐츠</b>이며,
+                    투자자문업·금융상품판매업·공인중개사업 등록 서비스가 아닙니다.<br>
+                    특정 종목·자산·매물의 매매 권유나 투자·거래 결정의 근거가 될 수 없으며,
+                    본 콘텐츠를 참고한 모든 결과는 사용자 본인에게 귀속됩니다.<br>
+                    <span style="color:rgba(255,255,255,0.65);">
+                        ※ 디지털 콘텐츠 특성상 결제 후 즉시 활성화되며, 활성화 후 환불은 제한됩니다.
+                    </span>
+                </div>
+                <label style="display:flex; align-items:flex-start; gap:8px; cursor:pointer; user-select:none;">
+                    <input type="checkbox" id="payAgreeCheckbox"
+                           style="margin-top:2px; width:16px; height:16px; cursor:pointer; accent-color:#D4AF37;"
+                           onchange="_v27_2_updatePayButtonState()">
+                    <span style="font-size:0.76rem; color:#FFEC9F; font-weight:700; line-height:1.5;">
+                        위 내용을 이해했으며,
+                        <b style="color:#fff;">엔터테인먼트 콘텐츠</b>로서 동의합니다
+                    </span>
+                </label>
+            </div>
+
             <!-- [V20.3] 토스 결제 진행 안내 (사실 기반) -->
             <div style="margin-bottom:14px; padding:10px 12px;
                         background: rgba(52,152,219,0.06);
@@ -10068,6 +10114,64 @@ function showPayModal() {
             </button>
         </div>`;
     document.body.appendChild(overlay);
+    
+    // [V27.2.A] 결제 버튼 잠금 — 동의 체크박스 미체크 시 결제 진행 차단
+    //   사장님 사업 보호: 결제 전 사용자 인지 강제
+    //   효과: 환불 분쟁 시 동의 기록 보유 / 법적 안전망
+    //   호출 시점: 모달 표시 직후 — 모든 결제 버튼에 잠금 효과 적용
+    setTimeout(_v27_2_updatePayButtonState, 100);
+}
+
+// [V27.2.A] 결제 버튼 활성화 상태 업데이트 함수
+//   동의 체크 안 됨 → 결제 버튼 비활성 (회색)
+//   동의 체크 됨    → 결제 버튼 활성 (정상 색상)
+//   사장님 사업 보호 핵심 로직
+function _v27_2_updatePayButtonState() {
+    const agreeBox = document.getElementById('payAgreeCheckbox');
+    if (!agreeBox) return;
+    const isAgreed = agreeBox.checked;
+    
+    // 모든 결제 진행 버튼 (체험권/1일/30일/평생)
+    const payButtons = document.querySelectorAll('.pay-plan-btn');
+    payButtons.forEach(btn => {
+        if (isAgreed) {
+            // 동의 ✓ — 정상 활성
+            btn.style.opacity = '1';
+            btn.style.pointerEvents = 'auto';
+            btn.style.filter = 'none';
+            btn.removeAttribute('data-blocked');
+        } else {
+            // 동의 X — 잠금 (시각적 비활성)
+            btn.style.opacity = '0.4';
+            btn.style.pointerEvents = 'none';
+            btn.style.filter = 'grayscale(60%)';
+            btn.setAttribute('data-blocked', 'true');
+        }
+    });
+    
+    // 계좌이체 토큰 자동 발급 버튼도 잠금
+    const tokenBtn = document.querySelector('button[onclick*="zeusClaimSubmit"]');
+    if (tokenBtn) {
+        if (isAgreed) {
+            tokenBtn.style.opacity = '1';
+            tokenBtn.style.pointerEvents = 'auto';
+        } else {
+            tokenBtn.style.opacity = '0.4';
+            tokenBtn.style.pointerEvents = 'none';
+        }
+    }
+    
+    // 면책 박스 시각 강조 (체크 시 더 부드러운 톤)
+    const disclaimer = document.getElementById('payDisclaimer');
+    if (disclaimer) {
+        if (isAgreed) {
+            disclaimer.style.background = 'rgba(46,204,113,0.06)';
+            disclaimer.style.borderColor = 'rgba(46,204,113,0.3)';
+        } else {
+            disclaimer.style.background = 'rgba(255,165,80,0.08)';
+            disclaimer.style.borderColor = 'rgba(255,165,80,0.4)';
+        }
+    }
 }
 
 // [V20.0] 계좌이체 후 받은 토큰 직접 활성화
