@@ -5040,7 +5040,20 @@ function getFlowArrow(past, present, future, revFlags) {
   if (p === 'stable' && c === 'conflict') return "안정 → 균열 → 회복";
   if (c === 'stable' && f === 'positive') return "안정 → 발전 → 결속";
   if (c === 'stable') return "안정 → 유지 → 관찰";
-  return "감정 흐름 변화 구간";
+  // [V26.15 결함 1] '감정 흐름 변화 구간' 추상적 폴백 결함 차단
+  //   사장님 진단: "↳ 관계 흐름: 감정 흐름 변화 구간 — 추상적이라 정보 가치 X"
+  //   원인: 매핑 안 되는 카드 조합 시 일률적 추상 폴백
+  //   해결: 카드 타입 (p, c, f) 조합으로 자동 흐름 생성 (3단계 설명)
+  //   효과: 9개 서브타입 모든 카드 케이스에서 구체적 흐름 노출
+  const _typeLabel = {
+    positive: '호의', stable: '안정', recover: '회복',
+    distance: '거리', defense: '방어', conflict: '균열',
+    burden: '부담', lack: '결핍', neutral: '관찰'
+  };
+  const _p = _typeLabel[p] || '관찰';
+  const _c = _typeLabel[c] || '전환';
+  const _f = _typeLabel[f] || '재정렬';
+  return `${_p} → ${_c} → ${_f}`;
 }
 
 const META_PATTERNS_V25_24 = {

@@ -1679,6 +1679,18 @@
                 transform: translate(var(--dx), var(--dy)) scale(1.5) rotate(180deg);
             }
         }
+
+        /* [V26.15 결함 2] 계좌번호 복사 시 폭발 시각 피드백 — 사장님 진단 "변화 표시 없이 먹통" 해결 */
+        @keyframes zeusCopyPulse {
+            0%   { transform: scale(1);    box-shadow: 0 0 0   rgba(46,204,113,0); }
+            40%  { transform: scale(1.2); box-shadow: 0 0 24px rgba(46,204,113,0.85); }
+            100% { transform: scale(1);    box-shadow: 0 0 12px rgba(46,204,113,0.6); }
+        }
+        @keyframes zeusToastIn {
+            0%   { opacity: 0; transform: translate(-50%, -40%) scale(0.7); }
+            70%  { opacity: 1; transform: translate(-50%, -52%) scale(1.05); }
+            100% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+        }
 </style>
     <!-- [V19 Phase3] 결과창 이미지 캡처용 -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
@@ -10059,11 +10071,55 @@ function zeusClaimCopyAccount(accNum) {
         // [V26.8] 양쪽 모달 ID 모두 시도
         const hint = document.getElementById('zeusCopyHint')
                   || document.getElementById('zeusBankCopyHint');
+        // [V26.15 결함 2] 시각 피드백 폭발 강화
+        //   사장님 진단: "변화 표시 없이 먹통이다 — 녹색 갈매기 체크 표시 선명하게"
+        //   원인: V26.8 패치는 hint 텍스트만 변경 → 시각 임팩트 부족
+        //   해결: hint 배지 + 박스 자체 + 토스트 알림 = 3중 시각 피드백
         if (hint) {
-            hint.textContent = '✅ 복사 완료 — 아래 입금자 이름 입력';
-            hint.style.color = '#7ad188';
+            hint.textContent = '✅ 복사됨';
+            hint.style.color = '#fff';
             hint.style.fontWeight = '900';
+            hint.style.fontSize = '0.85rem';
+            hint.style.background = 'linear-gradient(135deg, #2ecc71, #27ae60)';
+            hint.style.padding = '5px 12px';
+            hint.style.borderRadius = '14px';
+            hint.style.boxShadow = '0 0 12px rgba(46,204,113,0.6)';
+            hint.style.animation = 'zeusCopyPulse 0.6s ease-out';
         }
+        // [V26.15] 박스 자체 시각 변환 — gold dashed → green solid (즉시 인식)
+        const accountBox = document.getElementById('zeusBankAccountBox');
+        if (accountBox) {
+            accountBox.style.background = 'rgba(46,204,113,0.12)';
+            accountBox.style.border = '2px solid rgba(46,204,113,0.6)';
+            accountBox.style.borderStyle = 'solid';
+            accountBox.style.boxShadow = '0 0 16px rgba(46,204,113,0.35)';
+        }
+        // [V26.15] 토스트 알림 — 화면 중앙에 1.5초간 (즉각 인식)
+        const toast = document.createElement('div');
+        toast.id = 'zeusCopyToast';
+        toast.textContent = '✅ 계좌번호 복사 완료';
+        toast.style.cssText = `
+            position: fixed; top: 30%; left: 50%;
+            transform: translate(-50%, -50%);
+            padding: 14px 24px;
+            background: linear-gradient(135deg, #2ecc71, #27ae60);
+            color: #fff;
+            font-size: 1.05rem; font-weight: 900;
+            border-radius: 30px;
+            box-shadow: 0 8px 32px rgba(46,204,113,0.5);
+            z-index: 99999;
+            animation: zeusToastIn 0.3s ease-out;
+        `;
+        // 기존 토스트 있으면 제거 (중복 방지)
+        const existingToast = document.getElementById('zeusCopyToast');
+        if (existingToast) existingToast.remove();
+        document.body.appendChild(toast);
+        setTimeout(() => {
+            toast.style.transition = 'opacity 0.3s, transform 0.3s';
+            toast.style.opacity = '0';
+            toast.style.transform = 'translate(-50%, -60%)';
+            setTimeout(() => toast.remove(), 300);
+        }, 1500);
         // 입금자 입력란으로 자동 스크롤 + 강한 시각 강조
         setTimeout(() => {
             // [V26.8] 양쪽 모달 ID 모두 시도
@@ -10612,16 +10668,24 @@ function showBankTransferModal(planKey) {
                     <span style="color:rgba(255,255,255,0.7); font-size:0.85rem;">입금 은행</span>
                     <strong style="color:#fff; font-size:0.95rem;">${cfg.bank}</strong>
                 </div>
-                <div onclick="zeusClaimCopyAccount('${cfg.account}')" style="
+                <div onclick="zeusClaimCopyAccount('${cfg.account}')" id="zeusBankAccountBox" style="
                     cursor:pointer; padding:8px 10px; margin:6px 0;
                     background:rgba(212,175,55,0.10);
                     border:1px dashed rgba(212,175,55,0.5);
                     border-radius:6px;
+                    transition: all 0.3s ease;
                     display:flex; justify-content:space-between; align-items:center;">
                     <span style="color:rgba(255,255,255,0.7); font-size:0.85rem;">계좌번호</span>
                     <span style="display:flex; align-items:center; gap:8px;">
                         <strong style="color:#fff; font-size:0.95rem;">${cfg.account}</strong>
-                        <span id="zeusBankCopyHint" style="font-size:0.72rem; color:#FFD970;">📋 복사</span>
+                        <span id="zeusBankCopyHint" style="
+                            font-size:0.78rem;
+                            color:#FFD970;
+                            padding:3px 8px;
+                            background:rgba(212,175,55,0.15);
+                            border-radius:10px;
+                            font-weight:700;
+                            transition: all 0.3s ease;">📋 탭하여 복사</span>
                     </span>
                 </div>
                 <div style="display:flex; justify-content:space-between; align-items:center;">
