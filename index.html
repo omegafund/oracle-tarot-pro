@@ -7955,74 +7955,57 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
             return '';
         })();
 
-        // [V22.0] 도메인별 PRO 전환 박스 — 사장님 전환률 강화 문구
-        //   주식/코인/부동산 결과창 끝에 추가 (전환률 ↑)
+        // [V22.0 → V27.2.B] 도메인별 PRO 전환 박스 — 사장님 사업 보호 안
+        //   사장님 진단: '매수 가격대 / 손절·익절 핀포인트' = 자본시장법 위험 + 환불 분쟁
+        //   "이미 점사를 다 보여줬는데 왜 또 결제창?" — 설계 위치 결함
+        //   "더 보여줄 점사 없다" — 점사창 한계 인정
+        //   해결: 가짜 약속 박스 완전 제거 → 정직한 업셀 박스로 교체
+        //   효과:
+        //     ① 자본시장법 / 공인중개사법 안전 (구체 수치·가격 약속 0)
+        //     ② 환불 분쟁 차단 (약속한 것 = 실제 노출되는 것 100% 일치)
+        //     ③ 정직한 업셀 ('더 자주 점사' = 사실)
+        //     ④ 글로벌 1위 점사 앱 신뢰성 ↑
         const _zeusProHook = (() => {
             if (!investData || !investData.type) return '';
             const isStock = investData.type === 'stock' || investData.type === 'crypto';
             const isRE = investData.type.startsWith('realestate');
             if (!isStock && !isRE) return '';
-            const _isSell = (investData.intent === 'sell') || (window._serverMetrics && window._serverMetrics.stockIntent === 'sell');
-
-            // 도메인별 차별화 문구
-            const config = isRE ? (_isSell ? {
-                bullets: [
-                    '👉 매도 적정가의 구체적 수치',
-                    '👉 거래 성사까지의 정확한 주차',
-                    '👉 이 매물의 진짜 가치 평가'
-                ],
-                btn: '👉 정확한 매도 타이밍 보기',
-                color: '#5DADE2'
-            } : {
-                bullets: [
-                    '👉 매수 진입 적정 가격대',
-                    '👉 거래 성사 핵심 시점',
-                    '👉 이 매물의 진짜 가치 평가'
-                ],
-                btn: '👉 매수 적정가 확인하기',
-                color: '#5DADE2'
-            }) : (_isSell ? {
-                bullets: [
-                    '👉 정확한 익절·손절 핀포인트',
-                    '👉 분할 매도 시점 가이드',
-                    '👉 이 종목의 진짜 출구 전략'
-                ],
-                btn: '👉 손실 피하는 전략 확인',
-                color: '#2ecc71'
-            } : {
-                bullets: [
-                    '👉 정확한 매수 가격대',
-                    '👉 손절·익절 핀포인트',
-                    '👉 이 종목의 진짜 미래'
-                ],
-                btn: '👉 나의 진짜 매수 타이밍 확인',
-                color: '#2ecc71'
-            });
-
+            
+            // [V27.2.B 핵심] 결제 후 숨김 — LOVE 도메인과 동일 패턴 적용
+            //   사장님 진단: "이미 결제한 사용자에게 결제 박스 또?" 결함
+            //   해결: isPaidUser=true이면 박스 자체 숨김
+            //   효과: 결제자에게 이중 결제 박스 노출 0건 (사장님 핵심 명령)
+            if (typeof isPaidUser !== 'undefined' && isPaidUser) return '';
+            
+            // [V27.2.B] 정직한 업셀 박스 — 가짜 약속 0건
+            //   기존 ('매수 가격대' / '손절·익절 핀포인트' / '진짜 미래') = 자본시장법 위험
+            //   변경 ('매일 새 점사' / '평생 무제한' / '자동 갱신') = 사실 + 안전
+            //   추가 결제 유도는 정직한 톤으로만 (사장님 사업 영속성)
             return `
                 <div style="margin-top:24px; padding:18px 16px;
-                            background: linear-gradient(135deg, rgba(212,175,55,0.16), rgba(46,204,113,0.06));
-                            border: 2px solid rgba(212,175,55,0.5);
+                            background: linear-gradient(135deg, rgba(212,175,55,0.10), rgba(46,204,113,0.04));
+                            border: 1.5px solid rgba(212,175,55,0.35);
                             border-radius: 12px;
-                            box-shadow: 0 0 24px rgba(212,175,55,0.2);
                             text-align: center;">
-                    <div style="color:#FFD970; font-size:0.78rem; font-weight:800; letter-spacing:0.1em; margin-bottom:12px;">
-                        ✨ PRO 신탁에서 더 깊게
+                    <div style="color:#FFD970; font-size:0.78rem; font-weight:800; letter-spacing:0.1em; margin-bottom:10px;">
+                        ✦ 더 자주 점사를 보고 싶다면 ✦
                     </div>
-                    <div style="font-size:0.94rem; color:#fff; line-height:1.95; margin-bottom:14px;">
-                        ${config.bullets.join('<br>')}
+                    <div style="font-size:0.86rem; color:rgba(255,255,255,0.88); line-height:1.85; margin-bottom:14px; font-weight:500;">
+                        💎 평생 무제한 (한 번 결제) <br>
+                        🌙 매일 새로운 점사 (월/연 구독) <br>
+                        📚 점사 히스토리 자동 저장
                     </div>
                     <button onclick="showPayModal()" style="
-                        padding:14px 28px;
-                        background: linear-gradient(135deg, #D4AF37, #F1C40F);
+                        padding:12px 26px;
+                        background: linear-gradient(135deg, rgba(212,175,55,0.85), rgba(241,196,15,0.85));
                         color:#000; border:none; border-radius:30px;
-                        font-weight:900; font-size:0.95rem; cursor:pointer;
-                        box-shadow: 0 4px 16px rgba(212,175,55,0.5);
+                        font-weight:800; font-size:0.88rem; cursor:pointer;
+                        box-shadow: 0 3px 12px rgba(212,175,55,0.35);
                         letter-spacing: 0.02em;">
-                        ${config.btn}
+                        구독 옵션 살펴보기
                     </button>
-                    <div style="margin-top:10px; font-size:0.7rem; color:rgba(255,255,255,0.55); font-style:italic;">
-                        Unlock Your Path · 진짜 분석을 펼치소서
+                    <div style="margin-top:10px; font-size:0.68rem; color:rgba(255,255,255,0.5); font-style:italic;">
+                        ※ 본 점사 결과는 모두 공개되었습니다 — 추가 콘텐츠 없음
                     </div>
                 </div>`;
         })();
@@ -8183,33 +8166,35 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
                         </div>`
                         : _renderLoveBlock(cards, qRaw2, LOVE_SUBTYPE));
 
-                // [V22.0] 🔒 PRO 전환 박스 — 사장님 전환률 강화 문구
-                // [V26.3 결함 3] 결제 후 숨김 — 결제 회상 차단
-                //   사장님 진단: 이미 결제한 사용자에게 'PRO' 라벨 노출은 부적절
-                //   해결: isPaidUser true이면 빈 문자열 반환
+                // [V22.0 → V27.2.B] LOVE 도메인 PRO 전환 박스 — 정직한 업셀 안
+                // [V26.3 결함 3] 결제 후 숨김 — 결제 회상 차단 (그대로 유지)
+                //   isPaidUser true이면 빈 문자열 반환
+                // [V27.2.B] 가짜 약속 박스 → 정직한 업셀 박스로 교체
+                //   기존 ('상대 진짜 마음/실제 행동 타이밍/관계의 결론') = 결제 후 약속 일치 X
+                //   변경 ('연애 점사 무제한/매일 새 점사/히스토리') = 사실 + 안전
+                //   사장님 명령: '점사창 한계 인정 + 정직한 톤'
                 const proHookHTML = (typeof isPaidUser !== 'undefined' && isPaidUser) ? '' : `
                     <div style="margin-top:20px; padding:18px 16px;
-                                background: linear-gradient(135deg, rgba(255,123,172,0.15), rgba(212,175,55,0.10));
-                                border: 2px solid rgba(255,123,172,0.5);
+                                background: linear-gradient(135deg, rgba(255,123,172,0.10), rgba(212,175,55,0.06));
+                                border: 1.5px solid rgba(255,123,172,0.35);
                                 border-radius: 12px;
-                                box-shadow: 0 0 20px rgba(255,123,172,0.18);
                                 text-align: center;">
                         <div style="color:#FFD970; font-size:0.78rem; font-weight:800; letter-spacing:0.1em; margin-bottom:10px;">
-                            ✨ PRO 신탁에서 더 깊게
+                            ✦ 더 자주 점사를 보고 싶다면 ✦
                         </div>
-                        <div style="font-size:0.94rem; color:#fff; line-height:1.9; margin-bottom:14px;">
-                            👉 상대가 나를 어떻게 생각하는지<br>
-                            👉 내일 실제 행동 타이밍<br>
-                            👉 이 관계의 결론
+                        <div style="font-size:0.86rem; color:rgba(255,255,255,0.88); line-height:1.85; margin-bottom:14px; font-weight:500;">
+                            💎 평생 무제한 (한 번 결제) <br>
+                            🌙 매일 새로운 점사 (월/연 구독) <br>
+                            📚 점사 히스토리 자동 저장
                         </div>
                         <button onclick="showPayModal()" style="
-                            padding:14px 32px;
-                            background: linear-gradient(135deg, #D4AF37, #F1C40F);
+                            padding:12px 26px;
+                            background: linear-gradient(135deg, rgba(212,175,55,0.85), rgba(241,196,15,0.85));
                             color:#000; border:none; border-radius:30px;
-                            font-weight:900; font-size:0.95rem; cursor:pointer;
-                            box-shadow: 0 4px 16px rgba(212,175,55,0.5);
+                            font-weight:800; font-size:0.88rem; cursor:pointer;
+                            box-shadow: 0 3px 12px rgba(212,175,55,0.35);
                             letter-spacing: 0.02em;">
-                            👉 상대 진짜 마음 보기
+                            구독 옵션 살펴보기
                         </button>
                     </div>`;
 
@@ -8727,18 +8712,22 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
             return publicSections;
         }
         
-        // [V25.14+V25.20] PRO Blur 미리보기 — 운세 PRO 서브타입 포함
+        // [V25.14+V25.20 → V27.2.B] PRO Blur 미리보기 — 운세 PRO 서브타입 포함
         //   해결: PRO 결과 일부를 흐릿하게 노출 → 잠금 해제 → 선명화
         //   ROI: 결제 전환 +20~30% 추정
+        //   [V27.2.B] LOVE 어휘 정정 — 결제 후 실제 노출 콘텐츠와 100% 일치
+        //     기존 ('상대 진짜 마음/관계 미래 흐름 3개월/내일 행동 타이밍') = 가짜 약속
+        //     변경 ('관계 본질 분석/미래 카드 흐름 해석/행동 타이밍 가이드') = 사실
+        //     사장님 V27.2.B 본질: 약속 = 결과 100% 일치 → 환불 분쟁 차단
         //
         // 도메인별 Blur 미리보기 콘텐츠 (PRO 결과 일부)
         const _activeDomain = (typeof ACTIVE_DOMAIN_BAR !== 'undefined' && ACTIVE_DOMAIN_BAR) || 'general';
         const previewItems = (() => {
             if (_activeDomain === 'love') {
                 return [
-                    { icon: '💎', title: '상대 진짜 마음', preview: '두 사람의 본질적 합의 가능성, 상대가 느끼는 거리감과 진심의 깊이...' },
-                    { icon: '🔮', title: '관계 미래 흐름', preview: '향후 3개월 관계의 결정적 분기점과 작용할 우주적 타이밍...' },
-                    { icon: '⚡', title: '내일 행동 타이밍', preview: '연락·만남에 가장 적합한 시간대와 피해야 할 구간...' }
+                    { icon: '💘', title: '관계 본질 분석', preview: '두 사람의 결·신호·거리감 진단과 본질 키 해석으로 핵심 흐름 정렬...' },
+                    { icon: '🌙', title: '미래 카드 흐름 해석', preview: '미래 카드의 영성 의미와 정역방향 흐름이 결합된 정밀 해석...' },
+                    { icon: '⚡', title: '행동 타이밍 가이드', preview: '단기·중기·장기 행동 시점과 수비학 기반 황금 시간대 분석...' }
                 ];
             } else if (_activeDomain === 'stock' || _activeDomain === 'crypto') {
                 return [
