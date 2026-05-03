@@ -2446,7 +2446,7 @@ function applyLegalSafetyToMetrics(metrics) {
 // ══════════════════════════════════════════════════════════════════
 function applyPositionConsistency(metrics) {
   if (!metrics || !metrics.layers || !metrics.layers.decision) return metrics;
-  if (metrics.queryType !== 'stock' && metrics.queryType !== 'crypto') return metrics;
+  if (!['stock', 'crypto'].includes(metrics.queryType)) return metrics;
 
   const decision = metrics.layers.decision;
   const verdict = (metrics.layers.signal?.verdict || '').toLowerCase();
@@ -2485,7 +2485,7 @@ function applyPositionConsistency(metrics) {
 // ══════════════════════════════════════════════════════════════════
 function buildMarketState(metrics) {
   if (!metrics || !metrics.layers) return metrics;
-  if (metrics.queryType !== 'stock' && metrics.queryType !== 'crypto') return metrics;
+  if (!['stock', 'crypto'].includes(metrics.queryType)) return metrics;
 
   const cleanCards = metrics.cleanCards || [];
   const reversedFlags = metrics.reversedFlags || [];
@@ -2560,9 +2560,15 @@ function buildMarketState(metrics) {
 
 // ══════════════════════════════════════════════════════════════════
 // [V25.40 Phase 6] 한줄 결론 박스 — 사장님 진단 안 (주식·코인 전용)
+// [V27.0.2 → V27.0.3] 사장님 PRO 안 100% 격상
+//   ① CORE 격상: '분기점' 모호 톤 → 'XX 구조로 전환' 단정 결정 톤
+//   ② SELL/익절 시나리오 전용 톤 ('매수' 단어 절대 금지)
+//   ③ TAIL BUY/SELL 분리 (시나리오별 자동 매핑)
+//   ④ 익절 사용자 심리 직격: '얼마를 더 먹느냐 vs 얼마를 지키느냐'
 function buildOneLineSummary(metrics) {
   if (!metrics || !metrics.layers || !metrics.layers.decision) return metrics;
-  if (metrics.queryType !== 'stock' && metrics.queryType !== 'crypto') return metrics;
+  // [V27.0.2 지적 2] 가드 안전화 — 향후 도메인 확장 시 배열에만 추가
+  if (!['stock', 'crypto'].includes(metrics.queryType)) return metrics;
 
   const decision = metrics.layers.decision;
   const signal = metrics.layers.signal || {};
@@ -2570,32 +2576,115 @@ function buildOneLineSummary(metrics) {
   const verdict = signal.verdict || '';
   const stockIntent = metrics.stockIntent || 'buy';
 
-  // 본 결론(verdict)에서 핵심 메시지 추출 → TL;DR로 압축
-  let summary = '';
-
-  // verdict 기반 한줄 요약 매트릭스
+  // ── 시나리오 키 결정 (사장님 정밀 분리 안 적용)
+  let scenarioKey;
   if (/진입\s*보류|관망/.test(position) || /보류.*하락|관망.*우선/.test(verdict)) {
-    summary = '신호 검증이 우선되는 균형 구간입니다';
+    scenarioKey = stockIntent === 'sell' ? 'wait_sell' : 'wait_buy';
   } else if (/검증\s*후\s*진입|조건\s*진입/.test(position)) {
-    summary = '조건 충족 후 단계적 접근이 안정적인 구간입니다';
+    scenarioKey = 'verified';
   } else if (/제한적\s*시도/.test(position)) {
-    summary = '제한적 진입 가능 구간 — 신호 확인이 핵심입니다';
-  } else if (/익절|축소|매도/.test(position)) {
-    summary = '수익 보호와 단계적 익절이 우선되는 구간입니다';
+    scenarioKey = 'limited';
+  // [V27.0.2 지적 3] 익절/축소(타이밍 게임) vs 매도(실행 단계) 정밀 분리
+  //   사장님 진단: 익절 = "언제 팔까 (타이밍)", 매도 = "이미 팔기로 결심 (실행)"
+  //   톤 완전히 달라야 함 → 결제 전환 분리
+  } else if (/익절|축소/.test(position)) {
+    scenarioKey = 'wait_sell';   // 타이밍 게임
+  } else if (/매도/.test(position)) {
+    scenarioKey = 'active';      // 실행 단계
   } else if (/단기\s*매수|적극\s*매수/.test(position)) {
-    summary = '진입 가능 구간 — 단기 변동성 관리가 핵심입니다';
+    scenarioKey = 'active';
   } else if (/분할\s*매수|단계적/.test(position)) {
-    summary = '분할 진입과 단계적 확대가 효과적인 구간입니다';
+    scenarioKey = 'split';
   } else {
-    // fallback — 카드 흐름 기반
-    summary = stockIntent === 'sell'
-      ? '단계적 청산이 안정적인 구간입니다'
-      : '신호 확인 후 분할 접근이 효과적인 구간입니다';
+    // fallback — intent 기반
+    scenarioKey = stockIntent === 'sell' ? 'wait_sell' : 'wait_buy';
   }
 
-  decision.oneLineSummary = summary;
+  // ── CORE 매트릭스 (사장님 PRO 안)
+  const core = TLDR_CORE_MATRIX[scenarioKey] || TLDR_CORE_MATRIX.wait_buy;
+  // ── [V27.0.3] TAIL BUY/SELL 분리 — 시나리오별 자동 매핑
+  //   SELL 시나리오: wait_sell만 (익절·축소 = 타이밍 게임)
+  //   BUY 시나리오: wait_buy / verified / limited / active / split
+  const isSellScenario = (scenarioKey === 'wait_sell');
+  const tailKey = `${metrics.queryType}_${isSellScenario ? 'sell' : 'buy'}`;
+  const tail = ASSET_TAIL_MATRIX[tailKey] || ASSET_TAIL_MATRIX.stock_buy;
+
+  decision.oneLineSummary = `${core}\n${tail}`;
   return metrics;
 }
+
+// [V27.0.2] 부동산 한줄 결론 빌더 — 별도 시나리오 매핑
+//   부동산은 sell_active vs sell_passive (V27.0 Priority 1) 구분 필요
+function buildRealEstateOneLineSummary(metrics) {
+  if (!metrics || !metrics.layers || !metrics.layers.decision) return metrics;
+  if (metrics.queryType !== 'realestate') return metrics;
+
+  const decision = metrics.layers.decision;
+  const position = decision.position || '';
+  const intent = metrics.intent || 'buy';
+
+  let scenarioKey;
+  if (/관망|보류|대기/.test(position)) {
+    if (intent === 'sell_active')       scenarioKey = 're_wait_sell_act';
+    else if (intent === 'sell_passive') scenarioKey = 're_wait_sell_pas';
+    else if (intent === 'hold')         scenarioKey = 're_holding';
+    else                                scenarioKey = 're_wait_buy';
+  } else if (/검증/.test(position)) {
+    scenarioKey = 're_verified';
+  } else if (/적극|즉시|등록/.test(position)) {
+    scenarioKey = 're_active';
+  } else if (intent === 'sell_active') {
+    scenarioKey = 're_wait_sell_act';
+  } else if (intent === 'sell_passive') {
+    scenarioKey = 're_wait_sell_pas';
+  } else {
+    scenarioKey = 're_wait_buy';
+  }
+
+  const core = TLDR_CORE_MATRIX[scenarioKey] || TLDR_CORE_MATRIX.re_wait_buy;
+  // [V27.0.3] 부동산 TAIL BUY/SELL 분리
+  const isSellScenario = (scenarioKey === 're_wait_sell_act' || scenarioKey === 're_wait_sell_pas');
+  const tail = ASSET_TAIL_MATRIX[isSellScenario ? 'realestate_sell' : 'realestate_buy'];
+
+  decision.oneLineSummary = `${core}\n${tail}`;
+  return metrics;
+}
+
+// [V27.0.2 → V27.0.3] TLDR (한줄 결론) CORE 매트릭스 — 사장님 PRO 안 격상
+//   톤: [흐름 인정] + [, but] + [위험/결정 시나리오 직격]
+//   원칙: 단순 분기점 → '구조로 전환/직결' 단정 톤 (결제 트리거 강도 ↑)
+//   금지 단어: ~좋습니다 / ~가능성이 있습니다 / ~추천 (0건)
+//   SELL 시나리오: '매수/진입' 단어 절대 금지 (사장님 지적 2)
+const TLDR_CORE_MATRIX = {
+  // 주식·코인 6개 시나리오
+  wait_buy:  '방향성은 잡히는 중이지만, 확인 없이 들어가면 손실 구간으로 바로 연결될 수 있습니다',
+  wait_sell: '익절 흐름은 살아있지만, 지금은 추가 진입보다 청산 타이밍 관리가 수익을 결정짓는 구간입니다',
+  verified:  '진입 기회는 열려 있지만, 신호 미충족 상태에서 들어가면 수익 구간이 아닌 버티기 구간으로 전환됩니다',
+  limited:   '기회는 존재하지만, 신호 없이 진입하면 반등이 아닌 추가 하락을 먼저 맞을 가능성이 높은 구간입니다',
+  active:    '진입 타이밍은 열려 있지만, 변동성 구간이기 때문에 방향이 맞아도 흔들림에서 탈락할 수 있습니다',
+  split:     '분할 진입은 유효하지만, 단계마다 흐름이 바뀌는 구간이라 무계획 분할은 평균단가만 망가질 수 있습니다',
+  // 부동산 6개 시나리오 (사장님 톤 패턴 적용)
+  re_wait_buy:      '매수 기회는 존재하지만, 입지 검증 없이 들어가면 장기 묶임 구조로 전환되는 구간입니다',
+  re_wait_sell_act: '매도 흐름은 열려 있지만, 시점 선택을 놓치면 호가 협상력이 빠르게 약화될 수 있는 구간입니다',
+  re_wait_sell_pas: '매도 흐름은 형성 중이지만, 매수자 유입 전까지 호가 고집은 거래 지연으로 직결될 수 있습니다',
+  re_verified:      '진입 신호는 열려 있지만, 입지·자금 검증 없이 들어가면 장기 수익이 아닌 부담 구조로 전환됩니다',
+  re_active:        '결정은 명확하지만, 입지 검증 없이 진입하면 장기 수익이 아닌 묶임 구조로 직결됩니다',
+  re_holding:       '보유 흐름은 유효하지만, 시장 흐름 재평가 없이 유지하면 자산 가치가 흔들릴 수 있는 구간입니다'
+};
+
+// [V27.0.3] TAIL 매트릭스 — BUY/SELL 분리 (사장님 지적 3)
+//   SELL 시나리오에 BUY 톤 ('진입하면 ~') 들어가는 결함 차단
+//   본질: 시나리오 톤 일관성 = 결제 전환 결정타
+const ASSET_TAIL_MATRIX = {
+  // BUY 톤 (진입 위험 경고)
+  stock_buy:       '→ 첫 신호 전까지는 진입 자체가 불리한 구조입니다',
+  crypto_buy:      '→ 손절 기준 없이 진입하면 손실 누적 위험이 큽니다',
+  realestate_buy:  '→ 입지 검증 없이 진입하면 장기 묶임 가능성이 높습니다',
+  // SELL 톤 (청산 지연 위험 경고) — '진입/들어가면' 어휘 절대 금지
+  stock_sell:      '→ 무리한 유지 시 수익 반납 위험이 빠르게 커집니다',
+  crypto_sell:     '→ 청산 지연은 수익 반납·손실 전환으로 직결됩니다',
+  realestate_sell: '→ 호가 고집은 거래 지연·협상력 약화로 이어집니다'
+};
 
 // ══════════════════════════════════════════════════════════════════
 // 📈 주식/코인 메트릭
@@ -9069,6 +9158,8 @@ export default {
           //   사장님 안: 본문 읽기 전 '머리 정돈' TL;DR 박스
           //   효과: 5초 결제 결정의 법칙 + 정보 계층 명확화
           metrics = buildOneLineSummary(metrics);
+          // [V27.0.2] 부동산 한줄 결론 박스 — 별도 빌더 (sell_active/sell_passive 분기)
+          metrics = buildRealEstateOneLineSummary(metrics);
 
           // [V21.1] 종목명 주입 — Client에서 이모지 → 종목명 자동 치환에 사용
           const _subj = (queryType === "stock" || queryType === "crypto" || queryType === "realestate")

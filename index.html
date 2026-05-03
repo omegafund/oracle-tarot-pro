@@ -6163,6 +6163,7 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
                     <!-- [V25.40 Phase 6] 한줄 결론 박스 (사장님 안) — TL;DR 패턴 -->
                     <!--   포지션·전략 다음, 5계층 본문 시작 전 위치                  -->
                     <!--   효과: 본문 읽기 전 머리 정돈 + 5초 결제 결정의 법칙        -->
+                    <!-- [V27.0.2] CORE+TAIL 줄바꿈 표시 (사장님 안) — \n → <br> -->
                     <div style="margin-top:4px; margin-bottom:14px; padding:11px 14px;
                                 background: linear-gradient(135deg, rgba(255,236,159,0.18), rgba(255,236,159,0.05));
                                 border: 1.5px solid rgba(255,236,159,0.5);
@@ -6171,8 +6172,8 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
                         <div style="font-size:0.74rem; color:#FFEC9F; font-weight:800; letter-spacing:0.12em; margin-bottom:5px;">
                             👉 한줄 결론
                         </div>
-                        <div style="font-size:0.96rem; color:#fff; font-weight:700; line-height:1.55;">
-                            "${layers.decision.oneLineSummary}"
+                        <div style="font-size:0.96rem; color:#fff; font-weight:700; line-height:1.7;">
+                            "${layers.decision.oneLineSummary.replace(/\n/g, '<br>')}"
                         </div>
                     </div>` : ''}
 
