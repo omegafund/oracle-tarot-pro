@@ -5451,31 +5451,31 @@ const LOVE_CONTENT_V3 = {
       final_action_statement:"지금은 결정을 내릴 시점이 아니라 관계를 다시 살리는 구간"
     },
     realign: {
-      core_keyword:"방식 수정이 필요한",surface_state:"표면적 거리감",hidden_flow:"관계 구조가 흔들리는 흐름",
-      relationship_type:"구조 재편 단계",dominant_side:"에너지가 한쪽으로 기울어진 상태",
+      core_keyword:"방식 수정이 필요한",surface_state:"표면적 거리감",hidden_flow:"관계 결이 흔들리는 흐름",
+      relationship_type:"재편이 필요한 단계",dominant_side:"에너지가 한쪽으로 기울어진 상태",
       core_decision:"감정이 아닌 방식의 변화",
-      structure_sentence:"단순한 감정 변화가 아니라 관계 방식 자체의 조정 구간입니다",
+      structure_sentence:"단순한 감정 변화가 아니라 관계 결 자체의 조정 구간입니다",
       user_strength:"객관적 인식력",user_hidden:"감정 정리 중인 상태",
       partner_visible:"거리감 유지",partner_real:"관계 방식에 의문",
       relation_dynamic:"방어",counter_dynamic:"거리 두기",
-      positive_result:"방식 전환으로 새 균형 형성",negative_result:"감정에 휘둘려 같은 패턴 반복",
+      positive_result:"방식 전환으로 새 흐름 형성",negative_result:"감정에 휘둘려 같은 패턴 반복",
       essence_summary:"감정은 있어도 같은 방식으로는 더 이상 굴러가지 않는 관계",
       action_1:"거리 두며 자기 흐름 1가지 정리",action_result_1:"감정 소모가 줄고 객관성이 회복됩니다",
-      action_2:"반복되는 패턴 1가지 인식 후 방식 변경",action_result_2:"재정렬 방향이 명확해집니다",
+      action_2:"반복되는 패턴 1가지 인식 후 접근 변경",action_result_2:"재정렬 방향이 명확해집니다",
       avoid_action:"감정 호소 또는 답 없는 추가 연락",risk_effect:"주도권 상실",
       action_core:"행동보다 거리가 회복을 만드는 시점",
       short_term:"1주",short_flow:"최소 거리 두기 권장",
-      mid_term:"2~3주",mid_flow:"관계 방식 재점검 구간",
+      mid_term:"2~3주",mid_flow:"관계 결 재점검 구간",
       long_term:"1~2개월",long_flow:"재정렬 또는 자연 정리 시기",
       critical_timing:"거리 두기 1주 경과 시점",
       timing_now:"지금은 연락 타이밍이 아닙니다",timing_next:"최소 1주 거리 두기 권장",
-      timing_core:"거리가 답입니다 — 감정 아닌 구조 변경",
+      timing_core:"거리가 답입니다 — 감정 아닌 접근의 변경",
       risk_1:"감정 표현 — 상대 부담 증가",risk_2:"답 없는 상태에서 추가 연락",
       risk_progression:"주도권을 잃고 거리가 더 굳어집니다",
       trigger_condition:"상대 반응 없는데 반복 시도하는",collapse_type:"회피 고착화",
       risk_summary:"방식이 바뀌지 않으면 결과도 바뀌지 않습니다",
-      final_state:"관계 방식 전환 필요",final_explanation:"감정이 아닌 구조의 변경이 핵심",
-      good_path:"방식 전환으로 새 균형 형성 — 관계 재정의 가능",
+      final_state:"관계 방식 전환 필요",final_explanation:"감정이 아닌 접근의 변경이 핵심",
+      good_path:"방식 전환으로 새 흐름 형성 — 관계 재정의 가능",
       bad_path:"감정에 휘둘려 같은 패턴 반복 — 정체 고착화",
       final_key:"방식이 바뀌지 않으면 결과도 바뀌지 않는다",
       final_action_statement:"지금은 감정을 더 쏟는 시점이 아니라 방식을 바꾸는 시점"
@@ -5643,7 +5643,14 @@ function buildLoveCoreInsight(content, flowArrow, metaPattern, cards, revFlags) 
   //   원인: line1='이 관계는 ...구조입니다' + line3='이 관계는 ...구조이며'
   //   해결: line3 시작어를 '관계의 중심축은 ...구조이며'로 변경 (의미 보존)
   //   효과: 9개 서브타입 (compatibility~general) 자동 일괄 적용
-  const line3 = `관계의 중심축은 ${content.relationship_type} 구조이며, ${content.structure_sentence}.`;
+  // [V26.14 결함 2] '구조' 단어 자동 중복 회피
+  //   사장님 진단: "관계의 중심축은 구조 재편 단계 구조이며" — 같은 문장 안 '구조' 2회
+  //   원인: relationship_type='구조 재편 단계' + 빌더 고정어 '구조이며' = 충돌
+  //   해결: relationship_type에 '구조' 포함 시 '흐름이며'로 자동 치환
+  //   효과: 9개 서브타입 모든 셋트 (advance/maintain/realign/close) 자동 일괄 적용
+  const _hasStructWord = String(content.relationship_type || '').includes('구조');
+  const _line3Suffix = _hasStructWord ? '의 흐름이며' : ' 구조이며';
+  const line3 = `관계의 중심축은 ${content.relationship_type}${_line3Suffix}, ${content.structure_sentence}.`;
   
   // line4: 중심축
   const line4 = `이미 감정의 중심축은 ${content.dominant_side} 쪽으로 기울어져 있습니다.`;
@@ -5846,7 +5853,7 @@ const LOVE_VERDICT_MATRIX = {
       intensity: 1.0
     },
     negative: {
-      verdict: '이 관계는 감정은 존재하지만, 구조적 균형이 맞지 않으면 오래 유지되기 어려운 흐름입니다',
+      verdict: '이 관계는 감정은 존재하지만, 구조적 균형 조정 없이는 진전이 어려운 흐름입니다',
       action:  '감정보다 관계 유지 방식(소통·역할)을 먼저 조정해야 합니다',
       risk:    '지금 방식 유지 시, 반복 충돌 후 소진 구조로 흘러갈 가능성이 있습니다',
       intensity: 1.0
