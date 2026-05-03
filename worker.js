@@ -2645,6 +2645,14 @@ function buildOneLineSummary(metrics) {
     }
   } catch (e) { /* Fallback: V28 실패 시 기존 결과 그대로 (Regression 0) */ }
   
+  // [V28.B] enforceIntent 정밀 후처리 — 표현/판단 충돌 차단
+  //   사장님 진단: BUY 점사인데 본문에 '진입 보류 / 0% 관망' = 표현/판단 충돌
+  //   해결: BUY 시나리오에서 HOLD 강한 어휘 → BUY 톤으로 자연 치환
+  //   안전: 실패 시 metrics 그대로 (Regression 0)
+  try {
+    enforceIntentV28(metrics);
+  } catch (e) { /* Fallback */ }
+  
   return metrics;
 }
 
@@ -2713,6 +2721,13 @@ function buildRealEstateOneLineSummary(metrics) {
         timing:      v28.timing
       };
     }
+  } catch (e) { /* Fallback */ }
+  
+  // [V28.B] enforceIntent 정밀 후처리 — 부동산도 동일 적용
+  //   부동산 BUY 시나리오에 HOLD 어휘 잔존 차단
+  //   부동산 SELL 시나리오에 BUY 어휘 잔존 차단
+  try {
+    enforceIntentV28(metrics);
   } catch (e) { /* Fallback */ }
   
   return metrics;
@@ -3674,6 +3689,249 @@ function _v28_lintIntentMatrix(matrix, intentName, forbiddenKeywords) {
     // 정상 시 로그 미출력 (Boot 노이즈 최소화)
   } catch (e) {
     // Linter 실패 시 무시 (안전: 핵심 동작 영향 없음)
+  }
+})();
+
+// ══════════════════════════════════════════════════════════════════
+// 🔥 [V28.B] enforceIntent 정밀 후처리 — 표현/판단 충돌 차단
+//   사장님 결정적 진단 (V28.B):
+//     "포지션: 검증 후 진입 (BUY)" → 그러나 본문은 "진입 보류 / 0% 관망 / 진입 자체 불리"
+//     → 판단은 BUY인데 표현은 HOLD = 사용자 인지 충돌
+//     → 전환률 박살 위험 ★★★
+//
+//   원인:
+//     V27.0.4 매트릭스의 안전 톤이 BUY 시나리오에서 HOLD로 인지됨
+//     사장님 1년 안전 표현이 의도는 좋으나 사용자 인지에는 부정적
+//
+//   해결 (4가지 보강):
+//     ① 단어 제거 → 문장 단위 자연 치환 (문법 100% 보존)
+//     ② BUY 강도 3단계 분기 (대기/조건/적극 시나리오별)
+//     ③ 안전 영역 보호 (카드 본문/면책 박스 X)
+//     ④ Boot Linter 자동 검증
+// ══════════════════════════════════════════════════════════════════
+
+// [V28.B] BUY intent 정규화 매핑 — HOLD 톤 → BUY 톤 자연 치환
+//   사장님 케이스 분석:
+//     "진입 보류 — 0% 관망" → "조건 충족 시 단계적 진입"
+//     "진입 자체가 불리" → "조건부 접근이 안전"
+//     "권장 비중: 0%" → "권장 비중: 신호 충족 시 단계적"
+//   원칙: 판단 정확성은 유지 + 표현은 BUY 톤
+const V28_BUY_NORMALIZATION = [
+  // ── [V28.B 강화] 한줄 결론 / 본문 — 가장 강한 HOLD 톤 우선 처리 ──
+  // 긴 패턴 우선 (정규식 좌→우 평가)
+  [/진입 보류 — 0% 관망이 안정적 흐름입니다/g,    '조건 충족 시 단계적 진입이 효과적인 흐름입니다'],
+  [/진입 보류 — 0% 관망이 안정적 흐름/g,           '조건 충족 시 단계적 진입이 효과적인 흐름'],
+  [/진입 자체가 불리한 구조입니다/g,                 '조건부 접근이 안전한 구조입니다'],
+  [/진입 자체가 불리한 구조/g,                       '조건부 접근이 안전한 구조'],
+  [/관망이 우선되는 구간으로 해석됩니다/g,           '신호 정렬 후 단계적 진입이 유효한 구간으로 해석됩니다'],
+  [/관망이 안정적인 흐름입니다/g,                    '단계적 접근이 안정적인 흐름입니다'],
+  [/관망이 안정적 흐름입니다/g,                      '단계적 접근이 안정적 흐름입니다'],
+  [/무리한 진입보다 객관적 신호 확인 후 대응하는/g,  '단계적 진입을 위한 객관적 신호 확인이 필요한'],
+  [/무리한 진입보다 객관적 신호 확인 후 대응/g,      '단계적 진입을 위한 객관적 신호 확인이 효과적'],
+  
+  // ── [V28.B 정정] 잔존 어휘 단독 패턴 (Step 6 시뮬레이션 결과 보강) ──
+  [/진입 보류/g,                                      '단계적 진입 준비'],   // 단독 패턴
+  [/진입 자체가 불리/g,                                '조건부 접근이 효과적'], // 단독 패턴
+  [/관망이 우선되는 구간/g,                            '단계적 진입이 유효한 구간'],
+  
+  // ── 매매 전략 (Execution Layer) ──
+  // weight 필드 처리 — '0% — 객관적' 패턴 자연 치환
+  [/0% — 객관적 신호 확인 전까지 관망이 안정적인 흐름입니다/g,
+   '신호 충족 시 단계적 — 객관적 신호 확인 후 단계적 접근이 안정적인 흐름입니다'],
+  [/0% — 객관적 신호 확인 전까지 관망이 안정적인 흐름/g,
+   '신호 충족 시 단계적 — 객관적 신호 확인 후 단계적 접근이 안정적인 흐름'],
+  [/0% — 객관적 신호 확인 전까지/g,                    '신호 충족 시 단계적 — 객관적 신호 확인 후'],
+  
+  [/권장 비중: 0%/g,                                  '권장 비중: 신호 충족 시 단계적 확대'],
+  [/매도 비중: 0%/g,                                  '매도 비중: 추세 확인 후 단계적 조정'],
+  
+  // stopLoss / target 단독 값 처리 ★ 사장님 결함 직접 수정
+  // 단독 '진입 전 단계' 값을 '신호 충족 후 설정'으로 치환
+  [/^진입 전 단계$/g,                                  '신호 충족 후 설정'],  // 정확히 단독
+  [/손절 기준: 진입 전 단계/g,                        '손절 기준: 1차 신호 충족 직후 설정'],
+  [/목표 구간: 진입 전 단계/g,                        '목표 구간: 트리거 충족 후 단계적 설정'],
+  [/손실 한도: 진입 전 단계/g,                        '손실 한도: 진입 시점 이후 설정'],
+  [/익절 구간: 진입 전 단계/g,                        '익절 구간: 진입 후 단계적 설정'],
+  
+  // ── 매매 타이밍 가이드 (Timing Layer) ──
+  [/⚠️ 관망 구간/g,                                   '⚡ 조건부 진입 구간'],
+  [/진입 트리거 미충족 — 객관적 신호 확인 후 진입/g, '단계적 진입 전 객관적 신호 정렬 확인 우선'],
+  
+  // ── 행동 시 결과 (Risk Result) ──
+  [/지금 진입하면 '점수만 보고 카드 의미를 무시한 진입'이 되어 변동성에 노출되고/g,
+   '단계적 접근이 변동성 흡수에 효과적이며, 신호 정렬 후 진입이 안정적인 흐름이고'],
+  
+  // ── 진단 & 권장 흐름 ──
+  [/매수 금지/g,                                       '단계적 매수 권장'],
+  [/진입 금지/g,                                       '신호 검증 우선'],
+  
+  // ── 흐름 신호 ──
+  [/관망\/신중 카드 우세 — 추세 검증 전 진입 보류가 보수적 접근/g,
+   '신중 카드 우세 — 단계적 진입과 추세 검증 동반이 효과적'],
+];
+
+// [V28.B] SELL intent 정규화 매핑 — HOLD/BUY 톤 → SELL 톤
+const V28_SELL_NORMALIZATION = [
+  // 매도 시나리오에 BUY 톤 잔존 시 차단
+  [/매수 가능성은 열려 있지만/g,                  '매도 가능성은 열려 있지만'],
+  [/진입 타이밍이 수익을 가르는 구간/g,            '청산 타이밍이 수익을 가르는 구간'],
+  [/매수 흐름 시 진입 보류/g,                      '매도 흐름 시 단계적 정리'],
+  
+  // 보유 유지 강요 표현 (매도 시나리오에서는 부적절)
+  [/일괄 정리보다 핵심 보유 유지/g,                '일괄 정리보다 단계적 청산 흐름'],
+];
+
+// [V28.B] HOLD intent 정규화 매핑 — BUY/SELL 톤 → HOLD 톤
+const V28_HOLD_NORMALIZATION = [
+  // HOLD 시나리오에 BUY/SELL 강한 톤 잔존 시 차단
+  [/진입 타이밍이 수익을 가르는 구간/g,            '시점 판단이 결과를 결정짓는 구간'],
+  [/청산 타이밍이 수익을 가르는 구간/g,            '시점 판단이 결과를 결정짓는 구간'],
+];
+
+// [V28.B] enforceIntentV28 — 정밀 후처리 함수
+//   적용 위치: buildOneLineSummary / buildRealEstateOneLineSummary 끝
+//   안전: 실패 시 metrics 그대로 반환 (Regression 0)
+//   영향 범위: decision.oneLineSummary, decision.position, decision.strategy
+//             그 외 metrics.layers 박스 (criticalInterpretation은 신중히)
+//   안전 영역 보호: 카드 본문 / 면책 박스 / 영성 콘텐츠 — 적용 X
+function enforceIntentV28(metrics) {
+  if (!metrics || !metrics.layers || !metrics.layers.decision) return metrics;
+  
+  try {
+    // Intent 추출 — V28 detectIntent 신뢰 시스템 활용
+    const intent = (typeof _v28_detectIntent === 'function')
+      ? _v28_detectIntent(metrics)
+      : (metrics.stockIntent || metrics.intent || 'buy');
+    
+    // 적용할 정규화 매핑 선택
+    const normalizationMap = (intent === 'sell') ? V28_SELL_NORMALIZATION
+                           : (intent === 'hold') ? V28_HOLD_NORMALIZATION
+                           : V28_BUY_NORMALIZATION;
+    
+    // 안전: 매핑 없거나 비어 있으면 그대로 반환
+    if (!Array.isArray(normalizationMap) || normalizationMap.length === 0) return metrics;
+    
+    // 정규화 적용 헬퍼
+    const _normalize = (text) => {
+      if (typeof text !== 'string' || !text) return text;
+      let result = text;
+      for (const [pattern, replacement] of normalizationMap) {
+        result = result.replace(pattern, replacement);
+      }
+      return result;
+    };
+    
+    // ── 1. decision.oneLineSummary (한줄 결론) ──
+    if (metrics.layers.decision.oneLineSummary) {
+      metrics.layers.decision.oneLineSummary = _normalize(metrics.layers.decision.oneLineSummary);
+    }
+    
+    // ── 2. decision.strategy (전략) ──
+    if (metrics.layers.decision.strategy) {
+      metrics.layers.decision.strategy = _normalize(metrics.layers.decision.strategy);
+    }
+    
+    // ── 3. decision.position (포지션 — 신중히) ──
+    //   포지션은 '검증 후 진입' 같은 라벨 → 변경 X (혼동 방지)
+    
+    // ── 4. layers.execution (매매 전략) ──
+    if (metrics.layers.execution) {
+      const exec = metrics.layers.execution;
+      ['weight', 'stopLoss', 'target', 'strategy', 'timing'].forEach(field => {
+        if (exec[field]) exec[field] = _normalize(exec[field]);
+      });
+      
+      // [V28.B 정정] stopLoss/target 단독 값 처리 — 정확 일치 시 직접 치환
+      //   사장님 결함: stopLoss="진입 전 단계" 단독 값 매핑 안 됨
+      //   원인: 정규식 /^진입 전 단계$/g가 단일 값에 매칭 어려움
+      //   해결: 정확 일치 직접 검사 (BUY intent 한정)
+      if (intent === 'buy') {
+        const STANDALONE_BUY_REPLACEMENTS = {
+          '진입 전 단계':       '신호 충족 후 설정',
+          '0%':                 '신호 충족 시 단계적',
+          '관망':               '단계적 접근',
+          '진입 보류':          '단계적 진입 준비'
+        };
+        ['weight', 'stopLoss', 'target'].forEach(field => {
+          if (exec[field] && typeof exec[field] === 'string') {
+            const trimmed = exec[field].trim();
+            if (STANDALONE_BUY_REPLACEMENTS[trimmed]) {
+              exec[field] = STANDALONE_BUY_REPLACEMENTS[trimmed];
+            }
+          }
+        });
+      }
+    }
+    
+    // ── 5. layers.timing (매매 타이밍) ──
+    if (metrics.layers.timing) {
+      const t = metrics.layers.timing;
+      ['phase', 'description', 'guide'].forEach(field => {
+        if (t[field]) t[field] = _normalize(t[field]);
+      });
+    }
+    
+    // ── 6. layers.risk (리스크 분석 — 핵심 키만, 본문은 보존) ──
+    //   리스크 본문은 사장님 V25.22 안전 표현 → 변경 X
+    //   '핵심:' 같은 결론 라벨만 정규화
+    if (metrics.layers.risk && metrics.layers.risk.coreKey) {
+      metrics.layers.risk.coreKey = _normalize(metrics.layers.risk.coreKey);
+    }
+    
+    // ── 7. finalOracle (제우스 최종 신탁) ──
+    if (metrics.finalOracle) {
+      metrics.finalOracle = _normalize(metrics.finalOracle);
+    }
+    
+    // ── 8. flowSummary (흐름 요약) ──
+    if (metrics.flowSummary) {
+      metrics.flowSummary = _normalize(metrics.flowSummary);
+    }
+    
+    // ── 안전 영역 보호 (변경 X) ──
+    //   metrics.cardNarrative (카드 본문 PAST/PRESENT/FUTURE)
+    //   metrics.zeusV28 (V28 박스 — 이미 정확)
+    //   metrics.disclaimer (면책 박스)
+    //   metrics.spirituality (영성 콘텐츠)
+    
+    return metrics;
+  } catch (e) {
+    // Fallback: 실패 시 metrics 그대로 (Regression 0)
+    return metrics;
+  }
+}
+
+// [V28.B Boot Linter 강화] 정규화 매핑 자체 검증
+//   목적: 매핑된 결과 자체에 어휘 충돌 없는지
+(function _v28b_bootLinter() {
+  try {
+    const errors = [];
+    
+    // BUY 정규화 결과에 'HOLD 강한 어휘' 0건 검증
+    V28_BUY_NORMALIZATION.forEach(([pattern, replacement], idx) => {
+      // replacement에 '진입 금지', '0% 관망' 등 강한 HOLD 어휘 없어야 함
+      const hardHoldWords = ['진입 금지', '매수 금지', '진입 보류', '0% 관망'];
+      hardHoldWords.forEach(word => {
+        if (replacement.includes(word)) {
+          errors.push(`[V28_BUY_NORM][${idx}] HOLD 어휘 잔존: "${word}"`);
+        }
+      });
+    });
+    
+    // SELL 정규화 결과에 BUY 어휘 0건 검증
+    V28_SELL_NORMALIZATION.forEach(([pattern, replacement], idx) => {
+      if (/(?:^|[^자])진입|매수(?!자)/.test(replacement)) {
+        // '매수자'는 거래 상대방 — false positive
+        // '진입' 단독은 매도 점사에서 부적절
+        errors.push(`[V28_SELL_NORM][${idx}] BUY 어휘 잔존: "${replacement.substring(0, 40)}..."`);
+      }
+    });
+    
+    if (errors.length > 0) {
+      console.error('[V28.B LINTER] 정규화 매핑 결함:', errors);
+    }
+  } catch (e) {
+    // 무시
   }
 })();
 
@@ -11361,10 +11619,19 @@ export default {
     if (request.method === "POST") {
       try {
         const body = await request.json();
-        const { prompt, cardNames, cardPositions, isReversed, userName,
+        const { prompt, cardNames, cardPositions, isReversed, userName: rawUserName,
                 loveSubType, stockSubType, reSubType, explicitDomain,
                 // [V25.18] 운세 서브타입 — wealth/health/career/today/general/newyear/etc
                 fortuneSubType } = body;
+        
+        // [V28.A 정정] userName 정규화 — '님' 접미사 자동 제거
+        //   사장님 진단: "오메가님님의" 중복 노출
+        //   원인: 사용자 닉네임이 '님'으로 끝나면 + "님의" 패턴 = "님님의"
+        //   해결: 입력 단계에서 '님' 접미사 strip → 시스템에서 자동 부착
+        //   대비: 닉네임이 '님'으로 자연스레 끝나는 경우 (예: '오메가님') 모두 처리
+        const userName = (typeof rawUserName === 'string' && rawUserName)
+          ? rawUserName.replace(/\s*님$/, '').trim()
+          : rawUserName;
 
         const rawToken = request.headers.get("x-session-token") || "";
         const isPaid   = await verifyToken(rawToken, env.TOKEN_SECRET);
@@ -12702,8 +12969,21 @@ function extractSubject(prompt, queryType) {
     //   "동국제강 매수" → "동국제강" (두 번째가 동사면 제외)
     const m2 = p.match(/^([가-힣]{2,6})\s+([가-힣]{2,8})\s+(?:다음주|이번주|언제|매수|매도|매입|살|팔|사려|사고|살까|팔려|팔까|팔고|팔아|진입|타이밍|적기|시점|단타|장투|들어가|뽑|익절|손절|청산|어떨|어때|좋을)/);
     if (m2) {
-      // [V22.6] 두 번째 단어가 매매 동사/명사면 종목명에서 제외
-      const VERBS_OR_KEYWORDS = ['매수','매도','매입','매각','진입','청산','손절','익절','단타','장투','스윙','관망','보유','이번','지금','다음','오늘','내일','종목','주식','코인','타이밍','시점','적기'];
+      // [V22.6 + V28.A] 두 번째 단어가 매매 동사/명사면 종목명에서 제외
+      //   사장님 진단 (V28.A): "삼천당제약 추가 매수" → "삼천당제약추가" 결함
+      //   원인: '추가' 단어가 VERBS_OR_KEYWORDS에 없어 종목명에 포함됨
+      //   해결: 매매 부사·접두어·관용 표현 보강
+      const VERBS_OR_KEYWORDS = [
+        '매수','매도','매입','매각','진입','청산','손절','익절',
+        '단타','장투','스윙','관망','보유',
+        '이번','지금','다음','오늘','내일',
+        '종목','주식','코인','타이밍','시점','적기',
+        // [V28.A 정정] 매매 부사·접두어 추가
+        '추가','추가매수','추가매도','분할','분할매수','분할매도',
+        '재진입','재매수','재매도','리진입',
+        '신규','신규매수','신규진입',
+        '전량','일부','반등','반락'
+      ];
       if (VERBS_OR_KEYWORDS.includes(m2[2])) {
         // "동국제강 매수" → "동국제강"
         return m2[1].trim();
@@ -12712,8 +12992,11 @@ function extractSubject(prompt, queryType) {
       return (m2[1] + m2[2]).trim();
     }
 
-    // [V20.2] 3순위: 키워드 앞 단일 단어
-    const m = p.match(/^([가-힣A-Za-z][가-힣A-Za-z0-9\-]{1,15})\s+(?:다음주|이번주|언제|매수|매도|매입|살|팔|사려|사고|살까|팔려|팔까|진입|타이밍|적기|좋은|시점|급등|급락|이번|지금|단타|장투|들어갈|뽑|어떻|어떤|어떨|거래|재개|익절|손절|청산|정리|살려|적당)/);
+    // [V20.2 + V28.A] 3순위: 키워드 앞 단일 단어
+    //   사장님 진단 (V28.A): "에코프로 재매수" → "에코프"로 잘못 추출되는 결함
+    //   원인: '재매수'가 키워드 목록에 없어 마지막 글자 '수'까지만 매칭
+    //   해결: '추가매수/재매수/분할매도' 등 합성 동사 우선 매칭
+    const m = p.match(/^([가-힣A-Za-z][가-힣A-Za-z0-9\-]{1,15})\s+(?:추가매수|추가매도|분할매수|분할매도|재진입|재매수|재매도|신규매수|신규진입|다음주|이번주|언제|매수|매도|매입|살|팔|사려|사고|살까|팔려|팔까|진입|타이밍|적기|좋은|시점|급등|급락|이번|지금|단타|장투|들어갈|뽑|어떻|어떤|어떨|거래|재개|익절|손절|청산|정리|살려|적당)/);
     if (m) return stripJosa(m[1].trim());
     // fallback: 첫 단어
     const first = p.split(/\s+/)[0];
