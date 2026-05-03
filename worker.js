@@ -5729,12 +5729,18 @@ function buildLoveTiming(content, numerologyText, cards) {
   };
 }
 
-function buildLoveRisk(content) {
+function buildLoveRisk(content, loveSubType) {
+  // [V26.13 결함 해소] riskPhrase 한방 문구 — 리스크 박스 결론 트리거
+  //   사장님 진단: "단순 위험 나열에서 행동 필요성 결론으로 격상"
+  //   해결: LOVE_RISK_PHRASE에서 서브타입별 매핑 (9개 일관 톤)
+  //   fallback: general (서브타입 매칭 실패 시)
+  const riskPhrase = LOVE_RISK_PHRASE[loveSubType] || LOVE_RISK_PHRASE.general;
   return {
     risk1: content.risk_1, risk2: content.risk_2,
     riskProgression: content.risk_progression,
     triggerCondition: content.trigger_condition, collapseType: content.collapse_type,
-    coreKey: content.risk_summary
+    coreKey: content.risk_summary,
+    riskPhrase
   };
 }
 
@@ -5785,6 +5791,33 @@ const LOVE_PIVOT_PHRASE = {
   contact:       '연락의 내용보다, 보내는 타이밍이 관계의 방향을 결정짓습니다',
   breakup:       '이 흐름의 핵심은 정리가 아니라, 미련을 끊는 결단이 다음을 여는 분기점입니다',
   general:       '외부 인연을 찾기 전, 자신의 기준이 정리되어야 흐름이 열리는 시점입니다'
+};
+
+// ══════════════════════════════════════════════════════════════════
+// [V26.13 결함 해소] LOVE_RISK_PHRASE — 리스크 박스 경고형 한방 (NEW)
+//   사장님 진단: "동일 카테고리 점사 반복 시 한방 문구 단조로움"
+//                "리스크 박스가 단순 위험 나열에서 행동 필요성 결론으로 격상 필요"
+//   설계 원칙: 리스크 박스의 결론 한 줄 — '놓치면 깨짐' 톤
+//   톤 패턴: [가능성 있음] + [, but] + [놓치면 깨짐]
+//     가능성  : 긍정 인정 (...있지만, ...형성됐지만)
+//     단서    : 'but'으로 긴박 전환
+//     상실    : 사용자 통제 미흡 시 결과 (어긋남·반복·끊김·종료)
+//   효과: V26.8 결단 한방 + V26.13 경고 한방 = 이중 트리거
+//        → 결제 사용자 단조로움 해소 + 행동 필요성 ↑
+//   범위: 연애 9개 서브타입 일괄 적용 (LOVE_PIVOT_PHRASE 패턴 동일)
+//   위치: 리스크 박스 안 마지막 라인 (전 카테고리 공통)
+//   시각: 주황색 강조 (V26.8 빨강과 차별화 — 경고 vs 결단)
+// ══════════════════════════════════════════════════════════════════
+const LOVE_RISK_PHRASE = {
+  compatibility: '두 사람의 흐름은 맞물려 있지만, 해석 없이 지나가면 방향이 어긋날 수 있는 구간입니다',
+  marriage:      '관계는 안정으로 향하고 있지만, 선택 기준이 흐려지면 타이밍을 놓칠 수 있는 흐름입니다',
+  thumb:         '감정은 형성됐지만, 신호를 놓치면 자연스럽게 멀어질 수 있는 미묘한 구간입니다',
+  crush:         '감정은 이어질 가능성이 있지만, 접근 방식에 따라 그대로 멈출 수도 있는 흐름입니다',
+  mindread:      '마음은 존재하지만, 해석을 잘못하면 정반대로 받아들일 수 있는 단계입니다',
+  reunion:       '다시 이어질 여지는 있지만, 같은 방식이면 반복으로 끝날 수 있는 흐름입니다',
+  contact:       '연결의 흐름은 살아 있지만, 타이밍이 어긋나면 자연스럽게 끊어질 수 있습니다',
+  breakup:       '관계는 정리 단계에 있지만, 방향에 따라 완전 종료가 아닌 전환으로 남을 수 있습니다',
+  general:       '흐름은 열려 있지만, 선택과 반응에 따라 전혀 다른 결과로 갈리는 시점입니다'
 };
 
 // ── MASTER ──
@@ -6101,7 +6134,7 @@ function buildLoveOracleV25_24({ totalScore, cards, revFlags, loveSubType, numer
       relationEssence: buildLoveRelationEssence(content, cards, revFlags),
       actionGuide: buildLoveActionGuide(content),
       timing: buildLoveTiming(content, numerology, cards),
-      risk: buildLoveRisk(content),
+      risk: buildLoveRisk(content, subtype),
       final: buildLoveFinal(content, scoreCategory, subtype)
     },
     proEnhancement: buildLoveProEnhancement(metaPattern),
