@@ -3772,13 +3772,45 @@ const V28_BUY_NORMALIZATION = [
 
 // [V28.B] SELL intent 정규화 매핑 — HOLD/BUY 톤 → SELL 톤
 const V28_SELL_NORMALIZATION = [
-  // 매도 시나리오에 BUY 톤 잔존 시 차단
+  // ── 매도 시나리오에 BUY 톤 잔존 시 차단 ──
   [/매수 가능성은 열려 있지만/g,                  '매도 가능성은 열려 있지만'],
   [/진입 타이밍이 수익을 가르는 구간/g,            '청산 타이밍이 수익을 가르는 구간'],
   [/매수 흐름 시 진입 보류/g,                      '매도 흐름 시 단계적 정리'],
   
-  // 보유 유지 강요 표현 (매도 시나리오에서는 부적절)
+  // ── 보유 유지 강요 표현 (매도 시나리오에서는 부적절) ──
+  // ★ 긴 패턴 우선 — '와/과' 조사 자연스러움 보장
+  [/일괄 정리보다 핵심 보유 유지와 분할 익절 준비/g, '일괄 정리보다 단계적 청산 흐름과 분할 익절 준비'],
   [/일괄 정리보다 핵심 보유 유지/g,                '일괄 정리보다 단계적 청산 흐름'],
+  
+  // ── [V28.B 정정] 결함 ① 사장님 V27.0.3 정신 차단 (최우선) ──
+  //   매도 점사인데 '확인 없는 진입' = 사장님 1년 가르침 위반
+  //   "SELL 시나리오에 '진입/매수' 어휘 절대 금지"
+  [/확인 없는 진입이 가장 큰 리스크/g,             '욕심 청산 지연이 가장 큰 리스크'],
+  [/확인 없는 진입은 손실 노출로 이어질 수 있습니다/g, '청산 지연은 수익 반납으로 이어질 수 있습니다'],
+  [/확인 없는 진입이/g,                            '욕심 청산 지연이'],
+  [/확인 없는 진입은/g,                            '청산 지연은'],
+  
+  // ── [V28.B 정정] 결함 ② 매도 타이밍 톤 정확화 ──
+  [/⚠️ 관망 구간/g,                                '⚡ 단계적 매도 구간'],
+  [/관망이 우선되는 구간으로 해석됩니다/g,         '단계적 청산이 우선되는 구간으로 해석됩니다'],
+  [/관망이 안정적인 흐름입니다/g,                  '단계적 청산이 안정적인 흐름입니다'],
+  
+  // ── [V28.B 정정] 결함 ③ 매도 의도 명확화 ──
+  // ★ 가장 긴 통합 패턴 우선 (조사 '와/과' 자연스러움 보장)
+  [/성급한 일괄 정리보다 핵심 보유 유지와 분할 익절 준비/g, '성급한 일괄 정리보다 단계적 청산 흐름과 분할 익절 준비'],
+  [/핵심 보유 유지와 분할 익절 준비/g,             '단계적 청산 흐름과 분할 익절 준비'],
+  [/성급한 일괄 정리보다 핵심 보유 유지/g,         '성급한 일괄 정리보다 단계적 청산 흐름'],
+  [/핵심 보유 유지/g,                              '단계적 청산 흐름'],
+  
+  // ── [V28.B 정정] 결함 ④ 매도 카드 근거 정확화 ──
+  [/공격적 확장보다는 리스크 관리 중심/g,          '추가 보유 지속보다는 리스크 관리 중심'],
+  [/공격적 확장보다는/g,                            '추가 보유 지속보다는'],
+  [/공격적 확장보다/g,                              '추가 보유 지속보다'],
+  
+  // ── [V28.B 예방] 매도 점사에 BUY 어휘 잔존 차단 ──
+  [/진입 보류가 보수적 접근/g,                     '단계적 청산이 보수적 접근'],
+  [/진입 자체가 불리/g,                             '청산 지연이 불리'],
+  [/진입 시점에 대한 신중한 판단/g,                '청산 시점에 대한 신중한 판단'],
 ];
 
 // [V28.B] HOLD intent 정규화 매핑 — BUY/SELL 톤 → HOLD 톤
@@ -3893,6 +3925,68 @@ function enforceIntentV28(metrics) {
     //   metrics.zeusV28 (V28 박스 — 이미 정확)
     //   metrics.disclaimer (면책 박스)
     //   metrics.spirituality (영성 콘텐츠)
+    
+    // ══════════════════════════════════════════════════════════════
+    // [V28.B Layer 2] Cross-Contamination 결과 검증 — 사장님 우려 직접 해결
+    //   목적: Intent 오분류 시에도 BUY/SELL 어휘 충돌 차단
+    //   원리: 매핑 적용 후 결과에 반대 의도 어휘가 잔존하는지 검사
+    //         → 발견 시 console.warn으로 추적 (운영 모니터링)
+    //         → 사장님 V27.0.3 정신 4중 안전망 완성
+    //   영향: 검증만, 결과는 그대로 (안전 — Regression 0)
+    // ══════════════════════════════════════════════════════════════
+    try {
+      const _crossCheckTexts = [
+        metrics.layers.decision.oneLineSummary,
+        metrics.layers.decision.strategy,
+        metrics.layers.execution?.weight,
+        metrics.layers.execution?.stopLoss,
+        metrics.layers.execution?.target,
+        metrics.layers.timing?.phase,
+        metrics.layers.risk?.coreKey,
+        metrics.finalOracle,
+        metrics.flowSummary
+      ].filter(t => typeof t === 'string').join(' \n ');
+      
+      if (intent === 'buy') {
+        // BUY 점사 결과에 SELL 강한 어휘 잔존 검사
+        const sellHardWords = [
+          '청산 지연이 가장 큰 리스크',
+          '⚡ 단계적 매도 구간',
+          '단계적 청산 흐름',
+          '추가 보유 지속보다는'
+        ];
+        const found = sellHardWords.filter(w => _crossCheckTexts.includes(w));
+        if (found.length > 0) {
+          console.warn('[V28.B Layer 2] BUY 점사에 SELL 어휘 잔존:', found);
+        }
+      } else if (intent === 'sell') {
+        // SELL 점사 결과에 BUY 강한 어휘 잔존 검사
+        const buyHardWords = [
+          '확인 없는 진입이 가장 큰 리스크',
+          '⚡ 조건부 진입 구간',
+          '조건부 접근이 안전한 구조',
+          '단계적 진입이 효과적'
+        ];
+        const found = buyHardWords.filter(w => _crossCheckTexts.includes(w));
+        if (found.length > 0) {
+          console.warn('[V28.B Layer 2] SELL 점사에 BUY 어휘 잔존:', found);
+        }
+      } else if (intent === 'hold') {
+        // HOLD 점사 결과에 BUY/SELL 강한 어휘 잔존 검사
+        const tradingWords = [
+          '확인 없는 진입이 가장 큰 리스크',
+          '청산 지연이 가장 큰 리스크',
+          '⚡ 조건부 진입 구간',
+          '⚡ 단계적 매도 구간'
+        ];
+        const found = tradingWords.filter(w => _crossCheckTexts.includes(w));
+        if (found.length > 0) {
+          console.warn('[V28.B Layer 2] HOLD 점사에 매매 어휘 잔존:', found);
+        }
+      }
+    } catch (e) {
+      // Layer 2 검증 실패 — 무시 (안전, 핵심 동작 영향 없음)
+    }
     
     return metrics;
   } catch (e) {
