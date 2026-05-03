@@ -3204,6 +3204,12 @@ function setSituation(btn, type, domain) {
         LOVE_SUBTYPE  = pending.loveSubType  || '';
         STOCK_SUBTYPE = pending.stockSubType || '';
         RE_SUBTYPE    = pending.reSubType    || '';
+        // [V26.10 Critical Fix] 도메인 라우팅 키 복원 — 결제 후 LOVE/REALESTATE 라우팅 보장
+        //   사장님 진단: "결제 후 점사 결과가 ZEUS FORTUNE ORACLE로 출력"
+        //   해결: pendingOracle 저장 시 ACTIVE_DOMAIN_BAR + FORTUNE_SUBTYPE 함께 저장됐으므로 복원
+        //   효과: Worker가 explicitDomain 정확히 받아 LOVE/REALESTATE 라우팅 진행
+        FORTUNE_SUBTYPE   = pending.fortuneSubType  || '';
+        ACTIVE_DOMAIN_BAR = pending.activeDomainBar || '';
 
         // 질문 복원
         const qInput = document.getElementById('seed-input');
@@ -7982,7 +7988,13 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
                     <div class="zenith-title-sub" style="color:rgba(46,204,113,0.85); font-size:0.85rem; font-weight:800; letter-spacing:0.2em;">ZEUS INVESTMENT ORACLE</div>`;
                 }
                 const qRawTitle = (document.getElementById('seed-input')?.value || '').toLowerCase();
-                const isLoveTitle = (typeof LOVE_KEYWORDS_V2 !== 'undefined') && LOVE_KEYWORDS_V2.some(k => qRawTitle.includes(k));
+                // [V26.11 진짜 결함 Fix 2] 헤더 분기도 ACTIVE_DOMAIN_BAR 우선 체크
+                //   사장님 진단: 헤더 'ZEUS FORTUNE ORACLE' / 박스 'FORTUNE 박스' 모두 결함
+                //   해결: 카테고리 명시 선택 시 텍스트 분류 우회 (박스 분기와 일관)
+                const _domIsLoveTitle = (typeof ACTIVE_DOMAIN_BAR !== 'undefined') && ACTIVE_DOMAIN_BAR === 'love';
+                const isLoveTitle = _domIsLoveTitle
+                    ? true
+                    : ((typeof LOVE_KEYWORDS_V2 !== 'undefined') && LOVE_KEYWORDS_V2.some(k => qRawTitle.includes(k)));
                 if (isLoveTitle) {
                     return `
                     <span class="zenith-title-main" style="color:#2ecc71; font-size:1.2rem; font-weight:900; display:block;">제우스의 최종 연애 신탁</span>
@@ -8072,9 +8084,24 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
 
             // [V18.2 방호벽] 연애 키워드 감지 시에만 연애 전용 블록 렌더링
             //                일반 운세는 기존 운세 에너지 지표 박스 유지
-            const isLoveQuery = (typeof LOVE_KEYWORDS_V2 !== 'undefined')
-                ? LOVE_KEYWORDS_V2.some(k => qRaw2.includes(k))
-                : false;
+            // [V26.11 진짜 결함 Fix] 화면 분기 라우팅 — ACTIVE_DOMAIN_BAR 우선 체크
+            //   사장님 진단: "PRO 결제 후 LOVE 점사인데 ZEUS FORTUNE ORACLE 박스 출력"
+            //   원인: 화면 분기(isLoveQuery)가 ACTIVE_DOMAIN_BAR 무시하고
+            //         질문 텍스트의 LOVE_KEYWORDS_V2 매칭만으로 결정
+            //   증거: 사장님 질문 "신 검사를 향한 감정 흐름..." 에 LOVE_KEYWORDS_V2 키워드 0개
+            //         → '감정' '흐름' '신 검사' 모두 키워드 풀에 없음
+            //         → isLoveQuery=false → ZEUS FORTUNE ORACLE 박스
+            //   결과: V26.4/V26.9/V26.10 라우팅 패치(서버 explicitDomain) 적용됐어도
+            //         화면이 텍스트 키워드만 보고 FORTUNE 박스 그림 → V26.x LOVE 패치 무력화
+            //   해결: ACTIVE_DOMAIN_BAR === 'love' 명시 선택을 최우선으로 체크
+            //         (사용자가 카테고리·서브타입 명시 선택했으면 텍스트 분류 우회)
+            //   효과: LOVE 9개 서브타입 진입 시 모든 경우 ZEUS LOVE ORACLE + 6박스 + 한방 문구 노출
+            const _activeDomainIsLove = (typeof ACTIVE_DOMAIN_BAR !== 'undefined') && ACTIVE_DOMAIN_BAR === 'love';
+            const isLoveQuery = _activeDomainIsLove
+                ? true
+                : ((typeof LOVE_KEYWORDS_V2 !== 'undefined')
+                    ? LOVE_KEYWORDS_V2.some(k => qRaw2.includes(k))
+                    : false);
 
             if (isLoveQuery) {
                 // 💘 연애 전용 블록 — 투자 용어 완전 배제
@@ -11325,6 +11352,13 @@ function startTossPayment(planKey, method) {
     }
 
     // 1. 현재 점사 상태 저장 (결제 후 복원) — 30분 유효
+    // [V26.10 Critical Fix] V26.4/V26.9 결함 재발 차단 — pendingOracle 도메인 복원
+    //   사장님 진단: "PRO 결제 후 mindread 점사 → ZEUS FORTUNE ORACLE 출력 (LOVE 아님)"
+    //   원인: pendingOracle에 ACTIVE_DOMAIN_BAR + FORTUNE_SUBTYPE 저장 누락
+    //   증거: 결제 직전 ACTIVE_DOMAIN_BAR='love' 였으나, 복원 시 빈 문자열로 초기화
+    //   결과: explicitDomain='' → Worker 자동 분류 → 'general' → FORTUNE 박스
+    //   영향: V26.0~V26.9 전체 LOVE 패치 무력화 (한방 문구·6박스·라벨 모두)
+    //   해결: activeDomainBar + fortuneSubType 저장/복원 추가 (5개 도메인 키 풀 일관)
     try {
         const pendingOracle = {
             savedAt:        Date.now(),
@@ -11337,7 +11371,9 @@ function startTossPayment(planKey, method) {
             loveSubType:    (typeof LOVE_SUBTYPE !== 'undefined') ? LOVE_SUBTYPE : '',
             stockSubType:   (typeof STOCK_SUBTYPE !== 'undefined') ? STOCK_SUBTYPE : '',
             reSubType:      (typeof RE_SUBTYPE !== 'undefined') ? RE_SUBTYPE : '',
-            fortuneSubType: (typeof FORTUNE_SUBTYPE !== 'undefined') ? FORTUNE_SUBTYPE : ''
+            fortuneSubType: (typeof FORTUNE_SUBTYPE !== 'undefined') ? FORTUNE_SUBTYPE : '',
+            // [V26.10 Critical] 도메인 라우팅 키 — 결제 후 LOVE/REALESTATE 라우팅 보장
+            activeDomainBar:(typeof ACTIVE_DOMAIN_BAR !== 'undefined') ? ACTIVE_DOMAIN_BAR : ''
         };
         localStorage.setItem('pendingOracle', JSON.stringify(pendingOracle));
     } catch(e) {
