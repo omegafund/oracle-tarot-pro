@@ -2021,13 +2021,35 @@ async function classifyByLLM(prompt, apiKey) {
 
 function detectRealEstateIntent(prompt) {
   const txt = (prompt || "").toLowerCase();
-  const isSell = /팔릴|팔아|팔까|매각|처분|양도|내놓|매물|팔리|매도/.test(txt);
+  // [V27.0 Priority 1] '팔릴까' vs '팔까' 분기 신설 — 사장님 진단 결함 해소
+  //   사장님 케이스: "자양 현대 언제 팔릴까요" (수동·매수자 기다림)
+  //                  → 매도 전략 답변 출력되는 결함 (의미 충돌)
+  //   해결: 한국어 어미 분류
+  //     'sell_passive' (수동·시장 진단): 매수자 유입 시기 / 시장 흐름
+  //     'sell_active'  (능동·매도 전략): 호가 전략 / 매도 타이밍 (현 기능)
+  //     'sell'         (구분 어려운 경우 / 호환): 기존 처리
+  //   답변 차별화: PIVOT_PHRASE 매트릭스에서 sell_passive vs sell_active 분기
+  //
+  //   ※ 가격 정보 X / 의도 분류만 → 자본시장법·공인중개사법 안전 지대
+  
+  // 수동 어미 (시장이 매수자를 보내주길 기다림): 팔릴까/팔리지/안팔려/팔리/안팔린
+  const isSellPassive = /팔릴|팔리지|안팔려|안 팔려|안팔리|안 팔리|팔리는|팔릴지|언제 팔리/.test(txt);
+  // 능동 어미 (내가 매도 결심): 팔까/팔지/팔아/매각/매도/처분/양도/내놓
+  const isSellActive  = /팔까|팔지|팔아|매각|매도|처분|양도|내놓|매물 등록/.test(txt);
+  // 일반 sell (애매한 경우 fallback)
+  const isSellFallback = /팔/.test(txt);
+  
   const isBuy  = /살까|취득|분양|청약|입주|살려|사고|매수/.test(txt);
   const isTiming = /언제|시기|타이밍|적기|시점/.test(txt);
-  if (isTiming && isSell) return "sell";
-  if (isTiming && isBuy)  return "buy";
-  if (isSell) return "sell";
-  if (isBuy)  return "buy";
+  
+  // 우선순위: passive > active > buy > generic sell
+  if (isTiming && isSellPassive) return "sell_passive";
+  if (isTiming && isSellActive)  return "sell_active";
+  if (isTiming && isBuy)         return "buy";
+  if (isSellPassive) return "sell_passive";
+  if (isSellActive)  return "sell_active";
+  if (isBuy)         return "buy";
+  if (isSellFallback) return "sell_active"; // fallback: 매도 일반 처리
   return "hold";
 }
 
@@ -4072,7 +4094,14 @@ function buildStockMetrics({ totalScore, riskScore, cleanCards, isLeverage, quer
       rules: criticalRules,
       // [V20.10] 🔥 Critical Interpretation — 핵심 해석 박스
       criticalInterpretation: criticalInterpretation
-    }
+    },
+    // [V27.0 Priority 3] 한방 문구 — 사장님 안전 매트릭스 (구체 수치·종목 0)
+    //   pivotPhrase: 결단 한방 (FINAL VERDICT 위, 빨강 강조)
+    //   riskPhrase:  경고 한방 (리스크 박스 안, 주황 강조)
+    //   효과: V26.13 LOVE 이중 트리거 패턴 그대로 이식 — 결제자 단조로움 해소
+    //   안전: 매트릭스 사전 정의 풀에서만 출력 (LLM 환각 0 / 자본시장법 안전)
+    pivotPhrase: STOCK_PIVOT_PHRASE[stockSubType] || STOCK_PIVOT_PHRASE[stockIntent] || STOCK_PIVOT_PHRASE.buy,
+    riskPhrase:  STOCK_RISK_PHRASE[stockSubType]  || STOCK_RISK_PHRASE[stockIntent]  || STOCK_RISK_PHRASE.buy
   };
 }
 
@@ -4788,7 +4817,15 @@ function buildRealEstateMetrics({ totalScore, riskScore, cleanCards, intent, pro
         }
         return baseCrit;
       })()
-    }
+    },
+    // [V27.0 Priority 3] 한방 문구 — 사장님 안전 매트릭스 (구체 가격 0)
+    //   intent: buy / sell_active / sell_passive / hold
+    //     sell_active  (능동·매도 전략): "시점 선택이 가격을 좌우합니다"
+    //     sell_passive (수동·시장 진단): "매수자 유입 시점에 따라 결과가 달라집니다"
+    //   효과: V26.13 LOVE 이중 트리거 패턴 그대로 이식
+    //   안전: 매트릭스 사전 정의 풀에서만 출력 (LLM 환각 0 / 공인중개사법 안전)
+    pivotPhrase: REALESTATE_PIVOT_PHRASE[intent] || REALESTATE_PIVOT_PHRASE.buy,
+    riskPhrase:  REALESTATE_RISK_PHRASE[intent]  || REALESTATE_RISK_PHRASE.buy
   };
 }
 
@@ -5838,6 +5875,87 @@ const LOVE_RISK_PHRASE = {
   contact:       '연결의 흐름은 살아 있지만, 타이밍이 어긋나면 자연스럽게 끊어질 수 있습니다',
   breakup:       '관계는 정리 단계에 있지만, 방향에 따라 완전 종료가 아닌 전환으로 남을 수 있습니다',
   general:       '흐름은 열려 있지만, 선택과 반응에 따라 전혀 다른 결과로 갈리는 시점입니다'
+};
+
+// ══════════════════════════════════════════════════════════════════
+// [V27.0 Priority 3] STOCK_PIVOT_PHRASE — 결단 한방 (FINAL VERDICT 위)
+//   사장님 작성 안전 매트릭스 — 흐름·신호·구간만 (구체 수치·종목 X)
+//   톤 패턴: [가능성/기회 인정] + [, but] + [핵심 변수 강조]
+//   범위: 주식 5종 + 코인 5종 + 추가 시나리오 매트릭스
+//   안전: AI 환각 위험 0 / 자본시장법 안전 / 사용자 가치 제공
+// ══════════════════════════════════════════════════════════════════
+const STOCK_PIVOT_PHRASE = {
+  buy:        '매수 가능성은 열려 있지만, 진입 타이밍이 수익을 가르는 구간입니다',
+  sell:       '익절 흐름은 살아있지만, 청산 타이밍이 수익률을 결정짓습니다',
+  scalping:   '단기 기회는 존재하지만, 손절 기준 없이는 수익이 유지되지 않습니다',
+  holding:    '장기 흐름은 유지되지만, 분할 전략이 리스크를 좌우합니다',
+  risk:       '리스크는 통제 가능하지만, 비중 관리가 결과를 가르는 단계입니다',
+  // 추가 시나리오 (사장님 안)
+  wait:       '방향성은 형성 중이지만, 확인 없는 진입은 리스크가 되는 구간입니다',
+  breakout:   '돌파 흐름은 감지되지만, 추격 진입은 리스크가 확대될 수 있습니다',
+  pullback:   '눌림 기회는 존재하지만, 지지 확인이 선행되어야 하는 구간입니다',
+  // 코인 5종 (주식 매트릭스 재사용 + 명시 키)
+  crypto_buy:      '매수 가능성은 열려 있지만, 진입 타이밍이 수익을 가르는 구간입니다',
+  crypto_sell:     '익절 흐름은 살아있지만, 청산 타이밍이 수익률을 결정짓습니다',
+  crypto_scalping: '단기 기회는 존재하지만, 손절 기준 없이는 수익이 유지되지 않습니다',
+  crypto_holding:  '장기 흐름은 유지되지만, 분할 전략이 리스크를 좌우합니다',
+  crypto_risk:     '리스크는 통제 가능하지만, 비중 관리가 결과를 가르는 단계입니다'
+};
+
+// ══════════════════════════════════════════════════════════════════
+// [V27.0 Priority 3] STOCK_RISK_PHRASE — 경고 한방 (리스크 박스 안)
+//   톤 패턴: [흐름 인정] + [, but] + [놓치면 손실]
+// ══════════════════════════════════════════════════════════════════
+const STOCK_RISK_PHRASE = {
+  buy:        '진입 신호는 살아있지만, 확인 없는 진입은 손실 노출로 이어질 수 있습니다',
+  sell:       '익절 흐름은 형성됐지만, 욕심을 내면 수익이 다시 줄어들 수 있는 구간입니다',
+  scalping:   '단기 변동은 살아있지만, 손절 기준이 흐려지면 손실이 빠르게 누적됩니다',
+  holding:    '추세는 유지되지만, 비중 조절이 늦어지면 변동성에 휘둘릴 수 있습니다',
+  risk:       '리스크는 제한적이지만, 비중 관리가 무너지면 손실이 확대될 수 있습니다',
+  wait:       '관망 구간은 안정적이지만, 신호 무시는 기회 손실로 이어질 수 있습니다',
+  breakout:   '돌파 신호는 감지됐지만, 추격 진입은 변동성에 노출되는 구간입니다',
+  pullback:   '눌림 기회는 있지만, 지지 확인 전 진입은 리스크 확대 구간입니다',
+  crypto_buy:      '진입 신호는 살아있지만, 확인 없는 진입은 손실 노출로 이어질 수 있습니다',
+  crypto_sell:     '익절 흐름은 형성됐지만, 욕심을 내면 수익이 다시 줄어들 수 있는 구간입니다',
+  crypto_scalping: '단기 변동은 살아있지만, 손절 기준이 흐려지면 손실이 빠르게 누적됩니다',
+  crypto_holding:  '추세는 유지되지만, 비중 조절이 늦어지면 변동성에 휘둘릴 수 있습니다',
+  crypto_risk:     '리스크는 제한적이지만, 비중 관리가 무너지면 손실이 확대될 수 있습니다'
+};
+
+// ══════════════════════════════════════════════════════════════════
+// [V27.0 Priority 3] REALESTATE_PIVOT_PHRASE — 결단 한방 (FINAL 위)
+//   사장님 작성 안전 매트릭스 — 흐름·신호·시즌만 (구체 가격·매물 X)
+//   톤 패턴: [기회/흐름 인정] + [, but] + [선행 조건 강조]
+//   안전: AI 환각 위험 0 / 공인중개사법 안전
+//
+//   [Priority 1 연동] sell_passive vs sell_active 분리:
+//     sell_passive: '매도 흐름은 형성 중이지만, 매수자 유입 시점에 따라 결과가 달라집니다'
+//     sell_active : '매도 흐름은 열려 있지만, 시점 선택이 가격을 좌우합니다'
+// ══════════════════════════════════════════════════════════════════
+const REALESTATE_PIVOT_PHRASE = {
+  buy:          '매수 기회는 존재하지만, 입지와 조건 검증이 선행되어야 하는 단계입니다',
+  sell:         '매도 흐름은 열려 있지만, 시점 선택이 가격을 좌우합니다',
+  sell_active:  '매도 흐름은 열려 있지만, 시점 선택이 가격을 좌우합니다',
+  sell_passive: '매도 흐름은 형성 중이지만, 매수자 유입 시점에 따라 결과가 달라지는 구간입니다',
+  wait:         '시장 방향은 형성 중이지만, 성급한 결정은 부담으로 이어질 수 있는 구간입니다',
+  holding:      '보유 전략은 유효하지만, 시장 흐름에 따른 재평가가 필요한 구간입니다',
+  risk:         '리스크는 제한적이지만, 자금 계획에 따라 결과가 달라질 수 있습니다',
+  hold:         '보유 전략은 유효하지만, 시장 흐름에 따른 재평가가 필요한 구간입니다'
+};
+
+// ══════════════════════════════════════════════════════════════════
+// [V27.0 Priority 3] REALESTATE_RISK_PHRASE — 경고 한방 (리스크 박스 안)
+//   톤 패턴: [기회 인정] + [, but] + [놓치면 손해/지연]
+// ══════════════════════════════════════════════════════════════════
+const REALESTATE_RISK_PHRASE = {
+  buy:          '매수 기회는 살아있지만, 입지 검증을 미루면 협상력이 약해질 수 있습니다',
+  sell:         '매도 흐름은 형성됐지만, 호가 고집은 거래 지연으로 이어질 수 있는 구간입니다',
+  sell_active:  '매도 흐름은 형성됐지만, 호가 고집은 거래 지연으로 이어질 수 있는 구간입니다',
+  sell_passive: '시장은 살아있지만, 매물 노출 전략이 약하면 매수자 유입이 지연될 수 있습니다',
+  wait:         '관망 흐름은 안정적이지만, 시장 신호 무시는 기회 손실로 이어질 수 있습니다',
+  holding:      '보유는 유효하지만, 시장 흐름 점검을 미루면 자산 가치가 흔들릴 수 있습니다',
+  risk:         '리스크는 제한적이지만, 자금 흐름 점검이 늦어지면 부담이 누적될 수 있습니다',
+  hold:         '보유는 유효하지만, 시장 흐름 점검을 미루면 자산 가치가 흔들릴 수 있습니다'
 };
 
 // ── MASTER ──

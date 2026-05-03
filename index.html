@@ -6541,6 +6541,16 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
                             👉 핵심: ${coreLine}
                         </div>`;
                         })() : ''}
+                        ${d.riskPhrase ? `
+                        <div style="margin-top:12px; padding:13px 15px;
+                                    background: linear-gradient(135deg, rgba(243,156,18,0.12), rgba(231,76,60,0.08));
+                                    border-left: 4px solid #F39C12;
+                                    border-radius: 0 10px 10px 0;
+                                    font-size:0.92rem; font-weight:800; color:#FFC857;
+                                    font-style:italic; line-height:1.65;
+                                    box-shadow: 0 0 12px rgba(243,156,18,0.15);">
+                            👉 ${d.riskPhrase}
+                        </div>` : ''}
                     </div>
                 </div>`;
 
@@ -6581,7 +6591,17 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
                 return '';
             })();
             const criticalInterpHTML = _critText ? `
-                <div style="margin-top:18px; margin-bottom:14px; padding:16px 18px;
+                ${d.pivotPhrase ? `
+                <div style="margin-top:18px; padding:14px 16px;
+                            background: linear-gradient(135deg, rgba(231,76,60,0.14), rgba(192,57,43,0.08));
+                            border-left: 4px solid #E74C3C;
+                            border-radius: 0 10px 10px 0;
+                            font-size:0.94rem; font-weight:800; color:#FF8A80;
+                            font-style:italic; line-height:1.65;
+                            box-shadow: 0 0 14px rgba(231,76,60,0.18);">
+                    👉 지금 흐름은 "${d.pivotPhrase}"
+                </div>` : ''}
+                <div style="margin-top:14px; margin-bottom:14px; padding:16px 18px;
                             background: linear-gradient(135deg, rgba(255,107,107,0.15), rgba(255,107,107,0.06));
                             border: 2px solid rgba(255,107,107,0.45);
                             border-radius: 12px;
