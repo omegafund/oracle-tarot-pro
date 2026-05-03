@@ -6642,7 +6642,12 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
             //   안전: serverMetrics.zeusV28 없으면 빈 문자열 (Fallback)
             const _zeusV28Data = (window._serverMetrics && window._serverMetrics.zeusV28) || null;
             const _isSellMode = (window._serverMetrics && window._serverMetrics.stockIntent === 'sell');
-            const v28BoxHTML = (domain === 'realestate' || domain === 'stock' || domain === 'crypto')
+            // [V28.C] 운세 도메인 추가 — 사장님 명령 (LOVE 점사창 일관성)
+            //   life/general/wealth/health/career/today/newyear/etc 모두 V28 박스 노출
+            const _isFortuneDomain = (domain === 'life' || domain === 'general' || domain === 'wealth' 
+                                     || domain === 'health' || domain === 'career' || domain === 'today' 
+                                     || domain === 'newyear' || domain === 'etc' || domain === 'fortune');
+            const v28BoxHTML = (domain === 'realestate' || domain === 'stock' || domain === 'crypto' || _isFortuneDomain)
                 ? _v28RenderBox(_zeusV28Data, _isSellMode)
                 : '';
             
@@ -6652,6 +6657,11 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
             } else if (domain === 'realestate') {
                 // 부동산: Decision → Market → Execution → Contract → Timing → Signal → Risk → Rules → Critical → V28
                 return decisionHTML + marketHTML + executionHTML + contractHTML + timingHTML + signalHTML + riskHTML + rulesHTML + criticalInterpHTML + v28BoxHTML;
+            } else if (_isFortuneDomain) {
+                // [V28.C] 운세 (life/general/wealth/health/career/today/newyear/etc): 기존 박스 + V28 박스
+                //   사장님 명령: 일반 운세창 = 연애 점사창 일관성
+                //   기존 V25.32 6박스 그대로 유지 (Regression 0) + V28 추가
+                return decisionHTML + executionHTML + timingHTML + signalHTML + riskHTML + rulesHTML + criticalInterpHTML + v28BoxHTML;
             } else {
                 // 주식/코인: Decision → Execution → Timing → Signal → Risk → Rules → Critical → V28
                 return decisionHTML + executionHTML + timingHTML + signalHTML + riskHTML + rulesHTML + criticalInterpHTML + v28BoxHTML;
@@ -6666,12 +6676,38 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
         function _v28RenderBox(zeusV28, isSellMode) {
             if (!zeusV28 || typeof zeusV28 !== 'object') return '';
             
-            const intentLabel = zeusV28.intent === 'sell' ? '매도 흐름'
-                              : zeusV28.intent === 'hold' ? '보유 흐름'
-                              : '진입 흐름';
-            const accentColor = zeusV28.intent === 'sell' ? '#5DADE2'
-                              : zeusV28.intent === 'hold' ? '#F1C40F'
-                              : '#2ecc71';
+            // [V28.C] 운세 도메인 분기 — domain 'fortune' 시 별도 톤
+            //   사장님 명령: LOVE 점사창 일관성 + 운세 통일
+            const isFortune = (zeusV28.domain === 'fortune');
+            
+            const intentLabel = isFortune
+                ? (zeusV28.subtype === 'wealth' ? '재물 흐름'
+                  : zeusV28.subtype === 'health' ? '건강 흐름'
+                  : zeusV28.subtype === 'career' ? '커리어 흐름'
+                  : zeusV28.subtype === 'today'  ? '오늘의 흐름'
+                  : zeusV28.subtype === 'newyear' ? '한 해 흐름'
+                  : '전반 흐름')
+                : zeusV28.intent === 'sell' ? '매도 흐름'
+                : zeusV28.intent === 'hold' ? '보유 흐름'
+                : '진입 흐름';
+            
+            const accentColor = isFortune
+                ? (zeusV28.subtype === 'wealth' ? '#FFD970'
+                  : zeusV28.subtype === 'health' ? '#7ad188'
+                  : zeusV28.subtype === 'career' ? '#5DADE2'
+                  : '#D4AF37')  // 기본 골드
+                : zeusV28.intent === 'sell' ? '#5DADE2'
+                : zeusV28.intent === 'hold' ? '#F1C40F'
+                : '#2ecc71';
+            
+            const accentColorRGB = isFortune
+                ? (zeusV28.subtype === 'wealth' ? '255,217,112'
+                  : zeusV28.subtype === 'health' ? '122,209,136'
+                  : zeusV28.subtype === 'career' ? '93,173,226'
+                  : '212,175,55')
+                : zeusV28.intent === 'sell' ? '93,173,226'
+                : zeusV28.intent === 'hold' ? '241,196,15'
+                : '46,204,113';
             
             // FINAL 박스 (CORE + TONE 조합)
             const finalText = zeusV28.finalText || zeusV28.core || '';
@@ -6716,7 +6752,7 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
                     
                     ${finalText ? `
                     <div style="margin-bottom:18px; padding:12px 14px; 
-                                background: rgba(${zeusV28.intent === 'sell' ? '93,173,226' : zeusV28.intent === 'hold' ? '241,196,15' : '46,204,113'},0.06);
+                                background: rgba(${accentColorRGB},0.06);
                                 border-left: 3px solid ${accentColor};
                                 border-radius: 0 8px 8px 0;">
                         <div style="font-size: 0.76rem; color: ${accentColor}; font-weight: 700; margin-bottom: 6px; letter-spacing: 0.05em;">
@@ -8349,8 +8385,21 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
             
             // [V25.32] V25.32 Oracle이 있으면 우선 출력 (wealth/health/career)
             //   기존 운세 박스를 V25.32 6박스로 대체
+            // [V28.C] 운세 V28 박스 추가 — 사장님 명령 (LOVE 점사창 일관성)
+            //   사장님 결함 진단: 운세 점사창에서 V28 박스 노출 안 됨
+            //   원인: _renderFortuneBlockV25_32은 별도 함수 → 5계층 빌더 통과 X
+            //   해결: V25.32 6박스 + V28 박스 직접 결합하여 반환
             if (v25_32HTML) {
-                return v25_32HTML;
+                // [V28.C] zeusV28 박스 추가 — 운세 도메인 일관성
+                let _fortuneV28HTML = '';
+                try {
+                    const _zeusV28Fortune = (window._serverMetrics && window._serverMetrics.zeusV28) || null;
+                    if (_zeusV28Fortune && typeof _v28RenderBox === 'function') {
+                        _fortuneV28HTML = _v28RenderBox(_zeusV28Fortune, false);
+                    }
+                } catch (e) { /* Fallback: V28 실패 시 V25.32만 노출 (Regression 0) */ }
+                
+                return v25_32HTML + _fortuneV28HTML;
             }
             
             return `
