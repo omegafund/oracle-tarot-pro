@@ -3084,13 +3084,22 @@ function resetCategory() {
 // ══════════════════════════════════════════════════════════════════
 
 function setSituation(btn, type, domain) {
+    // [V26.9 Critical Fix] V26.4 결함 재발 차단 — setSituation 경로 ACTIVE_DOMAIN_BAR 누락
+    //   사장님 진단: "연애 > 상대마음 > 점사 → ZEUS FORTUNE ORACLE 출력"
+    //   원인: V26.4는 selectSubtype()에만 패치되었고
+    //         카테고리 카드 onclick=setSituation 경로는 ACTIVE_DOMAIN_BAR 설정 누락
+    //   증거: love 분기·realestate 분기에서 ACTIVE_DOMAIN_BAR 변경 0건
+    //   결과: explicitDomain='' → Worker가 자동 분류 → 'general' 폴백 → FORTUNE 박스
+    //   영향: V26.0~V26.8 LOVE 도메인 패치 전체 무력화 (한방 문구·6박스·라벨 모두)
+    //   해결: 4개 도메인(love/stock/crypto/realestate) 모두 ACTIVE_DOMAIN_BAR 명시 설정
     // 도메인별 서브타입 저장 — 방호벽: 연애 서브타입과 주식/부동산 서브타입을 분리 관리
     if (domain === 'love') {
         LOVE_SUBTYPE  = type;
-        STOCK_SUBTYPE = ''; RE_SUBTYPE = '';
+        STOCK_SUBTYPE = ''; RE_SUBTYPE = ''; FORTUNE_SUBTYPE = '';
+        ACTIVE_DOMAIN_BAR = 'love';  // [V26.9] Critical 누락 수정 — LOVE 도메인 라우팅 보장
     } else if (domain === 'stock') {
         STOCK_SUBTYPE = type;
-        LOVE_SUBTYPE = ''; RE_SUBTYPE = '';
+        LOVE_SUBTYPE = ''; RE_SUBTYPE = ''; FORTUNE_SUBTYPE = '';
         // [V25.38] 코인에서 주식으로 전환 시 도메인 복구
         if (typeof ACTIVE_DOMAIN_BAR !== 'undefined') ACTIVE_DOMAIN_BAR = 'stock';
     } else if (domain === 'crypto') {
@@ -3098,12 +3107,13 @@ function setSituation(btn, type, domain) {
         //   사장님 결정: 코인 5버튼은 주식 탭 안에 통합 노출
         //   서버에서 crypto_buy/crypto_sell/scalping/holding/crypto_risk로 식별
         STOCK_SUBTYPE = type;
-        LOVE_SUBTYPE = ''; RE_SUBTYPE = '';
+        LOVE_SUBTYPE = ''; RE_SUBTYPE = ''; FORTUNE_SUBTYPE = '';
         // ACTIVE_DOMAIN_BAR 'stock' → 'crypto'로 명시 변경 (서버 라우팅 정확성)
         if (typeof ACTIVE_DOMAIN_BAR !== 'undefined') ACTIVE_DOMAIN_BAR = 'crypto';
     } else if (domain === 'realestate') {
         RE_SUBTYPE    = type;
-        LOVE_SUBTYPE = ''; STOCK_SUBTYPE = '';
+        LOVE_SUBTYPE = ''; STOCK_SUBTYPE = ''; FORTUNE_SUBTYPE = '';
+        ACTIVE_DOMAIN_BAR = 'realestate';  // [V26.9] Critical 누락 수정 — 부동산 도메인 라우팅 보장
     }
     // 활성 버튼 표시 (모든 탭에서)
     document.querySelectorAll('.sit-btn').forEach(b => b.classList.remove('active'));
