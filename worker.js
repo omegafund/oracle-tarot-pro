@@ -5421,34 +5421,34 @@ const LOVE_CONTENT_V3 = {
       final_action_statement:"지금은 결정을 내릴 시점이 아니라 관계를 자연스럽게 키워가는 시점"
     },
     maintain: {
-      core_keyword:"표현이 막힌",surface_state:"표면적 평온",hidden_flow:"감정은 있지만 표현이 보류된 흐름",
-      relationship_type:"감정 존재 + 표현 차단",dominant_side:"양쪽 모두 표현을 망설이는 균형",
+      core_keyword:"표현이 막힌",surface_state:"표면적 평온",hidden_flow:"감정은 있지만 신호가 보류된 흐름",
+      relationship_type:"감정 존재 + 소통 차단",dominant_side:"양쪽 모두 신호를 망설이는 균형",
       core_decision:"감정 자체가 아닌 표현 방식의 변화",
-      structure_sentence:"감정의 크기가 아니라 표현 방식이 관계를 결정하는 구간입니다",
+      structure_sentence:"감정의 크기가 아니라 소통 방식이 관계를 결정하는 구간입니다",
       user_strength:"관계를 지키려는 진심",user_hidden:"확신이 보류된 상태",
-      partner_visible:"중립적 태도",partner_real:"감정은 있지만 표현 보류",
-      relation_dynamic:"감정 유지",counter_dynamic:"표현 억제",
-      positive_result:"가벼운 소통으로 흐름 재활성화",negative_result:"애매함이 거리감으로 굳어짐",
-      essence_summary:"사랑은 남아 있지만, 표현이 막혀 있는 관계",
-      action_1:"무거운 대화 대신 '지금 감정' 1가지를 가볍게 전달",action_result_1:"상대의 현재 반응을 확인할 수 있습니다",
+      partner_visible:"중립적 태도",partner_real:"감정은 있지만 신호 보류",
+      relation_dynamic:"감정 유지",counter_dynamic:"소통 억제",
+      positive_result:"부드러운 소통으로 흐름 재활성화",negative_result:"애매함이 거리감으로 굳어짐",
+      essence_summary:"사랑은 남아 있지만, 신호가 막혀 있는 관계",
+      action_1:"무거운 대화 대신 '지금 감정' 1가지를 부드럽게 전달",action_result_1:"상대의 현재 반응을 확인할 수 있습니다",
       action_2:"부담 없는 톤으로 일상 공유 1회",action_result_2:"관계 긴장이 풀리기 시작합니다",
       avoid_action:"과거 문제 재언급이나 감정 확인 강요",risk_effect:"정체 재진입",
-      action_core:"무거운 대화보다 가벼운 감정 전달이 먼저인 시점",
+      action_core:"무거운 대화보다 부드러운 감정 전달이 먼저인 단계",
       short_term:"2~3일",short_flow:"자연스러운 감정 접촉 가능",
       mid_term:"1주",mid_flow:"관계 방향성이 드러나는 구간",
-      long_term:"2~3주",long_flow:"관계 재정의 또는 정리 분기점",
+      long_term:"2~3주",long_flow:"관계 재정의 또는 정리 시기",
       critical_timing:"다음 주 초~중반",
-      timing_now:"지금은 가벼운 접근이 가능한 시점입니다",timing_next:"2~3일 후 자연스러운 접근 권장",
+      timing_now:"지금은 부드러운 접근이 가능한 단계입니다",timing_next:"2~3일 후 자연스러운 접근 권장",
       timing_core:"밀어붙이는 타이밍이 아니라 '열어두는 타이밍'",
       risk_1:"과거 감정 재소환 — 정체 재진입",risk_2:"확인을 위한 질문 반복",
       risk_progression:"관계가 다시 정체로 돌아가고 거리만 굳어집니다",
       trigger_condition:"답을 보류한 채 같은 패턴을 반복하는",collapse_type:"감정 피로 누적",
       risk_summary:"문제는 상황이 아니라 반복 패턴입니다",
       final_state:"회복 가능 상태",final_explanation:"표현 방식 수정으로 흐름 재활성화 가능",
-      good_path:"가벼운 감정 소통 → 관계 재활성화",
+      good_path:"부드러운 감정 소통 → 관계 재활성화",
       bad_path:"같은 패턴 반복 → 감정 소진 → 거리 확정",
       final_key:"표현 방식을 바꾸면 관계가 살아난다",
-      final_action_statement:"지금은 결정을 내릴 시점이 아니라 관계를 다시 살리는 시점"
+      final_action_statement:"지금은 결정을 내릴 시점이 아니라 관계를 다시 살리는 구간"
     },
     realign: {
       core_keyword:"방식 수정이 필요한",surface_state:"표면적 거리감",hidden_flow:"관계 구조가 흔들리는 흐름",
@@ -5466,7 +5466,7 @@ const LOVE_CONTENT_V3 = {
       action_core:"행동보다 거리가 회복을 만드는 시점",
       short_term:"1주",short_flow:"최소 거리 두기 권장",
       mid_term:"2~3주",mid_flow:"관계 방식 재점검 구간",
-      long_term:"1~2개월",long_flow:"재정렬 또는 자연 정리 분기점",
+      long_term:"1~2개월",long_flow:"재정렬 또는 자연 정리 시기",
       critical_timing:"거리 두기 1주 경과 시점",
       timing_now:"지금은 연락 타이밍이 아닙니다",timing_next:"최소 1주 거리 두기 권장",
       timing_core:"거리가 답입니다 — 감정 아닌 구조 변경",
@@ -5638,7 +5638,12 @@ function buildLoveCoreInsight(content, flowArrow, metaPattern, cards, revFlags) 
     : `겉으로는 ${content.surface_state}처럼 보이지만, 실제 흐름은 ${content.hidden_flow}에 가깝습니다.`;
   
   // line3 (★ V25.27 통합): 본질 진단
-  const line3 = `이 관계는 ${content.relationship_type} 구조이며, ${content.structure_sentence}.`;
+  // [V26.12 결함 1] '이 관계는' line1+line3 중복 제거 — 박스 내 동일 시작 패턴 차단
+  //   사장님 진단: "유료 결제자 정독 시 '템플릿 티' 노출 → 단조로움"
+  //   원인: line1='이 관계는 ...구조입니다' + line3='이 관계는 ...구조이며'
+  //   해결: line3 시작어를 '관계의 중심축은 ...구조이며'로 변경 (의미 보존)
+  //   효과: 9개 서브타입 (compatibility~general) 자동 일괄 적용
+  const line3 = `관계의 중심축은 ${content.relationship_type} 구조이며, ${content.structure_sentence}.`;
   
   // line4: 중심축
   const line4 = `이미 감정의 중심축은 ${content.dominant_side} 쪽으로 기울어져 있습니다.`;
@@ -7058,7 +7063,7 @@ const FORTUNE_CONTENT_V1 = {
       action_core:"지금은 선택보다 관찰이 우선인 시점",
       short_term:"2~3일",short_flow:"흐름 점검 시도 가능",
       mid_term:"1주~2주",mid_flow:"방향성 확인되는 구간",
-      long_term:"1개월",long_flow:"흐름 정의 분기점",
+      long_term:"1개월",long_flow:"흐름 정의 시기",
       critical_timing:"다음 주 중반",
       timing_now:"조심스러운 점검이 가능한 시점입니다",timing_next:"2~3일 후 접근이 안정적입니다",
       timing_core:"지금은 밀어붙이기보다 흐름을 읽는 시점",
@@ -7088,7 +7093,7 @@ const FORTUNE_CONTENT_V1 = {
       action_core:"행동보다 방식 점검이 회복을 만드는 시점",
       short_term:"1주",short_flow:"점검 시간 확보 권장",
       mid_term:"2~3주",mid_flow:"흐름 방식 재점검 구간",
-      long_term:"1~2개월",long_flow:"재정비 또는 자연 정리 분기점",
+      long_term:"1~2개월",long_flow:"재정비 또는 자연 정리 시기",
       critical_timing:"점검 1주 경과 시점",
       timing_now:"지금은 추진 타이밍이 아닙니다",timing_next:"최소 1주일 점검 권장",
       timing_core:"방식 변경이 답입니다 — 감정 아닌 구조 변경",
