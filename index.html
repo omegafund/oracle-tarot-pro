@@ -5213,6 +5213,14 @@ function _mapServerMetricsToInvestData(sm, cards) {
             caution:     sm.caution   || null,
             finalOracle: sm.finalOracle || '',
             cardNarrative: sm.cardNarrative || [],
+            // [V27.0.1 Critical Fix] V27.0 한방 문구 매핑 누락 결함 차단
+            //   사장님 진단: V27.0 배포됐는데 한방 박스 노출 X
+            //   원인: _mapServerMetricsToInvestData가 새 객체 만들면서
+            //         pivotPhrase / riskPhrase 필드 매핑 누락
+            //   해결: 두 필드 매핑 추가 → d.pivotPhrase / d.riskPhrase 작동
+            //   효과: 5계층 빌더가 한방 박스 정상 노출 (LOVE 패턴 동일)
+            pivotPhrase: sm.pivotPhrase || '',
+            riskPhrase:  sm.riskPhrase  || '',
             _server: sm
         };
     }
@@ -5236,6 +5244,10 @@ function _mapServerMetricsToInvestData(sm, cards) {
             position:      sm.position      || null, // [V19.2] 실전형 포지션 블록
             marketInterpret: sm.marketInterpret || null,
             finalOracle:   sm.finalOracle   || '',
+            // [V27.0.1 Critical Fix] V27.0 한방 문구 매핑 누락 결함 차단
+            //   주식·코인 모두 동일 매핑 (buildStockMetrics가 두 도메인 공용)
+            pivotPhrase: sm.pivotPhrase || '',
+            riskPhrase:  sm.riskPhrase  || '',
             _server: sm
         };
     }
