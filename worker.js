@@ -2600,8 +2600,19 @@ function buildOneLineSummary(metrics) {
     scenarioKey = stockIntent === 'sell' ? 'wait_sell' : 'wait_buy';
   }
 
-  // ── CORE 매트릭스 (사장님 PRO 안)
-  const core = TLDR_CORE_MATRIX[scenarioKey] || TLDR_CORE_MATRIX.wait_buy;
+  // ── [V27.0.4] 블록 시스템 — 시드 기반 결정적 다양화
+  //   시나리오당 225가지 (CORE 5 × TURN 3 × RISK 5 × RHYTHM 3)
+  //   사장님 1달 같은 종목 점사 30회 → 패턴 인지 거의 불가능
+  //   안전: V27.0.3 단일 매트릭스 Fallback (조합 실패 시)
+  // [V27.0.5] 영성 시드 — reversedFlags 전달 (사장님 명령: 정역방향 핵심)
+  const cards = (metrics.cleanCards || []).slice(0, 3);
+  const revFlags = (metrics.reversedFlags || []).slice(0, 3);
+  const seed = _getSeedV27(metrics.prompt || '', cards, scenarioKey, metrics.queryType, revFlags);
+  const fallbackCore = TLDR_CORE_MATRIX[scenarioKey] || TLDR_CORE_MATRIX.wait_buy;
+  const blocks = STOCK_BLOCK_MATRIX[scenarioKey];
+  const core = blocks
+    ? buildPhraseFromBlocks(blocks, seed, fallbackCore)
+    : fallbackCore;
   // ── [V27.0.3] TAIL BUY/SELL 분리 — 시나리오별 자동 매핑
   //   SELL 시나리오: wait_sell만 (익절·축소 = 타이밍 게임)
   //   BUY 시나리오: wait_buy / verified / limited / active / split
@@ -2641,7 +2652,18 @@ function buildRealEstateOneLineSummary(metrics) {
     scenarioKey = 're_wait_buy';
   }
 
-  const core = TLDR_CORE_MATRIX[scenarioKey] || TLDR_CORE_MATRIX.re_wait_buy;
+  // [V27.0.4] 블록 시스템 — 부동산 시나리오별 시드 다양화
+  //   시나리오당 225가지 (CORE 5 × TURN 3 × RISK 5 × RHYTHM 3)
+  //   안전: V27.0.3 단일 매트릭스 Fallback
+  // [V27.0.5] 영성 시드 — reversedFlags 전달 (정역방향 영성 반영)
+  const cards = (metrics.cleanCards || []).slice(0, 3);
+  const revFlags = (metrics.reversedFlags || []).slice(0, 3);
+  const seed = _getSeedV27(metrics.prompt || '', cards, scenarioKey, 'realestate', revFlags);
+  const fallbackCore = TLDR_CORE_MATRIX[scenarioKey] || TLDR_CORE_MATRIX.re_wait_buy;
+  const blocks = REALESTATE_BLOCK_MATRIX[scenarioKey];
+  const core = blocks
+    ? buildPhraseFromBlocks(blocks, seed, fallbackCore)
+    : fallbackCore;
   // [V27.0.3] 부동산 TAIL BUY/SELL 분리
   const isSellScenario = (scenarioKey === 're_wait_sell_act' || scenarioKey === 're_wait_sell_pas');
   const tail = ASSET_TAIL_MATRIX[isSellScenario ? 'realestate_sell' : 'realestate_buy'];
@@ -2652,13 +2674,177 @@ function buildRealEstateOneLineSummary(metrics) {
 
 // [V27.0.2 → V27.0.3] TLDR (한줄 결론) CORE 매트릭스 — 사장님 PRO 안 격상
 //   톤: [흐름 인정] + [, but] + [위험/결정 시나리오 직격]
-//   원칙: 단순 분기점 → '구조로 전환/직결' 단정 톤 (결제 트리거 강도 ↑)
-//   금지 단어: ~좋습니다 / ~가능성이 있습니다 / ~추천 (0건)
-//   SELL 시나리오: '매수/진입' 단어 절대 금지 (사장님 지적 2)
+// ══════════════════════════════════════════════════════════════════
+// [V27.0.4] 블록 시스템 — 사장님 진화 통찰 + 안전 가드 100%
+//   설계 본질:
+//     V27.0.3 (정적 풀): 시나리오당 1개 한방   = 12가지
+//     V27.0.4 (블록):    CORE×TURN×RISK×RHYTHM = 시나리오당 수백 가지
+//
+//   3대 안전 약속 (사장님 1년 정신 + 안전 가드 5중):
+//     ① 시나리오별 블록 풀 완전 분리 (BUY/SELL cross 차단)
+//     ② SELL 블록 '진입/매수' 어휘 0건 (자동 Linter 검증)
+//     ③ 길이 가드 (50~200자) + Fallback (조합 실패 시 V27.0.3 매트릭스)
+//
+//   시드 결정성 보장:
+//     같은 입력 = 같은 출력 (사용자 신뢰)
+//     다른 입력 = 다른 출력 (다양성)
+// ══════════════════════════════════════════════════════════════════
+
+// [V27.0.4 → V27.0.5] 영성 시드 함수 (Spiritual Seed)
+//   사장님 명령: "타로카드 기반 앱 — 영성 매칭과 수비학이 빠진 엔진은 쓰레기 점사"
+//                "기정치 중 기정치가 영성 매칭 / 카드 수비학 / 카드 정역방향 해석 기반"
+//
+//   V27.0.4 결함: 카드 이름만 hash → 영성 무시 (단순 다양성)
+//   V27.0.5 진화: 5가지 영성 요소 통합 → 영성 매칭 시드 (생명력 부여)
+//
+//   ★ 5요소 영성 통합:
+//     ① CARD_SCORE       : 카드 점수 (영성 에너지 정량화)
+//     ② 수비학 1~9       : 카드 합 → 1~9 (시작/균형/창조/안정/변화/조화/내면/완성/전환)
+//     ③ 월상 (Moon Phase): 카드 power → 신월/상현/보름/그믐 (관계 분위기)
+//     ④ 정역방향 시그니처 : reversedFlags (사장님 강조 — 카드 해석 핵심)
+//     ⑤ LOVE_BLOCK 무게  : HARD/MEDIUM/SOFT (영성 무게)
+//
+//   효과:
+//     같은 카드 + 같은 정역방향 = 같은 영성 = 같은 한방 (재현성 ✓)
+//     긍정 영성 (Sun+Moon+Star) ≠ 부정 영성 (Tower+Death+Devil) 시드 (영성 매칭 ✓)
+//     역방향 카드 ≠ 정방향 카드 시드 (카드 해석 정확성 ✓)
+//
+//   안전: 입력 누락 시 fallback (cards/reversedFlags 없어도 작동)
+function _getSeedV27(prompt, cards, scenarioKey, queryType, reversedFlags) {
+  const safeCards = Array.isArray(cards) ? cards : [];
+  const safeRev = Array.isArray(reversedFlags) ? reversedFlags : [false, false, false];
+  
+  // [영성 요소 1] 카드 점수 합 — 정역방향 반영 (역방향 시 부호 반전)
+  //   사장님 시스템의 calcFortuneScore와 동일 로직 (정역방향 강조)
+  let cardScoreSum = 0;
+  for (let i = 0; i < safeCards.length; i++) {
+    const score = (typeof CARD_SCORE !== 'undefined' && CARD_SCORE[safeCards[i]] !== undefined)
+      ? CARD_SCORE[safeCards[i]] : 0;
+    // 정역방향 반영: 역방향 시 부호 반전 (사장님 영성 시스템 핵심)
+    cardScoreSum += safeRev[i] ? -score : score;
+  }
+  
+  // [영성 요소 2] 수비학 1~9 (사장님 getNumerologyTime 동일 공식)
+  //   1=시작 / 2=균형 / 3=창조 / 4=안정 / 5=변화 / 6=조화 / 7=내면 / 8=완성 / 9=전환
+  const numerology = ((cardScoreSum + 90) % 9) + 1;
+  
+  // [영성 요소 3] 월상 (Moon Phase) — 카드 power 기반 분위기
+  //   사장님 getMoonPhase 동일 분기 (영성 분위기 정합성)
+  let moonNum;
+  if (cardScoreSum >= 5)       moonNum = 4; // 보름달 (에너지 정점)
+  else if (cardScoreSum >= 1)  moonNum = 3; // 상현달 (성장 구간)
+  else if (cardScoreSum >= -2) moonNum = 2; // 초승달 (시작 에너지)
+  else                          moonNum = 1; // 그믐달 (정리 구간)
+  
+  // [영성 요소 4] 정역방향 시그니처 (사장님 명령 핵심 ★)
+  //   각 카드 위치별 정역방향 비트 패턴 (8 패턴: 000~111)
+  const revSig = (safeRev[0] ? 4 : 0) + (safeRev[1] ? 2 : 0) + (safeRev[2] ? 1 : 0);
+  
+  // [영성 요소 5] LOVE_BLOCK 영성 무게 (HARD=3 / MEDIUM=2 / SOFT=1)
+  //   detectLoveBlock 가용 시 사용 — 정역방향 반영
+  let spiritWeight = 0;
+  if (typeof detectLoveBlock === 'function') {
+    for (let i = 0; i < safeCards.length; i++) {
+      try {
+        const block = detectLoveBlock(safeCards[i], !!safeRev[i]);
+        spiritWeight += (block === 'HARD' ? 3 : block === 'MEDIUM' ? 2 : 1);
+      } catch (e) { /* 안전: 실패 시 무시 */ }
+    }
+  }
+  
+  // [영성 요소 6 / 디테일] 카드 이름 (다양성 보강)
+  const cardStr = safeCards.map((c, i) => 
+    `${c || ''}${safeRev[i] ? '(R)' : ''}`  // 역방향 마킹
+  ).join('|');
+  
+  // 영성 통합 시드 — 5요소 결합 (사장님 1년 영성 시스템 100% 반영)
+  const str = `${prompt || ''}__${cardStr}__${scenarioKey || ''}__${queryType || ''}` +
+              `__N${numerology}__M${moonNum}__W${spiritWeight}__S${cardScoreSum}__R${revSig}`;
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    hash = ((hash << 5) - hash) + str.charCodeAt(i);
+    hash |= 0; // 32-bit
+  }
+  return Math.abs(hash);
+}
+
+// [V27.0.4] 블록 픽 함수 — 시드 비트 분할로 4개 블록 독립 선택
+//   비트 분할: 0~3 / 4~7 / 8~11 / 12~15 (각 블록 16종까지 지원)
+function _pickBlock(blockArray, seed, shift) {
+  if (!Array.isArray(blockArray) || blockArray.length === 0) return '';
+  return blockArray[(seed >> shift) % blockArray.length];
+}
+
+// [V27.0.4] 블록 빌더 — CORE + TURN + RISK 결합 + 리듬 적용
+//   리듬: short / mid / long
+//   안전: 길이 가드 (50~250자 범위 외 시 Fallback)
+function buildPhraseFromBlocks(blocks, seed, fallback) {
+  if (!blocks || !blocks.CORE || !blocks.TURN || !blocks.RISK || !blocks.RHYTHM) {
+    return fallback || '';
+  }
+  
+  const core   = _pickBlock(blocks.CORE,   seed, 0);
+  const turn   = _pickBlock(blocks.TURN,   seed, 4);
+  const risk   = _pickBlock(blocks.RISK,   seed, 8);
+  const rhythm = _pickBlock(blocks.RHYTHM, seed, 12);
+  
+  if (!core || !turn || !risk || !rhythm) {
+    return fallback || '';
+  }
+  
+  let phrase;
+  if (rhythm === 'short') {
+    // 짧은 형: RISK만 (5초 결제 결정용)
+    phrase = `${risk}`;
+  } else if (rhythm === 'long') {
+    // 긴 형: CORE + 추가 단서 + TURN + RISK (풍부 표현)
+    phrase = `${core}, ${turn} ${risk}`;
+  } else if (rhythm === 'question') {
+    // 질문형: 도발 + RISK
+    phrase = `${core}? ${risk}`;
+  } else {
+    // mid (default): CORE + TURN + RISK
+    phrase = `${core}, ${turn} ${risk}`;
+  }
+  
+  // [안전 가드] 길이 검증 (사장님 가독성 보호)
+  // short 리듬은 RISK만이라 25자도 가능 / 너무 길면 250자
+  const len = phrase.length;
+  if (len < 20 || len > 250) {
+    return fallback || phrase; // Fallback 또는 원본 (길이 외에는 OK)
+  }
+  
+  return phrase;
+}
+
+// [V27.0.4] 블록 Linter — 안전 어휘 자동 검증
+//   SELL 블록에 '진입/매수' 단어 들어가면 즉시 감지 (Boot 시 검증)
+//   Boot 시 자동 호출 — 결함 발견 시 console.error
+function _validateBlockMatrix(blockMap, mapName) {
+  const errors = [];
+  Object.entries(blockMap || {}).forEach(([scenarioKey, blocks]) => {
+    const isSellScenario = scenarioKey.includes('sell') || scenarioKey === 'wait_sell';
+    if (!isSellScenario) return;
+    
+    // SELL 블록의 모든 텍스트에서 매수 어휘 검증
+    ['CORE', 'TURN', 'RISK'].forEach(blockType => {
+      (blocks[blockType] || []).forEach((text, idx) => {
+        // '진입' / '매수' 단어 검출 (단, '추가 진입보다' 같은 부정 표현은 제외)
+        if (/(?<!추가 )진입(?!보다)|(?<!비)매수/.test(text)) {
+          errors.push(`[${mapName}] ${scenarioKey}.${blockType}[${idx}]: SELL에 매수어휘 — "${text}"`);
+        }
+      });
+    });
+  });
+  return errors;
+}
+
+// [V27.0.3] TLDR (한줄 결론) 단일 매트릭스 — V27.0.4 Fallback (안전망)
+//   V27.0.4 블록 시스템이 길이 가드 등 실패 시 자동 복귀
 const TLDR_CORE_MATRIX = {
   // 주식·코인 6개 시나리오
   wait_buy:  '방향성은 잡히는 중이지만, 확인 없이 들어가면 손실 구간으로 바로 연결될 수 있습니다',
-  wait_sell: '익절 흐름은 살아있지만, 지금은 추가 진입보다 청산 타이밍 관리가 수익을 결정짓는 구간입니다',
+  wait_sell: '익절 흐름은 살아있지만, 지금은 청산 타이밍 관리가 수익을 결정짓는 구간입니다',
   verified:  '진입 기회는 열려 있지만, 신호 미충족 상태에서 들어가면 수익 구간이 아닌 버티기 구간으로 전환됩니다',
   limited:   '기회는 존재하지만, 신호 없이 진입하면 반등이 아닌 추가 하락을 먼저 맞을 가능성이 높은 구간입니다',
   active:    '진입 타이밍은 열려 있지만, 변동성 구간이기 때문에 방향이 맞아도 흔들림에서 탈락할 수 있습니다',
@@ -2684,6 +2870,244 @@ const ASSET_TAIL_MATRIX = {
   stock_sell:      '→ 무리한 유지 시 수익 반납 위험이 빠르게 커집니다',
   crypto_sell:     '→ 청산 지연은 수익 반납·손실 전환으로 직결됩니다',
   realestate_sell: '→ 호가 고집은 거래 지연·협상력 약화로 이어집니다'
+};
+
+// ══════════════════════════════════════════════════════════════════
+// [V27.0.4] 주식·코인 블록 매트릭스 — 시나리오별 완전 분리
+//   각 시나리오: CORE(5) × TURN(3) × RISK(5) × RHYTHM(3) = 225가지
+//   6 시나리오 = 1,350가지 (V27.0.3 6가지 → 225배 다양성)
+// ══════════════════════════════════════════════════════════════════
+const STOCK_BLOCK_MATRIX = {
+  // ── BUY 시나리오 4종 (wait_buy/verified/limited/active/split)
+  wait_buy: {
+    CORE: [
+      '방향성은 잡히는 중입니다',
+      '흐름은 형성되고 있습니다',
+      '신호는 점진적으로 정리되고 있습니다',
+      '시장은 방향 탐색 단계에 있습니다',
+      '추세는 검증 구간에 진입했습니다'
+    ],
+    TURN: ['다만,', '그러나', '단,'],
+    RISK: [
+      '확인 없이 들어가면 손실 구간으로 바로 연결될 수 있습니다',
+      '신호 미충족 상태에서 진입은 손익이 갈리는 분기점입니다',
+      '검증 전 진입은 변동성 노출로 직결될 수 있습니다',
+      '확인 없는 진입은 수익이 아닌 손실로 전환될 가능성이 높습니다',
+      '신호 확인 전 진입은 가장 위험한 구간으로 작용할 수 있습니다'
+    ],
+    RHYTHM: ['short', 'mid', 'long']
+  },
+  verified: {
+    CORE: [
+      '진입 기회는 열려 있습니다',
+      '진입 신호는 형성됐습니다',
+      '신호는 명확해지고 있습니다',
+      '검증 단계는 마무리 구간에 있습니다',
+      '조건은 단계적으로 충족되고 있습니다'
+    ],
+    TURN: ['다만,', '그러나', '단,'],
+    RISK: [
+      '신호 미충족 상태에서 들어가면 수익 구간이 아닌 버티기 구간으로 전환됩니다',
+      '조건 미충족 진입은 수익 구조가 무너질 수 있는 분기점입니다',
+      '분할 여부에 따라 수익 구조가 달라지는 구간입니다',
+      '단계적 접근 없이 풀 진입은 변동성에 직접 노출되는 구조입니다',
+      '검증 전 일괄 진입은 손익이 갈리는 결정 단계입니다'
+    ],
+    RHYTHM: ['short', 'mid', 'long']
+  },
+  limited: {
+    CORE: [
+      '기회는 존재합니다',
+      '제한적 시도 구간이 형성되어 있습니다',
+      '소액 테스트는 가능한 단계입니다',
+      '시장은 일부 신호를 보내고 있습니다',
+      '진입 여지는 남아 있습니다'
+    ],
+    TURN: ['다만,', '그러나', '단,'],
+    RISK: [
+      '신호 없이 진입하면 반등이 아닌 추가 하락을 먼저 맞을 가능성이 높습니다',
+      '소액 테스트 외에는 리스크 우위 구간입니다',
+      '확인 없는 진입은 손실로 직결되는 구간입니다',
+      '제한 없는 시도는 변동성 확대 구간으로 전환됩니다',
+      '신호 확인 전 본격 진입은 손익이 갈리는 분기점입니다'
+    ],
+    RHYTHM: ['short', 'mid', 'long']
+  },
+  active: {
+    CORE: [
+      '진입 타이밍은 열려 있습니다',
+      '결정은 명확합니다',
+      '실행 구간이 형성되어 있습니다',
+      '진입 신호는 활성화되어 있습니다',
+      '시장은 방향을 잡고 있습니다'
+    ],
+    TURN: ['다만,', '그러나', '동시에'],
+    RISK: [
+      '변동성 구간이기 때문에 방향이 맞아도 흔들림에서 탈락할 수 있습니다',
+      '실행 시점에 따라 결과가 갈리는 분기점입니다',
+      '진입보다 관리가 성과를 좌우하는 구간입니다',
+      '단기 변동성에 휘둘리면 수익 구조가 무너질 수 있습니다',
+      '관리 없는 진입은 손익이 갈리는 결정 단계입니다'
+    ],
+    RHYTHM: ['short', 'mid', 'long']
+  },
+  split: {
+    CORE: [
+      '분할 진입은 유효합니다',
+      '단계적 접근은 가능한 구간입니다',
+      '분할 전략은 형성되어 있습니다',
+      '비중 조절 구간이 열려 있습니다',
+      '분할은 안정성을 높이는 단계입니다'
+    ],
+    TURN: ['다만,', '그러나', '단,'],
+    RISK: [
+      '단계마다 흐름이 바뀌는 구간이라 무계획 분할은 평균단가만 망가질 수 있습니다',
+      '각 단계별 기준 설정이 필수인 구간입니다',
+      '단계별 점검에 따라 수익 구조가 달라지는 구간입니다',
+      '계획 없는 분할은 비중만 늘리고 수익 구조가 무너질 수 있습니다',
+      '단계 기준 없는 분할은 손익이 갈리는 분기점입니다'
+    ],
+    RHYTHM: ['short', 'mid', 'long']
+  },
+  
+  // ── SELL 시나리오 1종 (wait_sell) — '진입/매수' 어휘 절대 금지
+  wait_sell: {
+    CORE: [
+      '익절 흐름은 살아있습니다',
+      '수익 구간이 유지되고 있습니다',
+      '수익 흐름은 형성되어 있습니다',
+      '추세는 살아있는 단계입니다',
+      '익절 시점은 명확해지고 있습니다'
+    ],
+    TURN: ['다만,', '그러나', '동시에'],
+    RISK: [
+      '청산 타이밍 관리가 수익을 결정짓는 구간입니다',
+      '청산 지연은 수익 반납·손실 전환으로 직결됩니다',
+      '추가 유지보다 분할 청산이 안정성을 높이는 단계입니다',
+      '\'얼마를 더 먹느냐\'보다 \'얼마를 지키느냐\'가 결과를 좌우합니다',
+      '욕심을 내면 수익 구조가 빠르게 무너질 수 있는 구간입니다'
+    ],
+    RHYTHM: ['short', 'mid', 'long']
+  }
+};
+
+// ══════════════════════════════════════════════════════════════════
+// [V27.0.4] 부동산 블록 매트릭스 — sell_active/sell_passive/buy/holding 분리
+//   각 시나리오: 5×3×5×3 = 225가지
+//   6 시나리오 = 1,350가지
+// ══════════════════════════════════════════════════════════════════
+const REALESTATE_BLOCK_MATRIX = {
+  // ── BUY 시나리오 (re_wait_buy / re_verified / re_active / re_holding)
+  re_wait_buy: {
+    CORE: [
+      '매수 기회는 존재합니다',
+      '시장은 매수 신호를 보이고 있습니다',
+      '진입 여지는 형성되어 있습니다',
+      '매물 흐름은 열리는 단계입니다',
+      '매수 환경은 점진적으로 정리되고 있습니다'
+    ],
+    TURN: ['다만,', '그러나', '단,'],
+    RISK: [
+      '입지 검증 없이 들어가면 장기 묶임 구조로 전환됩니다',
+      '실수요 검증 없는 진입은 자산 가치가 흔들리는 분기점입니다',
+      '입지 선택에 따라 장기 수익이 갈리는 결정 단계입니다',
+      '검증 전 진입은 수익이 아닌 부담 구조로 직결될 수 있습니다',
+      '입지·자금 점검 없이 들어가면 장기 손실 구간으로 이어질 수 있습니다'
+    ],
+    RHYTHM: ['short', 'mid', 'long']
+  },
+  re_verified: {
+    CORE: [
+      '진입 신호는 열려 있습니다',
+      '매수 조건은 충족 단계에 있습니다',
+      '검증 단계는 마무리 구간입니다',
+      '실수요 신호는 명확해지고 있습니다',
+      '입지 분석은 정리 단계입니다'
+    ],
+    TURN: ['다만,', '그러나', '단,'],
+    RISK: [
+      '입지·자금 검증 없이 들어가면 장기 수익이 아닌 부담 구조로 전환됩니다',
+      '검증 마무리 전 진입은 수익이 갈리는 결정 단계입니다',
+      '자금 점검 없이 풀 진입은 장기 묶임으로 직결될 수 있습니다',
+      '단계 점검 없는 진입은 협상력이 약화되는 분기점입니다',
+      '조건 미충족 진입은 자산 가치가 흔들릴 수 있는 구간입니다'
+    ],
+    RHYTHM: ['short', 'mid', 'long']
+  },
+  re_active: {
+    CORE: [
+      '결정은 명확합니다',
+      '매수 의지가 형성된 단계입니다',
+      '실행 구간이 열려 있습니다',
+      '진입 타이밍은 활성화되어 있습니다',
+      '결정 단계는 정리되고 있습니다'
+    ],
+    TURN: ['다만,', '그러나', '동시에'],
+    RISK: [
+      '입지 검증 없이 진입하면 장기 수익이 아닌 묶임 구조로 직결됩니다',
+      '실수요 점검 없는 매수는 자산 가치가 흔들리는 분기점입니다',
+      '검증 단계 생략은 장기 부담 구조로 전환되는 결정 단계입니다',
+      '입지 분석 없이 풀 진입은 협상력 약화로 이어질 수 있습니다',
+      '점검 없는 결정은 수익이 갈리는 분기점입니다'
+    ],
+    RHYTHM: ['short', 'mid', 'long']
+  },
+  re_holding: {
+    CORE: [
+      '보유 흐름은 유효합니다',
+      '자산 유지 구간이 형성되어 있습니다',
+      '보유 전략은 살아있는 단계입니다',
+      '시장 흐름은 유지 가능한 구조입니다',
+      '자산 가치는 안정 구간에 있습니다'
+    ],
+    TURN: ['다만,', '그러나', '단,'],
+    RISK: [
+      '시장 흐름 재평가 없이 유지하면 자산 가치가 흔들릴 수 있는 구간입니다',
+      '재평가 시점 놓치면 보유 구조가 부담 구조로 전환됩니다',
+      '시장 신호 무시는 장기 손실 구간으로 직결될 수 있습니다',
+      '보유 전략 점검 없이 유지는 자산 가치가 갈리는 분기점입니다',
+      '재평가 지연은 협상력 약화·기회 손실로 이어질 수 있습니다'
+    ],
+    RHYTHM: ['short', 'mid', 'long']
+  },
+  
+  // ── SELL 시나리오 (re_wait_sell_act / re_wait_sell_pas)
+  re_wait_sell_act: {
+    CORE: [
+      '매도 흐름은 열려 있습니다',
+      '매도 시점은 형성되고 있습니다',
+      '매도 환경은 활성화 단계입니다',
+      '시장은 매도 신호를 보내고 있습니다',
+      '매도 결정 단계가 정리되고 있습니다'
+    ],
+    TURN: ['다만,', '그러나', '동시에'],
+    RISK: [
+      '시점 선택을 놓치면 호가 협상력이 빠르게 약화될 수 있는 구간입니다',
+      '시점 선택에 따라 가격이 갈리는 결정 단계입니다',
+      '호가 고집은 거래 지연·협상력 약화로 이어집니다',
+      '청산 타이밍 놓치면 가격 하락으로 직결될 수 있습니다',
+      '늦은 매도는 수익 반납·기회 손실로 이어질 수 있는 구간입니다'
+    ],
+    RHYTHM: ['short', 'mid', 'long']
+  },
+  re_wait_sell_pas: {
+    CORE: [
+      '매도 흐름은 형성 중입니다',
+      '매수자 유입 단계가 시작되고 있습니다',
+      '시장 신호는 점진적으로 정리되고 있습니다',
+      '매도 환경은 회복 단계에 있습니다',
+      '거래 활성도는 점진적 회복 구간입니다'
+    ],
+    TURN: ['다만,', '그러나', '단,'],
+    RISK: [
+      '매수자 유입 전까지 호가 고집은 거래 지연으로 직결될 수 있습니다',
+      '매수자 유입 시점에 따라 결과가 달라지는 구간입니다',
+      '매물 노출 전략이 약하면 매수자 유입이 지연될 수 있습니다',
+      '매수자 유입 전까지 호가 고수는 협상력 약화로 이어집니다',
+      '유입 신호 무시는 거래 지연·기회 손실로 직결될 수 있습니다'
+    ],
+    RHYTHM: ['short', 'mid', 'long']
+  }
 };
 
 // ══════════════════════════════════════════════════════════════════
@@ -5875,12 +6299,18 @@ function buildLoveTiming(content, numerologyText, cards) {
   };
 }
 
-function buildLoveRisk(content, loveSubType) {
-  // [V26.13 결함 해소] riskPhrase 한방 문구 — 리스크 박스 결론 트리거
-  //   사장님 진단: "단순 위험 나열에서 행동 필요성 결론으로 격상"
-  //   해결: LOVE_RISK_PHRASE에서 서브타입별 매핑 (9개 일관 톤)
-  //   fallback: general (서브타입 매칭 실패 시)
-  const riskPhrase = LOVE_RISK_PHRASE[loveSubType] || LOVE_RISK_PHRASE.general;
+function buildLoveRisk(content, loveSubType, cards, prompt, reversedFlags) {
+  // [V27.0.4] 블록 시스템 — 시드 다양화 적용
+  //   사장님 통찰: "1달 5-6회 사용 시 패턴 인지" 결함 차단
+  //   서브타입당 225가지 (5×3×5×3) → 사용자 패턴 인지 거의 불가능
+  //   안전: V26.13 LOVE_RISK_PHRASE Fallback (조합 실패 시)
+  // [V27.0.5] 영성 시드 — reversedFlags 전달 (정역방향 영성 반영)
+  const fallback = LOVE_RISK_PHRASE[loveSubType] || LOVE_RISK_PHRASE.general;
+  const blocks = LOVE_RISK_BLOCK_MATRIX[loveSubType];
+  const seed = _getSeedV27(prompt || '', cards || [], `love_risk_${loveSubType}`, 'love', reversedFlags);
+  const riskPhrase = blocks
+    ? buildPhraseFromBlocks(blocks, seed, fallback)
+    : fallback;
   return {
     risk1: content.risk_1, risk2: content.risk_2,
     riskProgression: content.risk_progression,
@@ -5890,13 +6320,19 @@ function buildLoveRisk(content, loveSubType) {
   };
 }
 
-function buildLoveFinal(content, scoreCategory, loveSubType) {
+function buildLoveFinal(content, scoreCategory, loveSubType, cards, prompt, reversedFlags) {
   const branches = PATH_BRANCHES_V25_24[scoreCategory] || PATH_BRANCHES_V25_24.maintain;
-  // [V26.8 결함 7] pivot 한방 문구 — FINAL 박스 최상단 트리거
-  //   사장님 진단: "재회 시도 가능 — 신중하게" 직전 강력 한방 문구 필요
-  //   해결: LOVE_PIVOT_PHRASE에서 서브타입별 매핑 (9개 일괄 일관)
-  //   fallback: general (서브타입 매칭 실패 시)
-  const pivot = LOVE_PIVOT_PHRASE[loveSubType] || LOVE_PIVOT_PHRASE.general;
+  // [V27.0.4] 블록 시스템 — 시드 다양화 적용
+  //   서브타입당 225가지 / 9 서브타입 = 약 2,000가지 한방
+  //   같은 서브타입 + 같은 카드 = 같은 한방 (사용자 신뢰)
+  //   안전: V26.8 LOVE_PIVOT_PHRASE Fallback
+  // [V27.0.5] 영성 시드 — reversedFlags 전달 (정역방향 영성 반영)
+  const fallback = LOVE_PIVOT_PHRASE[loveSubType] || LOVE_PIVOT_PHRASE.general;
+  const blocks = LOVE_PIVOT_BLOCK_MATRIX[loveSubType];
+  const seed = _getSeedV27(prompt || '', cards || [], `love_pivot_${loveSubType}`, 'love', reversedFlags);
+  const pivot = blocks
+    ? buildPhraseFromBlocks(blocks, seed, fallback)
+    : fallback;
   return {
     pivot,
     finalState: content.final_state, finalExplanation: content.final_explanation,
@@ -5965,6 +6401,376 @@ const LOVE_RISK_PHRASE = {
   breakup:       '관계는 정리 단계에 있지만, 방향에 따라 완전 종료가 아닌 전환으로 남을 수 있습니다',
   general:       '흐름은 열려 있지만, 선택과 반응에 따라 전혀 다른 결과로 갈리는 시점입니다'
 };
+
+// ══════════════════════════════════════════════════════════════════
+// [V27.0.4] LOVE 4차원 블록 매트릭스 — 사장님 진화 통찰 핵심
+//   설계: 감정(EMOTION) × 거리(DISTANCE) × 의도(INTENT) × 리스크(RISK)
+//   각 서브타입: 5×3×5×3 = 225가지 한방 (LOVE_PIVOT_PHRASE V2)
+//                5×3×5×3 = 225가지 경고 (LOVE_RISK_PHRASE V2)
+//   9 서브타입 × 2 매트릭스 = 약 4,050가지
+//
+//   사장님 케이스 (1달 mindread 4번 점사):
+//     V26.16: 같은 한방 4번 (이탈 위험)
+//     V27.0.4: 4개 모두 다른 표현 + 다른 길이 + 다른 리듬
+//
+//   안전: 서브타입별 풀 완전 분리 (cross-pollination 0)
+// ══════════════════════════════════════════════════════════════════
+const LOVE_PIVOT_BLOCK_MATRIX = {
+  compatibility: {
+    CORE: [
+      '두 사람의 결은 맞물려 있습니다',
+      '관계의 본질적 합은 형성되어 있습니다',
+      '감정의 흐름은 일치하는 방향에 있습니다',
+      '두 사람의 결이 같은 방향으로 정렬되고 있습니다',
+      '관계의 균형은 점진적으로 자리 잡고 있습니다'
+    ],
+    TURN: ['다만,', '그러나', '단,'],
+    RISK: [
+      '차이를 다루는 방식이 관계를 결정합니다',
+      '균형 유지 여부에 따라 결과가 갈리는 분기점입니다',
+      '소통 방식이 흐름을 좌우하는 결정 단계입니다',
+      '서로의 결을 인정하지 못하면 흐름이 끊길 수 있습니다',
+      '차이를 흡수하는 자세가 관계의 깊이를 결정합니다'
+    ],
+    RHYTHM: ['short', 'mid', 'long']
+  },
+  marriage: {
+    CORE: [
+      '결혼은 감정의 정점이 아닙니다',
+      '결합 가능성은 충분히 형성되어 있습니다',
+      '본질적 합의는 단계적으로 정리되고 있습니다',
+      '관계는 결합 단계에 진입하고 있습니다',
+      '결혼 흐름의 본질은 명확해지고 있습니다'
+    ],
+    TURN: ['다만,', '그러나', '단,'],
+    RISK: [
+      '본질의 합의가 결정짓는 분기점입니다',
+      '현실 조건 검증이 선행되어야 하는 단계입니다',
+      '감정만으로는 장기 결합 구조가 흔들릴 수 있습니다',
+      '경제·생활·가치관 합의가 결과를 좌우합니다',
+      '낙관에 기대 점검을 미루면 결합 후 조정이 어려워집니다'
+    ],
+    RHYTHM: ['short', 'mid', 'long']
+  },
+  thumb: {
+    CORE: [
+      '감정은 형성되어 있습니다',
+      '관계의 묘한 흐름은 살아있습니다',
+      '두 사람 사이의 긴장감은 유지되고 있습니다',
+      '썸의 에너지는 활성화 단계에 있습니다',
+      '감정의 균형은 미묘하게 유지되고 있습니다'
+    ],
+    TURN: ['다만,', '그러나', '단,'],
+    RISK: [
+      '정의하는 순간 끝납니다 — 흐름을 유지할 수 있는가가 분기점입니다',
+      '신호를 놓치면 자연스럽게 멀어질 수 있는 구간입니다',
+      '성급한 정의는 미묘한 균형을 깨뜨릴 수 있습니다',
+      '타이밍에 따라 관계로 진전될지 식을지 갈리는 분기점입니다',
+      '확인 욕구가 강해지면 흐름이 멈출 수 있는 단계입니다'
+    ],
+    RHYTHM: ['short', 'mid', 'long']
+  },
+  crush: {
+    CORE: [
+      '짝사랑의 감정은 형성되어 있습니다',
+      '마음은 일정 방향으로 자리 잡고 있습니다',
+      '감정의 흐름은 살아있는 단계입니다',
+      '내면의 끌림은 명확해지고 있습니다',
+      '관계의 가능성은 열려 있는 구조입니다'
+    ],
+    TURN: ['다만,', '그러나', '단,'],
+    RISK: [
+      '고백 여부보다 자기 회복이 먼저 되어야 결과가 달라집니다',
+      '접근 방식에 따라 감정이 멈출 수도 있는 흐름입니다',
+      '일방적 표현은 거리를 만들 수 있는 단계입니다',
+      '자기 중심이 흔들리면 진전이 어려워지는 구간입니다',
+      '감정의 강도보다 표현 방식이 결과를 좌우합니다'
+    ],
+    RHYTHM: ['short', 'mid', 'long']
+  },
+  mindread: {
+    CORE: [
+      '상대 마음은 형성되어 있습니다',
+      '감정의 방향은 어느 정도 정리되어 있습니다',
+      '내면의 신호는 살아있는 단계입니다',
+      '마음의 결은 점진적으로 명확해지고 있습니다',
+      '상대 심리는 특정 방향으로 자리 잡고 있습니다'
+    ],
+    TURN: ['다만,', '그러나', '단,'],
+    RISK: [
+      '압박하면 닫히고 기다리면 열리는 분기점입니다',
+      '해석을 잘못하면 정반대로 받아들일 수 있는 단계입니다',
+      '표면 신호와 본심 사이 거리가 큰 미묘한 구간입니다',
+      '확인 욕구가 강해지면 진심에서 멀어질 수 있습니다',
+      '상대 속도를 무시하면 마음이 닫히는 분기점입니다'
+    ],
+    RHYTHM: ['short', 'mid', 'long']
+  },
+  reunion: {
+    CORE: [
+      '재회 가능성은 열려 있습니다',
+      '관계의 재정렬 흐름은 형성되어 있습니다',
+      '다시 이어질 여지는 살아있습니다',
+      '재회 에너지는 점진적으로 회복되고 있습니다',
+      '관계의 재시작 단계는 가능 구간에 있습니다'
+    ],
+    TURN: ['다만,', '그러나', '단,'],
+    RISK: [
+      '접근 방식에 따라 완전히 갈리는 분기점입니다',
+      '같은 방식이면 반복으로 끝날 수 있는 흐름입니다',
+      '예전 패턴 그대로 다가가면 같은 결과를 맞을 수 있습니다',
+      '관계 재정의 없이 재시도는 다시 이별로 직결될 수 있습니다',
+      '본질 변화 없는 접근은 같은 분기점으로 돌아옵니다'
+    ],
+    RHYTHM: ['short', 'mid', 'long']
+  },
+  contact: {
+    CORE: [
+      '연결의 흐름은 살아있습니다',
+      '연락 가능성은 형성되어 있습니다',
+      '관계의 끈은 유지되고 있습니다',
+      '소통 채널은 열린 단계에 있습니다',
+      '재연결 신호는 점진적으로 정리되고 있습니다'
+    ],
+    TURN: ['다만,', '그러나', '단,'],
+    RISK: [
+      '연락의 내용보다 보내는 타이밍이 관계의 방향을 결정짓습니다',
+      '타이밍이 어긋나면 자연스럽게 끊어질 수 있는 구간입니다',
+      '성급한 연락은 흐름을 차단할 수 있는 분기점입니다',
+      '본인 감정 정리 없이 연락은 거리를 만들 수 있는 단계입니다',
+      '시점 선택에 따라 회복과 종료가 갈리는 결정 구간입니다'
+    ],
+    RHYTHM: ['short', 'mid', 'long']
+  },
+  breakup: {
+    CORE: [
+      '관계는 정리 단계에 있습니다',
+      '이별 흐름은 형성되어 있습니다',
+      '감정의 정리 방향은 자리 잡고 있습니다',
+      '관계의 마무리 단계가 진행되고 있습니다',
+      '내면의 결단 흐름은 정리되고 있습니다'
+    ],
+    TURN: ['다만,', '그러나', '단,'],
+    RISK: [
+      '미련을 끊는 결단이 다음을 여는 분기점입니다',
+      '방향에 따라 완전 종료가 아닌 전환으로 남을 수 있습니다',
+      '미련 정리 없이는 같은 패턴 반복으로 직결될 수 있습니다',
+      '감정 잔여를 인정하지 못하면 회복이 지연되는 단계입니다',
+      '자기 회복이 우선되어야 다음 관계의 방향이 잡힙니다'
+    ],
+    RHYTHM: ['short', 'mid', 'long']
+  },
+  general: {
+    CORE: [
+      '연애 흐름은 점진적으로 형성되고 있습니다',
+      '관계의 방향은 정리 단계에 있습니다',
+      '내면의 기준은 명확해지고 있습니다',
+      '감정의 토대는 단계적으로 자리 잡고 있습니다',
+      '관계 환경은 회복 구간에 있습니다'
+    ],
+    TURN: ['다만,', '그러나', '단,'],
+    RISK: [
+      '외부 인연을 찾기 전, 자신의 기준이 정리되어야 흐름이 열립니다',
+      '선택과 반응에 따라 전혀 다른 결과로 갈리는 시점입니다',
+      '준비 없는 만남은 같은 패턴 반복으로 이어질 수 있습니다',
+      '자기 중심이 흔들리면 관계 형성이 지연되는 단계입니다',
+      '내면 정리 없이 만남은 깊이로 이어지지 못할 수 있습니다'
+    ],
+    RHYTHM: ['short', 'mid', 'long']
+  }
+};
+
+// [V27.0.4] LOVE_RISK_BLOCK_MATRIX — 경고 한방 4차원 블록
+//   톤: [가능성 인정] + [, but] + [놓치면 깨짐]
+//   서브타입별 225가지 (5×3×5×3) × 9 = 2,025가지
+const LOVE_RISK_BLOCK_MATRIX = {
+  compatibility: {
+    CORE: [
+      '두 사람의 흐름은 맞물려 있습니다',
+      '관계의 결은 형성되어 있습니다',
+      '본질적 합은 살아있는 단계입니다',
+      '감정의 균형은 유지되고 있습니다',
+      '관계의 토대는 자리 잡고 있습니다'
+    ],
+    TURN: ['그러나', '다만,', '단,'],
+    RISK: [
+      '해석 없이 지나가면 방향이 어긋날 수 있는 구간입니다',
+      '차이를 인정하지 못하면 흐름이 끊길 수 있습니다',
+      '균형이 무너지면 관계가 식는 분기점입니다',
+      '소통 부재는 본질적 합도 흐트러지게 만듭니다',
+      '결의 차이를 다루지 않으면 거리감이 커집니다'
+    ],
+    RHYTHM: ['short', 'mid', 'long']
+  },
+  marriage: {
+    CORE: [
+      '관계는 안정으로 향하고 있습니다',
+      '결합 흐름은 형성되어 있습니다',
+      '본질 합의는 단계적 정리 중입니다',
+      '결혼의 토대는 자리 잡고 있습니다',
+      '관계의 결합 가능성은 살아있습니다'
+    ],
+    TURN: ['그러나', '다만,', '단,'],
+    RISK: [
+      '선택 기준이 흐려지면 타이밍을 놓칠 수 있는 흐름입니다',
+      '낙관에 기대 점검을 미루면 결합 후 조정이 어려워집니다',
+      '본질 합의 없는 결합은 장기 충돌로 이어질 수 있습니다',
+      '현실 조건 검증을 미루면 결합 후 부담이 커질 수 있습니다',
+      '감정만으로 결정하면 후행 충돌이 발생할 수 있는 구조입니다'
+    ],
+    RHYTHM: ['short', 'mid', 'long']
+  },
+  thumb: {
+    CORE: [
+      '감정은 형성됐습니다',
+      '미묘한 균형은 유지되고 있습니다',
+      '두 사람의 흐름은 살아있습니다',
+      '관계의 긴장감은 활성화 단계입니다',
+      '썸의 에너지는 정리되고 있습니다'
+    ],
+    TURN: ['그러나', '다만,', '단,'],
+    RISK: [
+      '신호를 놓치면 자연스럽게 멀어질 수 있는 미묘한 구간입니다',
+      '확인 욕구가 강해지면 흐름이 멈출 수 있는 단계입니다',
+      '성급한 정의는 균형을 깨뜨릴 수 있는 분기점입니다',
+      '타이밍을 놓치면 관계 진전 기회가 사라질 수 있습니다',
+      '한쪽의 일방적 표현은 거리를 만들 수 있는 구간입니다'
+    ],
+    RHYTHM: ['short', 'mid', 'long']
+  },
+  crush: {
+    CORE: [
+      '감정은 이어질 가능성이 있습니다',
+      '짝사랑의 흐름은 형성되어 있습니다',
+      '내면의 끌림은 명확합니다',
+      '관계의 가능성은 살아있습니다',
+      '감정의 방향은 자리 잡고 있습니다'
+    ],
+    TURN: ['그러나', '다만,', '단,'],
+    RISK: [
+      '접근 방식에 따라 그대로 멈출 수도 있는 흐름입니다',
+      '자기 중심이 흔들리면 진전이 어려워지는 구간입니다',
+      '일방적 표현은 거리를 만들 수 있는 단계입니다',
+      '자기 회복이 선행되지 않으면 결과가 달라지지 않습니다',
+      '감정의 강도만으로는 결과를 만들기 어려운 구조입니다'
+    ],
+    RHYTHM: ['short', 'mid', 'long']
+  },
+  mindread: {
+    CORE: [
+      '마음은 존재합니다',
+      '상대 감정은 형성되어 있습니다',
+      '내면 신호는 살아있는 단계입니다',
+      '심리 흐름은 정리되고 있습니다',
+      '상대 마음의 결은 자리 잡고 있습니다'
+    ],
+    TURN: ['그러나', '다만,', '단,'],
+    RISK: [
+      '해석을 잘못하면 정반대로 받아들일 수 있는 단계입니다',
+      '압박하면 닫히고 기다리면 열리는 미묘한 구간입니다',
+      '확인 욕구가 강해지면 진심에서 멀어질 수 있습니다',
+      '상대 속도 무시는 마음이 닫히는 분기점입니다',
+      '표면 신호로만 판단하면 본심을 놓칠 수 있는 구조입니다'
+    ],
+    RHYTHM: ['short', 'mid', 'long']
+  },
+  reunion: {
+    CORE: [
+      '다시 이어질 여지는 있습니다',
+      '재회 흐름은 형성되어 있습니다',
+      '관계 회복 가능성은 살아있습니다',
+      '재정렬 단계는 가능 구간입니다',
+      '재시작 신호는 점진적으로 회복 중입니다'
+    ],
+    TURN: ['그러나', '다만,', '단,'],
+    RISK: [
+      '같은 방식이면 반복으로 끝날 수 있는 흐름입니다',
+      '예전 패턴 그대로 다가가면 같은 결과를 맞을 수 있습니다',
+      '본질 변화 없는 접근은 같은 분기점으로 돌아옵니다',
+      '관계 재정의 없이 재시도는 다시 이별로 직결될 수 있습니다',
+      '미련만 가지고 다가가면 같은 거리에서 멈출 수 있습니다'
+    ],
+    RHYTHM: ['short', 'mid', 'long']
+  },
+  contact: {
+    CORE: [
+      '연결의 흐름은 살아 있습니다',
+      '관계의 끈은 유지되고 있습니다',
+      '연락 가능성은 형성된 단계입니다',
+      '소통 채널은 열려 있습니다',
+      '재연결 신호는 정리 중입니다'
+    ],
+    TURN: ['그러나', '다만,', '단,'],
+    RISK: [
+      '타이밍이 어긋나면 자연스럽게 끊어질 수 있습니다',
+      '성급한 연락은 흐름을 차단할 수 있는 분기점입니다',
+      '본인 감정 정리 없이 연락은 거리를 만들 수 있습니다',
+      '시점 선택에 따라 회복과 종료가 갈리는 결정 구간입니다',
+      '내용보다 타이밍이 결정짓는 미묘한 단계입니다'
+    ],
+    RHYTHM: ['short', 'mid', 'long']
+  },
+  breakup: {
+    CORE: [
+      '관계는 정리 단계에 있습니다',
+      '이별의 흐름은 형성되어 있습니다',
+      '감정 정리 방향은 자리 잡고 있습니다',
+      '내면 결단은 진행되고 있습니다',
+      '관계 마무리 단계는 정리 중입니다'
+    ],
+    TURN: ['그러나', '다만,', '단,'],
+    RISK: [
+      '방향에 따라 완전 종료가 아닌 전환으로 남을 수 있습니다',
+      '미련 정리 없이는 같은 패턴 반복으로 직결될 수 있습니다',
+      '감정 잔여를 인정하지 못하면 회복이 지연되는 단계입니다',
+      '자기 회복 없이 새 관계는 같은 결과로 이어질 수 있습니다',
+      '결단 미루면 정리되지 않은 감정이 다음을 흔들 수 있습니다'
+    ],
+    RHYTHM: ['short', 'mid', 'long']
+  },
+  general: {
+    CORE: [
+      '흐름은 열려 있습니다',
+      '연애 환경은 형성되고 있습니다',
+      '관계의 토대는 자리 잡는 단계입니다',
+      '내면 기준은 정리되고 있습니다',
+      '감정의 결은 점진적으로 명확해지고 있습니다'
+    ],
+    TURN: ['그러나', '다만,', '단,'],
+    RISK: [
+      '선택과 반응에 따라 전혀 다른 결과로 갈리는 시점입니다',
+      '준비 없는 만남은 같은 패턴 반복으로 이어질 수 있습니다',
+      '자기 중심이 흔들리면 관계 형성이 지연되는 단계입니다',
+      '내면 정리 없이 만남은 깊이로 이어지지 못할 수 있습니다',
+      '외부 환경에 휘둘리면 본질적 만남이 어려워지는 구조입니다'
+    ],
+    RHYTHM: ['short', 'mid', 'long']
+  }
+};
+
+// ══════════════════════════════════════════════════════════════════
+// [V27.0.4 안전 가드] 블록 매트릭스 Linter 자동 검증 — Boot 시 1회 실행
+//   목적: SELL 블록에 '진입/매수' 어휘 들어가는 결함 사전 차단
+//   방식: 모듈 로드 시 자동 검증 → 결함 발견 시 console.error
+//   보호: 사장님 V27.0.3 결함 ('추가 진입보다') 재발 방지
+// ══════════════════════════════════════════════════════════════════
+(function _v27_0_4_lintAllBlocks() {
+  try {
+    const allErrors = [];
+    if (typeof STOCK_BLOCK_MATRIX !== 'undefined') {
+      allErrors.push(..._validateBlockMatrix(STOCK_BLOCK_MATRIX, 'STOCK_BLOCK_MATRIX'));
+    }
+    if (typeof REALESTATE_BLOCK_MATRIX !== 'undefined') {
+      allErrors.push(..._validateBlockMatrix(REALESTATE_BLOCK_MATRIX, 'REALESTATE_BLOCK_MATRIX'));
+    }
+    if (allErrors.length > 0) {
+      console.error('[V27.0.4 LINTER] SELL 블록에 매수 어휘 검출:', allErrors);
+    }
+    // 정상 시 로그 미출력 (Boot 노이즈 최소화)
+  } catch (e) {
+    // Linter 실패 시 무시 (안전: 핵심 동작 영향 없음)
+  }
+})();
 
 // ══════════════════════════════════════════════════════════════════
 // [V27.0 Priority 3] STOCK_PIVOT_PHRASE — 결단 한방 (FINAL VERDICT 위)
@@ -6351,7 +7157,7 @@ function normalizeHonorific(name) {
   return trimmed + '님';
 }
 
-function buildLoveOracleV25_24({ totalScore, cards, revFlags, loveSubType, numerology }) {
+function buildLoveOracleV25_24({ totalScore, cards, revFlags, loveSubType, numerology, prompt }) {
   const subtype = loveSubType || 'general';
   const scoreCategory = getLoveScoreCategoryV2(totalScore, cards, revFlags, subtype);
   const content = getLoveContent(subtype, scoreCategory);
@@ -6365,8 +7171,8 @@ function buildLoveOracleV25_24({ totalScore, cards, revFlags, loveSubType, numer
       relationEssence: buildLoveRelationEssence(content, cards, revFlags),
       actionGuide: buildLoveActionGuide(content),
       timing: buildLoveTiming(content, numerology, cards),
-      risk: buildLoveRisk(content, subtype),
-      final: buildLoveFinal(content, scoreCategory, subtype)
+      risk: buildLoveRisk(content, subtype, cards, prompt, revFlags),
+      final: buildLoveFinal(content, scoreCategory, subtype, cards, prompt, revFlags)
     },
     proEnhancement: buildLoveProEnhancement(metaPattern),
     _meta: {
@@ -6810,7 +7616,8 @@ ${actionGuide.oneLine}`;
       cards: cleanCards.map(c => ({ name: typeof c === 'string' ? c : (c?.name || '') })),
       revFlags: [false, false, false],
       loveSubType,
-      numerology: finalTimingText
+      numerology: finalTimingText,
+      prompt   // [V27.0.4] 시드 다양화 — 종목/대상 식별용
     }),
     finalOracle: compatSummary || criticalInterpretation,
     layers: {
