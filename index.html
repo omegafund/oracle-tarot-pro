@@ -11506,6 +11506,19 @@ function showPayModal() {
     //   사장님 안: 카카오/네이버/토스/삼성페이 4종 + 카드 (간편결제 직접 노출)
     //   기존: startTossPayment('plan') → Toss 기본 화면 (SSG/페이코 노출)
     //   변경: showPaymentMethodModal('plan') → 4종 간편결제 + 카드 명시적 선택
+    
+    // [V31 #143] 사장님 진단: ReferenceError 'isSajuContext' before initialization
+    //   원인: tossCardHTML(line 11509)에서 isSajuContext 참조하는데
+    //         isSajuContext는 line 11658에서 const 선언 → TDZ(Temporal Dead Zone) 에러
+    //   해결: isSajuContext + headerTitle + headerSubtitle을 tossCardHTML 위로 이동
+    
+    // [V31 #129/#143] 사주 결제 컨텍스트 분기 (사용자 인지 명확화)
+    const isSajuContext = window._sajuPaymentContext === true;
+    const headerTitle = isSajuContext ? '☯ PRO 사주 신탁 ✦' : '✦ 프리미엄 신탁 ✦';
+    const headerSubtitle = isSajuContext 
+        ? '⏰ 십성 · 격국 · 용신 · 신살 · 대운 정밀 분석' 
+        : '⏰ 오늘의 미래 흐름은 24시간 후 사라집니다';
+    
     const tossCardHTML = `
         <!-- [#113] 결제 버튼 동의 안내 박스 — 사장님 결제 UX 결함 해결 ★
               목적: 사용자가 결제 버튼을 보기 전에 동의 체크박스 인지
@@ -11654,12 +11667,8 @@ function showPayModal() {
     overlay.className = 'pay-modal-overlay';
     overlay.id = 'payModalOverlay';
     
-    // [V31 #129 권장 1] 사주 결제 컨텍스트 분기 (사용자 인지 명확화)
-    const isSajuContext = window._sajuPaymentContext === true;
-    const headerTitle = isSajuContext ? '☯ PRO 사주 신탁 ✦' : '✦ 프리미엄 신탁 ✦';
-    const headerSubtitle = isSajuContext 
-        ? '⏰ 십성 · 격국 · 용신 · 신살 · 대운 정밀 분석' 
-        : '⏰ 오늘의 미래 흐름은 24시간 후 사라집니다';
+    // [V31 #143] isSajuContext + headerTitle + headerSubtitle 변수는
+    //   tossCardHTML 정의 위로 이동됨 (TDZ 결함 해결)
     
     overlay.innerHTML = `
         <div class="pay-modal">
