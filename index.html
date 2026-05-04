@@ -2913,6 +2913,67 @@ const ZEUS_NOTIFICATION = {
 // 페이지 로드 시 자동 체크
 window.addEventListener('load', () => {
   setTimeout(() => ZEUS_NOTIFICATION.checkAndShowDaily(), 2000);
+  
+  // [V31 #130] 결제 완료 후 사주 데이터 자동 복원 (안전 장치)
+  // 사장님 진단: 결제 후 점사 안 나옴 → ?paid=ok 분기 누락 케이스 대응
+  // 해결: 페이지 로드 시점에서 localStorage 사주 데이터 + isPaidUser 체크
+  setTimeout(() => {
+    try {
+      const sajuPending = localStorage.getItem('sajuPendingResult');
+      if (!sajuPending) return;
+      
+      const sajuData = JSON.parse(sajuPending);
+      
+      // 30분 만료 체크 (오래된 데이터 정리)
+      if (sajuData.savedAt && Date.now() - sajuData.savedAt > 30 * 60 * 1000) {
+        localStorage.removeItem('sajuPendingResult');
+        return;
+      }
+      
+      // 결제 사용자인지 검증 (isPaidUser 또는 paid_token)
+      const hasPaidToken = !!localStorage.getItem('paid_token');
+      const isPaid = (typeof isPaidUser !== 'undefined' && isPaidUser === true) || hasPaidToken;
+      
+      if (!isPaid) return;  // 결제 안 한 상태면 복원 X
+      
+      console.log('🔓 [V31 #130] 결제 완료 + 사주 대기 중 → 자동 복원');
+      
+      // PRO 사주 점사 재호출
+      const SAJU_API_AUTO = 'https://tarot-api.omegafund01.workers.dev';
+      fetch(`${SAJU_API_AUTO}/saju/oracle`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+        body: JSON.stringify({
+          input: sajuData.input,
+          category: sajuData.category || 'fortune',
+          timePhase: sajuData.timePhase || 'medium',
+          tier: 'month'  // ★ PRO 30일권 콘텐츠
+        })
+      })
+      .then(r => r.text())
+      .then(txt => {
+        try {
+          const data = JSON.parse(txt);
+          if (data.ok && typeof renderSajuResult === 'function') {
+            renderSajuResult(data);
+            localStorage.removeItem('sajuPendingResult');
+            // PRO 영역으로 부드러운 스크롤
+            setTimeout(() => {
+              const sajuModal = document.getElementById('sajuResultModal');
+              if (sajuModal) {
+                sajuModal.scrollTop = sajuModal.scrollHeight * 0.6;
+              }
+            }, 1000);
+          }
+        } catch (e) {
+          console.error('[V31 #130] 사주 PRO JSON 파싱 실패:', e, txt.substring(0, 200));
+        }
+      })
+      .catch(err => console.error('[V31 #130] 사주 PRO 네트워크 오류:', err));
+    } catch (e) {
+      console.warn('[V31 #130] 사주 자동 복원 검사 실패:', e);
+    }
+  }, 1500);  // 다른 초기화 완료 후 실행
 });
 
 // ── 후킹 배너 텍스트 DB
@@ -10828,6 +10889,64 @@ function renderSajuResult(data) {
                 <div style="display:inline-block; padding:7px 18px; background:linear-gradient(135deg, #D4AF37, #FFD970); color:#000; font-size:0.78rem; font-weight:900; border-radius:6px; box-shadow:0 3px 12px rgba(212,175,55,0.5); animation: ctaPulse 3.5s ease-in-out infinite;">
                     ✨ PRO 신탁 받기 →
                 </div>
+            </div>
+            ` : ''}
+
+            <!-- ═══════════════════════════════════════════════════════════
+                 [V31 #130] PRO 콘텐츠 실제 노출 영역 (사장님 진단 결함 해결)
+                 사장님 진단: 결제했는데 점사 안 나옴
+                 원인: renderSajuResult가 tier='free' 분기만 처리, PRO 콘텐츠 표시 X
+                 해결: tier !== 'free' 시 tenStars/deepInsight/hiddenRisk/timingPrecision 노출
+            ═══════════════════════════════════════════════════════════ -->
+            ${data.pro && data.pro.tier !== 'free' && data.pro.available ? `
+            <div style="margin:18px 0; padding:18px; background:linear-gradient(135deg, rgba(212,175,55,0.18), rgba(212,175,55,0.06)); border:2px solid rgba(212,175,55,0.6); border-radius:10px; box-shadow:0 4px 18px rgba(212,175,55,0.2);">
+                <div style="text-align:center; margin-bottom:14px;">
+                    <div style="display:inline-block; padding:6px 14px; background:linear-gradient(135deg, #D4AF37, #FFD970); color:#000; font-size:0.74rem; font-weight:900; border-radius:4px; letter-spacing:0.05em;">
+                        ✨ PRO 신탁 (${data.pro.tier === 'day' ? '1일' : data.pro.tier === 'month' ? '30일' : '평생'} 이용권)
+                    </div>
+                </div>
+                
+                ${data.pro.tenStars ? `
+                <div style="margin-bottom:12px; padding:12px; background:rgba(0,0,0,0.25); border-left:3px solid #FFD970; border-radius:0 6px 6px 0;">
+                    <div style="color:#FFD970; font-size:0.84rem; font-weight:800; margin-bottom:6px;">⭐ ${data.pro.tenStars.title || '십성 분석'}</div>
+                    <div style="color:rgba(255,255,255,0.92); font-size:0.84rem; line-height:1.65;">${data.pro.tenStars.content || ''}</div>
+                </div>` : ''}
+                
+                ${data.pro.deepInsight ? `
+                <div style="margin-bottom:12px; padding:12px; background:rgba(0,0,0,0.25); border-left:3px solid #FFD970; border-radius:0 6px 6px 0;">
+                    <div style="color:#FFD970; font-size:0.84rem; font-weight:800; margin-bottom:6px;">🔮 ${data.pro.deepInsight.title || '깊이 통찰'}</div>
+                    <div style="color:rgba(255,255,255,0.92); font-size:0.84rem; line-height:1.65;">${data.pro.deepInsight.content || ''}</div>
+                </div>` : ''}
+                
+                ${data.pro.hiddenRisk ? `
+                <div style="margin-bottom:12px; padding:12px; background:rgba(231,76,60,0.08); border-left:3px solid #e74c3c; border-radius:0 6px 6px 0;">
+                    <div style="color:#FF8870; font-size:0.84rem; font-weight:800; margin-bottom:6px;">⚠ ${data.pro.hiddenRisk.title || '숨은 리스크'}</div>
+                    <div style="color:rgba(255,255,255,0.92); font-size:0.84rem; line-height:1.65;">${data.pro.hiddenRisk.content || ''}</div>
+                </div>` : ''}
+                
+                ${data.pro.timingPrecision ? `
+                <div style="margin-bottom:12px; padding:12px; background:rgba(46,204,113,0.08); border-left:3px solid #2ecc71; border-radius:0 6px 6px 0;">
+                    <div style="color:#5DD68A; font-size:0.84rem; font-weight:800; margin-bottom:6px;">⏱ ${data.pro.timingPrecision.title || '타이밍 정밀'}</div>
+                    <div style="color:rgba(255,255,255,0.92); font-size:0.84rem; line-height:1.65;">${data.pro.timingPrecision.content || ''}</div>
+                </div>` : ''}
+                
+                ${data.pro.luckPhase12 ? `
+                <div style="margin-bottom:12px; padding:12px; background:rgba(0,0,0,0.25); border-left:3px solid #FFD970; border-radius:0 6px 6px 0;">
+                    <div style="color:#FFD970; font-size:0.84rem; font-weight:800; margin-bottom:6px;">🌀 ${data.pro.luckPhase12.title || '12운성'}</div>
+                    <div style="color:rgba(255,255,255,0.92); font-size:0.84rem; line-height:1.65;">${data.pro.luckPhase12.content || ''}</div>
+                </div>` : ''}
+                
+                ${data.pro.familyPackage ? `
+                <div style="margin-bottom:12px; padding:12px; background:rgba(155,89,182,0.08); border-left:3px solid #9b59b6; border-radius:0 6px 6px 0;">
+                    <div style="color:#C39BD3; font-size:0.84rem; font-weight:800; margin-bottom:6px;">👨‍👩‍👧 ${data.pro.familyPackage.title || '가족 사주'}</div>
+                    <div style="color:rgba(255,255,255,0.92); font-size:0.84rem; line-height:1.65;">${data.pro.familyPackage.content || ''}</div>
+                </div>` : ''}
+                
+                ${data.pro.yearlyOutlook ? `
+                <div style="padding:12px; background:rgba(52,152,219,0.08); border-left:3px solid #3498db; border-radius:0 6px 6px 0;">
+                    <div style="color:#7FCDFF; font-size:0.84rem; font-weight:800; margin-bottom:6px;">📅 ${data.pro.yearlyOutlook.title || '연운 흐름'}</div>
+                    <div style="color:rgba(255,255,255,0.92); font-size:0.84rem; line-height:1.65;">${data.pro.yearlyOutlook.content || ''}</div>
+                </div>` : ''}
             </div>
             ` : ''}
 
