@@ -4079,27 +4079,50 @@ function setSituation(btn, type, domain) {
     console.log('  - oracleSessionToken:', localStorage.getItem('oracleSessionToken') ? '있음' : '없음');
     
     // ════════════════════════════════════════════════════════════════════════
-    // [V31 #147 결정적 백도어 차단] 자동 paid_token 생성 코드 완전 제거
-    //   사장님 진단: "타로 PRO 신탁 받기 → 결제 우회되어 바로 점사 노출" (3번째 보고)
-    //   원인: #146에서 ?paid=ok URL 진입 시 PAID_xxx 토큰 영구 저장
-    //         → 한 번 ?paid=ok 거치면 영구 PRO 사용자 처리
-    //         → 결제 안 한 사용자가 PRO 점사 보게 됨 (매출 0 결함)
-    //   
-    //   해결: 클라이언트는 절대 자동 토큰 생성 X
-    //         결제 인증은 success.html이 워커 verify-payment 거친 토큰으로만
-    //         이 시점에서는 isPaidUser=true만 임시 설정 (메모리 변수, 영구 X)
+    // [V31 #149 사장님 정답 코드] isPaidUser 조건부 설정 — 백도어 완전 차단
+    //   사장님 진단 (정확): 
+    //     "isPaidUser = true 무조건 설정 → 결제 로직 작동할 기회 없음"
+    //     "테스트 코드가 그대로 배포된 상태"
+    //
+    //   사장님 정답:
+    //     URL 기반 ?paid=ok + 로컬 토큰 둘 다 체크
+    //     하나라도 없으면 isPaidUser=false 유지 (결제 모달 거쳐야 PRO)
     // ════════════════════════════════════════════════════════════════════════
     
-    // ❌ #146 자동 생성 코드 영구 제거 (결정적 백도어):
+    // ❌ #146/#147 잘못된 코드 (사장님 지적):
     // ❌ if (!localStorage.getItem('paid_token') && !localStorage.getItem('oracleSessionToken')) {
     // ❌     const tokenValue = 'PAID_' + Date.now() + ...;
     // ❌     localStorage.setItem('paid_token', tokenValue);
-    // ❌     localStorage.setItem('oracleSessionToken', tokenValue);
     // ❌ }
+    // ❌ isPaidUser = true;  ← 무조건 설정 = 백도어
     
-    // 메모리 변수만 임시 설정 (현재 ?paid=ok 진입 흐름만 PRO로 처리)
-    isPaidUser = true;
-    console.log('  ✅ [V31 #147] isPaidUser=true (메모리만, 영구 저장 X)');
+    // ✅ V31 #149 사장님 정답 코드:
+    const urlParams = new URLSearchParams(window.location.search);
+    const isPaidParam = urlParams.get('paid') === 'ok';  // 이 분기 안이라 항상 true
+    const hasToken = localStorage.getItem('paid_token') || localStorage.getItem('oracleSessionToken');
+    
+    // 최종: URL 파라미터 + 진짜 토큰 둘 다 있어야 isPaidUser=true
+    isPaidUser = isPaidParam && hasToken;
+    console.log('  ✅ [V31 #149] isPaidUser 조건부 설정:', isPaidUser);
+    console.log('     - isPaidParam:', isPaidParam);
+    console.log('     - hasToken:', !!hasToken);
+    
+    // 토큰 없이 ?paid=ok URL만 도달한 경우 → 사용자 안내 (백도어 차단)
+    if (isPaidParam && !hasToken) {
+        console.warn('  ⚠ [V31 #149] ?paid=ok URL 도달했으나 결제 토큰 없음 → 결제 미완료로 처리');
+        // early overlay 정리 (사용자가 홈 화면에서 다시 결제 진행 가능)
+        const eo = document.getElementById('paidEarlyOverlay');
+        if (eo) {
+            eo.style.transition = 'opacity 0.3s ease';
+            eo.style.opacity = '0';
+            setTimeout(function() {
+                eo.remove();
+                const es = document.getElementById('paidOverlayStyle');
+                if (es) es.remove();
+            }, 300);
+        }
+        return;  // 백도어 차단 — 사주/타로 분기 진입 차단
+    }
     
     try {
         // [V31 #146] 사주 데이터 다중 소스에서 조회 (localStorage → sessionStorage)
@@ -4438,7 +4461,8 @@ function setSituation(btn, type, domain) {
                     const isFinance = (CURRENT_MODE === 'stock' || CURRENT_MODE === 'crypto' || CURRENT_MODE === 'realestate');
                     const seedInput = qInput?.value || '';
                     const investData = isFinance ? buildInvestmentData(selectedCards, seedInput) : null;
-                    contentEl.innerHTML = renderText(cachedFullText, selectedCards, investData, true, isFinance);
+                    // [V31 #149] 사장님 정답 — 강제 true → isPaidUser 변수
+                    contentEl.innerHTML = renderText(cachedFullText, selectedCards, investData, isPaidUser, isFinance);
 
                     // 로딩/대기문구 숨김 + 공유/저장 + 새 신탁 버튼 노출
                     const loadingEl   = document.getElementById('ai-loading-text');
@@ -12639,7 +12663,8 @@ async function zeusClaimSubmit(plan) {
                 const isFinance = (CURRENT_MODE === 'stock' || CURRENT_MODE === 'crypto' || CURRENT_MODE === 'realestate');
                 const seedInput = document.getElementById('seed-input')?.value || "";
                 const investData = isFinance ? buildInvestmentData(selectedCards, seedInput) : null;
-                contentEl.innerHTML = renderText(cachedFullText, selectedCards, investData, true, isFinance);
+                // [V31 #149] 사장님 정답 — 강제 true → isPaidUser 변수
+                contentEl.innerHTML = renderText(cachedFullText, selectedCards, investData, isPaidUser, isFinance);
 
                 // UI 요소 정리: 대기 문구 숨기고 새 신탁 버튼 노출
                 const holdingMsg = document.getElementById('holding-message');
@@ -13857,8 +13882,10 @@ async function confirmPayment() {
             // 🔥 [중요] 통합 엔진 buildInvestmentData를 사용하여 데이터를 새로 뽑습니다.
             const investData = isFinance ? buildInvestmentData(selectedCards, seedInput) : null;
 
-            // 🔥 [핵심] isPaidUser가 true이므로 이제 renderText는 잠금 화면을 내보내지 않습니다.
-            contentEl.innerHTML = renderText(cachedFullText, selectedCards, investData, true, isFinance);
+            // 🔥 [V31 #149 사장님 정답] isPaidUser 변수로 (강제 true 제거)
+            //   confirmPayment 직전에 isPaidUser=true 설정됨 → 변수 사용도 안전
+            //   사장님 지적: "강제 true → 결제 안 한 사용자도 PRO 노출 가능"
+            contentEl.innerHTML = renderText(cachedFullText, selectedCards, investData, isPaidUser, isFinance);
 
             // 3️⃣ UI 요소 최종 정리: 대기 문구 숨기고, 새 신탁 버튼 노출
             const holdingMsg = document.getElementById('holding-message');
