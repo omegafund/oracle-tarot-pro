@@ -3681,6 +3681,13 @@ function setSituation(btn, type, domain) {
 // ── 페이지 로드 시 결제 상태 복원
 // 토큰이 있으면 Worker에 검증 요청 → 유효 시 isPaidUser = true
 (async () => {
+    // ★ [V31 #136 사장님 진단] proUnlocked 통합 키 — 즉시 isPaidUser 설정
+    // 사장님 핵심 진단: "결제 unlock key 불일치" 해결
+    if (localStorage.getItem('proUnlocked') === 'true') {
+        isPaidUser = true;
+        console.log('✅ [V31 #136] proUnlocked=true 감지 → isPaidUser=true');
+    }
+    
     let token = localStorage.getItem('oracleSessionToken') || '';
     if (!token) return;
     // [V24.8] 손상된 토큰 사전 검증 — 비-ASCII 포함 시 즉시 폐기

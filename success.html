@@ -126,11 +126,19 @@
                 // 메인 페이지에서 isPaidUser=true 인식용 + 사주 자동 복원 트리거
                 if (paymentKey && orderId) {
                     try {
+                        // ★ [V31 #136 사장님 추천] 결제 unlock 통합 키 — 사주 + 타로 모두 인식
+                        localStorage.setItem('proUnlocked', 'true');
+                        
+                        // 기존 paid_token (사주 자동 복원 트리거용)
                         localStorage.setItem('paid_token', JSON.stringify({
                             paymentKey, orderId, amount,
                             savedAt: Date.now()
                         }));
-                        console.log('✅ 결제 토큰 저장 완료');
+                        
+                        // ★ [V31 #136] oracleSessionToken — 메인 IIFE 호환 (타로 결제 검증용)
+                        localStorage.setItem('oracleSessionToken', paymentKey);
+                        
+                        console.log('✅ 결제 토큰 저장 완료 (proUnlocked + paid_token + oracleSessionToken)');
                     } catch(e) {
                         console.warn('paid_token 저장 실패 (localStorage 미지원?):', e);
                     }
