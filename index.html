@@ -2256,6 +2256,67 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <!-- [V19 Phase6] Toss Payments SDK -->
     <script src="https://js.tosspayments.com/v1"></script>
+    
+    <!-- ════════════════════════════════════════════════════════════════════════
+         [V31 #144] 결제 후 홈뷰 깜빡임 차단 — head 안 inline script
+         
+         사장님 진단: "결제 후 홈뷰 1-2초 → 중간 점사창 → 최종 신탁"
+                     "처음부터 지금까지 괴롭히는" 결함
+         
+         원인: body 그려짐 + JS 분기 실행 시간차로 홈뷰 노출
+         해결: head 안 inline script로 ?paid=ok 즉시 감지
+               → body 그려지기 전에 document.write로 오버레이 출력
+               → 사용자는 끝까지 "결과 불러오는 중" 화면만 봄
+    ════════════════════════════════════════════════════════════════════════ -->
+    <script>
+    (function() {
+        try {
+            var params = new URLSearchParams(window.location.search);
+            if (params.get('paid') !== 'ok') return;
+            
+            // body 그려지기 전에 즉시 오버레이 삽입 (홈뷰 차단)
+            document.write([
+                '<style id="paidOverlayStyle">',
+                '  body { background: #0a0612 !important; }',
+                '  #paidEarlyOverlay {',
+                '    position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;',
+                '    background: linear-gradient(135deg, #0a0612 0%, #1a0a2e 100%);',
+                '    z-index: 999999;',
+                '    display: flex; align-items: center; justify-content: center;',
+                '    flex-direction: column; gap: 18px;',
+                '  }',
+                '  #paidEarlyOverlay .saju-symbol {',
+                '    font-size: 4rem; color: #FFD970;',
+                '    animation: paidSpin 2.5s linear infinite;',
+                '    filter: drop-shadow(0 0 18px rgba(255,217,112,0.6));',
+                '  }',
+                '  #paidEarlyOverlay .title {',
+                '    color: #FFD970; font-size: 1.2rem; font-weight: 900;',
+                '    letter-spacing: 0.04em;',
+                '  }',
+                '  #paidEarlyOverlay .subtitle {',
+                '    color: rgba(255,255,255,0.6); font-size: 0.85rem;',
+                '    text-align: center; line-height: 1.6; margin-top: 4px;',
+                '  }',
+                '  @keyframes paidSpin {',
+                '    from { transform: rotate(0deg); }',
+                '    to { transform: rotate(360deg); }',
+                '  }',
+                '</style>',
+                '<div id="paidEarlyOverlay">',
+                '  <div class="saju-symbol">☯</div>',
+                '  <div class="title">PRO 신탁 불러오는 중</div>',
+                '  <div class="subtitle">결제 완료 — 잠시만 기다려주세요<br>곧 정밀 점사가 펼쳐집니다</div>',
+                '</div>'
+            ].join('\n'));
+            
+            // [V31 #144] flag 설정 — 후속 분기에서 일반 홈 렌더링 차단 위해
+            window._V31_paidEarlyOverlay = true;
+        } catch(e) {
+            console.warn('[V31 #144] early overlay 실패:', e);
+        }
+    })();
+    </script>
 </head>
 <body>
 <div id="app-container">
@@ -3873,11 +3934,33 @@ function setSituation(btn, type, domain) {
 // ── 페이지 로드 시 결제 상태 복원
 // 토큰이 있으면 Worker에 검증 요청 → 유효 시 isPaidUser = true
 (async () => {
-    // ★ [V31 #136 사장님 진단] proUnlocked 통합 키 — 즉시 isPaidUser 설정
-    // 사장님 핵심 진단: "결제 unlock key 불일치" 해결
-    if (localStorage.getItem('proUnlocked') === 'true') {
+    // ════════════════════════════════════════════════════════════════════════
+    // [V31 #145 긴급 수정] 사장님 진단: 타로 결제 흐름 깨짐
+    //   원인: #140에서 ?paid=ok 폴백 시 proUnlocked='true' 영구 저장
+    //         → 사장님 테스트 한 번이라도 ?paid=ok 거치면 영구 PRO 사용자
+    //         → 결제 안 해도 PRO 콘텐츠 노출 (매출 0)
+    //
+    //   해결:
+    //     ① 자동 정리 — paid_token 없는 상태에서 proUnlocked만 있으면 잘못된 잔재
+    //     ② 진짜 결제 검증은 paid_token / oracleSessionToken / 워커 verify로만
+    // ════════════════════════════════════════════════════════════════════════
+    try {
+        const proUnlocked = localStorage.getItem('proUnlocked');
+        const paidToken   = localStorage.getItem('paid_token');
+        const sessionTok  = localStorage.getItem('oracleSessionToken');
+        
+        // proUnlocked='true'만 있고 진짜 토큰 없으면 → 잘못된 잔재 (자동 정리)
+        if (proUnlocked === 'true' && !paidToken && !sessionTok) {
+            localStorage.removeItem('proUnlocked');
+            console.warn('🧹 [V31 #145] 잘못된 proUnlocked 잔재 자동 정리 (토큰 없음)');
+        }
+    } catch(e) {}
+    
+    // ★ [V31 #136 → #145 보강] proUnlocked + 진짜 토큰 둘 다 있을 때만 isPaidUser
+    if (localStorage.getItem('proUnlocked') === 'true' 
+        && (localStorage.getItem('paid_token') || localStorage.getItem('oracleSessionToken'))) {
         isPaidUser = true;
-        console.log('✅ [V31 #136] proUnlocked=true 감지 → isPaidUser=true');
+        console.log('✅ [V31 #145] proUnlocked + token 둘 다 확인 → isPaidUser=true');
     }
     
     let token = localStorage.getItem('oracleSessionToken') || '';
@@ -3960,6 +4043,11 @@ function setSituation(btn, type, domain) {
             // 30분 만료 체크
             if (sajuData.savedAt && Date.now() - sajuData.savedAt > 30 * 60 * 1000) {
                 localStorage.removeItem('sajuPendingResult');
+                // [V31 #144] early overlay 정리 (alert 전에)
+                const eo = document.getElementById('paidEarlyOverlay');
+                if (eo) eo.remove();
+                const es = document.getElementById('paidOverlayStyle');
+                if (es) es.remove();
                 alert('결제 세션이 만료되었습니다. 다시 사주를 진행해주세요.');
                 return;
             }
@@ -4086,23 +4174,38 @@ function setSituation(btn, type, domain) {
     try {
         const raw = localStorage.getItem('pendingOracle');
         if (!raw) {
-            // [V31 #140] 결제 후 복원할 데이터 없음 — 친절한 안내 추가
-            //   사장님 진단 #140: "결제하면 홈뷰 중간 점사창으로 이동" — 중대 에러
-            //   원인 후보: 사주 컨텍스트가 아닌 결제(9900/199000)였거나 sajuPendingResult 누락
-            //   해결: 990원 통일 (다른 가격 비공개) + 폴백 시 친절한 안내
-            console.warn('⚠ [V31 #140] 결제 완료(?paid=ok) — sajuPendingResult/pendingOracle 둘 다 없음');
-            console.warn('  → 사주 컨텍스트 누락 가능 (990원 사주 결제 흐름이 아니었거나 데이터 만료)');
-            // isPaidUser 강제 설정 (결제는 완료된 상태이므로)
-            isPaidUser = true;
-            try { localStorage.setItem('proUnlocked', 'true'); } catch(e) {}
-            // 친절한 안내 (홈뷰 그대로 두지 말고 명확하게)
-            setTimeout(() => {
-                const sajuCard = document.querySelector('.saju-aux-card');
-                if (sajuCard) {
-                    sajuCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                    sajuCard.style.animation = 'sajuPaidPulse 1.5s ease-in-out 3';
-                }
-            }, 500);
+            // [V31 #140 + #144 + #145 핵심 수정] 결제 후 복원할 데이터 없음
+            //   ★ #145 사장님 진단: 타로 결제 흐름 깨짐 (결제 안 했는데 PRO 보임)
+            //   원인: #140에서 isPaidUser=true + proUnlocked='true' 영구 저장
+            //         → ?paid=ok URL만 도달해도 영구 PRO 사용자 처리
+            //         → 사장님 테스트 중 한 번이라도 ?paid=ok 거치면 영구 무료
+            //   해결: proUnlocked 영구 저장 제거 (현재 세션 isPaidUser만 임시 설정)
+            //         타로/사주 결제 흐름은 paid_token / oracleSessionToken으로만 인증
+            console.warn('⚠ [V31 #145] 결제 완료(?paid=ok) — sajuPendingResult/pendingOracle 둘 다 없음');
+            console.warn('  → ★ proUnlocked 영구 저장 안 함 (다음 결제 흐름 보호)');
+            
+            // ❌ 영구 저장 제거 — 이게 #145 결정적 핵심 수정
+            // ❌ isPaidUser = true;  ← 전역 영구화 차단
+            // ❌ try { localStorage.setItem('proUnlocked', 'true'); } catch(e) {}
+            
+            // [V31 #144] early overlay 부드러운 페이드아웃 (홈뷰 자연스럽게 전환)
+            const earlyOverlay = document.getElementById('paidEarlyOverlay');
+            if (earlyOverlay) {
+                earlyOverlay.style.transition = 'opacity 0.4s ease';
+                earlyOverlay.style.opacity = '0';
+                setTimeout(function() {
+                    earlyOverlay.remove();
+                    const styleEl = document.getElementById('paidOverlayStyle');
+                    if (styleEl) styleEl.remove();
+                    
+                    // 사주 카드로 시각 안내
+                    const sajuCard = document.querySelector('.saju-aux-card');
+                    if (sajuCard) {
+                        sajuCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        sajuCard.style.animation = 'sajuPaidPulse 1.5s ease-in-out 3';
+                    }
+                }, 400);
+            }
             return;
         }
         const pending = JSON.parse(raw);
@@ -11213,6 +11316,59 @@ window.handleSajuProClick = function() {
     }
 };
 
+// ════════════════════════════════════════════════════════════════════════════════
+// [V31 #144] 사주 결과 모달 — 처음으로 / 닫기 핸들러
+// ────────────────────────────────────────────────────────────────────────────────
+//
+// [ 사장님 명령 #144 ]
+//   "점사 끝에서 홈으로 되돌아갈 수 없다"
+//   "타로 + 사주 공통 버튼 생성 필요"
+//
+// [ 동작 ]
+//   handleSajuRestart  : 사주 모달 정리 + early overlay 정리 + 홈 화면으로 복귀
+//   handleSajuModalClose : 모달만 정리 (현재 위치 유지)
+// ════════════════════════════════════════════════════════════════════════════════
+window.handleSajuRestart = function() {
+    console.log('🏠 [V31 #144] 사주 결과 → 처음으로');
+    
+    // 1. 사주 결과 모달 제거
+    const sajuModal = document.getElementById('sajuResultModal');
+    if (sajuModal) sajuModal.remove();
+    
+    // 2. early overlay 잔존 시 제거
+    const earlyOverlay = document.getElementById('paidEarlyOverlay');
+    if (earlyOverlay) earlyOverlay.remove();
+    const earlyStyle = document.getElementById('paidOverlayStyle');
+    if (earlyStyle) earlyStyle.remove();
+    
+    // 3. 사주 결제 컨텍스트 정리
+    window._sajuPaymentContext = false;
+    
+    // 4. 홈 화면 보장 (이미 그려져 있으면 그대로, 아니면 페이지 진입)
+    //    스크롤 맨 위로
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    
+    // 5. 사주 카드(보조)로 시각 안내 (옵션)
+    setTimeout(function() {
+        const sajuCard = document.querySelector('.saju-aux-card');
+        if (sajuCard) {
+            sajuCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+    }, 400);
+};
+
+window.handleSajuModalClose = function() {
+    console.log('✕ [V31 #144] 사주 결과 모달 닫기');
+    const sajuModal = document.getElementById('sajuResultModal');
+    if (sajuModal) sajuModal.remove();
+    
+    // early overlay 잔존 시 제거 (안전)
+    const earlyOverlay = document.getElementById('paidEarlyOverlay');
+    if (earlyOverlay) earlyOverlay.remove();
+    const earlyStyle = document.getElementById('paidOverlayStyle');
+    if (earlyStyle) earlyStyle.remove();
+};
+
 /**
  * 사주 결과 화면 렌더링 (V31 #134 안전 보강)
  */
@@ -11253,6 +11409,19 @@ function renderSajuResult(data) {
         // 로딩 화면 강제 제거 (만약 남아있으면)
         const loading = document.getElementById('sajuPostPayLoading');
         if (loading) loading.remove();
+        
+        // [V31 #144] 결제 후 early overlay 제거 (PRO 결과 표시 직전)
+        const earlyOverlay = document.getElementById('paidEarlyOverlay');
+        if (earlyOverlay) {
+            // 부드러운 페이드아웃 (300ms) 후 제거
+            earlyOverlay.style.transition = 'opacity 0.3s ease';
+            earlyOverlay.style.opacity = '0';
+            setTimeout(function() {
+                earlyOverlay.remove();
+                const styleEl = document.getElementById('paidOverlayStyle');
+                if (styleEl) styleEl.remove();
+            }, 300);
+        }
         
         // 결과 모달 — z-index 99999 강제 (로딩 화면 위)
         const result = document.createElement('div');
@@ -11298,7 +11467,7 @@ function renderSajuResult(data) {
 
     result.innerHTML = `
         <div class="pay-modal" style="max-width:420px; padding:24px 20px 60px 20px;">
-            <button onclick="document.getElementById('sajuResultModal').remove()"
+            <button onclick="window.handleSajuModalClose()"
                     style="position:absolute; top:14px; right:14px; background:none; border:none; color:#888; font-size:1.4rem; cursor:pointer;">×</button>
 
             <!-- 헤더 -->
@@ -11436,6 +11605,49 @@ function renderSajuResult(data) {
             <div style="margin-top:14px; padding:8px 10px; background:rgba(255,255,255,0.04); border-radius:4px; font-size:0.66rem; color:rgba(255,255,255,0.45); line-height:1.5;">
                 ※ 본 서비스는 사주명리를 활용한 엔터테인먼트 콘텐츠입니다.
                 실제 인생의 결정은 본인의 판단에 따라 신중히 내리시기 바랍니다.
+            </div>
+            
+            <!-- ═══════════════════════════════════════════════════════
+                 [V31 #144] 점사 끝 액션 버튼 — 사장님 명령
+                   "점사 끝에서 홈으로 되돌아갈 수 없다 → 버튼 필요"
+                   타로/사주 공통 패턴: 처음으로 + 공유하기
+            ═══════════════════════════════════════════════════════ -->
+            <div style="margin-top:18px; padding-top:14px; border-top:1px solid rgba(212,175,55,0.2); display:flex; gap:10px; flex-wrap:wrap; justify-content:center;">
+                <!-- 다시 점사하기 버튼 (메인) -->
+                <button onclick="window.handleSajuRestart()" style="
+                    flex: 1; min-width: 130px; max-width: 180px;
+                    padding: 12px 16px;
+                    background: linear-gradient(135deg, #D4AF37, #FFD970);
+                    color: #1a1a1a;
+                    border: none;
+                    border-radius: 24px;
+                    font-size: 0.86rem;
+                    font-weight: 900;
+                    cursor: pointer;
+                    letter-spacing: 0.02em;
+                    box-shadow: 0 3px 12px rgba(212,175,55,0.35);
+                    transition: transform 0.18s ease, box-shadow 0.18s ease;
+                " onmouseover="this.style.transform='translateY(-1px)'; this.style.boxShadow='0 5px 16px rgba(212,175,55,0.5)';"
+                   onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 3px 12px rgba(212,175,55,0.35)';">
+                    🏠 처음으로
+                </button>
+                
+                <!-- 닫기 버튼 (보조) -->
+                <button onclick="window.handleSajuModalClose()" style="
+                    flex: 1; min-width: 130px; max-width: 180px;
+                    padding: 12px 16px;
+                    background: rgba(255,255,255,0.08);
+                    color: rgba(255,255,255,0.85);
+                    border: 1px solid rgba(255,255,255,0.25);
+                    border-radius: 24px;
+                    font-size: 0.86rem;
+                    font-weight: 700;
+                    cursor: pointer;
+                    transition: background 0.18s ease;
+                " onmouseover="this.style.background='rgba(255,255,255,0.14)'"
+                   onmouseout="this.style.background='rgba(255,255,255,0.08)'">
+                    ✕ 닫기
+                </button>
             </div>
         </div>
     `;
