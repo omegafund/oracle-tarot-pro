@@ -3727,9 +3727,23 @@ function setSituation(btn, type, domain) {
     //         → pendingOracle 없어서 if(!raw) return → 사주 분기 도달 못함
     //   해결: 사주 데이터 체크를 pendingOracle 체크보다 위로 이동
     // ═════════════════════════════════════════════════════════
+    // [V31 #131+#133] 사주 복원 우선 분기 (디버그 강화)
+    //   사장님 진단 (#133): 결제 후 모래시계까지 정상 → 그 후 홈뷰 복귀
+    //   원인: 사주 분기 못 들어가거나 진입했어도 실패 alert 후 홈 복귀
+    //   해결: 디버그 로그 + 친절한 사용자 안내 + 홈뷰 자동 복귀 차단
+    // ═════════════════════════════════════════════════════════
+    
+    // [V31 #133] 디버그 시작 — 사장님 라이브 검증용
+    console.log('🔍 [V31 #133] 결제 완료 후 분기 시작');
+    console.log('  - paid=ok 진입 OK');
+    console.log('  - sajuPendingResult:', localStorage.getItem('sajuPendingResult') ? '있음' : '없음');
+    console.log('  - pendingOracle:', localStorage.getItem('pendingOracle') ? '있음' : '없음');
+    console.log('  - paid_token:', localStorage.getItem('paid_token') ? '있음' : '없음');
+    
     try {
         const sajuPending = localStorage.getItem('sajuPendingResult');
         if (sajuPending) {
+            console.log('🔓 [V31 #133] 사주 분기 진입');
             const sajuData = JSON.parse(sajuPending);
             
             // 30분 만료 체크
@@ -3739,8 +3753,26 @@ function setSituation(btn, type, domain) {
                 return;
             }
 
-            console.log('🔓 [V31 #131] 사주 PRO 결제 완료 → 사주 결과 복원 우선 처리');
+            console.log('🔓 [V31 #133] 사주 PRO 결제 완료 → 사주 결과 복원 우선 처리');
+            console.log('  사주 데이터:', sajuData);
             isPaidUser = true;
+
+            // 로딩 화면 표시 (사용자에게 처리 중임을 알림)
+            const loadingHTML = `
+                <div id="sajuPostPayLoading" style="position:fixed; top:0; left:0; width:100%; height:100%; 
+                     background:rgba(0,0,0,0.85); z-index:99999; display:flex; align-items:center; 
+                     justify-content:center; flex-direction:column;">
+                    <div style="font-size:3.4rem; animation:spin 2s linear infinite;">☯</div>
+                    <div style="color:#FFD970; font-size:1rem; font-weight:900; margin-top:14px;">
+                        PRO 사주 신탁 불러오는 중
+                    </div>
+                    <div style="color:rgba(255,255,255,0.5); font-size:0.78rem; margin-top:6px;">
+                        잠시만 기다려주세요...
+                    </div>
+                </div>
+                <style>@keyframes spin { from { transform:rotate(0); } to { transform:rotate(360deg); } }</style>
+            `;
+            document.body.insertAdjacentHTML('beforeend', loadingHTML);
 
             // PRO tier로 사주 점사 재호출
             const SAJU_API_RESTORE = 'https://tarot-api.omegafund01.workers.dev';
@@ -3756,17 +3788,43 @@ function setSituation(btn, type, domain) {
             });
             
             const txt = await response.text();
+            console.log('🔍 [V31 #133] 워커 응답:', txt.substring(0, 200));
+            
+            // 로딩 제거
+            const loading = document.getElementById('sajuPostPayLoading');
+            if (loading) loading.remove();
             
             // SSE/error 응답 안전 차단
-            if (txt.startsWith('data:')) {
-                alert('⚠ 사주 신탁 엔진을 불러올 수 없습니다.\nCloudflare Worker 배포 상태를 확인해주세요.');
+            if (txt.startsWith('data:') || txt.includes('event-stream')) {
+                console.error('[V31 #133] SSE 응답 → 워커 미배포 또는 라우트 누락');
+                alert('⚠ 사주 PRO 엔진을 불러올 수 없습니다.\n\n' +
+                      '관리자: Cloudflare Worker에 V31 worker.js 배포 확인 필요\n' +
+                      '엔드포인트: /saju/oracle (POST)\n\n' +
+                      '결제는 정상 완료되었습니다.\n' +
+                      '재배포 후 메인 화면에서 다시 사주 입력하시면 PRO 콘텐츠 자동 노출됩니다.');
+                // 사주 데이터 유지 (재시도 가능)
                 return;
             }
             
             try {
                 const data = JSON.parse(txt);
+                console.log('🔍 [V31 #133] 사주 응답 파싱 OK:', data.ok);
+                
+                // ★ [V31 #135 사장님 1+4번] domain 명시 검증
+                if (data.domain !== 'saju') {
+                    console.error('❌ [V31 #135] domain !== saju (사주 응답 아님):', data.domain);
+                    // ❌ 절대 홈으로 안 보냄 (사장님 5번)
+                    showSajuErrorScreen(
+                        '사주 응답이 아닙니다',
+                        `Worker 응답의 domain="${data.domain || '없음'}". V31 worker.js 배포 확인 필요.`,
+                        sajuData  // 재시도 가능하도록 데이터 유지
+                    );
+                    return;
+                }
+                
                 if (data.ok && typeof renderSajuResult === 'function') {
                     // PRO 콘텐츠 포함된 사주 결과 모달 표시
+                    console.log('✅ [V31 #133] renderSajuResult 호출');
                     renderSajuResult(data);
                     
                     // PRO 영역으로 자동 스크롤
@@ -3778,21 +3836,38 @@ function setSituation(btn, type, domain) {
                     }, 1000);
                     
                     localStorage.removeItem('sajuPendingResult');
-                    console.log('✅ [V31 #131] 사주 PRO 결과 복원 완료');
+                    console.log('✅ [V31 #133] 사주 PRO 결과 복원 완료');
                     return;  // ★ 타로 복원 로직 진입 차단
                 } else {
-                    console.error('[V31 #131] 사주 응답 비정상:', data);
-                    alert('사주 결과를 불러오지 못했습니다. 다시 시도해주세요.');
+                    console.error('[V31 #133] 사주 응답 ok=false:', data);
+                    // ❌ 절대 홈으로 안 보냄 (사장님 5번)
+                    showSajuErrorScreen(
+                        '사주 결과 표시 실패',
+                        typeof renderSajuResult !== 'function' 
+                            ? '사주 결과 화면 함수 누락 — index.html 재배포 필요'
+                            : (data.error || '응답 ok=false'),
+                        sajuData
+                    );
                     return;
                 }
             } catch (parseErr) {
-                console.error('[V31 #131] JSON 파싱 실패:', parseErr, txt.substring(0, 200));
-                alert('사주 응답 형식 오류. 관리자에게 문의해주세요.');
+                console.error('[V31 #133] JSON 파싱 실패:', parseErr, txt.substring(0, 300));
+                // ❌ 절대 홈으로 안 보냄 (사장님 5번)
+                showSajuErrorScreen(
+                    'JSON 파싱 실패',
+                    '워커 응답: ' + txt.substring(0, 100),
+                    sajuData
+                );
                 return;
             }
+        } else {
+            console.log('🔍 [V31 #133] 사주 데이터 없음 → 타로 복원 분기로 진행');
         }
     } catch (e) {
-        console.error('[V31 #131] 사주 복원 처리 오류:', e);
+        console.error('[V31 #133] 사주 복원 처리 예외:', e);
+        // 로딩 정리
+        const loading = document.getElementById('sajuPostPayLoading');
+        if (loading) loading.remove();
         // 사주 복원 실패해도 타로 복원 시도
     }
     // ═════════════════════════════════════════════════════════
@@ -10798,20 +10873,109 @@ function hideSajuLoadingScreen() {
 }
 
 /**
- * 사주 결과 화면 렌더링
+ * [V31 #135] 사주 에러 화면 (사장님 5번 진단)
+ *   ❌ 실패 시 절대 홈으로 자동 복귀 안 함
+ *   ✅ 명시적 에러 화면 + 디버그 정보 + 재시도 버튼
+ */
+function showSajuErrorScreen(title, detail, sajuData) {
+    console.error('🚨 [V31 #135] 사주 에러 화면:', title, detail);
+    
+    // 기존 모달 정리
+    document.querySelectorAll('#sajuResultModal, #sajuPostPayLoading, #sajuErrorScreen').forEach(el => el.remove());
+    
+    const errorScreen = document.createElement('div');
+    errorScreen.id = 'sajuErrorScreen';
+    errorScreen.className = 'pay-modal-overlay';
+    errorScreen.style.cssText = 'overflow:auto; z-index:100000 !important;';
+    
+    const isPaidUserStatus = (typeof isPaidUser !== 'undefined' && isPaidUser === true) ? '✅ 결제 완료' : '⚠ 미결제';
+    const sajuDataStr = sajuData ? JSON.stringify(sajuData.input || {}, null, 2) : '없음';
+    
+    errorScreen.innerHTML = `
+        <div class="pay-modal" style="max-width:420px; padding:24px; border:2px solid rgba(231,76,60,0.6); background:linear-gradient(135deg, rgba(60,20,20,0.98), rgba(40,10,10,0.98));">
+            <div style="text-align:center; margin-bottom:18px;">
+                <div style="font-size:3rem;">⚠</div>
+                <h2 style="color:#FF8870; font-size:1.15rem; margin:8px 0; font-weight:900;">사주 결과 표시 실패</h2>
+                <div style="color:#FFD970; font-size:0.86rem; font-weight:700;">${title}</div>
+            </div>
+
+            <div style="margin:16px 0; padding:14px; background:rgba(0,0,0,0.45); border-left:3px solid #e74c3c; border-radius:0 6px 6px 0;">
+                <div style="color:#FF8870; font-size:0.78rem; font-weight:800; margin-bottom:6px;">📋 상세 정보</div>
+                <div style="color:rgba(255,255,255,0.85); font-size:0.78rem; line-height:1.6;">${detail}</div>
+            </div>
+
+            <div style="margin:16px 0; padding:12px; background:rgba(0,0,0,0.45); border-left:3px solid #FFD970; border-radius:0 6px 6px 0; font-size:0.74rem; color:rgba(255,255,255,0.7); line-height:1.6;">
+                <div style="color:#FFD970; font-weight:700; margin-bottom:4px;">🔍 디버그 정보</div>
+                결제 상태: ${isPaidUserStatus}<br>
+                사주 데이터: <pre style="font-size:0.7rem; margin-top:4px; padding:6px; background:rgba(0,0,0,0.4); border-radius:4px; white-space:pre-wrap; max-height:120px; overflow:auto; color:rgba(255,232,138,0.85);">${sajuDataStr}</pre>
+            </div>
+
+            <div style="margin:16px 0; padding:10px; background:rgba(46,204,113,0.08); border-left:3px solid #2ecc71; border-radius:0 6px 6px 0; font-size:0.74rem; color:rgba(255,255,255,0.85); line-height:1.6;">
+                <strong style="color:#2ecc71;">✅ 결제는 정상 완료</strong><br>
+                결과만 표시 실패. 데이터는 보존되어 있어 재시도 가능합니다.
+            </div>
+
+            <div style="display:flex; gap:8px; margin-top:18px;">
+                <button onclick="document.getElementById('sajuErrorScreen').remove(); location.reload();"
+                        style="flex:1; padding:12px; background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.2); border-radius:6px; color:#fff; font-size:0.86rem; font-weight:700; cursor:pointer;">
+                    🔄 새로고침
+                </button>
+                <button onclick="document.getElementById('sajuErrorScreen').remove(); if(typeof showSajuInputModal==='function'){showSajuInputModal();}"
+                        style="flex:2; padding:12px; background:linear-gradient(135deg, #D4AF37, #FFD970); border:none; border-radius:6px; color:#000; font-size:0.9rem; font-weight:900; cursor:pointer;">
+                    ☯ 사주 다시 시도
+                </button>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(errorScreen);
+}
+
+/**
+ * 사주 결과 화면 렌더링 (V31 #134 안전 보강)
  */
 function renderSajuResult(data) {
-    const text = data.text;
-    const meta = text.meta;
-    const pillars = meta.pillars;
-    const elements = meta.elements;
-    const audit = data.audit || {};
+    console.log('🎨 [V31 #134] renderSajuResult 시작');
+    
+    try {
+        // [V31 #134] 응답 형식 안전 검증
+        if (!data || !data.text) {
+            console.error('❌ [V31 #134] data 또는 data.text 누락:', data);
+            showSajuErrorScreen('사주 응답 형식 오류', '텍스트 데이터(data.text) 누락', null);
+            return;
+        }
+        if (!data.text.meta) {
+            console.error('❌ [V31 #134] data.text.meta 누락:', data.text);
+            showSajuErrorScreen('사주 응답 형식 오류', '메타데이터(data.text.meta) 누락', null);
+            return;
+        }
+        
+        const text = data.text;
+        const meta = text.meta;
+        const pillars = meta.pillars || {};
+        const elements = meta.elements || {};
+        const audit = data.audit || {};
+        
+        console.log('🎨 [V31 #134] 데이터 검증 OK', { 
+            tier: data.pro?.tier,
+            available: data.pro?.available,
+            hasText: !!text,
+            pillars: Object.keys(pillars).length,
+            elements: Object.keys(elements).length
+        });
 
-    // 결과 모달
-    const result = document.createElement('div');
-    result.id = 'sajuResultModal';
-    result.className = 'pay-modal-overlay';
-    result.style.overflow = 'auto';
+        // 기존 모달 제거 (중복 방지)
+        const existing = document.getElementById('sajuResultModal');
+        if (existing) existing.remove();
+        
+        // 로딩 화면 강제 제거 (만약 남아있으면)
+        const loading = document.getElementById('sajuPostPayLoading');
+        if (loading) loading.remove();
+        
+        // 결과 모달 — z-index 99999 강제 (로딩 화면 위)
+        const result = document.createElement('div');
+        result.id = 'sajuResultModal';
+        result.className = 'pay-modal-overlay';
+        result.style.cssText = 'overflow:auto; z-index:99999 !important;';
     
     // 사주 명식 4×4 시각화
     const meongSik = `
@@ -10984,6 +11148,29 @@ function renderSajuResult(data) {
         </div>
     `;
     document.body.appendChild(result);
+    console.log('✅ [V31 #134] 사주 결과 모달 DOM 추가 완료');
+    
+    // 검증: 실제로 추가됐는지
+    setTimeout(() => {
+        const check = document.getElementById('sajuResultModal');
+        if (check) {
+            console.log('✅ [V31 #134] 모달 표시 확인 OK');
+        } else {
+            console.error('❌ [V31 #134] 모달 표시 실패 — DOM에 없음');
+            showSajuErrorScreen('모달 표시 실패', 'DOM에 sajuResultModal이 추가되지 않음', null);
+        }
+    }, 500);
+    
+    } catch (renderErr) {
+        // [V31 #134] 렌더링 예외 처리
+        console.error('❌ [V31 #134] renderSajuResult 예외:', renderErr);
+        console.error('   data:', data);
+        showSajuErrorScreen(
+            '렌더링 예외',
+            (renderErr.message || String(renderErr)),
+            null
+        );
+    }
 }
 
 // 결제 모달 & 유료 전환

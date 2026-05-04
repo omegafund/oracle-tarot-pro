@@ -14331,6 +14331,8 @@ export default {
 
         return new Response(JSON.stringify({
           ...result,
+          domain: 'saju',           // ★ [V31 #135 사장님 4번] 클라이언트가 사주 응답인지 명시 인식
+          category: category,       // ★ 입력받은 카테고리 그대로 반환
           message: "[V31 Chunk 5] TEXT + INTENT ENFORCER + PRO + AUDIT (V28.B Layer 2) 통합 완료"
         }), {
           headers: { ...corsHeaders(), "Content-Type": "application/json" }
