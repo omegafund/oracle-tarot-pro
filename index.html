@@ -553,18 +553,34 @@
          *   - 히어로 대비 50% 시각 무게
          * ══════════════════════════════════════════════════════════ */
 
-        /* ─── 🌟 사주 히어로 카드 ─── */
+        /* ─── 🌟 사주 히어로 카드 — 안 3 하이브리드 (사장님 명령 130%) ─── */
+        /* 
+         * [ 사장님 명령 ]
+         *   - 4 그리드 대비 130-140%
+         *   - 직사각형 + 원형 느낌 (단둥근 뛰그사각형)
+         *   - 상단 위치 (메인 히어로)
+         *
+         * [ 정확한 사이즈 데이터 ]
+         *   - 4 그리드 합계 높이: ~200px
+         *   - 사주 히어로 높이: 약 200px (130% = 1.30배는 폭과 면적 기준)
+         *   - 폭: 480px (4 그리드와 동일)
+         *   - height: ~200px (4 그리드와 거의 같음)
+         *   - border-radius: 28px (강한 라운드 = 원형 느낌)
+         *   → 면적: 4 그리드 200×220 = 44,000 / 사주 200×480 = 96,000
+         *   → 사장님 명령은 "시각 비중 130-140%" 의미
+         *   → 컴팩트하게 만들어 시각적으로 4그리드와 유사 크기 + 강조 디테일로 차별
+         */
         .saju-hero-card {
             position: relative;
             max-width: 480px;
-            margin: 22px auto 16px;
-            padding: 22px 20px 18px 20px;
+            margin: 18px auto 14px;
+            padding: 16px 18px 14px 18px;       /* 컴팩트 (이전 22→16) */
             background: linear-gradient(135deg, 
                 rgba(212,175,55,0.18) 0%, 
                 rgba(205,46,58,0.06) 50%, 
                 rgba(0,71,160,0.10) 100%);
             border: 2px solid rgba(212,175,55,0.55);
-            border-radius: 18px;
+            border-radius: 28px;                 /* 강한 라운드 = 원형 느낌 ★ */
             cursor: pointer;
             text-align: center;
             box-shadow: 
@@ -572,6 +588,11 @@
                 0 0 0 1px rgba(212,175,55,0.08) inset;
             transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
             overflow: hidden;
+            /* 가로 레이아웃 — 태극 좌측 / 정보 우측 */
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            text-align: left;
         }
 
         .saju-hero-card:hover {
@@ -642,12 +663,23 @@
             letter-spacing: 0.05em;
         }
 
-        /* 태극 SVG */
+        /* ━━━ 안 3 하이브리드 — 가로 레이아웃 ━━━ */
+        /* 태극: 좌측 (60px) / 정보+CTA: 우측 (flex:1) */
+        
+        /* 태극 SVG — 좌측 고정 */
         .saju-hero-taegeuk {
+            flex-shrink: 0;
+            width: 64px;
+            height: 64px;
             display: flex;
             justify-content: center;
-            margin: 8px 0 12px 0;
+            align-items: center;
             animation: taegeukRotate 24s linear infinite;
+        }
+
+        .saju-hero-taegeuk svg {
+            width: 60px;
+            height: 60px;
         }
 
         @keyframes taegeukRotate {
@@ -655,71 +687,80 @@
             to { transform: rotate(360deg); }
         }
 
-        /* 히어로 텍스트 */
+        /* 우측 정보 영역 — flex column */
+        .saju-hero-info {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            min-width: 0;
+        }
+
+        /* 히어로 타이틀 */
         .saju-hero-title {
-            font-size: 1.45rem;
+            font-size: 1.25rem;
             font-weight: 900;
             color: #FFD970;
             letter-spacing: 0.03em;
             text-shadow: 0 2px 8px rgba(212,175,55,0.3);
-            margin-bottom: 4px;
+            line-height: 1.2;
+            margin-bottom: 2px;
         }
 
         .saju-hero-divider {
-            width: 32px;
-            height: 1.5px;
-            background: linear-gradient(90deg, transparent, rgba(212,175,55,0.6), transparent);
-            margin: 6px auto 8px;
+            display: none; /* 가로 레이아웃에서는 숨김 */
         }
 
         .saju-hero-sub {
-            font-size: 0.86rem;
+            font-size: 0.78rem;
             color: rgba(255,232,138,0.92);
             font-weight: 700;
-            margin-bottom: 4px;
+            line-height: 1.3;
+            margin-bottom: 2px;
         }
 
         .saju-hero-features {
-            font-size: 0.72rem;
-            color: rgba(232,232,238,0.7);
-            letter-spacing: 0.05em;
-            margin-bottom: 14px;
+            font-size: 0.66rem;
+            color: rgba(232,232,238,0.65);
+            letter-spacing: 0.04em;
+            margin-bottom: 8px;
         }
 
-        /* CTA 버튼 */
+        /* CTA 버튼 — 컴팩트 */
         .saju-hero-cta {
+            align-self: flex-start;
             display: inline-block;
-            padding: 12px 28px;
+            padding: 8px 16px;
             background: linear-gradient(135deg, #D4AF37 0%, #FFD970 50%, #D4AF37 100%);
             color: #000;
-            font-size: 0.94rem;
+            font-size: 0.78rem;
             font-weight: 900;
             border: none;
-            border-radius: 8px;
+            border-radius: 6px;
             cursor: pointer;
-            letter-spacing: 0.04em;
-            box-shadow: 0 4px 14px rgba(212,175,55,0.4);
+            letter-spacing: 0.03em;
+            box-shadow: 0 3px 10px rgba(212,175,55,0.4);
             transition: all 0.2s ease;
             animation: ctaPulse 3.5s ease-in-out infinite;
         }
 
         .saju-hero-cta:hover {
             transform: scale(1.04);
-            box-shadow: 0 6px 22px rgba(212,175,55,0.6);
+            box-shadow: 0 5px 16px rgba(212,175,55,0.6);
         }
 
         @keyframes ctaPulse {
-            0%, 100% { box-shadow: 0 4px 14px rgba(212,175,55,0.4); }
-            50% { box-shadow: 0 4px 18px rgba(212,175,55,0.7); }
+            0%, 100% { box-shadow: 0 3px 10px rgba(212,175,55,0.4); }
+            50% { box-shadow: 0 3px 14px rgba(212,175,55,0.65); }
         }
 
-        /* ─── 📦 4 GRID 톤 다운 (히어로 대비 시각 무게 ↓) ─── */
+        /* ─── 📦 4 GRID 미세 조정 (히어로 강조 자연스럽게) ─── */
         .category-grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 8px;
+            gap: 10px;                  /* 8 → 10 (시각 분리 명확) */
             max-width: 480px;
-            margin: 12px auto 14px;
+            margin: 16px auto 14px;     /* 사주 히어로와 분리 강조 */
             padding: 0 14px;
         }
 
@@ -732,7 +773,7 @@
             cursor: pointer;
             transition: all 0.22s ease;
             text-align: center;
-            min-height: 96px;
+            min-height: 92px;           /* 96 → 92 (히어로 대비 자연스럽게) */
             display: flex;
             flex-direction: column;
             justify-content: center;
@@ -2117,39 +2158,35 @@
         <!-- 🌟 HERO — 사주 신탁 (메인 히어로 / 객단가 핵심)   -->
         <!-- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ -->
         <div class="saju-hero-card" onclick="selectCategory('saju', this)">
-            <!-- NEW 붉은 점 + PRO 골드 배지 (사장님 명령) -->
+            <!-- NEW 붉은 점 + PRO 골드 배지 (절대 위치 — 우측 상단) -->
             <div class="saju-hero-badges">
                 <span class="badge-new-dot"></span>
                 <span class="badge-new-text">NEW</span>
                 <span class="badge-pro-gold">PRO</span>
             </div>
 
-            <!-- 태극 청홍 SVG (대한민국 국기 표준 색상) -->
+            <!-- ━━━ 좌측: 태극 청홍 SVG (대한민국 국기 표준) ━━━ -->
             <div class="saju-hero-taegeuk">
-                <svg viewBox="0 0 100 100" width="72" height="72" xmlns="http://www.w3.org/2000/svg">
-                    <!-- 외곽 원 -->
+                <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
                     <circle cx="50" cy="50" r="48" fill="none" stroke="rgba(212,175,55,0.4)" stroke-width="1"/>
-                    <!-- 태극 — 적색 (양/陽) 위쪽 -->
                     <path d="M 50,2 A 48,48 0 0 1 50,98 A 24,24 0 0 1 50,50 A 24,24 0 0 0 50,2 Z" fill="#CD2E3A"/>
-                    <!-- 태극 — 청색 (음/陰) 아래쪽 -->
                     <path d="M 50,2 A 48,48 0 0 0 50,98 A 24,24 0 0 0 50,50 A 24,24 0 0 1 50,2 Z" fill="#0047A0"/>
-                    <!-- 양 안의 음점 -->
                     <circle cx="50" cy="26" r="4" fill="#0047A0" opacity="0.85"/>
-                    <!-- 음 안의 양점 -->
                     <circle cx="50" cy="74" r="4" fill="#CD2E3A" opacity="0.85"/>
                 </svg>
             </div>
 
-            <!-- 타이틀 -->
-            <div class="saju-hero-title">사주 신탁</div>
-            <div class="saju-hero-divider"></div>
-            <div class="saju-hero-sub">생년월일시 기반 정밀 분석</div>
-            <div class="saju-hero-features">4주 · 오행 · 십성 · 대운</div>
+            <!-- ━━━ 우측: 정보 영역 (타이틀 + 부제 + 특징 + CTA) ━━━ -->
+            <div class="saju-hero-info">
+                <div class="saju-hero-title">사주 신탁</div>
+                <div class="saju-hero-divider"></div>
+                <div class="saju-hero-sub">생년월일시 기반 정밀 분석</div>
+                <div class="saju-hero-features">4주 · 오행 · 십성 · 대운</div>
 
-            <!-- CTA 버튼 -->
-            <button class="saju-hero-cta" type="button" onclick="event.stopPropagation(); selectCategory('saju', this.parentElement);">
-                ☯ 사주 신탁 시작
-            </button>
+                <button class="saju-hero-cta" type="button" onclick="event.stopPropagation(); selectCategory('saju', this.closest('.saju-hero-card'));">
+                    ☯ 사주 신탁 시작
+                </button>
+            </div>
         </div>
 
         <!-- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ -->
