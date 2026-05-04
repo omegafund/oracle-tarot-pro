@@ -2240,28 +2240,49 @@
                 ✅ 청색: #1D4ED8 ~ #4F8BF7 (그라디언트로 깊이 + 밝기)
             -->
             <div class="saju-hero-taegeuk">
-                <svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
-                    <!-- [1] 청색 전체 원 = 밝은 청색 배경 (음/陰) -->
-                    <circle cx="100" cy="100" r="98" fill="#1976FF"/>
+                <!--
+                    [V31 #127] 표준 태극 SVG (사장님 진단: 청색 물고기 머리 깨짐)
                     
-                    <!-- [2] 위쪽 큰 반원 = 밝은 적색 (양/陽) -->
-                    <!-- 직선이 아닌 호로 처리: 좌(2,100) → 위쪽 호 → 우(198,100) -->
-                    <path d="M 2,100 A 98,98 0 0 1 198,100 Z" fill="#FF1744"/>
+                    원인: 이전 4-path 알고리즘 (200x200, 작은 반원 49,49)이
+                          좌/우 작은 반원을 그릴 때 청색 영역의 일부가
+                          잘못 그려지면서 "물고기 머리" 모양 결함 발생
                     
-                    <!-- [3] S자 경계 — 좌측 작은 반원 (적색이 아래로 내려옴) -->
-                    <path d="M 2,100 A 49,49 0 0 0 100,100 Z" fill="#FF1744"/>
+                    해결: 표준 검증된 단일 path 알고리즘 (100x100, 정확한 24,24)
                     
-                    <!-- [4] S자 경계 — 우측 작은 반원 (청색이 위로 올라옴) -->
-                    <path d="M 100,100 A 49,49 0 0 0 198,100 Z" fill="#1976FF"/>
+                    핵심 path:
+                      M 50,2          : 위쪽 끝
+                      A 48,48 0 0 1 50,98  : 큰 호 (시계방향, 우측 통과)
+                      A 24,24 0 0 1 50,50  : 작은 호 (시계방향, 우측)
+                      A 24,24 0 0 0 50,2   : 작은 호 (반시계방향, 좌측)
+                      Z                    : 닫기
+                -->
+                <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+                    <defs>
+                        <radialGradient id="taegeukRed" cx="50%" cy="35%" r="60%">
+                            <stop offset="0%" stop-color="#FF6B7A"/>
+                            <stop offset="100%" stop-color="#E63946"/>
+                        </radialGradient>
+                        <radialGradient id="taegeukBlue" cx="50%" cy="65%" r="60%">
+                            <stop offset="0%" stop-color="#4F8BF7"/>
+                            <stop offset="100%" stop-color="#1D4ED8"/>
+                        </radialGradient>
+                    </defs>
+
+                    <!-- [1] 외곽 원 = 청색 배경 (음/陰) — 청색 영역 전체 형성 -->
+                    <circle cx="50" cy="50" r="48" fill="url(#taegeukBlue)"/>
                     
-                    <!-- [5] 양 안의 음점 (좌측 적색 영역 중앙에 청색 작은 원) -->
-                    <circle cx="51" cy="100" r="14" fill="#1976FF"/>
+                    <!-- [2] 표준 태극 적색 영역 (양/陽) — 검증된 단일 path -->
+                    <path d="M 50,2 A 48,48 0 0 1 50,98 A 24,24 0 0 1 50,50 A 24,24 0 0 0 50,2 Z" 
+                          fill="url(#taegeukRed)"/>
                     
-                    <!-- [6] 음 안의 양점 (우측 청색 영역 중앙에 적색 작은 원) -->
-                    <circle cx="149" cy="100" r="14" fill="#FF1744"/>
+                    <!-- [3] 양(陽) 안의 음(陰)점 — 적색 위쪽 큰 반원 중심 -->
+                    <circle cx="50" cy="26" r="7" fill="url(#taegeukBlue)"/>
                     
-                    <!-- [7] 외곽 골드 테두리 (브랜드 통일) -->
-                    <circle cx="100" cy="100" r="98" fill="none" stroke="rgba(212,175,55,0.65)" stroke-width="2.5"/>
+                    <!-- [4] 음(陰) 안의 양(陽)점 — 청색 아래쪽 큰 반원 중심 -->
+                    <circle cx="50" cy="74" r="7" fill="url(#taegeukRed)"/>
+                    
+                    <!-- [5] 외곽 골드 테두리 (브랜드 통일) -->
+                    <circle cx="50" cy="50" r="48" fill="none" stroke="rgba(212,175,55,0.7)" stroke-width="1.5"/>
                 </svg>
             </div>
 
@@ -10723,13 +10744,18 @@ function renderSajuResult(data) {
                 </div>
             </div>
 
-            <!-- PRO 영역 안내 -->
+            <!-- PRO 영역 안내 + 클릭 시 결제 모달 호출 (V31 #128 결함 수정) -->
             ${data.pro && data.pro.tier === 'free' ? `
-            <div style="margin:14px 0; padding:14px; background:rgba(255,165,80,0.08); border:1px dashed rgba(255,165,80,0.4); border-radius:6px; text-align:center;">
-                <div style="color:#FFB870; font-size:0.84rem; font-weight:800;">🔒 PRO 영역</div>
-                <div style="color:rgba(255,255,255,0.7); font-size:0.76rem; margin-top:4px;">
-                    십성 / 격국 / 용신 / 신살 / 대운 / 매년 운세<br>
-                    <span style="color:#FFD970;">PRO 신탁 결제 시 노출</span>
+            <div onclick="document.getElementById('sajuResultModal').remove(); if(typeof showPayModal==='function'){showPayModal();}else{alert('결제 모달을 불러올 수 없습니다');}"
+                 style="margin:14px 0; padding:16px; background:linear-gradient(135deg, rgba(255,165,80,0.12), rgba(212,175,55,0.10)); border:1px solid rgba(255,200,100,0.5); border-radius:8px; text-align:center; cursor:pointer; transition:all 0.25s ease; position:relative; overflow:hidden;"
+                 onmouseover="this.style.background='linear-gradient(135deg, rgba(255,165,80,0.22), rgba(212,175,55,0.20))'; this.style.borderColor='rgba(255,217,112,0.85)'; this.style.transform='scale(1.015)'; this.style.boxShadow='0 4px 18px rgba(212,175,55,0.35)';"
+                 onmouseout="this.style.background='linear-gradient(135deg, rgba(255,165,80,0.12), rgba(212,175,55,0.10))'; this.style.borderColor='rgba(255,200,100,0.5)'; this.style.transform='scale(1)'; this.style.boxShadow='none';">
+                <div style="color:#FFD970; font-size:0.92rem; font-weight:900; margin-bottom:6px;">🔒 PRO 신탁 영역</div>
+                <div style="color:rgba(255,255,255,0.85); font-size:0.78rem; line-height:1.6; margin-bottom:10px;">
+                    십성 · 격국 · 용신 · 신살 · 대운 · 매년 운세
+                </div>
+                <div style="display:inline-block; padding:7px 18px; background:linear-gradient(135deg, #D4AF37, #FFD970); color:#000; font-size:0.78rem; font-weight:900; border-radius:6px; box-shadow:0 3px 12px rgba(212,175,55,0.5); animation: ctaPulse 3.5s ease-in-out infinite;">
+                    ✨ PRO 신탁 받기 →
                 </div>
             </div>
             ` : ''}
