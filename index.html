@@ -3706,6 +3706,63 @@ function setSituation(btn, type, domain) {
         // 결제 완료 플래그 확정
         isPaidUser = true;
 
+        // ═════════════════════════════════════════════════════════
+        // [V31 #129] 사주 점사 결제 후 복원 분기 (사장님 진단)
+        //   원인: 기존 복원은 selectedCards.length===3 조건 (타로 카드용)
+        //         사주는 카드 X → 조건 false → 홈뷰 복귀 결함
+        //   해결: localStorage에 사주 데이터 있으면 PRO tier로 결과 모달 재호출
+        // ═════════════════════════════════════════════════════════
+        try {
+            const sajuPending = localStorage.getItem('sajuPendingResult');
+            if (sajuPending) {
+                const sajuData = JSON.parse(sajuPending);
+                console.log('✅ 사주 PRO 결제 완료 → 결과 복원 중...');
+                
+                // 홈뷰 유지 (사주는 모달 기반)
+                // PRO tier로 사주 점사 재호출 (서버에서 PRO 콘텐츠 받기)
+                const SAJU_API = 'https://tarot-api.omegafund01.workers.dev';
+                fetch(`${SAJU_API}/saju/oracle`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+                    body: JSON.stringify({
+                        input: sajuData.input,
+                        category: sajuData.category || 'fortune',
+                        timePhase: sajuData.timePhase || 'medium',
+                        tier: 'month'  // ★ PRO 30일권 콘텐츠 노출
+                    })
+                })
+                .then(r => r.text())
+                .then(txt => {
+                    try {
+                        const data = JSON.parse(txt);
+                        if (data.ok && typeof renderSajuResult === 'function') {
+                            // PRO 콘텐츠 포함된 결과 모달 재호출
+                            renderSajuResult(data);
+                            // PRO 영역으로 스크롤 (1초 후)
+                            setTimeout(() => {
+                                const proArea = document.querySelector('#sajuResultModal [onclick*="showPayModal"], #sajuResultModal .pay-modal');
+                                if (proArea) proArea.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                            }, 800);
+                            // 사주 데이터 사용 후 정리
+                            localStorage.removeItem('sajuPendingResult');
+                            return; // 타로 복원 로직 건너뜀
+                        }
+                    } catch (e) {
+                        console.error('사주 PRO 복원 실패:', e);
+                    }
+                })
+                .catch(err => {
+                    console.error('사주 PRO 복원 네트워크 오류:', err);
+                });
+                
+                return; // 타로 카드 복원 로직 진입 차단
+            }
+        } catch (e) {
+            console.warn('사주 결제 복원 검사 실패:', e);
+            // 실패 시 기존 타로 복원 로직으로 fallback
+        }
+        // ═════════════════════════════════════════════════════════
+
         // 결과창으로 즉시 전환 (홈뷰 숨기고 결과뷰 노출)
         console.log('✅ 점사 상태 복원 중...');
         setTimeout(() => {
@@ -10559,6 +10616,20 @@ async function runSajuOracle() {
         // [V31 #124 결함 수정] 기존 worker URL 패턴 사용 (WORKER_BASE_URL과 동일)
         const SAJU_API = 'https://tarot-api.omegafund01.workers.dev';
 
+        // [V31 #129] 결제 후 복원용 — 사주 입력 데이터 localStorage 저장 (30분 만료)
+        try {
+            localStorage.setItem('sajuPendingResult', JSON.stringify({
+                input: { year, month, day, hour: hour ? parseInt(hour) : null, calendar, gender },
+                category,
+                timePhase: 'medium',
+                savedAt: Date.now()
+            }));
+            // 사주 결제 컨텍스트 표시 (결제 모달 헤더 분기용)
+            window._sajuPaymentContext = true;
+        } catch (e) {
+            console.warn('사주 입력 저장 실패 (localStorage 미지원?):', e);
+        }
+
         const response = await fetch(`${SAJU_API}/saju/oracle`, {
             method: 'POST',
             headers: { 
@@ -10828,7 +10899,7 @@ function showPayModal() {
         </div>
         <div style="margin-bottom:14px; display:flex; flex-direction:column; gap:10px;">
             <!-- 🧪 990원 체험권 (보조 — 약하게) -->
-            <button class="pay-plan-btn" data-plan="trial" data-amount="990" onclick="showPaymentMethodModal('trial')" style="
+            <button class="pay-plan-btn" data-plan="trial" data-amount="990" onclick="startTossPayment('trial', 'card')" style="
                 display:block; width:100%; padding:13px 14px;
                 background: rgba(255,255,255,0.08);
                 color: rgba(255,255,255,0.85);
@@ -10845,7 +10916,7 @@ function showPayModal() {
             </button>
 
             <!-- 🔥 1일 이용권 — 메인 CTA (블루) -->
-            <button class="pay-plan-btn" data-plan="day" data-amount="3900" onclick="showPaymentMethodModal('day')" style="
+            <button class="pay-plan-btn" data-plan="day" data-amount="3900" onclick="startTossPayment('day', 'card')" style="
                 display:block; width:100%; padding:16px 14px;
                 background: linear-gradient(135deg, #0064ff, #0050cc);
                 color:#fff; border:none; border-radius:12px;
@@ -10861,7 +10932,7 @@ function showPayModal() {
             </button>
 
             <!-- 💎 30일 이용권 (단일 결제) -->
-            <button class="pay-plan-btn" data-plan="month" data-amount="9900" onclick="showPaymentMethodModal('month')" style="
+            <button class="pay-plan-btn" data-plan="month" data-amount="9900" onclick="startTossPayment('month', 'card')" style="
                 display:block; width:100%; padding:14px 14px;
                 background: rgba(212,175,55,0.12);
                 color:#fff; border:1px solid rgba(212,175,55,0.4); border-radius:12px;
@@ -10884,7 +10955,7 @@ function showPayModal() {
             </div>
 
             <!-- 🌙 월 구독 (자동 결제) -->
-            <button class="pay-plan-btn" data-plan="monthly" data-amount="9900" onclick="showPaymentMethodModal('monthly')" style="
+            <button class="pay-plan-btn" data-plan="monthly" data-amount="9900" onclick="startTossPayment('monthly', 'card')" style="
                 display:block; width:100%; padding:15px 14px;
                 background: linear-gradient(135deg, #1A1A2E, #16213E);
                 color:#fff; border:1px solid rgba(139,92,246,0.5); border-radius:12px;
@@ -10900,7 +10971,7 @@ function showPayModal() {
             </button>
 
             <!-- ⭐ 연 구독 (33% 할인 — 최고 인기) -->
-            <button class="pay-plan-btn" data-plan="yearly" data-amount="79000" onclick="showPaymentMethodModal('yearly')" style="
+            <button class="pay-plan-btn" data-plan="yearly" data-amount="79000" onclick="startTossPayment('yearly', 'card')" style="
                 display:block; width:100%; padding:18px 14px;
                 background: linear-gradient(135deg, #D4AF37, #F1C40F);
                 color:#000; border:none; border-radius:12px;
@@ -10923,7 +10994,7 @@ function showPayModal() {
             </button>
 
             <!-- 👑 평생 이용권 (한 번 결제) -->
-            <button class="pay-plan-btn" data-plan="lifetime" data-amount="199000" onclick="showPaymentMethodModal('lifetime')" style="
+            <button class="pay-plan-btn" data-plan="lifetime" data-amount="199000" onclick="startTossPayment('lifetime', 'card')" style="
                 display:block; width:100%; padding:14px 14px;
                 background: linear-gradient(135deg, #2C1810, #4A2511);
                 color:#FFD970; border:1px solid #D4AF37; border-radius:12px;
@@ -10958,11 +11029,19 @@ function showPayModal() {
     const overlay = document.createElement('div');
     overlay.className = 'pay-modal-overlay';
     overlay.id = 'payModalOverlay';
+    
+    // [V31 #129 권장 1] 사주 결제 컨텍스트 분기 (사용자 인지 명확화)
+    const isSajuContext = window._sajuPaymentContext === true;
+    const headerTitle = isSajuContext ? '☯ PRO 사주 신탁 ✦' : '✦ 프리미엄 신탁 ✦';
+    const headerSubtitle = isSajuContext 
+        ? '⏰ 십성 · 격국 · 용신 · 신살 · 대운 정밀 분석' 
+        : '⏰ 오늘의 미래 흐름은 24시간 후 사라집니다';
+    
     overlay.innerHTML = `
         <div class="pay-modal">
-            <h3 style="margin-bottom:6px;">✦ 프리미엄 신탁 ✦</h3>
-            <p style="font-size:0.84rem; color:#FF8080; font-weight:600; margin:4px 0 14px;">
-                ⏰ 오늘의 미래 흐름은 24시간 후 사라집니다
+            <h3 style="margin-bottom:6px;">${headerTitle}</h3>
+            <p style="font-size:0.84rem; color:${isSajuContext ? '#FFD970' : '#FF8080'}; font-weight:600; margin:4px 0 14px;">
+                ${headerSubtitle}
             </p>
 
             <!-- 🔮 PRO 전용 영역 (도메인 맞춤) -->
