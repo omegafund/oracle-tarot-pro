@@ -4028,21 +4028,41 @@ function setSituation(btn, type, domain) {
     // ═════════════════════════════════════════════════════════
     
     // [V31 #133] 디버그 시작 — 사장님 라이브 검증용
-    console.log('🔍 [V31 #133] 결제 완료 후 분기 시작');
+    console.log('🔍 [V31 #146] 결제 완료 후 분기 시작');
     console.log('  - paid=ok 진입 OK');
-    console.log('  - sajuPendingResult:', localStorage.getItem('sajuPendingResult') ? '있음' : '없음');
+    console.log('  - sajuPendingResult (local):', localStorage.getItem('sajuPendingResult') ? '있음' : '없음');
+    console.log('  - sajuPendingResult (session):', sessionStorage.getItem('sajuPendingResult') ? '있음' : '없음');
+    console.log('  - sajuPaymentContext:', localStorage.getItem('sajuPaymentContext'));
     console.log('  - pendingOracle:', localStorage.getItem('pendingOracle') ? '있음' : '없음');
     console.log('  - paid_token:', localStorage.getItem('paid_token') ? '있음' : '없음');
+    console.log('  - oracleSessionToken:', localStorage.getItem('oracleSessionToken') ? '있음' : '없음');
+    
+    // [V31 #146] 결제 완료 토큰 즉시 저장 (success.html이 처리 못 했을 경우 대비)
+    if (!localStorage.getItem('paid_token') && !localStorage.getItem('oracleSessionToken')) {
+        const tokenValue = 'PAID_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8);
+        localStorage.setItem('paid_token', tokenValue);
+        localStorage.setItem('oracleSessionToken', tokenValue);
+        console.log('  ✅ [V31 #146] paid_token 자동 생성 (success.html 누락 보호)');
+    }
+    isPaidUser = true; // 결제 완료 = 신뢰 (URL ?paid=ok = 토스 정상 콜백)
     
     try {
-        const sajuPending = localStorage.getItem('sajuPendingResult');
+        // [V31 #146] 사주 데이터 다중 소스에서 조회 (localStorage → sessionStorage)
+        let sajuPending = localStorage.getItem('sajuPendingResult')
+                       || sessionStorage.getItem('sajuPendingResult');
+        
+        // [V31 #146] 사주 컨텍스트 flag 인식 (데이터 손실 시에도 사주 결제 인식)
+        const sajuContextFlag = localStorage.getItem('sajuPaymentContext') === 'true'
+                             || window._sajuPaymentContext === true;
+        
         if (sajuPending) {
-            console.log('🔓 [V31 #133] 사주 분기 진입');
+            console.log('🔓 [V31 #146] 사주 분기 진입 — 데이터 있음');
             const sajuData = JSON.parse(sajuPending);
             
             // 30분 만료 체크
             if (sajuData.savedAt && Date.now() - sajuData.savedAt > 30 * 60 * 1000) {
                 localStorage.removeItem('sajuPendingResult');
+                try { sessionStorage.removeItem('sajuPendingResult'); } catch(e) {}
                 // [V31 #144] early overlay 정리 (alert 전에)
                 const eo = document.getElementById('paidEarlyOverlay');
                 if (eo) eo.remove();
@@ -4135,7 +4155,9 @@ function setSituation(btn, type, domain) {
                     }, 1000);
                     
                     localStorage.removeItem('sajuPendingResult');
-                    console.log('✅ [V31 #133] 사주 PRO 결과 복원 완료');
+                    try { sessionStorage.removeItem('sajuPendingResult'); } catch(e) {}
+                    try { localStorage.removeItem('sajuPaymentContext'); } catch(e) {}
+                    console.log('✅ [V31 #146] 사주 PRO 결과 복원 완료 + 모든 임시 데이터 정리');
                     return;  // ★ 타로 복원 로직 진입 차단
                 } else {
                     console.error('[V31 #133] 사주 응답 ok=false:', data);
@@ -4160,7 +4182,76 @@ function setSituation(btn, type, domain) {
                 return;
             }
         } else {
-            console.log('🔍 [V31 #133] 사주 데이터 없음 → 타로 복원 분기로 진행');
+            // [V31 #146] 사주 데이터 없는데 sajuPaymentContext flag는 있다 = 사주 결제였는데 데이터 손실
+            if (sajuContextFlag) {
+                console.warn('⚠ [V31 #146] 사주 결제 컨텍스트 flag 살아있음 → 데이터 손실 → 친절 복구 화면');
+                
+                // localStorage 정리 (다음번 새 결제 보호)
+                try { localStorage.removeItem('sajuPaymentContext'); } catch(e) {}
+                
+                // early overlay 제거 후 사주 복구 화면 표시
+                const eo = document.getElementById('paidEarlyOverlay');
+                if (eo) eo.remove();
+                const es = document.getElementById('paidOverlayStyle');
+                if (es) es.remove();
+                
+                // 친절 복구 화면 (홈 X)
+                document.body.insertAdjacentHTML('beforeend', `
+                    <div id="sajuRecoveryModal" style="
+                        position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+                        background: linear-gradient(135deg, #0a0612 0%, #1a0a2e 100%);
+                        z-index: 99999;
+                        display: flex; align-items: center; justify-content: center;
+                        padding: 20px;
+                    ">
+                        <div style="
+                            max-width: 380px; width: 100%;
+                            background: linear-gradient(135deg, rgba(212,175,55,0.08), rgba(212,175,55,0.03));
+                            border: 2px solid rgba(212,175,55,0.4);
+                            border-radius: 16px;
+                            padding: 28px 22px;
+                            text-align: center;
+                        ">
+                            <div style="font-size: 3.2rem; margin-bottom: 12px;">☯</div>
+                            <h2 style="color: #FFD970; font-size: 1.15rem; margin: 0 0 12px; font-weight: 900;">
+                                결제 완료 — PRO 활성화 됨
+                            </h2>
+                            <div style="color: rgba(255,255,255,0.85); font-size: 0.88rem; line-height: 1.7; margin-bottom: 20px;">
+                                결제 정보가 저장되었습니다.<br>
+                                사주 입력 정보가 일시 손실되어<br>
+                                <strong style="color: #FFE08A;">사주를 다시 입력</strong>하시면<br>
+                                바로 PRO 신탁이 표시됩니다.
+                            </div>
+                            <button onclick="
+                                document.getElementById('sajuRecoveryModal').remove();
+                                window.scrollTo({ top: 0, behavior: 'smooth' });
+                                setTimeout(function() {
+                                    var sajuCard = document.querySelector('.saju-aux-card');
+                                    if (sajuCard) {
+                                        sajuCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                                        sajuCard.style.animation = 'sajuPaidPulse 1.5s ease-in-out 3';
+                                    }
+                                }, 300);
+                            " style="
+                                padding: 14px 28px;
+                                background: linear-gradient(135deg, #D4AF37, #FFD970);
+                                color: #1a1a1a;
+                                border: none;
+                                border-radius: 24px;
+                                font-size: 0.92rem;
+                                font-weight: 900;
+                                cursor: pointer;
+                                box-shadow: 0 4px 14px rgba(212,175,55,0.4);
+                                width: 100%;
+                            ">
+                                ☯ 사주 다시 입력 →
+                            </button>
+                        </div>
+                    </div>
+                `);
+                return;  // 타로 분기 진입 차단
+            }
+            console.log('🔍 [V31 #146] 사주 데이터 + flag 모두 없음 → 타로 복원 분기로 진행');
         }
     } catch (e) {
         console.error('[V31 #133] 사주 복원 처리 예외:', e);
@@ -11111,16 +11202,25 @@ async function runSajuOracle() {
         // [V31 #124 결함 수정] 기존 worker URL 패턴 사용 (WORKER_BASE_URL과 동일)
         const SAJU_API = 'https://tarot-api.omegafund01.workers.dev';
 
-        // [V31 #129] 결제 후 복원용 — 사주 입력 데이터 localStorage 저장 (30분 만료)
+        // [V31 #146] 결제 후 복원 보장 — 사주 입력 데이터 다중 저장 (30분 만료)
+        //   사장님 진단: 사주 결제 후 홈뷰 복귀 + 점사 안 나옴
+        //   원인: 토스 결제 → success.html → 메인 복귀 사이 sessionStorage 일부 손실 가능
+        //   해결: localStorage + sessionStorage + sajuPaymentContext flag 영구 저장 3중 보장
+        const sajuData = {
+            input: { year, month, day, hour: hour ? parseInt(hour) : null, calendar, gender },
+            category,
+            timePhase: 'medium',
+            savedAt: Date.now()
+        };
         try {
-            localStorage.setItem('sajuPendingResult', JSON.stringify({
-                input: { year, month, day, hour: hour ? parseInt(hour) : null, calendar, gender },
-                category,
-                timePhase: 'medium',
-                savedAt: Date.now()
-            }));
-            // 사주 결제 컨텍스트 표시 (결제 모달 헤더 분기용)
+            localStorage.setItem('sajuPendingResult', JSON.stringify(sajuData));
+            // [V31 #146] 이중 저장 — sessionStorage도 같이 (브라우저 일부 환경 보호)
+            try { sessionStorage.setItem('sajuPendingResult', JSON.stringify(sajuData)); } catch(e) {}
+            
+            // [V31 #146] 사주 결제 컨텍스트 — localStorage에 영구화 (window 변수는 새로고침 시 사라짐)
             window._sajuPaymentContext = true;
+            localStorage.setItem('sajuPaymentContext', 'true');
+            console.log('✅ [V31 #146] 사주 데이터 3중 저장 완료 (localStorage + sessionStorage + flag)');
         } catch (e) {
             console.warn('사주 입력 저장 실패 (localStorage 미지원?):', e);
         }
@@ -11281,21 +11381,24 @@ function showSajuErrorScreen(title, detail, sajuData) {
 //   - onclick은 단순 호출 1줄만 (글로벌 1위 패턴)
 // ════════════════════════════════════════════════════════════════════════════════
 window.handleSajuProClick = function() {
-    console.log('🔓 [V31 #142] PRO 신탁 받기 클릭');
+    console.log('🔓 [V31 #146] PRO 신탁 받기 클릭');
     
-    // 1. 결제 컨텍스트 flag 재설정 (사주 결제임을 명시)
+    // 1. [V31 #146] 결제 컨텍스트 flag 다중 설정 (window + localStorage 영구화)
     window._sajuPaymentContext = true;
+    try { localStorage.setItem('sajuPaymentContext', 'true'); } catch(e) {}
     
-    // 2. sajuPendingResult 살아있는지 확인 + 만료 갱신
+    // 2. [V31 #146] sajuPendingResult 다중 보장 (localStorage + sessionStorage 만료 갱신)
     try {
         const raw = localStorage.getItem('sajuPendingResult');
         if (raw) {
             const obj = JSON.parse(raw);
             obj.savedAt = Date.now();
-            localStorage.setItem('sajuPendingResult', JSON.stringify(obj));
-            console.log('  ✅ sajuPendingResult 만료 갱신');
+            const updated = JSON.stringify(obj);
+            localStorage.setItem('sajuPendingResult', updated);
+            try { sessionStorage.setItem('sajuPendingResult', updated); } catch(e) {}
+            console.log('  ✅ sajuPendingResult 만료 갱신 + sessionStorage 동기화');
         } else {
-            console.warn('  ⚠ sajuPendingResult 없음 — 결제 후 복원 어려울 수 있음');
+            console.warn('  ⚠ sajuPendingResult 없음 — 사주 결과 모달이 떴는데 데이터 없음 (이상 상태)');
         }
     } catch(e) {
         console.warn('  ⚠ sajuPendingResult 갱신 실패:', e.message);
@@ -11341,8 +11444,10 @@ window.handleSajuRestart = function() {
     const earlyStyle = document.getElementById('paidOverlayStyle');
     if (earlyStyle) earlyStyle.remove();
     
-    // 3. 사주 결제 컨텍스트 정리
+    // 3. 사주 결제 컨텍스트 정리 (window + localStorage 둘 다)
     window._sajuPaymentContext = false;
+    try { localStorage.removeItem('sajuPaymentContext'); } catch(e) {}
+    try { sessionStorage.removeItem('sajuPendingResult'); } catch(e) {}
     
     // 4. 홈 화면 보장 (이미 그려져 있으면 그대로, 아니면 페이지 진입)
     //    스크롤 맨 위로
