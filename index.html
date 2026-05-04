@@ -11160,6 +11160,59 @@ function showSajuErrorScreen(title, detail, sajuData) {
     document.body.appendChild(errorScreen);
 }
 
+// ════════════════════════════════════════════════════════════════════════════════
+// [V31 #142] PRO 신탁 받기 클릭 핸들러 — 전역 함수
+// ────────────────────────────────────────────────────────────────────────────────
+//
+// [ 사장님 진단 #142 ]
+//   "✨ PRO 신탁 받기 → 단추 눌러도 반응 없음"
+//
+// [ 원인 ]
+//   #141에서 onclick attribute에 멀티라인 IIFE 작성 → HTML 파싱 실패
+//   - 멀티라인 onclick 안에 const/try/arrow function 모두 포함
+//   - template literal + HTML attribute + 중첩 따옴표 충돌
+//   → 브라우저 SyntaxError → onclick 무반응
+//
+// [ 해결 ]
+//   - 전역 함수로 분리 (window.handleSajuProClick)
+//   - onclick은 단순 호출 1줄만 (글로벌 1위 패턴)
+// ════════════════════════════════════════════════════════════════════════════════
+window.handleSajuProClick = function() {
+    console.log('🔓 [V31 #142] PRO 신탁 받기 클릭');
+    
+    // 1. 결제 컨텍스트 flag 재설정 (사주 결제임을 명시)
+    window._sajuPaymentContext = true;
+    
+    // 2. sajuPendingResult 살아있는지 확인 + 만료 갱신
+    try {
+        const raw = localStorage.getItem('sajuPendingResult');
+        if (raw) {
+            const obj = JSON.parse(raw);
+            obj.savedAt = Date.now();
+            localStorage.setItem('sajuPendingResult', JSON.stringify(obj));
+            console.log('  ✅ sajuPendingResult 만료 갱신');
+        } else {
+            console.warn('  ⚠ sajuPendingResult 없음 — 결제 후 복원 어려울 수 있음');
+        }
+    } catch(e) {
+        console.warn('  ⚠ sajuPendingResult 갱신 실패:', e.message);
+    }
+    
+    // 3. showPayModal 먼저 호출 (홈 복귀 차단)
+    if (typeof showPayModal === 'function') {
+        showPayModal();
+        
+        // 4. 결제 모달 표시 후 사주 모달 정리 (200ms 딜레이로 시각 연속성 보장)
+        setTimeout(function() {
+            const m = document.getElementById('sajuResultModal');
+            if (m) m.remove();
+        }, 200);
+    } else {
+        console.error('  ❌ showPayModal 함수 정의 안 됨');
+        alert('결제 모달을 불러올 수 없습니다. 페이지를 새로고침해주세요.');
+    }
+};
+
 /**
  * 사주 결과 화면 렌더링 (V31 #134 안전 보강)
  */
@@ -11296,40 +11349,12 @@ function renderSajuResult(data) {
                 </div>
             </div>
 
-            <!-- PRO 영역 안내 + 클릭 시 결제 모달 호출 (V31 #141 결함 수정) -->
-            <!-- [V31 #141] 사장님 진단: PRO 신탁 받기 클릭 시 홈 복귀 (중대 에러)
-                  원인: sajuResultModal.remove() 먼저 → showPayModal 호출 시간차로
-                        그 사이 사용자가 홈 화면을 보게 됨 (UX 불연속)
-                  해결: showPayModal 먼저 호출 → 결제 모달 뜬 후 사주 모달 정리
-                        + sajuPendingResult / _sajuPaymentContext flag 재확인 -->
+            <!-- PRO 영역 안내 + 클릭 시 결제 모달 호출 (V31 #142 결함 수정) -->
+            <!-- [V31 #142] 사장님 진단: PRO 신탁 받기 단추 무반응
+                  원인: #141에서 onclick 안에 멀티라인 IIFE → HTML 파싱 실패
+                  해결: window.handleSajuProClick 전역 함수 호출 1줄로 단순화 -->
             ${data.pro && data.pro.tier === 'free' ? `
-            <div onclick="(function(el){
-                  // [V31 #141] 1. 결제 컨텍스트 flag 재설정 (사주 결제임을 명시)
-                  window._sajuPaymentContext = true;
-                  
-                  // [V31 #141] 2. sajuPendingResult 살아있는지 확인 + 만료 갱신
-                  try {
-                    const raw = localStorage.getItem('sajuPendingResult');
-                    if (raw) {
-                      const obj = JSON.parse(raw);
-                      obj.savedAt = Date.now();
-                      localStorage.setItem('sajuPendingResult', JSON.stringify(obj));
-                    }
-                  } catch(e) {}
-                  
-                  // [V31 #141] 3. showPayModal 먼저 호출 (홈 복귀 차단)
-                  if (typeof showPayModal === 'function') {
-                    showPayModal();
-                    
-                    // 4. 결제 모달 표시 후 사주 모달 정리 (200ms 딜레이로 시각 연속성 보장)
-                    setTimeout(() => {
-                      const m = document.getElementById('sajuResultModal');
-                      if (m) m.remove();
-                    }, 200);
-                  } else {
-                    alert('결제 모달을 불러올 수 없습니다. 페이지를 새로고침해주세요.');
-                  }
-                })(this);"
+            <div onclick="window.handleSajuProClick()"
                  style="margin:14px 0; padding:16px; background:linear-gradient(135deg, rgba(255,165,80,0.12), rgba(212,175,55,0.10)); border:1px solid rgba(255,200,100,0.5); border-radius:8px; text-align:center; cursor:pointer; transition:all 0.25s ease; position:relative; overflow:hidden;"
                  onmouseover="this.style.background='linear-gradient(135deg, rgba(255,165,80,0.22), rgba(212,175,55,0.20))'; this.style.borderColor='rgba(255,217,112,0.85)'; this.style.transform='scale(1.015)'; this.style.boxShadow='0 4px 18px rgba(212,175,55,0.35)';"
                  onmouseout="this.style.background='linear-gradient(135deg, rgba(255,165,80,0.12), rgba(212,175,55,0.10))'; this.style.borderColor='rgba(255,200,100,0.5)'; this.style.transform='scale(1)'; this.style.boxShadow='none';">
