@@ -12,9 +12,9 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <meta name="version" content="V31_168_2026-05-05">
+    <meta name="version" content="V31_169_2026-05-05">
     
-    <title>ZEUS · Tarot Oracle [V31 #168]</title>
+    <title>ZEUS · Tarot Oracle [V31 #169]</title>
 
     <!-- ════════════════════════════════════════════════════════════ -->
     <!-- [V24.10] 파비콘 명시 선언 — 사장님 진단                       -->
@@ -12027,6 +12027,27 @@ function renderSajuResult(data) {
     //   기존: "중기 균형 사주 흐름입니다"
     //   수정: "구조적으로 균형이지만, 현재는 정체로 작동할 가능성"
     //   #164: NORMAL 상태에도 항상 "구조적 균형" 표현 적용 (사장님 안 100%)
+    // [V31 #169] 사주 부제 정제 함수 (어색한 표현 자동 변환)
+    //   사장님 라이브 검증: "균형 사주 — 조건 진행" 의미 불명
+    //   해결: 어색한 표현 매핑 → 자연스러운 한국어
+    function refineSajuSubtitle(originalSubtitle) {
+        if (!originalSubtitle) return '사주 흐름 분석';
+        
+        let refined = originalSubtitle;
+        // 어색한 표현 매핑
+        const replacements = [
+            ['조건 진행', '단계별 진행'],
+            ['조건진행', '단계별 진행'],
+            ['조건 단계', '단계별 흐름'],
+            ['조건부 진행', '단계별 진행']
+        ];
+        
+        for (const [from, to] of replacements) {
+            refined = refined.split(from).join(to);
+        }
+        return refined;
+    }
+    
     function applyRealityCorrection(originalTldr, lifeState) {
         if (!originalTldr) return '구조적 흐름이 있으나, 현실 행동이 운을 작동시킵니다';
         
@@ -12161,6 +12182,13 @@ function renderSajuResult(data) {
     };
     
     // [클로드 보완 ①] 사주 → state 추출 (정밀화)
+    // [V31 #169] 인성(생해주는 오행) 매핑 — 일간 강약 정밀 계산용
+    //   목 ← 수 (수생목) / 화 ← 목 (목생화) / 토 ← 화 (화생토)
+    //   금 ← 토 (토생금) / 수 ← 금 (금생수)
+    const ELEMENT_TO_INSEONG = {
+        '목': '수', '화': '목', '토': '화', '금': '토', '수': '금'
+    };
+    
     function detectSajuState(elements, pillars) {
         if (!elements || !pillars) {
             return { strength: 'weak', elementLack: '화', flow: '정체', risk: 'low', dayMaster: '丙' };
@@ -12169,24 +12197,50 @@ function renderSajuResult(data) {
         const total = Object.values(elements).reduce((a, b) => a + (b || 0), 0) || 1;
         const dayMasterChar = (pillars.day || '丙').charAt(0);
         const dayElement = STEM_TO_ELEMENT[dayMasterChar] || '화';
-        const dayRatio = (elements[dayElement] || 0) / total;
         
-        // strength: 일간 강약
-        const strength = dayRatio >= 0.30 ? 'strong' : 'weak';
+        // ════════════════════════════════════════════════════════════════
+        // [V31 #169 결함 ① 정밀화] 일간 강약 — 일간 + 인성 합산
+        //   사장님 라이브 검증: 무(토) 일간 / 토 1.9 / 수 3.1 → "상승" 잘못 표시
+        //   원인: dayRatio만 체크 (단순 토 비율)
+        //   해결: 일간 + 인성(화) 합산 → 진짜 강약 계산
+        //         flow 분기 임계값 정밀화
+        // ════════════════════════════════════════════════════════════════
+        const inseongElement = ELEMENT_TO_INSEONG[dayElement] || '화';
+        const dayPlusInseong = (elements[dayElement] || 0) + (elements[inseongElement] || 0);
+        const realStrength = dayPlusInseong / total;
+        const strength = realStrength >= 0.30 ? 'strong' : 'weak';
         
         // elementLack: 가장 약한 오행
         const sortedEl = Object.entries(elements).sort((a, b) => a[1] - b[1]);
         const elementLack = sortedEl[0]?.[0] || '화';
         
-        // flow: 시점 흐름
+        // [V31 #169 결함 ① 정밀화] flow 분기 정확도 강화
         const fire = elements['화'] || 0;
         const wood = elements['목'] || 0;
         const water = elements['수'] || 0;
+        const earth = elements['토'] || 0;
         const metal = elements['금'] || 0;
+        const fireWoodRatio = (fire + wood) / total;
+        const waterRatio = water / total;
+        const metalRatio = metal / total;
+        
         let flow;
-        if ((fire + wood) / total < 0.25) flow = '정체';
-        else if (metal / total > 0.30) flow = '전환';
-        else flow = '상승';
+        // 화+목 약함 + 수 강함 = 정체 (사장님 무 일간 사주 정확 분류)
+        if (fireWoodRatio < 0.30 && waterRatio > 0.30) {
+            flow = '정체';
+        }
+        // 금 강함 + 변화 신호 = 전환
+        else if (metalRatio > 0.30) {
+            flow = '전환';
+        }
+        // 화+목 강 = 상승
+        else if (fireWoodRatio > 0.40) {
+            flow = '상승';
+        }
+        // 그 외 = 균형 (#169 새 분류 추가)
+        else {
+            flow = '균형';
+        }
         
         // risk: 균형 정도
         const max = Math.max(...Object.values(elements));
@@ -12409,7 +12463,7 @@ function renderSajuResult(data) {
                 </div>
                 <div style="font-size:2.4rem;">☯</div>
                 <h2 style="color:#FFD970; font-size:1.15rem; margin:6px 0; font-weight:900;">${text.title || '사주 신탁'}</h2>
-                <div style="color:#FFE08A; font-size:0.84rem; font-weight:700;">${text.subtitle || ''}</div>
+                <div style="color:#FFE08A; font-size:0.84rem; font-weight:700;">${refineSajuSubtitle(text.subtitle || '')}</div>
                 ${data.accuracy ? `<div style="color:rgba(255,255,255,0.5); font-size:0.66rem; margin-top:4px;">${data.accuracy.note}</div>` : ''}
             </div>
 
@@ -12428,20 +12482,39 @@ function renderSajuResult(data) {
                 ${elBars}
             </div>
 
-            <!-- [V31 #163 사장님 6블록] [3] 본질 흐름 — 해석 (3줄 이내) -->
+            <!-- [V31 #163 사장님 6블록 + #169] [3] 본질 흐름 -->
+            <!--   #169: "일주 본질" → "일주 물상" (사주 정통 용어) -->
+            <!--   #169: 각 항목에 "→ 의미" 답변 추가 (구체성 강화) -->
             <div style="margin:18px 0; padding:14px; background:rgba(212,175,55,0.06); border-left:3px solid rgba(212,175,55,0.5); border-radius:0 6px 6px 0;">
                 <div style="display:flex; align-items:center; gap:6px; margin-bottom:8px;">
                     <span style="font-size:0.7rem; color:#FFD970; font-weight:900; letter-spacing:0.05em;">[3/6]</span>
                     <span style="color:#FFD970; font-size:0.84rem; font-weight:800;">🔍 본질 흐름</span>
                 </div>
-                <div style="color:rgba(255,255,255,0.92); font-size:0.85rem; line-height:1.7; margin-bottom:8px;">
-                    <strong style="color:#FFE08A;">▸ 일주 본질:</strong><br>${text.dayEssence}
+                
+                <!-- 일주 물상 (사장님 결정 — 정통 용어) -->
+                <div style="color:rgba(255,255,255,0.92); font-size:0.85rem; line-height:1.7; margin-bottom:10px;">
+                    <strong style="color:#FFE08A;">▸ 일주 물상:</strong><br>${text.dayEssence}
                 </div>
-                <div style="color:rgba(255,255,255,0.92); font-size:0.85rem; line-height:1.7; margin-bottom:8px;">
+                
+                <!-- 오행 균형 -->
+                <div style="color:rgba(255,255,255,0.92); font-size:0.85rem; line-height:1.7; margin-bottom:10px;">
                     <strong style="color:#FFE08A;">▸ ${text.balanceLabel || '오행 균형'}:</strong><br>${text.balancePhrase}
                 </div>
+                
+                <!-- 일간 강약 (#169 결함 ③ — "그래서?" 의미 추가) -->
                 <div style="color:rgba(255,255,255,0.92); font-size:0.85rem; line-height:1.7;">
                     <strong style="color:#FFE08A;">▸ ${text.strengthLabel || '본질 흐름'}:</strong><br>${text.strengthPhrase}
+                    ${(function() {
+                        // [V31 #169 결함 ③] 각 본질 흐름에 "→ 의미" 답변 자동 추가
+                        const sajuStateLocal = detectSajuState(elements, text.meta?.pillars || {});
+                        let meaning = '';
+                        if (sajuStateLocal.strength === 'weak') {
+                            meaning = '혼자보다 함께가 운을 만듭니다';
+                        } else if (sajuStateLocal.strength === 'strong') {
+                            meaning = '내적 중심이 흐름을 이끕니다';
+                        }
+                        return meaning ? `<div style="margin-top:6px; padding:6px 10px; background:rgba(212,175,55,0.10); border-left:2px solid rgba(212,175,55,0.5); border-radius:0 4px 4px 0; font-size:0.80rem; color:#FFE08A; font-weight:700; font-style:italic;">→ 의미: ${meaning}</div>` : '';
+                    })()}
                 </div>
             </div>
 
