@@ -12,9 +12,9 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <meta name="version" content="V31_166_2026-05-05">
+    <meta name="version" content="V31_167_2026-05-05">
     
-    <title>ZEUS · Tarot Oracle [V31 #166]</title>
+    <title>ZEUS · Tarot Oracle [V31 #167]</title>
 
     <!-- ════════════════════════════════════════════════════════════ -->
     <!-- [V24.10] 파비콘 명시 선언 — 사장님 진단                       -->
@@ -11912,7 +11912,12 @@ function renderSajuResult(data) {
                 '글쓰기 또는 그림'
             ],
             trigger: '녹색 / 식물 / 동쪽 방향',
-            oneLine: '시작이 곧 운입니다 — 작은 출발이 큰 흐름을 만듭니다'
+            oneLine: '시작이 곧 운입니다 — 작은 출발이 큰 흐름을 만듭니다',
+            // [V31 #167 사장님 4단 구조]
+            activeCondition: '시작 · 확장 · 새로움',
+            activationTrigger: '아침 시간 + 식물 환경 + 새 만남',
+            blockCondition: '정체 · 후퇴 · 시작 회피',
+            forceTrigger: '오늘 새 시도 1개가 흐름의 시작점입니다'
         },
         '火': {
             label: '화(火)',
@@ -11925,7 +11930,11 @@ function renderSajuResult(data) {
                 '신체 활동 추가 (가벼운 운동)'
             ],
             trigger: '붉은색 / 밝은 조명 / 따뜻한 환경',
-            oneLine: '완벽보다 행동이 운을 여는 열쇠입니다'
+            oneLine: '완벽보다 행동이 운을 여는 열쇠입니다',
+            activeCondition: '움직임 · 표현 · 외부 활동',
+            activationTrigger: '밝은 환경 + 사람 접촉 + 말하기 행동',
+            blockCondition: '고립 · 침묵 · 정지 상태',
+            forceTrigger: '오늘 표현 행동 1회가 운의 시작점입니다'
         },
         '土': {
             label: '토(土)',
@@ -11938,7 +11947,11 @@ function renderSajuResult(data) {
                 '주변 정리정돈 5분'
             ],
             trigger: '황색/갈색 / 견고한 공간 / 중앙 자리',
-            oneLine: '꾸준함이 운을 끌어옵니다'
+            oneLine: '꾸준함이 운을 끌어옵니다',
+            activeCondition: '안정 · 신뢰 · 일관성',
+            activationTrigger: '루틴 유지 + 약속 이행 + 정리정돈',
+            blockCondition: '변덕 · 약속 깸 · 어수선함',
+            forceTrigger: '오늘 약속 1개 이행이 흐름을 단단히 합니다'
         },
         '金': {
             label: '금(金)',
@@ -11951,7 +11964,11 @@ function renderSajuResult(data) {
                 '운동 강도 ↑ (10분 더)'
             ],
             trigger: '백색/은색 / 깔끔한 공간 / 서쪽',
-            oneLine: '단호함이 새 흐름을 만듭니다'
+            oneLine: '단호함이 새 흐름을 만듭니다',
+            activeCondition: '결단 · 정리 · 명확함',
+            activationTrigger: '즉시 결정 + 깔끔한 공간 + 단호한 표현',
+            blockCondition: '미루기 · 모호함 · 결정 회피',
+            forceTrigger: '오늘 결정 1개가 새 흐름을 엽니다'
         },
         '水': {
             label: '수(水)',
@@ -11964,7 +11981,11 @@ function renderSajuResult(data) {
                 '명상/내면 정리 시간'
             ],
             trigger: '흑색/청색 / 물 / 북쪽',
-            oneLine: '깊은 통찰이 운을 정화합니다'
+            oneLine: '깊은 통찰이 운을 정화합니다',
+            activeCondition: '유연 · 지혜 · 깊이',
+            activationTrigger: '학습 + 깊은 대화 + 내면 정리',
+            blockCondition: '경직 · 표면 · 통찰 회피',
+            forceTrigger: '오늘 깊은 사유 1번이 흐름을 정화합니다'
         }
     };
     
@@ -12205,14 +12226,39 @@ function renderSajuResult(data) {
         if (state.risk === 'high') {
             const tone = DAYMASTER_TONE[state.dayMaster];
             if (tone) {
-                pressure = `${tone}, ${cond.replace(/^[^,]+/, '$&').toLowerCase()} ${res}`;
                 pressure = `${tone}, ${res}`;  // 더 강한 압박 (high risk만)
             }
+        }
+        
+        // ════════════════════════════════════════════════════════════════
+        // [V31 #167 사장님 강제 트리거 + 클로드 보완 ① 시간 압박]
+        //   사장님 안: "오늘 1회 외부 행동" 강제 시점
+        //   클로드 보완: risk별 시간 압박 강도
+        //     low  → "이번 주 1회"
+        //     mid  → "3일 안에 1개"
+        //     high → "오늘 안에 1개" (가장 강한 압박)
+        // ════════════════════════════════════════════════════════════════
+        const ACTION_KEYWORDS = {
+            external: '외부 행동',
+            self: '자기 점검',
+            activate: '시작 행동',
+            cautious: '검증 행동'
+        };
+        const actionKeyword = ACTION_KEYWORDS[action] || '행동';
+        
+        let forceTrigger;
+        if (state.risk === 'high') {
+            forceTrigger = `오늘 안에 1개의 ${actionKeyword}이 없으면 흐름이 끊깁니다`;
+        } else if (state.risk === 'mid') {
+            forceTrigger = `3일 안에 1개의 ${actionKeyword}이 발생해야 운이 작동합니다`;
+        } else {
+            forceTrigger = `이번 주 1회의 ${actionKeyword}이 흐름의 키입니다`;
         }
         
         return {
             pressure,
             support: sup,
+            forceTrigger,  // [V31 #167] 강제 시점 추가
             actionType: action,
             state
         };
@@ -12414,6 +12460,15 @@ function renderSajuResult(data) {
                         </div>
                     </div>
                     
+                    <!-- [V31 #167] 🎯 강제 트리거 — 사장님 핵심 안 ★★★ -->
+                    <!--   "행동 안 하면 불안해지는 구조" = PRO 가치 -->
+                    <div style="margin-top:10px; padding:13px 14px; background:linear-gradient(135deg, rgba(212,175,55,0.18), rgba(255,107,0,0.10)); border:2px solid rgba(212,175,55,0.7); border-radius:8px; box-shadow:0 0 16px rgba(212,175,55,0.2);">
+                        <div style="color:#FFD970; font-size:0.78rem; font-weight:900; margin-bottom:6px; letter-spacing:0.04em;">🎯 강제 트리거 (행동 시점)</div>
+                        <div style="color:#FFE08A; font-size:0.92rem; line-height:1.6; font-weight:800; padding:6px 0;">
+                            👉 ${constraint.forceTrigger}
+                        </div>
+                    </div>
+                    
                     <!-- 타이밍 -->
                     <div style="margin-top:12px; padding:8px 10px; background:rgba(46,204,113,0.06); border-radius:6px;">
                         <div style="color:#7ad188; font-size:0.78rem; font-weight:800; margin-bottom:3px;">⏱ 타이밍</div>
@@ -12436,22 +12491,44 @@ function renderSajuResult(data) {
                         </div>
                     </div>
                     
-                    <!-- 필요한 방향 -->
-                    <div style="margin-bottom:10px; padding:9px 12px; background:rgba(0,0,0,0.25); border-radius:6px;">
-                        <div style="color:${yongshinData.color}; font-size:0.78rem; font-weight:800; margin-bottom:3px;">▸ 필요한 에너지</div>
-                        <div style="color:rgba(255,255,255,0.92); font-size:0.85rem; line-height:1.5;">${yongshinData.meaning}</div>
+                    <!-- ═══════════════════════════════════════════════════════
+                         [V31 #167 사장님 4단 구조 — 핵심 보강안]
+                           ▸ 활성 조건 (긍정)
+                           🎨 작동 트리거 (실행)
+                           ⛔ 차단 조건 (부정 — 빨간 톤)
+                           👉 강제 시점 (압박)
+                         ═══════════════════════════════════════════════════════ -->
+                    
+                    <!-- ▸ 활성 조건 (긍정) -->
+                    <div style="margin-bottom:8px; padding:9px 12px; background:rgba(0,0,0,0.25); border-left:3px solid ${yongshinData.color}; border-radius:0 6px 6px 0;">
+                        <div style="color:${yongshinData.color}; font-size:0.76rem; font-weight:800; margin-bottom:3px;">▸ 활성 조건</div>
+                        <div style="color:rgba(255,255,255,0.92); font-size:0.85rem; line-height:1.5;">${yongshinData.activeCondition}</div>
                     </div>
                     
-                    <!-- 활성 트리거 -->
-                    <div style="margin-bottom:10px; padding:9px 12px; background:rgba(0,0,0,0.25); border-radius:6px;">
-                        <div style="color:${yongshinData.color}; font-size:0.78rem; font-weight:800; margin-bottom:3px;">🎨 활성 트리거</div>
-                        <div style="color:rgba(255,255,255,0.92); font-size:0.85rem; line-height:1.5;">${yongshinData.trigger}</div>
+                    <!-- 🎨 작동 트리거 (실행) -->
+                    <div style="margin-bottom:8px; padding:9px 12px; background:rgba(0,0,0,0.25); border-left:3px solid ${yongshinData.color}; border-radius:0 6px 6px 0;">
+                        <div style="color:${yongshinData.color}; font-size:0.76rem; font-weight:800; margin-bottom:3px;">🎨 작동 트리거</div>
+                        <div style="color:rgba(255,255,255,0.92); font-size:0.85rem; line-height:1.5;">${yongshinData.activationTrigger}</div>
+                    </div>
+                    
+                    <!-- ⛔ 차단 조건 (부정 — 빨간 톤 시각 강화) -->
+                    <div style="margin-bottom:8px; padding:9px 12px; background:rgba(231,76,60,0.12); border:1px solid rgba(231,76,60,0.5); border-left:3px solid #e74c3c; border-radius:0 6px 6px 0;">
+                        <div style="color:#FF8870; font-size:0.76rem; font-weight:800; margin-bottom:3px;">⛔ 차단 조건</div>
+                        <div style="color:#FFCFC0; font-size:0.85rem; line-height:1.5; font-weight:700;">${yongshinData.blockCondition}</div>
+                    </div>
+                    
+                    <!-- 👉 강제 시점 (사장님 핵심 안 — 행동 강제) -->
+                    <div style="margin-top:12px; padding:11px 13px; background:linear-gradient(135deg, ${yongshinData.color}30, ${yongshinData.color}15); border:2px solid ${yongshinData.color}AA; border-radius:8px; box-shadow:0 0 12px ${yongshinData.color}30;">
+                        <div style="color:${yongshinData.color}; font-size:0.78rem; font-weight:900; margin-bottom:5px; letter-spacing:0.04em;">🎯 강제 시점</div>
+                        <div style="color:rgba(255,255,255,0.95); font-size:0.88rem; font-weight:800; line-height:1.55;">
+                            👉 ${yongshinData.forceTrigger}
+                        </div>
                     </div>
                     
                     <!-- 한 줄 핵심 -->
-                    <div style="margin-top:12px; padding:10px 12px; background:linear-gradient(135deg, ${yongshinData.color}30, ${yongshinData.color}15); border-left:3px solid ${yongshinData.color}; border-radius:0 6px 6px 0;">
-                        <div style="color:${yongshinData.color}; font-size:0.86rem; font-weight:800; line-height:1.55;">
-                            👉 ${yongshinData.oneLine}
+                    <div style="margin-top:10px; padding:10px 12px; background:linear-gradient(135deg, ${yongshinData.color}20, ${yongshinData.color}08); border-left:3px solid ${yongshinData.color}; border-radius:0 6px 6px 0;">
+                        <div style="color:${yongshinData.color}; font-size:0.83rem; font-weight:800; line-height:1.55;">
+                            ${yongshinData.oneLine}
                         </div>
                     </div>
                 </div>
