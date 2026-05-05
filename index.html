@@ -12,9 +12,9 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <meta name="version" content="V31_174_2026-05-05">
+    <meta name="version" content="V31_175_2026-05-05">
     
-    <title>ZEUS · Tarot Oracle [V31 #174]</title>
+    <title>ZEUS · Tarot Oracle [V31 #175]</title>
 
     <!-- ════════════════════════════════════════════════════════════ -->
     <!-- [V24.10] 파비콘 명시 선언 — 사장님 진단                       -->
@@ -940,36 +940,26 @@
         }
 
         /* ═══════════════════════════════════════════════════════════════
-         * [V31 #140] 결제 모달 — 사주 컨텍스트 시 990원만 노출
-         *   사장님 명령:
-         *     "990원 통일했는데 결제창은 모든 가격이 뿌려진다 — 중대 에러"
-         *   해결:
-         *     사주 카드 클릭 → window._sajuPaymentContext = true
-         *     → 결제 모달 .pay-plan-saju 클래스 → 990원 외 버튼 숨김
-         *     → 990원 버튼은 메인 CTA 톤으로 강조
+         * [V31 #175 사장님 결정] 사주 결제 모달 5종 모두 노출
+         *   변경 이력:
+         *     V31 #140: 사주 = 990원만 (CSS 숨김)
+         *     V31 #166: 사주 990원 단일 통일 (법적 안전)
+         *     V31 #172/173/174: 5종 모두 노출 정책 변경
+         *     V31 #175: ★ CSS 숨김 코드 삭제 ★
+         *   
+         *   사장님 라이브 검증: 사주 결제 모달에 990원만 보임 → 결함
+         *   원인: V31 #140 CSS 숨김 코드 잔존
+         *   해결: 사주 컨텍스트 CSS 숨김 정책 전체 삭제
+         *   
+         *   효과:
+         *     ✅ 사주 PRO 모달에서도 5종 상품 카드 모두 노출
+         *     ✅ 1일권 기본 선택 그대로
+         *     ✅ 표시-결제 100% 일치 유지
+         *     ✅ V31 #163~#174 자산 100% 보존
          * ═══════════════════════════════════════════════════════════════ */
         @keyframes sajuPaidPulse {
             0%, 100% { box-shadow: 0 2px 10px rgba(212,175,55,0.10); }
             50%      { box-shadow: 0 6px 28px rgba(255,217,112,0.85), 0 0 0 3px rgba(212,175,55,0.6) inset; }
-        }
-        .pay-plan-list.pay-plan-saju .pay-plan-btn:not([data-plan="trial"]) {
-            display: none !important;
-        }
-        /* 사주 컨텍스트 990원 버튼 — 보조 → 메인 CTA 톤 */
-        .pay-plan-list.pay-plan-saju .pay-plan-btn[data-plan="trial"] {
-            background: linear-gradient(135deg, #D4AF37, #FFD970) !important;
-            color: #1a1a1a !important;
-            border: 1.5px solid rgba(212,175,55,0.85) !important;
-            box-shadow: 0 4px 14px rgba(212,175,55,0.35) !important;
-            padding: 16px 14px !important;
-        }
-        .pay-plan-list.pay-plan-saju .pay-plan-btn[data-plan="trial"] span {
-            color: #1a1a1a !important;
-            opacity: 1 !important;
-        }
-        .pay-plan-list.pay-plan-saju .pay-plan-btn[data-plan="trial"] div:last-child {
-            color: rgba(0,0,0,0.75) !important;
-            opacity: 0.85 !important;
         }
 
         /* ═══════════════════════════════════════════════════════════════
