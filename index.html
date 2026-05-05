@@ -12,9 +12,9 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <meta name="version" content="V31_176_2026-05-05">
+    <meta name="version" content="V31_179_2026-05-05">
     
-    <title>ZEUS · Tarot Oracle [V31 #176]</title>
+    <title>ZEUS · Tarot Oracle [V31 #179]</title>
 
     <!-- ════════════════════════════════════════════════════════════ -->
     <!-- [V24.10] 파비콘 명시 선언 — 사장님 진단                       -->
@@ -5270,26 +5270,197 @@ async function renderStream(fetchPromise, cards) {
             ? normalizeHonorificSpacing(_alignedText)
             : _alignedText;
         
-        // [V31 #161] 부동산 도메인 사후 정제 — 주식/코인 시간 표현 차단
-        //   사장님 진단: "부동산 매도 → '오전 고점구간 매도' 출력 (주식 문장)"
-        //   원인: 워커가 부동산인데 주식/코인 폴백 텍스트 사용
-        //   해결: 부동산 컨텍스트에서 시간 표현 → 시즌/계절 표현으로 정제
-        const _filteredText = (CURRENT_MODE === 'realestate') 
-            ? (function(text) {
+        // ════════════════════════════════════════════════════════════════════
+        // [V31 #161 + #177 + #178] 도메인 사후 정제 — 카테고리별 표현 분리
+        //   사장님 진단:
+        //     #161: 부동산 매도 → '오전 고점구간 매도' (시간 표현)
+        //     #177: 부동산 매도 → '진입/손익비/비중/마감' (주식 표현)
+        //     #178: 주식인데 '아시아/유럽/미국 장중' (코인 표현)
+        //   원인: 워커가 도메인별 폴백 텍스트 혼선
+        //   해결: CURRENT_MODE별 정제 함수 분리 적용
+        //         - realestate: 시간/주식 → 시즌/매물 등록
+        //         - stock: 글로벌 시간 → 한국 시장 시간
+        //         - crypto: 그대로 (24시간 글로벌 적합)
+        // ════════════════════════════════════════════════════════════════════
+        const _filteredText = (function(text) {
+            if (CURRENT_MODE === 'realestate') {
                 let cleaned = text;
-                // 시간 표현 → 시즌 표현 강제 변환
+                // 시간 표현 → 시즌 표현
                 cleaned = cleaned.replace(/오전\s*고점(구간|권|대)?(\s*매도)?/g, '봄 이사철 성수기 매도');
                 cleaned = cleaned.replace(/오후\s*고점(구간|권|대)?(\s*매도)?/g, '가을 이사철 성수기 매도');
                 cleaned = cleaned.replace(/아시아\s*고점(구간|권|대)?/g, '봄 성수기 거래 활성');
                 cleaned = cleaned.replace(/유럽\s*장중(\s*피크)?/g, '가을 이사철');
                 cleaned = cleaned.replace(/미국\s*장중(\s*피크)?/g, '연말 거래 마감');
                 cleaned = cleaned.replace(/(\d{1,2}):(\d{2})~(\d{1,2}):(\d{2})\s*\([^)]+\)/g, '계절 거래 적기');
-                // "장중" 단어 제거 (부동산은 장중 없음)
                 cleaned = cleaned.replace(/장중\s*피크/g, '거래 활성');
                 cleaned = cleaned.replace(/장중\s*저점/g, '거래 비수기');
                 return cleaned;
-            })(_spacedText)
-            : _spacedText;
+            }
+            
+            // [V31 #178 사장님 결정] 주식 모드 — 한국 시장 표현으로 정제
+            //   주식은 9시 시작 / 15시 30분 마감 (글로벌 24시간 X)
+            //   "아시아/유럽/미국 장중"은 코인 표현 → 한국 시장 표현으로 변환
+            if (CURRENT_MODE === 'stock') {
+                let cleaned = text;
+                
+                // 시간대 (한국 주식 시간으로 정확 변환)
+                cleaned = cleaned.replace(/06:00~07:00\s*\(아시아\s*고점\)/g, '09:00~09:30 (장 시작 직후)');
+                cleaned = cleaned.replace(/11:00~12:00\s*\(오전\s*고점권\)/g, '10:30~11:30 (오전 거래 활성)');
+                cleaned = cleaned.replace(/17:00~18:00\s*\(유럽\s*장중\s*피크\)/g, '13:00~14:00 (오후 거래 활성)');
+                cleaned = cleaned.replace(/23:30~00:30\s*\(미국\s*장중\s*피크\)/g, '14:30~15:20 (장 마감 직전)');
+                
+                // 글로벌 시장 표현 → 한국 시장 표현
+                cleaned = cleaned.replace(/아시아\s*고점(구간|권|대)?/g, '장 시작 직후');
+                cleaned = cleaned.replace(/유럽\s*장중\s*피크/g, '오후 거래 활성');
+                cleaned = cleaned.replace(/유럽\s*장중/g, '오후 거래');
+                cleaned = cleaned.replace(/미국\s*장중\s*피크/g, '장 마감 직전');
+                cleaned = cleaned.replace(/미국\s*장중/g, '장 마감 직전');
+                
+                // 어색한 동사 미세 다듬기 (주식 도메인 자연스럽게)
+                cleaned = cleaned.replace(/수익\s*반납으로\s*이어질/g, '이익 반납으로 이어질');
+                
+                return cleaned;
+            }
+            
+            // ════════════════════════════════════════════════════════════
+            // [V31 #179 사장님 결정 — 본격 상업운전 전 마지막 점검]
+            //   연애 PRO 도메인 정제 + 9개 소항목 톤 분리
+            //   
+            //   사장님 진단:
+            //     ① 연애에 주식/부동산 용어 = 망함 (즉시 차단)
+            //     ② 9개 소항목 표현 상충 = 망함 (미세 조정 필요)
+            //   
+            //   해결:
+            //     Phase 1: 도메인 혼선 차단 (주식/부동산 → 연애 표현)
+            //     Phase 2: 9개 소항목별 톤 분리 (LOVE_SUBTYPE 기반)
+            //   
+            //   소항목 9종:
+            //     compatibility(궁합) / thumb(썸) / reunion(재회) / contact(연락)
+            //     mindread(속마음) / marriage(결혼) / breakup(이별)
+            //     crush(짝사랑) / general(연애운)
+            // ════════════════════════════════════════════════════════════
+            if (CURRENT_MODE === 'love') {
+                let cleaned = text;
+                
+                // ────────────────────────────────────────────
+                // Phase 1: 도메인 혼선 차단 (주식/부동산 → 연애)
+                // ────────────────────────────────────────────
+                
+                // 주식 행동/구조 → 연애 행동
+                cleaned = cleaned.replace(/진입\s*시점/g, '다가갈 시점');
+                cleaned = cleaned.replace(/진입\s*타이밍/g, '다가갈 타이밍');
+                cleaned = cleaned.replace(/신호\s*정렬\s*후\s*진입/g, '신호 정렬 후 다가가기');
+                cleaned = cleaned.replace(/풀\s*진입/g, '적극적 표현');
+                cleaned = cleaned.replace(/매수\s*시점/g, '다가갈 시점');
+                cleaned = cleaned.replace(/매도\s*시점/g, '거리 둘 시점');
+                cleaned = cleaned.replace(/손익비\s*상\s*유리한\s*구조/g, '감정 균형 상 유리한 구조');
+                cleaned = cleaned.replace(/손익비\s*상/g, '감정 균형 상');
+                cleaned = cleaned.replace(/수익\s*반납/g, '관계 후퇴');
+                cleaned = cleaned.replace(/수익\s*보존/g, '관계 유지');
+                cleaned = cleaned.replace(/분할\s*매도\s*권장/g, '점진적 거리 두기 권장');
+                cleaned = cleaned.replace(/분할\s*매도/g, '점진적 거리 두기');
+                cleaned = cleaned.replace(/비중\s*단계\s*축소/g, '감정 단계적 정리');
+                cleaned = cleaned.replace(/비중\s*축소/g, '거리 두기');
+                cleaned = cleaned.replace(/포지션\s*전략/g, '관계 전략');
+                cleaned = cleaned.replace(/포지션/g, '입장');
+                cleaned = cleaned.replace(/일괄\s*청산/g, '관계 일괄 정리');
+                cleaned = cleaned.replace(/기준\s*기반\s*청산/g, '기준 기반 정리');
+                cleaned = cleaned.replace(/청산\s*전략/g, '정리 전략');
+                cleaned = cleaned.replace(/청산/g, '정리');
+                cleaned = cleaned.replace(/손절/g, '깨끗한 정리');
+                cleaned = cleaned.replace(/익절/g, '관계 정점 마무리');
+                
+                // 시장 표현 → 관계 표현
+                cleaned = cleaned.replace(/고점\s*미청산\s*리스크/g, '관계 정점 놓침 리스크');
+                cleaned = cleaned.replace(/고점\s*청산/g, '관계 정점 마무리');
+                cleaned = cleaned.replace(/변동성\s*급락\s*가능성\s*동반\s*구간/g, '감정 흔들림 가능성 동반 구간');
+                cleaned = cleaned.replace(/변동성\s*노출\s*확대\s*가능성/g, '감정 변화 노출 확대 가능성');
+                cleaned = cleaned.replace(/변동성/g, '감정 변화');
+                cleaned = cleaned.replace(/추세\s*둔화\s*신호\s*동반\s*시/g, '관계 둔화 신호 동반 시');
+                cleaned = cleaned.replace(/추세\s*반전/g, '관계 전환');
+                cleaned = cleaned.replace(/반등/g, '회복');
+                
+                // 시간 표현 (주식 시장 시간) → 일상 시간
+                cleaned = cleaned.replace(/마감\s*전\s*리스크\s*정리\s*구간/g, '결단 직전 정리 구간');
+                cleaned = cleaned.replace(/장\s*마감/g, '하루 마무리');
+                cleaned = cleaned.replace(/장중/g, '만남 중');
+                cleaned = cleaned.replace(/장중\s*피크/g, '만남 활성');
+                cleaned = cleaned.replace(/(\d{1,2}):(\d{2})~(\d{1,2}):(\d{2})\s*\(아시아\s*고점\)/g, '오전 시간대');
+                cleaned = cleaned.replace(/(\d{1,2}):(\d{2})~(\d{1,2}):(\d{2})\s*\(유럽\s*장중\s*피크\)/g, '저녁 시간대');
+                cleaned = cleaned.replace(/(\d{1,2}):(\d{2})~(\d{1,2}):(\d{2})\s*\(미국\s*장중\s*피크\)/g, '늦저녁 시간대');
+                cleaned = cleaned.replace(/아시아\s*고점/g, '오전 활성');
+                cleaned = cleaned.replace(/유럽\s*장중\s*피크/g, '저녁 활성');
+                cleaned = cleaned.replace(/미국\s*장중\s*피크/g, '늦저녁 활성');
+                
+                // 부동산 표현 → 연애 표현
+                cleaned = cleaned.replace(/매물\s*등록/g, '의사 표시');
+                cleaned = cleaned.replace(/호가\s*조정/g, '입장 조정');
+                cleaned = cleaned.replace(/호가\s*단계적\s*조정/g, '입장 단계적 조정');
+                cleaned = cleaned.replace(/협상력\s*보존/g, '관계 우위 보존');
+                cleaned = cleaned.replace(/협상력\s*약화/g, '관계 우위 약화');
+                cleaned = cleaned.replace(/계약\s*체결/g, '관계 확정');
+                cleaned = cleaned.replace(/매수자\s*우위/g, '상대 우위');
+                cleaned = cleaned.replace(/매도자\s*우위/g, '본인 우위');
+                cleaned = cleaned.replace(/이사철\s*성수기/g, '관계 활성 시기');
+                cleaned = cleaned.replace(/거래\s*활성/g, '관계 활성');
+                cleaned = cleaned.replace(/거래\s*비수기/g, '관계 정체기');
+                
+                // ────────────────────────────────────────────
+                // Phase 2: 9개 소항목별 톤 분리 (LOVE_SUBTYPE)
+                //   상충 표현 차단 (예: 결혼 안에 "이별 시점" 금지)
+                // ────────────────────────────────────────────
+                
+                // 결혼 모드: "이별/끝남/단절" 표현 차단
+                if (LOVE_SUBTYPE === 'marriage') {
+                    cleaned = cleaned.replace(/이별\s*시점/g, '결혼 결단 시점');
+                    cleaned = cleaned.replace(/관계\s*종료/g, '관계 진전');
+                    cleaned = cleaned.replace(/단절/g, '거리 조정');
+                }
+                
+                // 이별 모드: "결혼/약속" 표현 차단
+                if (LOVE_SUBTYPE === 'breakup') {
+                    cleaned = cleaned.replace(/결혼\s*약속/g, '관계 마무리');
+                    cleaned = cleaned.replace(/장기\s*안정/g, '단계적 정리');
+                }
+                
+                // 썸 모드: "결혼/이별" 같은 강한 표현 차단 (썸은 초기 단계)
+                if (LOVE_SUBTYPE === 'thumb') {
+                    cleaned = cleaned.replace(/결혼\s*시점/g, '관계 진전 시점');
+                    cleaned = cleaned.replace(/이별\s*시점/g, '거리 두기 시점');
+                    cleaned = cleaned.replace(/평생\s*동반/g, '깊은 만남');
+                }
+                
+                // 짝사랑 모드: "양방향/상호" 표현 → "일방적/인내" 표현
+                if (LOVE_SUBTYPE === 'crush') {
+                    cleaned = cleaned.replace(/상호\s*감정/g, '본인 감정');
+                    cleaned = cleaned.replace(/양방향\s*소통/g, '일방적 다가가기');
+                }
+                
+                // 재회 모드: "새로운/처음" 표현 → "회복/돌아옴" 표현
+                if (LOVE_SUBTYPE === 'reunion') {
+                    cleaned = cleaned.replace(/새로운\s*만남/g, '관계 회복');
+                    cleaned = cleaned.replace(/처음\s*만남/g, '재회 시점');
+                }
+                
+                // 연락 모드: 행동 가이드 (시점/타이밍 명확)
+                // 별도 추가 정제 없음 (Phase 1 통합 적용)
+                
+                // 속마음(mindread) 모드: "분석/지표" → "통찰/직감"
+                if (LOVE_SUBTYPE === 'mindread') {
+                    cleaned = cleaned.replace(/지표\s*분석/g, '감정 통찰');
+                    cleaned = cleaned.replace(/데이터\s*기반/g, '신호 기반');
+                }
+                
+                // 궁합 모드: 두 사람 관점 (양방향)
+                // general(연애운) 모드: 광범위 흐름
+                
+                return cleaned;
+            }
+            
+            // 코인/암호화폐는 그대로 (24시간 글로벌 표현 적합)
+            // 사주/운세 등도 그대로
+            return text;
+        })(_spacedText);
 
         // 2️⃣ [최종 렌더링] 결제 여부(isPaidUser)에 따라 미래와 지표 노출 결정
         contentEl.innerHTML = renderText(_filteredText, cards, investmentData, isPaidUser, isFinance);
@@ -8200,10 +8371,188 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
                 : zeusV28.intent === 'hold' ? '241,196,15'
                 : '46,204,113';
             
-            // FINAL 박스 (CORE + TONE 조합)
-            const finalText = zeusV28.finalText || zeusV28.core || '';
+            // ════════════════════════════════════════════════════════════
+            // [V31 #177 + #178 사장님 진단] DEEP ANALYSIS zeusV28 도메인 정제
+            //   사장님 라이브 검증:
+            //     #177: 자양 현대 매도 → "진입/손익비/비중/마감" (주식 → 부동산)
+            //     #178: 주식인데 "아시아/유럽/미국 장중" (코인 → 한국 시장)
+            //   원인:
+            //     - zeusV28 = window._serverMetrics.zeusV28 (워커 직접 응답)
+            //     - renderText 거치지 않음 → V31 #161 정제 미적용
+            //   해결:
+            //     - 통합 정제 함수 _refineDomain (부동산/주식 모두 처리)
+            //     - 코인은 그대로 유지 (24시간 글로벌 적합)
+            //     - finalText/risks/guides/timing 모두 적용
+            // ════════════════════════════════════════════════════════════
+            const _refineDomain = (txt) => {
+                if (!txt || typeof txt !== 'string') return txt;
+                
+                // 부동산 정제 (V31 #161 + #177)
+                if (CURRENT_MODE === 'realestate') {
+                    let cleaned = txt;
+                    
+                    // 시간 표현 → 시즌 표현 (V31 #161)
+                    cleaned = cleaned.replace(/오전\s*고점(구간|권|대)?(\s*매도)?/g, '봄 이사철 성수기 매도');
+                    cleaned = cleaned.replace(/오후\s*고점(구간|권|대)?(\s*매도)?/g, '가을 이사철 성수기 매도');
+                    cleaned = cleaned.replace(/장중\s*피크/g, '거래 활성');
+                    cleaned = cleaned.replace(/장중\s*저점/g, '거래 비수기');
+                    
+                    // 주식 행동/구조 → 부동산 (V31 #177)
+                    cleaned = cleaned.replace(/신호\s*정렬\s*후\s*진입/g, '시장 신호 정렬 후 매물 등록');
+                    cleaned = cleaned.replace(/진입이\s*손익비\s*상\s*유리한\s*구조/g, '매물 등록이 협상력 보존에 유리한 구조');
+                    cleaned = cleaned.replace(/풀\s*진입/g, '풀 매수');
+                    cleaned = cleaned.replace(/진입\s*시점/g, '매도 시점');
+                    cleaned = cleaned.replace(/진입\s*타이밍/g, '거래 타이밍');
+                    cleaned = cleaned.replace(/손익비\s*상/g, '협상 조건 상');
+                    cleaned = cleaned.replace(/수익\s*반납/g, '협상력 약화');
+                    cleaned = cleaned.replace(/수익\s*보존/g, '협상력 유지');
+                    cleaned = cleaned.replace(/분할\s*매도\s*권장/g, '단계적 호가 조정 권장');
+                    cleaned = cleaned.replace(/분할\s*매도/g, '단계적 호가 조정');
+                    cleaned = cleaned.replace(/비중\s*단계\s*축소/g, '호가 단계적 조정');
+                    cleaned = cleaned.replace(/비중\s*축소/g, '호가 조정');
+                    cleaned = cleaned.replace(/단계적\s*정리/g, '단계적 호가 조정');
+                    cleaned = cleaned.replace(/일괄\s*청산/g, '일괄 가격 인하');
+                    cleaned = cleaned.replace(/고점\s*미청산\s*리스크/g, '성수기 미거래 리스크');
+                    cleaned = cleaned.replace(/고점\s*청산/g, '성수기 거래 체결');
+                    cleaned = cleaned.replace(/기준\s*기반\s*청산/g, '기준가 기반 협상');
+                    cleaned = cleaned.replace(/변동성\s*급락\s*가능성\s*동반\s*구간/g, '시장 둔화 가능성 동반 구간');
+                    cleaned = cleaned.replace(/변동성\s*노출\s*확대\s*가능성/g, '시장 변동 노출 확대 가능성');
+                    cleaned = cleaned.replace(/추세\s*둔화\s*신호\s*동반\s*시/g, '거래 둔화 신호 동반 시');
+                    cleaned = cleaned.replace(/마감\s*전\s*리스크\s*정리\s*구간/g, '시즌 마감 전 거래 정리 구간');
+                    cleaned = cleaned.replace(/장\s*마감/g, '시즌 마감');
+                    cleaned = cleaned.replace(/장중/g, '시즌 중');
+                    cleaned = cleaned.replace(/타이밍\s*지연은\s*수익\s*반납으로/g, '거래 지연은 협상력 약화로');
+                    
+                    return cleaned;
+                }
+                
+                // [V31 #178 사장님 결정] 주식 정제 — 한국 시장 표현으로
+                //   주식은 9시 시작 / 15시 30분 마감 (글로벌 24시간 X)
+                //   "아시아/유럽/미국 장중" = 코인 표현 → 한국 시장 표현으로
+                if (CURRENT_MODE === 'stock') {
+                    let cleaned = txt;
+                    
+                    // 시간대 (한국 주식 시간으로 정확 변환)
+                    cleaned = cleaned.replace(/06:00~07:00\s*\(아시아\s*고점\)/g, '09:00~09:30 (장 시작 직후)');
+                    cleaned = cleaned.replace(/11:00~12:00\s*\(오전\s*고점권\)/g, '10:30~11:30 (오전 거래 활성)');
+                    cleaned = cleaned.replace(/17:00~18:00\s*\(유럽\s*장중\s*피크\)/g, '13:00~14:00 (오후 거래 활성)');
+                    cleaned = cleaned.replace(/23:30~00:30\s*\(미국\s*장중\s*피크\)/g, '14:30~15:20 (장 마감 직전)');
+                    
+                    // 글로벌 시장 표현 → 한국 시장 표현
+                    cleaned = cleaned.replace(/아시아\s*고점(구간|권|대)?/g, '장 시작 직후');
+                    cleaned = cleaned.replace(/유럽\s*장중\s*피크/g, '오후 거래 활성');
+                    cleaned = cleaned.replace(/유럽\s*장중/g, '오후 거래');
+                    cleaned = cleaned.replace(/미국\s*장중\s*피크/g, '장 마감 직전');
+                    cleaned = cleaned.replace(/미국\s*장중/g, '장 마감 직전');
+                    
+                    // 어색한 동사 미세 다듬기
+                    cleaned = cleaned.replace(/수익\s*반납으로\s*이어질/g, '이익 반납으로 이어질');
+                    
+                    return cleaned;
+                }
+                
+                // ════════════════════════════════════════════════════════
+                // [V31 #179 사장님 결정] DEEP ANALYSIS 연애 정제
+                //   본격 상업운전 전 마지막 점검
+                //   - Phase 1: 도메인 혼선 차단 (주식/부동산 → 연애)
+                //   - Phase 2: 9개 소항목 톤 분리 (LOVE_SUBTYPE)
+                // ════════════════════════════════════════════════════════
+                if (CURRENT_MODE === 'love') {
+                    let cleaned = txt;
+                    
+                    // Phase 1: 도메인 혼선 차단
+                    // 주식 행동/구조 → 연애 행동
+                    cleaned = cleaned.replace(/진입\s*시점/g, '다가갈 시점');
+                    cleaned = cleaned.replace(/진입\s*타이밍/g, '다가갈 타이밍');
+                    cleaned = cleaned.replace(/신호\s*정렬\s*후\s*진입/g, '신호 정렬 후 다가가기');
+                    cleaned = cleaned.replace(/풀\s*진입/g, '적극적 표현');
+                    cleaned = cleaned.replace(/매수\s*시점/g, '다가갈 시점');
+                    cleaned = cleaned.replace(/매도\s*시점/g, '거리 둘 시점');
+                    cleaned = cleaned.replace(/손익비\s*상\s*유리한\s*구조/g, '감정 균형 상 유리한 구조');
+                    cleaned = cleaned.replace(/손익비\s*상/g, '감정 균형 상');
+                    cleaned = cleaned.replace(/수익\s*반납/g, '관계 후퇴');
+                    cleaned = cleaned.replace(/수익\s*보존/g, '관계 유지');
+                    cleaned = cleaned.replace(/분할\s*매도\s*권장/g, '점진적 거리 두기 권장');
+                    cleaned = cleaned.replace(/분할\s*매도/g, '점진적 거리 두기');
+                    cleaned = cleaned.replace(/비중\s*단계\s*축소/g, '감정 단계적 정리');
+                    cleaned = cleaned.replace(/비중\s*축소/g, '거리 두기');
+                    cleaned = cleaned.replace(/포지션\s*전략/g, '관계 전략');
+                    cleaned = cleaned.replace(/포지션/g, '입장');
+                    cleaned = cleaned.replace(/일괄\s*청산/g, '관계 일괄 정리');
+                    cleaned = cleaned.replace(/기준\s*기반\s*청산/g, '기준 기반 정리');
+                    cleaned = cleaned.replace(/청산\s*전략/g, '정리 전략');
+                    cleaned = cleaned.replace(/청산/g, '정리');
+                    cleaned = cleaned.replace(/손절/g, '깨끗한 정리');
+                    cleaned = cleaned.replace(/익절/g, '관계 정점 마무리');
+                    cleaned = cleaned.replace(/고점\s*미청산\s*리스크/g, '관계 정점 놓침 리스크');
+                    cleaned = cleaned.replace(/고점\s*청산/g, '관계 정점 마무리');
+                    cleaned = cleaned.replace(/변동성\s*급락\s*가능성\s*동반\s*구간/g, '감정 흔들림 가능성 동반 구간');
+                    cleaned = cleaned.replace(/변동성\s*노출\s*확대\s*가능성/g, '감정 변화 노출 확대 가능성');
+                    cleaned = cleaned.replace(/변동성/g, '감정 변화');
+                    cleaned = cleaned.replace(/추세\s*둔화\s*신호\s*동반\s*시/g, '관계 둔화 신호 동반 시');
+                    cleaned = cleaned.replace(/추세\s*반전/g, '관계 전환');
+                    cleaned = cleaned.replace(/반등/g, '회복');
+                    cleaned = cleaned.replace(/마감\s*전\s*리스크\s*정리\s*구간/g, '결단 직전 정리 구간');
+                    cleaned = cleaned.replace(/장\s*마감/g, '하루 마무리');
+                    cleaned = cleaned.replace(/장중\s*피크/g, '만남 활성');
+                    cleaned = cleaned.replace(/장중/g, '만남 중');
+                    cleaned = cleaned.replace(/아시아\s*고점/g, '오전 활성');
+                    cleaned = cleaned.replace(/유럽\s*장중\s*피크/g, '저녁 활성');
+                    cleaned = cleaned.replace(/미국\s*장중\s*피크/g, '늦저녁 활성');
+                    
+                    // 부동산 표현 → 연애 표현
+                    cleaned = cleaned.replace(/매물\s*등록/g, '의사 표시');
+                    cleaned = cleaned.replace(/호가\s*조정/g, '입장 조정');
+                    cleaned = cleaned.replace(/호가\s*단계적\s*조정/g, '입장 단계적 조정');
+                    cleaned = cleaned.replace(/협상력\s*보존/g, '관계 우위 보존');
+                    cleaned = cleaned.replace(/협상력\s*약화/g, '관계 우위 약화');
+                    cleaned = cleaned.replace(/계약\s*체결/g, '관계 확정');
+                    cleaned = cleaned.replace(/매수자\s*우위/g, '상대 우위');
+                    cleaned = cleaned.replace(/매도자\s*우위/g, '본인 우위');
+                    cleaned = cleaned.replace(/이사철\s*성수기/g, '관계 활성 시기');
+                    cleaned = cleaned.replace(/거래\s*활성/g, '관계 활성');
+                    cleaned = cleaned.replace(/거래\s*비수기/g, '관계 정체기');
+                    
+                    // Phase 2: 9개 소항목 톤 분리 (DEEP ANALYSIS도 동일)
+                    if (LOVE_SUBTYPE === 'marriage') {
+                        cleaned = cleaned.replace(/이별\s*시점/g, '결혼 결단 시점');
+                        cleaned = cleaned.replace(/관계\s*종료/g, '관계 진전');
+                        cleaned = cleaned.replace(/단절/g, '거리 조정');
+                    }
+                    if (LOVE_SUBTYPE === 'breakup') {
+                        cleaned = cleaned.replace(/결혼\s*약속/g, '관계 마무리');
+                        cleaned = cleaned.replace(/장기\s*안정/g, '단계적 정리');
+                    }
+                    if (LOVE_SUBTYPE === 'thumb') {
+                        cleaned = cleaned.replace(/결혼\s*시점/g, '관계 진전 시점');
+                        cleaned = cleaned.replace(/이별\s*시점/g, '거리 두기 시점');
+                        cleaned = cleaned.replace(/평생\s*동반/g, '깊은 만남');
+                    }
+                    if (LOVE_SUBTYPE === 'crush') {
+                        cleaned = cleaned.replace(/상호\s*감정/g, '본인 감정');
+                        cleaned = cleaned.replace(/양방향\s*소통/g, '일방적 다가가기');
+                    }
+                    if (LOVE_SUBTYPE === 'reunion') {
+                        cleaned = cleaned.replace(/새로운\s*만남/g, '관계 회복');
+                        cleaned = cleaned.replace(/처음\s*만남/g, '재회 시점');
+                    }
+                    if (LOVE_SUBTYPE === 'mindread') {
+                        cleaned = cleaned.replace(/지표\s*분석/g, '감정 통찰');
+                        cleaned = cleaned.replace(/데이터\s*기반/g, '신호 기반');
+                    }
+                    
+                    return cleaned;
+                }
+                
+                // 코인/암호화폐는 그대로 (24시간 글로벌 적합)
+                // 사주/운세 등도 그대로
+                return txt;
+            };
             
-            // RISK_POINTS 박스 (3개 랜덤 추출)
+            // FINAL 박스 (CORE + TONE 조합) — 도메인 정제 적용
+            const finalText = _refineDomain(zeusV28.finalText || zeusV28.core || '');
+            
+            // RISK_POINTS 박스 (3개 랜덤 추출) — 도메인 정제 적용
             const risksHTML = (Array.isArray(zeusV28.risks) && zeusV28.risks.length > 0)
                 ? zeusV28.risks.map(r => 
                     `<div style="padding:6px 10px; margin:6px 0; 
@@ -8212,11 +8561,11 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
                                 border-radius: 0 6px 6px 0;
                                 font-size: 0.86rem; color: rgba(255,255,255,0.85); 
                                 line-height: 1.6;">
-                        ⚠️ ${r}
+                        ⚠️ ${_refineDomain(r)}
                     </div>`).join('')
                 : '';
             
-            // GUIDE 박스 (3개 행동 지침)
+            // GUIDE 박스 (3개 행동 지침) — 도메인 정제 적용
             const guidesHTML = (Array.isArray(zeusV28.guides) && zeusV28.guides.length > 0)
                 ? zeusV28.guides.map(g => 
                     `<div style="padding:6px 10px; margin:6px 0; 
@@ -8225,12 +8574,12 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
                                 border-radius: 0 6px 6px 0;
                                 font-size: 0.86rem; color: rgba(255,255,255,0.85); 
                                 line-height: 1.6;">
-                        ✔ ${g}
+                        ✔ ${_refineDomain(g)}
                     </div>`).join('')
                 : '';
             
-            // TIMING 박스
-            const timingText = zeusV28.timing || '';
+            // TIMING 박스 — 도메인 정제 적용
+            const timingText = _refineDomain(zeusV28.timing || '');
             
             return `
                 <div style="margin-top:24px; padding:18px 16px;
