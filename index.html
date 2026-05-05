@@ -12,9 +12,9 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <meta name="version" content="V31_163_2026-05-05">
+    <meta name="version" content="V31_165_2026-05-05">
     
-    <title>ZEUS · Tarot Oracle [V31 #163]</title>
+    <title>ZEUS · Tarot Oracle [V31 #165]</title>
 
     <!-- ════════════════════════════════════════════════════════════ -->
     <!-- [V24.10] 파비콘 명시 선언 — 사장님 진단                       -->
@@ -11830,46 +11830,10 @@ window.handleSajuProClick = function() {
 //   handleSajuModalClose : 모달만 정리 (현재 위치 유지)
 // ════════════════════════════════════════════════════════════════════════════════
 // ════════════════════════════════════════════════════════════════════════════════
-// [V31 #163] 사주 행동 체크박스 핸들러 — localStorage 저장 (오늘 날짜 기준)
-//   사장님 안: "오늘 한 행동 체크 → 30일 이용권 가치 ↑"
-//   기능: 체크 시 localStorage 저장 / 해제 시 삭제
-//   효과: 매일 재방문 동기 (앱 충성도 + 매출 retention)
+// [V31 #165] 행동 체크박스 → 삭제 (사장님 결정)
+//   사장님 결정: "오늘의 행동 3가지 삭제 — 범용성 X (특정 사주에만 적용)"
+//   대신: 압박 문장 엔진 (state → action → constraint 동적 생성)
 // ════════════════════════════════════════════════════════════════════════════════
-window.toggleSajuAction = function(storageKey, actionKey, isChecked) {
-    try {
-        let saved = JSON.parse(localStorage.getItem(storageKey) || '{}');
-        if (isChecked) {
-            saved[actionKey] = true;
-        } else {
-            delete saved[actionKey];
-        }
-        localStorage.setItem(storageKey, JSON.stringify(saved));
-        
-        // 시각 피드백 — 체크 시 줄긋기
-        const checkbox = event?.target;
-        if (checkbox) {
-            const label = checkbox.closest('label');
-            const span = label?.querySelector('span:last-of-type');
-            if (span) {
-                if (isChecked) {
-                    span.style.textDecoration = 'line-through';
-                    span.style.opacity = '0.6';
-                } else {
-                    span.style.textDecoration = 'none';
-                    span.style.opacity = '1';
-                }
-            }
-        }
-        
-        // 3개 모두 체크 시 축하 메시지
-        const total = Object.keys(saved).length;
-        if (total === 3) {
-            console.log('🎉 [V31 #163] 오늘의 행동 3개 모두 완료!');
-        }
-    } catch(e) {
-        console.warn('[V31 #163] toggleSajuAction 저장 실패:', e);
-    }
-};
 
 window.handleSajuRestart = function() {
     console.log('🏠 [V31 #144] 사주 결과 → 처음으로');
@@ -12038,10 +12002,13 @@ function renderSajuResult(data) {
         return 'NORMAL';
     }
     
-    // [V31 #163] 현실 보정 문장 (사장님 안 — 핵심 교체)
+    // [V31 #163 + #164] 현실 보정 문장 (사장님 안 — 핵심 교체)
     //   기존: "중기 균형 사주 흐름입니다"
     //   수정: "구조적으로 균형이지만, 현재는 정체로 작동할 가능성"
+    //   #164: NORMAL 상태에도 항상 "구조적 균형" 표현 적용 (사장님 안 100%)
     function applyRealityCorrection(originalTldr, lifeState) {
+        if (!originalTldr) return '구조적 흐름이 있으나, 현실 행동이 운을 작동시킵니다';
+        
         // 워커 응답이 옛 텍스트면 자동 정제
         if (lifeState === 'WITHDRAWN') {
             return originalTldr.replace(
@@ -12055,35 +12022,200 @@ function renderSajuResult(data) {
                 '구조적으로는 균형이지만, 현재는 과부하 상태로 흐름이 막힐 수 있습니다'
             );
         }
-        return originalTldr;
+        // [V31 #164] NORMAL 상태에도 사장님 안 적용 — "구조적 균형 → 행동 활성화"
+        return originalTldr.replace(
+            /(중기|단기|장기)?\s*균형\s*(사주\s*)?흐름입니다\.?/g,
+            '구조적으로는 균형이지만, 행동이 멈추면 흐름도 멈춥니다'
+        );
     }
     
     // [V31 #163] 행동 강제 3개 (사장님 안 — 매출 80% 결정)
     //   체크박스 + localStorage 저장 → 매일 재방문 동기
-    function buildActionBlock(yongshinKey, lifeState) {
-        const yongshin = YONGSHIN_MATRIX[yongshinKey] || YONGSHIN_MATRIX['火'];
-        const today = new Date().toISOString().slice(0, 10);  // YYYY-MM-DD
-        const storageKey = `sajuActions_${today}`;
-        let savedActions = {};
-        try {
-            savedActions = JSON.parse(localStorage.getItem(storageKey) || '{}');
-        } catch(e) {}
+    // ════════════════════════════════════════════════════════════════════════
+    // [V31 #165] 압박 문장 엔진 (사장님 안 + 클로드 5가지 보완)
+    //   사장님 통찰: "문장이 아니라 문장을 만드는 규칙(엔진)"
+    //   구조: 사주 → state → action → constraint + result + support
+    //   효과: 196가지 동적 압박 문장 + 일간별 톤 + 시드 재현성
+    // ════════════════════════════════════════════════════════════════════════
+    
+    // [클로드 보완 ④] 일간(천간) → 오행 매핑
+    const STEM_TO_ELEMENT = {
+        '甲': '목', '乙': '목', '丙': '화', '丁': '화',
+        '戊': '토', '己': '토', '庚': '금', '辛': '금',
+        '壬': '수', '癸': '수',
+        // 한글 천간 호환 (일부 워커 응답이 한글로 옴)
+        '갑': '목', '을': '목', '병': '화', '정': '화',
+        '무': '토', '기': '토', '경': '금', '신': '금',
+        '임': '수', '계': '수'
+    };
+    
+    // [클로드 보완 ④] 일간별 압박 톤 (10천간)
+    const DAYMASTER_TONE = {
+        '甲': '성장이 멈추면',  '乙': '유연함이 굳으면',
+        '丙': '빛이 꺼지면',    '丁': '열기가 식으면',
+        '戊': '기반이 흔들리면', '己': '신뢰가 무너지면',
+        '庚': '결단이 미뤄지면', '辛': '정밀함이 흐려지면',
+        '壬': '흐름이 막히면',  '癸': '지혜가 굳으면',
+        // 한글 호환
+        '갑': '성장이 멈추면',  '을': '유연함이 굳으면',
+        '병': '빛이 꺼지면',    '정': '열기가 식으면',
+        '무': '기반이 흔들리면', '기': '신뢰가 무너지면',
+        '경': '결단이 미뤄지면', '신': '정밀함이 흐려지면',
+        '임': '흐름이 막히면',  '계': '지혜가 굳으면'
+    };
+    
+    // [사장님 ★ + 클로드 보완 ②] 압박 조건 풀 — 4 × 7 = 28
+    const CONDITION_POOL = {
+        external: [  // 외부 협력 필요
+            '외부 자극이 없는 상태가 지속되면',
+            '사람·환경 접촉이 끊기면',
+            '고립 상태가 길어지면',
+            '협력 신호를 무시하면',
+            '의존 회피가 굳어지면',
+            '자력 고집이 이어지면',
+            '관계 형성이 멈추면'
+        ],
+        self: [  // 자기 정비
+            '내적 점검 없이 외부에만 의존하면',
+            '자기 진단을 회피하면',
+            '본질을 놓치고 표면만 좇으면',
+            '자기 기준이 흐려지면',
+            '내면 정리가 미뤄지면',
+            '중심 흐름이 흩어지면',
+            '본인 페이스를 잃으면'
+        ],
+        activate: [  // 시동 필요
+            '첫 행동이 발생하지 않으면',
+            '초기 움직임이 없으면',
+            '시작 신호가 없으면',
+            '관망만 길어지면',
+            '계산만 반복되면',
+            '준비만 길어지면',
+            '실행 의지가 사라지면'
+        ],
+        cautious: [  // 신중 필요
+            '검증 없는 결정이 발생하면',
+            '충동 판단이 이어지면',
+            '확인 없이 추진하면',
+            '경험 무시가 반복되면',
+            '경고 신호를 놓치면',
+            '속도만 우선시하면',
+            '주변 신호를 차단하면'
+        ]
+    };
+    
+    // [사장님 ★] 결과 풀 — 7개
+    const RESULT_POOL = [
+        '흐름이 정지됩니다',
+        '운의 연결이 끊깁니다',
+        '결과 전환이 지연됩니다',
+        '에너지가 흩어집니다',
+        '기회가 닫힙니다',
+        '본 사주의 강점이 약화됩니다',
+        '예상 외 변수가 작동합니다'
+    ];
+    
+    // [클로드 보완 ③] 보완 흐름 풀 — 4 × 3 = 12
+    const SUPPORT_POOL = {
+        external: [
+            '단, 작은 만남 1건이 흐름을 다시 점화합니다',
+            '단, 한 번의 협력 시도가 큰 전환을 만듭니다',
+            '단, 외부 자극 1개가 흐름의 키입니다'
+        ],
+        self: [
+            '단, 5분의 자기 점검이 흐름을 회복시킵니다',
+            '단, 본질 1개로 회귀하면 빠르게 정리됩니다',
+            '단, 기준 정리가 흐름을 살립니다'
+        ],
+        activate: [
+            '단, 작은 행동 1개가 운을 점화합니다',
+            '단, 첫 1발이 큰 흐름의 시작입니다',
+            '단, 미루지 않은 1건이 흐름의 키입니다'
+        ],
+        cautious: [
+            '단, 1번의 검증이 큰 손실을 막습니다',
+            '단, 한 박자 늦춤이 정확도를 높입니다',
+            '단, 신중함이 곧 가속입니다'
+        ]
+    };
+    
+    // [클로드 보완 ①] 사주 → state 추출 (정밀화)
+    function detectSajuState(elements, pillars) {
+        if (!elements || !pillars) {
+            return { strength: 'weak', elementLack: '화', flow: '정체', risk: 'low', dayMaster: '丙' };
+        }
         
-        return yongshin.actions.map((action, i) => {
-            const checkId = `sajuAction_${i}`;
-            const isChecked = savedActions[checkId] === true;
-            return `
-                <label style="display:flex; align-items:center; gap:10px; padding:10px 12px; margin-bottom:6px; background:${yongshin.colorBg}; border:1px solid ${yongshin.color}40; border-radius:6px; cursor:pointer; transition:all 0.2s ease;"
-                       onmouseover="this.style.background='${yongshin.color}25';"
-                       onmouseout="this.style.background='${yongshin.colorBg}';">
-                    <input type="checkbox" ${isChecked ? 'checked' : ''} 
-                           onchange="window.toggleSajuAction('${storageKey}', '${checkId}', this.checked)"
-                           style="width:18px; height:18px; cursor:pointer; accent-color:${yongshin.color};">
-                    <span style="color:rgba(255,255,255,0.92); font-size:0.85rem; line-height:1.5; ${isChecked ? 'text-decoration:line-through; opacity:0.6;' : ''}">
-                        ${action}
-                    </span>
-                </label>`;
-        }).join('');
+        const total = Object.values(elements).reduce((a, b) => a + (b || 0), 0) || 1;
+        const dayMasterChar = (pillars.day || '丙').charAt(0);
+        const dayElement = STEM_TO_ELEMENT[dayMasterChar] || '화';
+        const dayRatio = (elements[dayElement] || 0) / total;
+        
+        // strength: 일간 강약
+        const strength = dayRatio >= 0.30 ? 'strong' : 'weak';
+        
+        // elementLack: 가장 약한 오행
+        const sortedEl = Object.entries(elements).sort((a, b) => a[1] - b[1]);
+        const elementLack = sortedEl[0]?.[0] || '화';
+        
+        // flow: 시점 흐름
+        const fire = elements['화'] || 0;
+        const wood = elements['목'] || 0;
+        const water = elements['수'] || 0;
+        const metal = elements['금'] || 0;
+        let flow;
+        if ((fire + wood) / total < 0.25) flow = '정체';
+        else if (metal / total > 0.30) flow = '전환';
+        else flow = '상승';
+        
+        // risk: 균형 정도
+        const max = Math.max(...Object.values(elements));
+        const min = Math.min(...Object.values(elements));
+        const risk = (max - min) > 3 ? 'high' : (max - min) > 1.5 ? 'mid' : 'low';
+        
+        return { strength, elementLack, flow, risk, dayMaster: dayMasterChar };
+    }
+    
+    // [사장님 ★] 행동 타입 결정
+    function decideActionType(state) {
+        if (state.flow === '정체') return 'activate';
+        if (state.flow === '전환') return 'cautious';
+        if (state.strength === 'weak') return 'external';
+        return 'self';
+    }
+    
+    // [사장님 ★ + 클로드 보완 ⑤] 압박 문장 조합 (시드 기반 재현성)
+    function buildConstraint(state, pillars) {
+        // 사주 자체를 시드로 → 같은 사주 = 같은 문장 (신뢰성)
+        const yearSum = (pillars.year || '').charCodeAt(0) + (pillars.year || '').charCodeAt(1);
+        const monthSum = (pillars.month || '').charCodeAt(0) + (pillars.month || '').charCodeAt(1);
+        const daySum = (pillars.day || '').charCodeAt(0) + (pillars.day || '').charCodeAt(1);
+        const hourSum = (pillars.hour || '').charCodeAt(0) + (pillars.hour || '').charCodeAt(1);
+        const seed = Math.abs((yearSum + monthSum * 7 + daySum * 13 + hourSum * 17)) || 0;
+        
+        const action = decideActionType(state);
+        const conditions = CONDITION_POOL[action] || CONDITION_POOL.activate;
+        const supports = SUPPORT_POOL[action] || SUPPORT_POOL.activate;
+        
+        const cond = conditions[seed % conditions.length];
+        const res = RESULT_POOL[(seed * 3) % RESULT_POOL.length];
+        const sup = supports[(seed * 5) % supports.length];
+        
+        // 일간 톤 prefix (선택 — risk가 high일 때만)
+        let pressure = `${cond}, ${res}`;
+        if (state.risk === 'high') {
+            const tone = DAYMASTER_TONE[state.dayMaster];
+            if (tone) {
+                pressure = `${tone}, ${cond.replace(/^[^,]+/, '$&').toLowerCase()} ${res}`;
+                pressure = `${tone}, ${res}`;  // 더 강한 압박 (high risk만)
+            }
+        }
+        
+        return {
+            pressure,
+            support: sup,
+            actionType: action,
+            state
+        };
     }
     
     try {
@@ -12248,11 +12380,13 @@ function renderSajuResult(data) {
                 // 현실 보정 — 사장님 안 핵심 교체
                 const correctedTldr = applyRealityCorrection(text.tldr || '', lifeState);
                 
-                // 행동 체크박스 (오늘 날짜 localStorage 저장)
-                const actionCheckboxes = buildActionBlock(yongshinKey, lifeState);
+                // [V31 #165] 압박 문장 엔진 (사장님 안 + 클로드 5가지 보완)
+                //   사주 → state → action → constraint + result + support
+                const sajuState = detectSajuState(elements, text.meta?.pillars || {});
+                const constraint = buildConstraint(sajuState, text.meta?.pillars || {});
                 
                 return `
-                <!-- [4] ⚡ 종합 신탁 — 행동 강제 -->
+                <!-- [4] ⚡ 종합 신탁 — 압박 문장 엔진 (V31 #165) -->
                 <div style="margin:20px 0; padding:16px; background:linear-gradient(135deg, rgba(46,204,113,0.10), rgba(46,204,113,0.04)); border:2px solid rgba(46,204,113,0.45); border-radius:10px;">
                     <div style="display:flex; align-items:center; gap:6px; margin-bottom:12px;">
                         <span style="font-size:0.7rem; color:#7ad188; font-weight:900; letter-spacing:0.05em;">[4/6]</span>
@@ -12264,19 +12398,24 @@ function renderSajuResult(data) {
                         👉 ${correctedTldr}
                     </div>
                     
-                    <!-- 행동 강제 (체크박스 + localStorage) -->
-                    <div style="margin-top:14px;">
-                        <div style="color:#7ad188; font-size:0.84rem; font-weight:800; margin-bottom:8px;">
-                            🎯 오늘의 행동 (3가지 — 흐름 활성화)
+                    <!-- ⚠ 압박 흐름 (V31 #165 동적 생성) -->
+                    <div style="margin-top:12px; padding:11px 13px; background:rgba(231,76,60,0.10); border-left:3px solid #e74c3c; border-radius:0 6px 6px 0;">
+                        <div style="color:#FF8870; font-size:0.78rem; font-weight:800; margin-bottom:5px; letter-spacing:0.02em;">⚠ 압박 흐름</div>
+                        <div style="color:rgba(255,255,255,0.92); font-size:0.86rem; line-height:1.6; font-weight:700;">
+                            ${constraint.pressure}
                         </div>
-                        ${actionCheckboxes}
-                        <div style="margin-top:6px; color:rgba(255,255,255,0.5); font-size:0.7rem; line-height:1.5; text-align:center;">
-                            ※ 이 3개가 충족되어야 사주 흐름이 실제로 작동합니다
+                    </div>
+                    
+                    <!-- ✦ 보완 흐름 (V31 #165 균형 페어) -->
+                    <div style="margin-top:8px; padding:11px 13px; background:rgba(46,204,113,0.10); border-left:3px solid #2ecc71; border-radius:0 6px 6px 0;">
+                        <div style="color:#7ad188; font-size:0.78rem; font-weight:800; margin-bottom:5px; letter-spacing:0.02em;">✦ 보완 흐름</div>
+                        <div style="color:rgba(255,255,255,0.92); font-size:0.86rem; line-height:1.6; font-weight:700;">
+                            ${constraint.support}
                         </div>
                     </div>
                     
                     <!-- 타이밍 -->
-                    <div style="margin-top:14px; padding:8px 10px; background:rgba(46,204,113,0.06); border-radius:6px;">
+                    <div style="margin-top:12px; padding:8px 10px; background:rgba(46,204,113,0.06); border-radius:6px;">
                         <div style="color:#7ad188; font-size:0.78rem; font-weight:800; margin-bottom:3px;">⏱ 타이밍</div>
                         <div style="color:rgba(255,255,255,0.85); font-size:0.82rem; line-height:1.5;">${text.timing || '현 시점 흐름 점검 권장'}</div>
                     </div>
@@ -12373,6 +12512,11 @@ function renderSajuResult(data) {
             ═══════════════════════════════════════════════════════════ -->
             ${data.pro && data.pro.tier !== 'free' && data.pro.available ? `
             <div style="margin:18px 0; padding:18px; background:linear-gradient(135deg, rgba(212,175,55,0.18), rgba(212,175,55,0.06)); border:2px solid rgba(212,175,55,0.6); border-radius:10px; box-shadow:0 4px 18px rgba(212,175,55,0.2);">
+                <!-- [V31 #164] 6블록 라벨 추가 -->
+                <div style="display:flex; align-items:center; gap:6px; margin-bottom:12px;">
+                    <span style="font-size:0.7rem; color:#FFD970; font-weight:900; letter-spacing:0.05em;">[6/6]</span>
+                    <span style="color:#FFD970; font-size:0.86rem; font-weight:900;">✦ PRO 정밀 분석</span>
+                </div>
                 <div style="text-align:center; margin-bottom:14px;">
                     <div style="display:inline-block; padding:6px 14px; background:linear-gradient(135deg, #D4AF37, #FFD970); color:#000; font-size:0.74rem; font-weight:900; border-radius:4px; letter-spacing:0.05em;">
                         ✨ PRO 신탁 (${(function() {
