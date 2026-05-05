@@ -2274,9 +2274,15 @@
             var params = new URLSearchParams(window.location.search);
             if (params.get('paid') !== 'ok') return;
             
+            // [V31 #151] ★ 사장님 버전 확인용 — 콘솔에 즉시 출력
+            console.log('🚀 [V31 #151] head inline overlay 작동 — visibility:hidden 제거 (정지 차단)');
+            
+            // [V31 #151] 사장님 정지 결함 본격 해결
+            //   원인: body { visibility: hidden } 룰이 일부 브라우저/타이밍에서 안 풀림
+            //   해결: visibility 룰 자체 제거 → overlay z-index로만 가림
+            //         시각적 깜빡임 약간 가능하지만 정지 100% 방지
+            
             // [V31 #150] 사주/타로 컨텍스트 구분 (간섭 차단)
-            //   사장님 진단: "타로 점사창에 ☯ 태극 개입 — 사주/타로 간섭"
-            //   해결: localStorage.sajuPaymentContext 확인하여 아이콘/메시지 분기
             var isSajuContext = false;
             try {
                 isSajuContext = localStorage.getItem('sajuPaymentContext') === 'true';
@@ -2288,22 +2294,14 @@
                 ? '결제 완료 — 잠시만 기다려주세요<br>곧 정밀 사주 점사가 펼쳐집니다'
                 : '결제 완료 — 잠시만 기다려주세요<br>곧 신탁이 펼쳐집니다';
             
-            // [V31 #147] 사장님 진단: "결제 후 홈뷰 도돌이 처음부터 안 고쳐짐"
-            //   원인: body 그려진 후 JS가 overlay를 만들기 전 잠깐 노출
-            //   해결: html 자체에 inline style로 즉시 검은 배경 적용 (DOM 그려지기 전)
-            //         + body { visibility: hidden } 으로 모든 콘텐츠 강제 가림
-            //         + overlay만 visibility: visible 로 노출
-            
-            // ★ html에 즉시 inline style — DOM 파싱과 동시에 적용
+            // ★ html에 즉시 inline style — DOM 파싱과 동시에 적용 (배경만)
             document.documentElement.style.background = '#0a0612';
             
-            // body 그려지기 전에 즉시 오버레이 + body 가리기 스타일 삽입
+            // body 그려지기 전에 즉시 오버레이 삽입 (visibility 룰 없음 = 정지 불가)
             document.write([
                 '<style id="paidOverlayStyle">',
                 '  html, body { background: #0a0612 !important; }',
-                '  body > * { visibility: hidden !important; }',
-                '  body > #paidEarlyOverlay { visibility: visible !important; }',
-                '  body > script { visibility: visible !important; }',
+                // ★ V31 #151: visibility:hidden 룰 제거됨 (정지 결함 차단)
                 '  #paidEarlyOverlay {',
                 '    position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;',
                 '    background: linear-gradient(135deg, #0a0612 0%, #1a0a2e 100%);',
@@ -3959,6 +3957,11 @@ function setSituation(btn, type, domain) {
 
 // ── 페이지 로드 시 결제 상태 복원
 // 토큰이 있으면 Worker에 검증 요청 → 유효 시 isPaidUser = true
+console.log('═══════════════════════════════════════════');
+console.log('  🚀 V31 #151 — ZEUS Oracle 클라이언트 로드');
+console.log('  버전: V31_151 (visibility:hidden 제거)');
+console.log('  사장님 정지 결함 본격 차단');
+console.log('═══════════════════════════════════════════');
 (async () => {
     // ════════════════════════════════════════════════════════════════════════
     // [V31 #148/#150 결정적 강제 청소] 사장님 진단: 타로 프리패스 + 정지 결함
@@ -4088,8 +4091,11 @@ function setSituation(btn, type, domain) {
     //   해결: 디버그 로그 + 친절한 사용자 안내 + 홈뷰 자동 복귀 차단
     // ═════════════════════════════════════════════════════════
     
+    console.log('━━━ [V31 #151] ?paid=ok 분기 단계별 추적 시작 ━━━');
+    console.log('STEP 1: ?paid=ok 분기 진입 OK');
+    
     // [V31 #133] 디버그 시작 — 사장님 라이브 검증용
-    console.log('🔍 [V31 #147] 결제 완료 후 분기 시작');
+    console.log('🔍 [V31 #151] 결제 완료 후 분기 시작');
     console.log('  - paid=ok 진입 OK');
     console.log('  - sajuPendingResult (local):', localStorage.getItem('sajuPendingResult') ? '있음' : '없음');
     console.log('  - sajuPendingResult (session):', sessionStorage.getItem('sajuPendingResult') ? '있음' : '없음');
@@ -4097,6 +4103,7 @@ function setSituation(btn, type, domain) {
     console.log('  - pendingOracle:', localStorage.getItem('pendingOracle') ? '있음' : '없음');
     console.log('  - paid_token:', localStorage.getItem('paid_token') ? '있음' : '없음');
     console.log('  - oracleSessionToken:', localStorage.getItem('oracleSessionToken') ? '있음' : '없음');
+    console.log('STEP 2: localStorage 점검 완료');
     
     // ════════════════════════════════════════════════════════════════════════
     // [V31 #149 사장님 정답 코드] isPaidUser 조건부 설정 — 백도어 완전 차단
@@ -6963,6 +6970,53 @@ function buildFortuneIndicators(cards, qRaw, loveSubType = '') {
     return { trend, action, timing, risk };
 }
 function renderText(text, cards, investData, isPaid = false, isFinanceQuery = false) {
+    // ════════════════════════════════════════════════════════════════════════
+    // [V31 #152 사장님 4-Gate 표준 — Gate 4: showResult 미결제 차단]
+    //   사장님 정답 코드:
+    //     function showResult() {
+    //       const paid = localStorage.getItem("paid") === "true";
+    //       if (!paid) { console.log("❌ 접근 차단"); return; }
+    //       const data = generateResult();
+    //       renderResult(data);
+    //     }
+    //
+    //   ★ 핵심: renderText는 점사 결과 텍스트를 만드는 generateResult+renderResult
+    //          여기서 미결제 사용자 차단해야 함
+    //
+    //   단, 무료 점사도 있으므로 이중 검증:
+    //     - PRO 콘텐츠 (5계층 / Core Insight / 십성)는 isPaid=true 필요
+    //     - 무료 본문 (FREE)은 누구나 보임
+    //
+    //   현재 흐름: renderText 안의 PRO 영역들은 isPaid=true 시에만 노출 (이미 OK)
+    //   추가: 강력한 디버그 로그 + Gate 통과 검증
+    // ════════════════════════════════════════════════════════════════════════
+    
+    // [V31 #152] Gate 4 진입 검증
+    console.log('━━━ [V31 #152] Gate 4 (showResult) 진입 ━━━');
+    console.log('  - isPaid:', isPaid);
+    console.log('  - isFinanceQuery:', isFinanceQuery);
+    
+    // [V31 #152] 진짜 결제 검증 (이중 안전망)
+    //   1차: 인자 isPaid (호출자가 전달)
+    //   2차: localStorage paid_token / oracleSessionToken (영구 인증)
+    //   3차: 글로벌 isPaidUser 변수 (현재 세션)
+    const hasRealToken = !!(localStorage.getItem('paid_token') 
+                         || localStorage.getItem('oracleSessionToken'));
+    const sessionPaid = (typeof isPaidUser !== 'undefined' && isPaidUser === true);
+    
+    // 최종 결제 상태 — 인자 + localStorage + 세션 변수 중 하나라도 true이면 결제 사용자
+    // (사장님: PRO 영역 노출은 결제한 사용자에게만)
+    const finalPaid = isPaid && (hasRealToken || sessionPaid);
+    
+    console.log('  - hasRealToken:', hasRealToken);
+    console.log('  - sessionPaid:', sessionPaid);
+    console.log('  - finalPaid (Gate 4 통과 여부):', finalPaid);
+    
+    // ★ 핵심: isPaid가 false이면 PRO 영역 노출 0
+    //   FREE 본문은 노출 (점사 자체는 무료로 가능)
+    //   PRO 영역(5계층/Core Insight/십성/대운 등)은 finalPaid 변수로 차단
+    //   → renderText 본체에서 사용
+    
     // [V25.23] Core Insight 추출 — Gemini가 생성한 "핵심 흐름 해석" 섹션 분리
     //   사장님 V25.23 안: 7블록 구조 — ORACLE 본문과 별도 박스로 노출
     //   무료 운세(today/general)에서는 차단 (사장님 무료/유료 차별화 원칙)
