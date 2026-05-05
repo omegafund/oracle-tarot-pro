@@ -1661,13 +1661,6 @@ const MESSAGE_POOL = {
 //   결과: "일반 메시지(랜덤) + 카드 flavor"
 //   [V22.0.1] Math.random() 사용 — 매번 진짜 다른 메시지
 // ══════════════════════════════════════════════════════════════════
-function pickMessage(signal, domain, card) {
-  const pool = (MESSAGE_POOL[domain] || MESSAGE_POOL.stock)[signal] || [];
-  if (pool.length === 0) return "흐름의 방향성을 주시해야 할 시점입니다.";
-  // 진짜 랜덤 — 매 호출마다 다른 메시지
-  const idx = Math.floor(Math.random() * pool.length);
-  return pool[idx];
-}
 
 // ══════════════════════════════════════════════════════════════════
 // 🎯 [V22.0] buildCriticalInterpretation — 핵심 해석 동적 생성
@@ -1843,17 +1836,6 @@ function buildCriticalInterpretation(cards, revFlags, domain, intent) {
 // 🎯 [V22.0] getDecisionMajority — 3카드 종합 신호 (BUY/HOLD/SELL)
 //   사용처: criticalInterpretation, Decision Layer 보조 판단
 // ══════════════════════════════════════════════════════════════════
-function getDecisionMajority(cards, revFlags) {
-  const decisions = cards.map((c, i) => getFinalDecision(c, revFlags[i]));
-  const counts = { BUY: 0, HOLD: 0, SELL: 0 };
-  decisions.forEach(d => counts[d]++);
-
-  if (counts.SELL >= 2) return "SELL";
-  if (counts.BUY >= 2) return "BUY";
-  if (counts.SELL > counts.BUY) return "SELL";
-  if (counts.BUY > counts.SELL) return "BUY";
-  return "HOLD";
-}
 
 // ══════════════════════════════════════════════════════════════════
 // ⚡ [V2.1] 카드 궁합(Synergy) 규칙
@@ -1891,10 +1873,6 @@ function detectSynergy(cleanCards, queryType) {
 // 🎯 질문 유형 분류 (부동산 > 주식/코인 > 연애 > 일반)
 // [V2.2 Phase5] 키워드가 명확하면 즉시 반환, 애매하면 LLM 분류 호출
 // ══════════════════════════════════════════════════════════════════
-function classifyQueryType(prompt) {
-  const result = classifyByKeywords(prompt);
-  return result.type;
-}
 
 // 키워드 기반 분류 — confidence 포함
 function classifyByKeywords(prompt) {
@@ -3666,31 +3644,6 @@ function _v28_lintIntentMatrix(matrix, intentName, forbiddenKeywords) {
 }
 
 // Boot 시 1회 자동 검증
-(function _v28_bootLinter() {
-  try {
-    const allErrors = [];
-    // SELL/HOLD 풀에 '진입/매수' 0건 검증
-    const sellForbidden = ['진입', '매수', '매수가', '매입'];
-    const buyForbidden = ['익절', '청산', '매도'];
-    
-    [V28_CORE_MATRIX, V28_RISK_POOL, V28_TONE_MATRIX, V28_GUIDE_POOL, V28_TIMING_POOL].forEach((matrix, midx) => {
-      const matrixName = ['CORE', 'RISK', 'TONE', 'GUIDE', 'TIMING'][midx];
-      // SELL 풀 검증
-      const sellErrs = _v28_lintIntentMatrix(matrix, 'sell', sellForbidden);
-      sellErrs.forEach(e => allErrors.push(`[V28_${matrixName}_SELL] ${e}`));
-      // BUY 풀 검증
-      const buyErrs = _v28_lintIntentMatrix(matrix, 'buy', buyForbidden);
-      buyErrs.forEach(e => allErrors.push(`[V28_${matrixName}_BUY] ${e}`));
-    });
-    
-    if (allErrors.length > 0) {
-      console.error('[V28 LINTER] 어휘 충돌 검출:', allErrors);
-    }
-    // 정상 시 로그 미출력 (Boot 노이즈 최소화)
-  } catch (e) {
-    // Linter 실패 시 무시 (안전: 핵심 동작 영향 없음)
-  }
-})();
 
 // ══════════════════════════════════════════════════════════════════
 // 🔥 [V28.B] enforceIntent 정밀 후처리 — 표현/판단 충돌 차단
@@ -4191,37 +4144,6 @@ function enforceIntentV28(metrics) {
 
 // [V28.B Boot Linter 강화] 정규화 매핑 자체 검증
 //   목적: 매핑된 결과 자체에 어휘 충돌 없는지
-(function _v28b_bootLinter() {
-  try {
-    const errors = [];
-    
-    // BUY 정규화 결과에 'HOLD 강한 어휘' 0건 검증
-    V28_BUY_NORMALIZATION.forEach(([pattern, replacement], idx) => {
-      // replacement에 '진입 금지', '0% 관망' 등 강한 HOLD 어휘 없어야 함
-      const hardHoldWords = ['진입 금지', '매수 금지', '진입 보류', '0% 관망'];
-      hardHoldWords.forEach(word => {
-        if (replacement.includes(word)) {
-          errors.push(`[V28_BUY_NORM][${idx}] HOLD 어휘 잔존: "${word}"`);
-        }
-      });
-    });
-    
-    // SELL 정규화 결과에 BUY 어휘 0건 검증
-    V28_SELL_NORMALIZATION.forEach(([pattern, replacement], idx) => {
-      if (/(?:^|[^자])진입|매수(?!자)/.test(replacement)) {
-        // '매수자'는 거래 상대방 — false positive
-        // '진입' 단독은 매도 점사에서 부적절
-        errors.push(`[V28_SELL_NORM][${idx}] BUY 어휘 잔존: "${replacement.substring(0, 40)}..."`);
-      }
-    });
-    
-    if (errors.length > 0) {
-      console.error('[V28.B LINTER] 정규화 매핑 결함:', errors);
-    }
-  } catch (e) {
-    // 무시
-  }
-})();
 
 // ══════════════════════════════════════════════════════════════════
 // 🔮 [V28.C] 운세 ZEUS COMPOSITION ENGINE — 사장님 명령 (LOVE 점사창 일관성)
@@ -4641,33 +4563,6 @@ function applyZeusFortuneV28(metrics) {
 }
 
 // [V28.C Boot Linter] 운세 V28 매트릭스 자체 검증
-(function _v28c_bootLinter() {
-  try {
-    const subtypes = ['wealth', 'health', 'career', 'today', 'general', 'newyear', 'etc'];
-    const errors = [];
-    
-    subtypes.forEach(s => {
-      // CORE 5변형 길이 가드
-      if (!Array.isArray(V28_FORTUNE_CORE_MATRIX[s]) || V28_FORTUNE_CORE_MATRIX[s].length !== 5) {
-        errors.push(`[V28_FORTUNE_CORE.${s}] 5변형 누락`);
-      }
-      // RISK 10개 풀 가드
-      if (!Array.isArray(V28_FORTUNE_RISK_POOL[s]) || V28_FORTUNE_RISK_POOL[s].length < 10) {
-        errors.push(`[V28_FORTUNE_RISK.${s}] 10개 풀 미만`);
-      }
-      // GUIDE 10개 풀 가드
-      if (!Array.isArray(V28_FORTUNE_GUIDE_POOL[s]) || V28_FORTUNE_GUIDE_POOL[s].length < 10) {
-        errors.push(`[V28_FORTUNE_GUIDE.${s}] 10개 풀 미만`);
-      }
-    });
-    
-    if (errors.length > 0) {
-      console.error('[V28.C LINTER] 운세 매트릭스 결함:', errors);
-    }
-  } catch (e) {
-    // 무시
-  }
-})();
 
 // ══════════════════════════════════════════════════════════════════
 // ════════════════════════════════════════════════════════════════════════════════
@@ -5747,23 +5642,6 @@ function v31NormalizeSajuToSchema(sajuData) {
  * @param {Object} tarotData - { cards: [past, present, future] }
  * @returns {Object} 9변수 표준 스키마
  */
-function v31NormalizeTarotToSchema(tarotData) {
-  // 타로는 사주 5변수가 없으므로 50 (중립) 또는 추정값
-  // Chunk 4에서 카드 데이터 풍부화 예정
-  return {
-    type: 'tarot',
-    energy: tarotData.energy ?? 50,
-    flow: tarotData.flow ?? 50,
-    risk: tarotData.risk ?? 50,
-    momentum: tarotData.momentum ?? 50,
-    structure: 50,    // 타로는 격국 개념 없음
-    usefulGod: 50,
-    clashLevel: 50,
-    luckPhase: 50,
-    specialStar: 50,
-    meta: tarotData.meta || {}
-  };
-}
 
 // ────────────────────────────────────────────────────────────────────────────────
 // ⚖️ [V31] JUDGE 4D — 카테고리별 + 시점별 + 시너지 가중치 (보강 2)
@@ -12884,23 +12762,6 @@ const LOVE_RISKBOX_BLOCK_MATRIX = {
 //   방식: 모듈 로드 시 자동 검증 → 결함 발견 시 console.error
 //   보호: 사장님 V27.0.3 결함 ('추가 진입보다') 재발 방지
 // ══════════════════════════════════════════════════════════════════
-(function _v27_0_4_lintAllBlocks() {
-  try {
-    const allErrors = [];
-    if (typeof STOCK_BLOCK_MATRIX !== 'undefined') {
-      allErrors.push(..._validateBlockMatrix(STOCK_BLOCK_MATRIX, 'STOCK_BLOCK_MATRIX'));
-    }
-    if (typeof REALESTATE_BLOCK_MATRIX !== 'undefined') {
-      allErrors.push(..._validateBlockMatrix(REALESTATE_BLOCK_MATRIX, 'REALESTATE_BLOCK_MATRIX'));
-    }
-    if (allErrors.length > 0) {
-      console.error('[V27.0.4 LINTER] SELL 블록에 매수 어휘 검출:', allErrors);
-    }
-    // 정상 시 로그 미출력 (Boot 노이즈 최소화)
-  } catch (e) {
-    // Linter 실패 시 무시 (안전: 핵심 동작 영향 없음)
-  }
-})();
 
 // ══════════════════════════════════════════════════════════════════
 // [V27.0 Priority 3] STOCK_PIVOT_PHRASE — 결단 한방 (FINAL VERDICT 위)
@@ -13275,17 +13136,6 @@ function applyLoveVariationToMetrics(metrics) {
 //   사장님 진단: '님' 중복 / 어순 불명확
 //   해결: 한국어 호칭 정규화 (이미 '님' 있으면 그대로, 없으면 자동 추가)
 // ══════════════════════════════════════════════════════════════════
-function normalizeHonorific(name) {
-  if (!name || typeof name !== 'string') return name;
-  const trimmed = name.trim();
-  if (!trimmed) return trimmed;
-  // 이미 존댓말 호칭이 끝에 있으면 그대로 (사용자 의도 보존)
-  if (/(님|씨|군|양|선배|후배|오빠|언니|누나|형|동생)$/.test(trimmed)) {
-    return trimmed;
-  }
-  // 호칭 없으면 '님' 자동 추가
-  return trimmed + '님';
-}
 
 function buildLoveOracleV25_24({ totalScore, cards, revFlags, loveSubType, numerology, prompt }) {
   const subtype = loveSubType || 'general';
