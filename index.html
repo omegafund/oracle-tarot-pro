@@ -12,9 +12,9 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <meta name="version" content="V31_179_2026-05-05">
+    <meta name="version" content="V31_180_2026-05-05">
     
-    <title>ZEUS · Tarot Oracle [V31 #179]</title>
+    <title>ZEUS · Tarot Oracle [V31 #180]</title>
 
     <!-- ════════════════════════════════════════════════════════════ -->
     <!-- [V24.10] 파비콘 명시 선언 — 사장님 진단                       -->
@@ -5457,8 +5457,140 @@ async function renderStream(fetchPromise, cards) {
                 return cleaned;
             }
             
+            // ════════════════════════════════════════════════════════════
+            // [V31 #180 사장님 결정 — 본격 상업운전 전 마지막 점검]
+            //   운세 PRO 도메인 정제 + 7개 소항목 톤 분리
+            //   
+            //   사장님 진단:
+            //     ① 운세에 주식/부동산/연애 용어 = 망함 (즉시 차단)
+            //     ② 7개 소항목 표현 상충 = 망함 (미세 조정 필요)
+            //   
+            //   소항목 7종:
+            //     today(오늘운세) / general(전반운세) / newyear(신년)
+            //     wealth(재물) / health(건강) / career(직장) / etc(기타)
+            //   
+            //   CURRENT_MODE = 'general' (운세 카테고리 키)
+            //   FORTUNE_SUBTYPE: today/general/newyear/wealth/health/career/etc
+            // ════════════════════════════════════════════════════════════
+            if (CURRENT_MODE === 'general') {
+                let cleaned = text;
+                
+                // ────────────────────────────────────────────
+                // Phase 1: 도메인 혼선 차단 (주식/부동산/연애 → 운세)
+                // ────────────────────────────────────────────
+                
+                // 주식 행동/구조 → 운세 흐름
+                cleaned = cleaned.replace(/진입\s*시점/g, '시작 시점');
+                cleaned = cleaned.replace(/진입\s*타이밍/g, '시작 타이밍');
+                cleaned = cleaned.replace(/신호\s*정렬\s*후\s*진입/g, '신호 정렬 후 시작');
+                cleaned = cleaned.replace(/풀\s*진입/g, '적극적 시작');
+                cleaned = cleaned.replace(/매수\s*시점/g, '시작 시점');
+                cleaned = cleaned.replace(/매도\s*시점/g, '정리 시점');
+                cleaned = cleaned.replace(/손익비\s*상\s*유리한\s*구조/g, '흐름 균형 상 유리한 구조');
+                cleaned = cleaned.replace(/손익비\s*상/g, '흐름 균형 상');
+                cleaned = cleaned.replace(/수익\s*반납/g, '흐름 후퇴');
+                cleaned = cleaned.replace(/수익\s*보존/g, '흐름 유지');
+                cleaned = cleaned.replace(/분할\s*매도\s*권장/g, '점진적 정리 권장');
+                cleaned = cleaned.replace(/분할\s*매도/g, '점진적 정리');
+                cleaned = cleaned.replace(/비중\s*단계\s*축소/g, '단계적 정리');
+                cleaned = cleaned.replace(/비중\s*축소/g, '활동 축소');
+                cleaned = cleaned.replace(/포지션\s*전략/g, '대응 전략');
+                cleaned = cleaned.replace(/포지션/g, '입장');
+                cleaned = cleaned.replace(/일괄\s*청산/g, '일괄 정리');
+                cleaned = cleaned.replace(/기준\s*기반\s*청산/g, '기준 기반 정리');
+                cleaned = cleaned.replace(/청산\s*전략/g, '정리 전략');
+                cleaned = cleaned.replace(/청산/g, '정리');
+                cleaned = cleaned.replace(/손절/g, '깨끗한 정리');
+                cleaned = cleaned.replace(/익절/g, '흐름 정점 마무리');
+                cleaned = cleaned.replace(/고점\s*미청산\s*리스크/g, '흐름 정점 놓침 리스크');
+                cleaned = cleaned.replace(/고점\s*청산/g, '흐름 정점 마무리');
+                cleaned = cleaned.replace(/변동성\s*급락\s*가능성\s*동반\s*구간/g, '흐름 흔들림 가능성 동반 구간');
+                cleaned = cleaned.replace(/변동성\s*노출\s*확대\s*가능성/g, '흐름 변화 노출 확대 가능성');
+                cleaned = cleaned.replace(/변동성/g, '흐름 변화');
+                cleaned = cleaned.replace(/추세\s*둔화\s*신호\s*동반\s*시/g, '흐름 둔화 신호 동반 시');
+                cleaned = cleaned.replace(/추세\s*반전/g, '흐름 전환');
+                cleaned = cleaned.replace(/반등/g, '회복');
+                cleaned = cleaned.replace(/마감\s*전\s*리스크\s*정리\s*구간/g, '결정 직전 정리 구간');
+                cleaned = cleaned.replace(/장\s*마감/g, '하루 마무리');
+                cleaned = cleaned.replace(/장중\s*피크/g, '활동 활성');
+                cleaned = cleaned.replace(/장중/g, '활동 중');
+                cleaned = cleaned.replace(/(\d{1,2}):(\d{2})~(\d{1,2}):(\d{2})\s*\(아시아\s*고점\)/g, '오전 시간대');
+                cleaned = cleaned.replace(/(\d{1,2}):(\d{2})~(\d{1,2}):(\d{2})\s*\(유럽\s*장중\s*피크\)/g, '저녁 시간대');
+                cleaned = cleaned.replace(/(\d{1,2}):(\d{2})~(\d{1,2}):(\d{2})\s*\(미국\s*장중\s*피크\)/g, '늦저녁 시간대');
+                cleaned = cleaned.replace(/아시아\s*고점/g, '오전 활성');
+                cleaned = cleaned.replace(/유럽\s*장중\s*피크/g, '저녁 활성');
+                cleaned = cleaned.replace(/미국\s*장중\s*피크/g, '늦저녁 활성');
+                
+                // 부동산 표현 → 운세 표현
+                cleaned = cleaned.replace(/매물\s*등록/g, '의사 표시');
+                cleaned = cleaned.replace(/호가\s*조정/g, '입장 조정');
+                cleaned = cleaned.replace(/호가\s*단계적\s*조정/g, '입장 단계적 조정');
+                cleaned = cleaned.replace(/협상력\s*보존/g, '주도권 보존');
+                cleaned = cleaned.replace(/협상력\s*약화/g, '주도권 약화');
+                cleaned = cleaned.replace(/계약\s*체결/g, '결정 확정');
+                cleaned = cleaned.replace(/매수자\s*우위/g, '외부 우위');
+                cleaned = cleaned.replace(/매도자\s*우위/g, '본인 우위');
+                cleaned = cleaned.replace(/이사철\s*성수기/g, '활동 활성 시기');
+                cleaned = cleaned.replace(/거래\s*활성/g, '활동 활성');
+                cleaned = cleaned.replace(/거래\s*비수기/g, '활동 정체기');
+                
+                // 연애 표현 → 운세 표현 (보통 운세에 연애 표현 안 섞임, 안전망)
+                cleaned = cleaned.replace(/다가갈\s*시점/g, '시작 시점');
+                cleaned = cleaned.replace(/거리\s*두기/g, '활동 축소');
+                cleaned = cleaned.replace(/관계\s*활성/g, '활동 활성');
+                cleaned = cleaned.replace(/관계\s*우위/g, '본인 주도');
+                
+                // ────────────────────────────────────────────
+                // Phase 2: 7개 소항목별 톤 분리 (FORTUNE_SUBTYPE)
+                //   상충 표현 차단 (예: 건강 안에 "수익/매수" 금지)
+                // ────────────────────────────────────────────
+                
+                // 재물운 (wealth): 금전 흐름 — 단, "투자 권유" 표현 금지
+                if (FORTUNE_SUBTYPE === 'wealth') {
+                    cleaned = cleaned.replace(/매수\s*권장/g, '집중 권장');
+                    cleaned = cleaned.replace(/매도\s*권장/g, '정리 권장');
+                    cleaned = cleaned.replace(/투자\s*권장/g, '재정 흐름 점검 권장');
+                    cleaned = cleaned.replace(/종목\s*추천/g, '재정 흐름 추천');
+                }
+                
+                // 건강운 (health): 신체/회복 — 금전/관계 표현 차단
+                if (FORTUNE_SUBTYPE === 'health') {
+                    cleaned = cleaned.replace(/수익\s*흐름/g, '회복 흐름');
+                    cleaned = cleaned.replace(/투자/g, '관리');
+                    cleaned = cleaned.replace(/매수\s*시점/g, '회복 시점');
+                    cleaned = cleaned.replace(/관계\s*개선/g, '몸 상태 개선');
+                    cleaned = cleaned.replace(/시장\s*흐름/g, '몸 흐름');
+                }
+                
+                // 직장운 (career): 커리어 흐름 — 연애/금전 직접 표현 차단
+                if (FORTUNE_SUBTYPE === 'career') {
+                    cleaned = cleaned.replace(/연애\s*흐름/g, '커리어 흐름');
+                    cleaned = cleaned.replace(/매수\s*시점/g, '시작 시점');
+                    cleaned = cleaned.replace(/투자\s*결정/g, '커리어 결정');
+                    cleaned = cleaned.replace(/관계\s*확정/g, '직무 확정');
+                }
+                
+                // 신년운세 (newyear): 한 해 전반 — 단기 표현 차단
+                if (FORTUNE_SUBTYPE === 'newyear') {
+                    cleaned = cleaned.replace(/오늘\s*안에/g, '한 해 안에');
+                    cleaned = cleaned.replace(/3일\s*안에/g, '이번 분기 안에');
+                    cleaned = cleaned.replace(/이번\s*주/g, '이번 시즌');
+                }
+                
+                // 오늘운세 (today): 단기 흐름 — 장기 표현 차단
+                if (FORTUNE_SUBTYPE === 'today') {
+                    cleaned = cleaned.replace(/올\s*한\s*해/g, '오늘');
+                    cleaned = cleaned.replace(/장기\s*안정/g, '오늘 안정');
+                }
+                
+                // 전반운세 (general): 광범위 흐름 — Phase 1 통합 적용
+                // 기타 (etc): 자유 질문 — Phase 1 통합 적용
+                
+                return cleaned;
+            }
+            
             // 코인/암호화폐는 그대로 (24시간 글로벌 표현 적합)
-            // 사주/운세 등도 그대로
+            // 사주 등도 그대로
             return text;
         })(_spacedText);
 
@@ -8544,8 +8676,109 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
                     return cleaned;
                 }
                 
+                // ════════════════════════════════════════════════════════
+                // [V31 #180 사장님 결정] DEEP ANALYSIS 운세 정제
+                //   본격 상업운전 전 마지막 점검
+                //   - Phase 1: 도메인 혼선 차단 (주식/부동산/연애 → 운세)
+                //   - Phase 2: 7개 소항목 톤 분리 (FORTUNE_SUBTYPE)
+                //   - 운세 카테고리 키 = 'general' (CURRENT_MODE)
+                // ════════════════════════════════════════════════════════
+                if (CURRENT_MODE === 'general') {
+                    let cleaned = txt;
+                    
+                    // Phase 1: 도메인 혼선 차단
+                    cleaned = cleaned.replace(/진입\s*시점/g, '시작 시점');
+                    cleaned = cleaned.replace(/진입\s*타이밍/g, '시작 타이밍');
+                    cleaned = cleaned.replace(/신호\s*정렬\s*후\s*진입/g, '신호 정렬 후 시작');
+                    cleaned = cleaned.replace(/풀\s*진입/g, '적극적 시작');
+                    cleaned = cleaned.replace(/매수\s*시점/g, '시작 시점');
+                    cleaned = cleaned.replace(/매도\s*시점/g, '정리 시점');
+                    cleaned = cleaned.replace(/손익비\s*상\s*유리한\s*구조/g, '흐름 균형 상 유리한 구조');
+                    cleaned = cleaned.replace(/손익비\s*상/g, '흐름 균형 상');
+                    cleaned = cleaned.replace(/수익\s*반납/g, '흐름 후퇴');
+                    cleaned = cleaned.replace(/수익\s*보존/g, '흐름 유지');
+                    cleaned = cleaned.replace(/분할\s*매도\s*권장/g, '점진적 정리 권장');
+                    cleaned = cleaned.replace(/분할\s*매도/g, '점진적 정리');
+                    cleaned = cleaned.replace(/비중\s*단계\s*축소/g, '단계적 정리');
+                    cleaned = cleaned.replace(/비중\s*축소/g, '활동 축소');
+                    cleaned = cleaned.replace(/포지션\s*전략/g, '대응 전략');
+                    cleaned = cleaned.replace(/포지션/g, '입장');
+                    cleaned = cleaned.replace(/일괄\s*청산/g, '일괄 정리');
+                    cleaned = cleaned.replace(/기준\s*기반\s*청산/g, '기준 기반 정리');
+                    cleaned = cleaned.replace(/청산\s*전략/g, '정리 전략');
+                    cleaned = cleaned.replace(/청산/g, '정리');
+                    cleaned = cleaned.replace(/손절/g, '깨끗한 정리');
+                    cleaned = cleaned.replace(/익절/g, '흐름 정점 마무리');
+                    cleaned = cleaned.replace(/고점\s*미청산\s*리스크/g, '흐름 정점 놓침 리스크');
+                    cleaned = cleaned.replace(/고점\s*청산/g, '흐름 정점 마무리');
+                    cleaned = cleaned.replace(/변동성\s*급락\s*가능성\s*동반\s*구간/g, '흐름 흔들림 가능성 동반 구간');
+                    cleaned = cleaned.replace(/변동성\s*노출\s*확대\s*가능성/g, '흐름 변화 노출 확대 가능성');
+                    cleaned = cleaned.replace(/변동성/g, '흐름 변화');
+                    cleaned = cleaned.replace(/추세\s*둔화\s*신호\s*동반\s*시/g, '흐름 둔화 신호 동반 시');
+                    cleaned = cleaned.replace(/추세\s*반전/g, '흐름 전환');
+                    cleaned = cleaned.replace(/반등/g, '회복');
+                    cleaned = cleaned.replace(/마감\s*전\s*리스크\s*정리\s*구간/g, '결정 직전 정리 구간');
+                    cleaned = cleaned.replace(/장\s*마감/g, '하루 마무리');
+                    cleaned = cleaned.replace(/장중\s*피크/g, '활동 활성');
+                    cleaned = cleaned.replace(/장중/g, '활동 중');
+                    cleaned = cleaned.replace(/아시아\s*고점/g, '오전 활성');
+                    cleaned = cleaned.replace(/유럽\s*장중\s*피크/g, '저녁 활성');
+                    cleaned = cleaned.replace(/미국\s*장중\s*피크/g, '늦저녁 활성');
+                    
+                    // 부동산 표현 → 운세 표현
+                    cleaned = cleaned.replace(/매물\s*등록/g, '의사 표시');
+                    cleaned = cleaned.replace(/호가\s*조정/g, '입장 조정');
+                    cleaned = cleaned.replace(/호가\s*단계적\s*조정/g, '입장 단계적 조정');
+                    cleaned = cleaned.replace(/협상력\s*보존/g, '주도권 보존');
+                    cleaned = cleaned.replace(/협상력\s*약화/g, '주도권 약화');
+                    cleaned = cleaned.replace(/계약\s*체결/g, '결정 확정');
+                    cleaned = cleaned.replace(/매수자\s*우위/g, '외부 우위');
+                    cleaned = cleaned.replace(/매도자\s*우위/g, '본인 우위');
+                    cleaned = cleaned.replace(/이사철\s*성수기/g, '활동 활성 시기');
+                    cleaned = cleaned.replace(/거래\s*활성/g, '활동 활성');
+                    cleaned = cleaned.replace(/거래\s*비수기/g, '활동 정체기');
+                    
+                    // 연애 표현 → 운세 표현 (안전망)
+                    cleaned = cleaned.replace(/다가갈\s*시점/g, '시작 시점');
+                    cleaned = cleaned.replace(/거리\s*두기/g, '활동 축소');
+                    cleaned = cleaned.replace(/관계\s*활성/g, '활동 활성');
+                    cleaned = cleaned.replace(/관계\s*우위/g, '본인 주도');
+                    
+                    // Phase 2: 7개 소항목 톤 분리 (DEEP ANALYSIS도 동일)
+                    if (FORTUNE_SUBTYPE === 'wealth') {
+                        cleaned = cleaned.replace(/매수\s*권장/g, '집중 권장');
+                        cleaned = cleaned.replace(/매도\s*권장/g, '정리 권장');
+                        cleaned = cleaned.replace(/투자\s*권장/g, '재정 흐름 점검 권장');
+                        cleaned = cleaned.replace(/종목\s*추천/g, '재정 흐름 추천');
+                    }
+                    if (FORTUNE_SUBTYPE === 'health') {
+                        cleaned = cleaned.replace(/수익\s*흐름/g, '회복 흐름');
+                        cleaned = cleaned.replace(/투자/g, '관리');
+                        cleaned = cleaned.replace(/매수\s*시점/g, '회복 시점');
+                        cleaned = cleaned.replace(/관계\s*개선/g, '몸 상태 개선');
+                        cleaned = cleaned.replace(/시장\s*흐름/g, '몸 흐름');
+                    }
+                    if (FORTUNE_SUBTYPE === 'career') {
+                        cleaned = cleaned.replace(/연애\s*흐름/g, '커리어 흐름');
+                        cleaned = cleaned.replace(/매수\s*시점/g, '시작 시점');
+                        cleaned = cleaned.replace(/투자\s*결정/g, '커리어 결정');
+                        cleaned = cleaned.replace(/관계\s*확정/g, '직무 확정');
+                    }
+                    if (FORTUNE_SUBTYPE === 'newyear') {
+                        cleaned = cleaned.replace(/오늘\s*안에/g, '한 해 안에');
+                        cleaned = cleaned.replace(/3일\s*안에/g, '이번 분기 안에');
+                        cleaned = cleaned.replace(/이번\s*주/g, '이번 시즌');
+                    }
+                    if (FORTUNE_SUBTYPE === 'today') {
+                        cleaned = cleaned.replace(/올\s*한\s*해/g, '오늘');
+                        cleaned = cleaned.replace(/장기\s*안정/g, '오늘 안정');
+                    }
+                    
+                    return cleaned;
+                }
+                
                 // 코인/암호화폐는 그대로 (24시간 글로벌 적합)
-                // 사주/운세 등도 그대로
+                // 사주는 그대로
                 return txt;
             };
             
