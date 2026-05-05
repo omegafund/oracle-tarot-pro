@@ -12,9 +12,9 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <meta name="version" content="V31_158_2026-05-05">
+    <meta name="version" content="V31_159_2026-05-05">
     
-    <title>ZEUS · Tarot Oracle [V31 #158]</title>
+    <title>ZEUS · Tarot Oracle [V31 #159]</title>
 
     <!-- ════════════════════════════════════════════════════════════ -->
     <!-- [V24.10] 파비콘 명시 선언 — 사장님 진단                       -->
@@ -4048,12 +4048,26 @@ console.log('══════════════════════�
         }
     } catch(e) {}
     
-    // ★ [V31 #147 보강] proUnlocked + 진짜 워커 토큰 둘 다 있을 때만 isPaidUser
-    //   PAID_xxx 시작 토큰은 위에서 이미 정리됨
-    if (localStorage.getItem('proUnlocked') === 'true' 
+    // ════════════════════════════════════════════════════════════════════════
+    // [V31 #159 결정적 결함 차단] 진짜 백도어 — proUnlocked + 토큰 자동 PRO
+    //   사장님 진단: "프로신탁 확인하기 누를 틈도 없이 즉시 PRO 결과"
+    //   원인: 페이지 진입 시 proUnlocked='true' + 토큰 잔재 있으면 자동 PRO
+    //         → 새 점사 시작해도 isPaidUser=true → 결제 우회 → 매출 0
+    //   해결: ?paid=ok URL 있을 때만 자동 PRO (정상 결제 직후만)
+    //         그 외에는 isPaidUser=false 유지 → 결제 모달 거쳐야 PRO
+    // ════════════════════════════════════════════════════════════════════════
+    const urlPaidOkInit = new URLSearchParams(window.location.search).get('paid') === 'ok';
+    if (urlPaidOkInit
+        && localStorage.getItem('proUnlocked') === 'true' 
         && (localStorage.getItem('paid_token') || localStorage.getItem('oracleSessionToken'))) {
         isPaidUser = true;
-        console.log('✅ [V31 #147] proUnlocked + 워커 토큰 둘 다 확인 → isPaidUser=true');
+        console.log('✅ [V31 #159] proUnlocked + 토큰 + ?paid=ok → isPaidUser=true (정상 결제)');
+    } else if (localStorage.getItem('proUnlocked') === 'true' 
+        && (localStorage.getItem('paid_token') || localStorage.getItem('oracleSessionToken'))) {
+        console.warn('⚠ [V31 #159] proUnlocked + 토큰 있지만 ?paid=ok 없음 → 자동 PRO 차단');
+        console.warn('   → 사장님 진단: 타로 점사 결제 모달 우회 백도어 차단');
+        console.warn('   → 새 점사 시 결제 모달 거쳐야 PRO 노출');
+        // isPaidUser = false 유지
     }
     
     let token = localStorage.getItem('oracleSessionToken') || '';
@@ -11997,55 +12011,59 @@ function renderSajuResult(data) {
             <div style="margin:18px 0; padding:18px; background:linear-gradient(135deg, rgba(212,175,55,0.18), rgba(212,175,55,0.06)); border:2px solid rgba(212,175,55,0.6); border-radius:10px; box-shadow:0 4px 18px rgba(212,175,55,0.2);">
                 <div style="text-align:center; margin-bottom:14px;">
                     <div style="display:inline-block; padding:6px 14px; background:linear-gradient(135deg, #D4AF37, #FFD970); color:#000; font-size:0.74rem; font-weight:900; border-radius:4px; letter-spacing:0.05em;">
-                        ✨ PRO 신탁 (${data.pro.tier === 'day' ? '1일' : data.pro.tier === 'month' ? '30일' : '평생'} 이용권)
+                        ✨ PRO 신탁 (${
+                          data.pro.tier === 'trial' ? '1시간 체험' :
+                          data.pro.tier === 'day' ? '1일' : 
+                          data.pro.tier === 'month' ? '30일' : '평생'
+                        } 이용권)
                     </div>
                 </div>
                 
                 ${data.pro.tenStars ? `
                 <div style="margin-bottom:12px; padding:12px; background:rgba(0,0,0,0.25); border-left:3px solid #FFD970; border-radius:0 6px 6px 0;">
-                    <div style="color:#FFD970; font-size:0.84rem; font-weight:800; margin-bottom:6px;">⭐ ${data.pro.tenStars.title || '십성 분석'}</div>
+                    <div style="color:#FFD970; font-size:0.84rem; font-weight:800; margin-bottom:6px;">${data.pro.tenStars.title || '⭐ 십성 분석'}</div>
                     <div style="color:rgba(255,255,255,0.92); font-size:0.84rem; line-height:1.65; white-space:pre-wrap;">${data.pro.tenStars.content || ''}</div>
                 </div>` : ''}
                 
                 ${data.pro.deepInsight ? `
                 <div style="margin-bottom:12px; padding:12px; background:rgba(0,0,0,0.25); border-left:3px solid #FFD970; border-radius:0 6px 6px 0;">
-                    <div style="color:#FFD970; font-size:0.84rem; font-weight:800; margin-bottom:6px;">🔮 ${data.pro.deepInsight.title || '깊이 통찰'}</div>
+                    <div style="color:#FFD970; font-size:0.84rem; font-weight:800; margin-bottom:6px;">${data.pro.deepInsight.title || '🔮 깊이 통찰'}</div>
                     <div style="color:rgba(255,255,255,0.92); font-size:0.84rem; line-height:1.65; white-space:pre-wrap;">${data.pro.deepInsight.content || ''}</div>
                 </div>` : ''}
                 
                 ${data.pro.hiddenRisk ? `
                 <div style="margin-bottom:12px; padding:12px; background:rgba(231,76,60,0.08); border-left:3px solid #e74c3c; border-radius:0 6px 6px 0;">
-                    <div style="color:#FF8870; font-size:0.84rem; font-weight:800; margin-bottom:6px;">⚠ ${data.pro.hiddenRisk.title || '숨은 리스크'}</div>
+                    <div style="color:#FF8870; font-size:0.84rem; font-weight:800; margin-bottom:6px;">${data.pro.hiddenRisk.title || '⚠ 숨은 리스크'}</div>
                     <div style="color:rgba(255,255,255,0.92); font-size:0.84rem; line-height:1.65; white-space:pre-wrap;">${data.pro.hiddenRisk.content || ''}</div>
                 </div>` : ''}
                 
                 ${data.pro.timingPrecision ? `
                 <div style="margin-bottom:12px; padding:12px; background:rgba(46,204,113,0.08); border-left:3px solid #2ecc71; border-radius:0 6px 6px 0;">
-                    <div style="color:#5DD68A; font-size:0.84rem; font-weight:800; margin-bottom:6px;">⏱ ${data.pro.timingPrecision.title || '타이밍 정밀'}</div>
+                    <div style="color:#5DD68A; font-size:0.84rem; font-weight:800; margin-bottom:6px;">${data.pro.timingPrecision.title || '⏱ 타이밍 정밀'}</div>
                     <div style="color:rgba(255,255,255,0.92); font-size:0.84rem; line-height:1.65; white-space:pre-wrap;">${data.pro.timingPrecision.content || ''}</div>
                 </div>` : ''}
                 
                 ${data.pro.luckPhase12 ? `
                 <div style="margin-bottom:12px; padding:12px; background:rgba(0,0,0,0.25); border-left:3px solid #FFD970; border-radius:0 6px 6px 0;">
-                    <div style="color:#FFD970; font-size:0.84rem; font-weight:800; margin-bottom:6px;">🌀 ${data.pro.luckPhase12.title || '12운성'}</div>
+                    <div style="color:#FFD970; font-size:0.84rem; font-weight:800; margin-bottom:6px;">${data.pro.luckPhase12.title || '🌀 12운성'}</div>
                     <div style="color:rgba(255,255,255,0.92); font-size:0.84rem; line-height:1.65; white-space:pre-wrap;">${data.pro.luckPhase12.content || ''}</div>
                 </div>` : ''}
                 
                 ${data.pro.shinSal ? `
                 <div style="margin-bottom:12px; padding:12px; background:rgba(255,165,80,0.08); border-left:3px solid #FFB870; border-radius:0 6px 6px 0;">
-                    <div style="color:#FFD970; font-size:0.84rem; font-weight:800; margin-bottom:6px;">⚔️ ${data.pro.shinSal.title || '신살'}</div>
+                    <div style="color:#FFD970; font-size:0.84rem; font-weight:800; margin-bottom:6px;">${data.pro.shinSal.title || '⚔️ 신살'}</div>
                     <div style="color:rgba(255,255,255,0.92); font-size:0.84rem; line-height:1.65; white-space:pre-wrap;">${data.pro.shinSal.content || ''}</div>
                 </div>` : ''}
                 
                 ${data.pro.familyPackage ? `
                 <div style="margin-bottom:12px; padding:12px; background:rgba(155,89,182,0.08); border-left:3px solid #9b59b6; border-radius:0 6px 6px 0;">
-                    <div style="color:#C39BD3; font-size:0.84rem; font-weight:800; margin-bottom:6px;">👨‍👩‍👧 ${data.pro.familyPackage.title || '가족 사주'}</div>
+                    <div style="color:#C39BD3; font-size:0.84rem; font-weight:800; margin-bottom:6px;">${data.pro.familyPackage.title || '👨‍👩‍👧 가족 사주'}</div>
                     <div style="color:rgba(255,255,255,0.92); font-size:0.84rem; line-height:1.65; white-space:pre-wrap;">${data.pro.familyPackage.content || ''}</div>
                 </div>` : ''}
                 
                 ${data.pro.yearlyOutlook ? `
                 <div style="padding:12px; background:rgba(52,152,219,0.08); border-left:3px solid #3498db; border-radius:0 6px 6px 0;">
-                    <div style="color:#7FCDFF; font-size:0.84rem; font-weight:800; margin-bottom:6px;">📅 ${data.pro.yearlyOutlook.title || '연운 흐름'}</div>
+                    <div style="color:#7FCDFF; font-size:0.84rem; font-weight:800; margin-bottom:6px;">${data.pro.yearlyOutlook.title || '📅 연운 흐름'}</div>
                     <div style="color:rgba(255,255,255,0.92); font-size:0.84rem; line-height:1.65; white-space:pre-wrap;">${data.pro.yearlyOutlook.content || ''}</div>
                 </div>` : ''}
             </div>
@@ -12318,10 +12336,17 @@ function showPayModal() {
         </div>`;
 
     // 기존 계좌이체 섹션 (폴백 — 접힌 상태)
-    const amountFmt = cfg.amount.toLocaleString('ko-KR');
-    // [V20.1] 토스 송금 버튼 — 클릭 시 자동 confirmPayment 트리거 (백그라운드)
+    // [V31 #159] 사주 컨텍스트면 990원, 아니면 cfg.amount (3900원 기본)
+    //   사장님 진단: "990원 표시인데 입금 금액 ₩3,900 (불일치)"
+    //   원인: cfg.amount가 3900원 default → 사주 컨텍스트 무시
+    //   해결: isSajuContext면 990원으로 동적 변경
+    const sajuAmount = isSajuContext ? 990 : cfg.amount;
+    const sajuTossAmount = isSajuContext ? 990 : cfg.amount;
+    const amountFmt = sajuAmount.toLocaleString('ko-KR');
+    
+    // [V20.1 + V31 #159] 토스 송금 버튼 — 사주 컨텍스트 시 990원
     const tossBtn = cfg.tossId ? `
-        <a href="supertoss://send?amount=${cfg.amount}&bank=${encodeURIComponent(cfg.bank)}&accountNo=${cfg.account.replace(/-/g,'')}&origin=qr"
+        <a href="supertoss://send?amount=${sajuTossAmount}&bank=${encodeURIComponent(cfg.bank)}&accountNo=${cfg.account.replace(/-/g,'')}&origin=qr"
            onclick="setTimeout(() => { document.getElementById('autoConfirmHint').style.display = 'block'; }, 1000);"
            style="display:block;margin-bottom:10px;padding:11px 0;background:#0064ff;color:#fff;border-radius:50px;font-weight:900;font-size:0.88rem;text-align:center;text-decoration:none;letter-spacing:0.03em;">
             💙 토스로 바로 송금하기
