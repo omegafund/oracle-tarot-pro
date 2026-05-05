@@ -12,9 +12,9 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <meta name="version" content="V31_160_2026-05-05">
+    <meta name="version" content="V31_163_2026-05-05">
     
-    <title>ZEUS · Tarot Oracle [V31 #160]</title>
+    <title>ZEUS · Tarot Oracle [V31 #163]</title>
 
     <!-- ════════════════════════════════════════════════════════════ -->
     <!-- [V24.10] 파비콘 명시 선언 — 사장님 진단                       -->
@@ -5243,9 +5243,30 @@ async function renderStream(fetchPromise, cards) {
         // [V26.3 결함 2] 한국어 호칭 띄어쓰기 안전망 — '이름 님' → '이름님'
         //   사장님 진단: '신상훈 님과 김예지 님' = 한국어 정서법 위반
         //   해결: Gemini 위반 감지 시 자동 교정 (안전망)
-        const _filteredText = (typeof normalizeHonorificSpacing === 'function')
+        const _spacedText = (typeof normalizeHonorificSpacing === 'function')
             ? normalizeHonorificSpacing(_alignedText)
             : _alignedText;
+        
+        // [V31 #161] 부동산 도메인 사후 정제 — 주식/코인 시간 표현 차단
+        //   사장님 진단: "부동산 매도 → '오전 고점구간 매도' 출력 (주식 문장)"
+        //   원인: 워커가 부동산인데 주식/코인 폴백 텍스트 사용
+        //   해결: 부동산 컨텍스트에서 시간 표현 → 시즌/계절 표현으로 정제
+        const _filteredText = (CURRENT_MODE === 'realestate') 
+            ? (function(text) {
+                let cleaned = text;
+                // 시간 표현 → 시즌 표현 강제 변환
+                cleaned = cleaned.replace(/오전\s*고점(구간|권|대)?(\s*매도)?/g, '봄 이사철 성수기 매도');
+                cleaned = cleaned.replace(/오후\s*고점(구간|권|대)?(\s*매도)?/g, '가을 이사철 성수기 매도');
+                cleaned = cleaned.replace(/아시아\s*고점(구간|권|대)?/g, '봄 성수기 거래 활성');
+                cleaned = cleaned.replace(/유럽\s*장중(\s*피크)?/g, '가을 이사철');
+                cleaned = cleaned.replace(/미국\s*장중(\s*피크)?/g, '연말 거래 마감');
+                cleaned = cleaned.replace(/(\d{1,2}):(\d{2})~(\d{1,2}):(\d{2})\s*\([^)]+\)/g, '계절 거래 적기');
+                // "장중" 단어 제거 (부동산은 장중 없음)
+                cleaned = cleaned.replace(/장중\s*피크/g, '거래 활성');
+                cleaned = cleaned.replace(/장중\s*저점/g, '거래 비수기');
+                return cleaned;
+            })(_spacedText)
+            : _spacedText;
 
         // 2️⃣ [최종 렌더링] 결제 여부(isPaidUser)에 따라 미래와 지표 노출 결정
         contentEl.innerHTML = renderText(_filteredText, cards, investmentData, isPaidUser, isFinance);
@@ -9693,9 +9714,20 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
                     </div>
                 </div>
                 
-                <!-- 점수 막대 -->
-                <div style="height: 4px; background: rgba(0,0,0,0.3); border-radius: 2px; margin-bottom: 14px; overflow: hidden;">
-                    <div style="height: 100%; width: ${_scoreBarWidth}%; background: ${_scoreColor}; border-radius: 2px; transition: width 0.6s ease;"></div>
+                <!-- [V31 #161] 점수 막대 — 금색 테두리 강화 (사장님 요청) -->
+                <div style="height: 12px; 
+                            background: rgba(0,0,0,0.4); 
+                            border: 1.5px solid rgba(212,175,55,0.7); 
+                            border-radius: 6px; 
+                            margin-bottom: 14px; 
+                            overflow: hidden;
+                            box-shadow: 0 2px 8px rgba(212,175,55,0.2), inset 0 1px 2px rgba(0,0,0,0.3);">
+                    <div style="height: 100%; 
+                                width: ${_scoreBarWidth}%; 
+                                background: linear-gradient(90deg, ${_scoreColor}, ${_scoreColor}dd, ${_scoreColor}); 
+                                border-radius: 4px; 
+                                transition: width 0.8s ease;
+                                box-shadow: 0 0 8px ${_scoreColor}80;"></div>
                 </div>
                 
                 <!-- [V25.22] 카드명+시그널 한 줄 통합 -->
@@ -11465,19 +11497,24 @@ function showSajuInputModal() {
                 </div>
             </div>
 
-            <!-- 영역 선택 -->
+            <!-- [V31 #162] 사주 영역 = "사주 본질 전체 보기" 단일 고정 -->
+            <!--   사장님 결정: "사주는 사주본질 전체 보기 외에는 삭제, 간결한 것이 명품" -->
+            <!--   근거: ① 사주 서브카테고리 PRO 콘텐츠 미생성 (워커 부담 0) -->
+            <!--         ② "돈받음 안된다" 정책 일관 -->
+            <!--         ③ 사주 = 종합 분석 (UX 명확) -->
             <div style="margin-bottom:18px;">
                 <label style="display:block; color:#FFE08A; font-size:0.82rem; font-weight:700; margin-bottom:6px;">
                     🎯 점사 영역
                 </label>
-                <select id="sajuCategory" class="saju-input"
-                        style="width:100%; padding:11px 12px; background:rgba(0,0,0,0.5); border:2px solid rgba(212,175,55,0.65); border-radius:8px; color:#FFE08A; font-size:0.88rem; font-weight:700; outline:none; transition:all 0.2s ease; box-shadow:0 0 0 1px rgba(212,175,55,0.1) inset; cursor:pointer;">
-                    <option value="saju">☯ 사주 본질 (전체)</option>
-                    <option value="fortune">✨ 일반 운세</option>
-                    <option value="love">💘 연애 / 관계</option>
-                    <option value="stock">📈 투자 / 재물</option>
-                    <option value="realestate">🏠 부동산</option>
-                </select>
+                <!-- 고정 표시 (선택 불가) — 사주 본질 전체 보기 -->
+                <div style="width:100%; padding:13px 14px; background:rgba(212,175,55,0.10); border:2px solid rgba(212,175,55,0.65); border-radius:8px; color:#FFE08A; font-size:0.92rem; font-weight:800; box-shadow:0 0 0 1px rgba(212,175,55,0.1) inset; text-align:center; letter-spacing:0.02em;">
+                    ☯ 사주 본질 (전체 종합 분석)
+                </div>
+                <!-- 숨겨진 카테고리 입력 (코드 호환) -->
+                <input type="hidden" id="sajuCategory" value="saju">
+                <div style="margin-top:6px; color:rgba(255,255,255,0.55); font-size:0.74rem; text-align:center; line-height:1.5;">
+                    십성 · 격국 · 용신 · 신살 · 대운 · 운세 흐름 종합
+                </div>
             </div>
 
             <!-- 버튼 -->
@@ -11792,6 +11829,48 @@ window.handleSajuProClick = function() {
 //   handleSajuRestart  : 사주 모달 정리 + early overlay 정리 + 홈 화면으로 복귀
 //   handleSajuModalClose : 모달만 정리 (현재 위치 유지)
 // ════════════════════════════════════════════════════════════════════════════════
+// ════════════════════════════════════════════════════════════════════════════════
+// [V31 #163] 사주 행동 체크박스 핸들러 — localStorage 저장 (오늘 날짜 기준)
+//   사장님 안: "오늘 한 행동 체크 → 30일 이용권 가치 ↑"
+//   기능: 체크 시 localStorage 저장 / 해제 시 삭제
+//   효과: 매일 재방문 동기 (앱 충성도 + 매출 retention)
+// ════════════════════════════════════════════════════════════════════════════════
+window.toggleSajuAction = function(storageKey, actionKey, isChecked) {
+    try {
+        let saved = JSON.parse(localStorage.getItem(storageKey) || '{}');
+        if (isChecked) {
+            saved[actionKey] = true;
+        } else {
+            delete saved[actionKey];
+        }
+        localStorage.setItem(storageKey, JSON.stringify(saved));
+        
+        // 시각 피드백 — 체크 시 줄긋기
+        const checkbox = event?.target;
+        if (checkbox) {
+            const label = checkbox.closest('label');
+            const span = label?.querySelector('span:last-of-type');
+            if (span) {
+                if (isChecked) {
+                    span.style.textDecoration = 'line-through';
+                    span.style.opacity = '0.6';
+                } else {
+                    span.style.textDecoration = 'none';
+                    span.style.opacity = '1';
+                }
+            }
+        }
+        
+        // 3개 모두 체크 시 축하 메시지
+        const total = Object.keys(saved).length;
+        if (total === 3) {
+            console.log('🎉 [V31 #163] 오늘의 행동 3개 모두 완료!');
+        }
+    } catch(e) {
+        console.warn('[V31 #163] toggleSajuAction 저장 실패:', e);
+    }
+};
+
 window.handleSajuRestart = function() {
     console.log('🏠 [V31 #144] 사주 결과 → 처음으로');
     
@@ -11840,7 +11919,172 @@ window.handleSajuModalClose = function() {
  * 사주 결과 화면 렌더링 (V31 #134 안전 보강)
  */
 function renderSajuResult(data) {
-    console.log('🎨 [V31 #134] renderSajuResult 시작');
+    console.log('🎨 [V31 #163] renderSajuResult 시작 (6블록 통일)');
+    
+    // ════════════════════════════════════════════════════════════════════════
+    // [V31 #163 사장님 6블록 디자인 — index.html 단독 적용]
+    //   사장님 결정: "사주 돈값을 하게 — 6블록 통일 + 용신 행동 트리거"
+    //   
+    //   6블록 구조:
+    //     [1] 핵심 요약 (1줄) — 헤더
+    //     [2] 사주 명식 (팩트) — 시각화
+    //     [3] 본질 흐름 (해석)
+    //     [4] 종합 신탁 (행동 강제) ★ 매출 80%
+    //     [5] 용신 + 트리거 (공통 포맷) ★ 클로드 보완
+    //     [6] PRO 영역 (결제 유도)
+    // ════════════════════════════════════════════════════════════════════════
+    
+    // [V31 #163] 용신 5종 매트릭스 — 사장님 안 + 클로드 5개 확장
+    //   사장님 통찰: "용신은 설명 X, 행동 트리거 ○"
+    const YONGSHIN_MATRIX = {
+        '木': {
+            label: '목(木)',
+            color: '#27ae60',
+            colorBg: 'rgba(39,174,96,0.10)',
+            meaning: '성장 · 시작 · 확장',
+            actions: [
+                '새 일 시작 (작은 1개)',
+                '아침 산책 10분',
+                '글쓰기 또는 그림'
+            ],
+            trigger: '녹색 / 식물 / 동쪽 방향',
+            oneLine: '시작이 곧 운입니다 — 작은 출발이 큰 흐름을 만듭니다'
+        },
+        '火': {
+            label: '화(火)',
+            color: '#e74c3c',
+            colorBg: 'rgba(231,76,60,0.10)',
+            meaning: '움직임 · 표현 · 외부 활동',
+            actions: [
+                '하루 1회 외부 활동 (5~10분)',
+                '말하기 또는 글쓰기로 표현',
+                '신체 활동 추가 (가벼운 운동)'
+            ],
+            trigger: '붉은색 / 밝은 조명 / 따뜻한 환경',
+            oneLine: '완벽보다 행동이 운을 여는 열쇠입니다'
+        },
+        '土': {
+            label: '토(土)',
+            color: '#d4af37',
+            colorBg: 'rgba(212,175,55,0.10)',
+            meaning: '안정 · 신뢰 · 중심',
+            actions: [
+                '일정 고정 (하루 루틴 1개)',
+                '약속 지키기 (자기 약속 포함)',
+                '주변 정리정돈 5분'
+            ],
+            trigger: '황색/갈색 / 견고한 공간 / 중앙 자리',
+            oneLine: '꾸준함이 운을 끌어옵니다'
+        },
+        '金': {
+            label: '금(金)',
+            color: '#bdc3c7',
+            colorBg: 'rgba(189,195,199,0.10)',
+            meaning: '결단 · 정리 · 단호함',
+            actions: [
+                '불필요한 관계 정리 1건',
+                '결정 미루지 않기 (즉시 답)',
+                '운동 강도 ↑ (10분 더)'
+            ],
+            trigger: '백색/은색 / 깔끔한 공간 / 서쪽',
+            oneLine: '단호함이 새 흐름을 만듭니다'
+        },
+        '水': {
+            label: '수(水)',
+            color: '#3498db',
+            colorBg: 'rgba(52,152,219,0.10)',
+            meaning: '유연 · 지혜 · 연결',
+            actions: [
+                '독서 또는 학습 30분',
+                '깊이 있는 대화 1회',
+                '명상/내면 정리 시간'
+            ],
+            trigger: '흑색/청색 / 물 / 북쪽',
+            oneLine: '깊은 통찰이 운을 정화합니다'
+        }
+    };
+    
+    // [V31 #163] 사주 → 용신 추정 (워커 응답 우선, 폴백: 오행 분포 분석)
+    function detectYongshin(elements, dayMaster) {
+        // 오행 약한 순으로 보충 → 용신
+        if (!elements) return '火';  // 폴백
+        
+        const sorted = Object.entries(elements).sort((a, b) => a[1] - b[1]);
+        const weakest = sorted[0]?.[0];
+        
+        // 한글 → 한자 매핑
+        const map = { '목': '木', '화': '火', '토': '土', '금': '金', '수': '水' };
+        return map[weakest] || '火';
+    }
+    
+    // [V31 #163] 사주 → 현실 상태 추정 (사장님 detectLifeState 안)
+    function detectLifeState(elements, dayMaster) {
+        if (!elements) return 'NORMAL';
+        const water = elements['수'] || 0;
+        const fire = elements['화'] || 0;
+        const metal = elements['금'] || 0;
+        const earth = elements['토'] || 0;
+        const wood = elements['목'] || 0;
+        const total = water + fire + metal + earth + wood;
+        
+        // 화/목 약하고 수/토 강함 → WITHDRAWN (정체)
+        if ((fire + wood) / total < 0.25 && (water + earth) / total > 0.55) {
+            return 'WITHDRAWN';
+        }
+        // 금/관 과다 → OVERLOAD (과부하)
+        if (metal / total > 0.40) {
+            return 'OVERLOAD';
+        }
+        return 'NORMAL';
+    }
+    
+    // [V31 #163] 현실 보정 문장 (사장님 안 — 핵심 교체)
+    //   기존: "중기 균형 사주 흐름입니다"
+    //   수정: "구조적으로 균형이지만, 현재는 정체로 작동할 가능성"
+    function applyRealityCorrection(originalTldr, lifeState) {
+        // 워커 응답이 옛 텍스트면 자동 정제
+        if (lifeState === 'WITHDRAWN') {
+            return originalTldr.replace(
+                /(중기|단기|장기)?\s*균형\s*(사주\s*)?흐름입니다\.?/g,
+                '구조적으로는 균형이지만, 현재는 정체 상태로 작동할 가능성이 높습니다'
+            );
+        }
+        if (lifeState === 'OVERLOAD') {
+            return originalTldr.replace(
+                /(중기|단기|장기)?\s*균형\s*(사주\s*)?흐름입니다\.?/g,
+                '구조적으로는 균형이지만, 현재는 과부하 상태로 흐름이 막힐 수 있습니다'
+            );
+        }
+        return originalTldr;
+    }
+    
+    // [V31 #163] 행동 강제 3개 (사장님 안 — 매출 80% 결정)
+    //   체크박스 + localStorage 저장 → 매일 재방문 동기
+    function buildActionBlock(yongshinKey, lifeState) {
+        const yongshin = YONGSHIN_MATRIX[yongshinKey] || YONGSHIN_MATRIX['火'];
+        const today = new Date().toISOString().slice(0, 10);  // YYYY-MM-DD
+        const storageKey = `sajuActions_${today}`;
+        let savedActions = {};
+        try {
+            savedActions = JSON.parse(localStorage.getItem(storageKey) || '{}');
+        } catch(e) {}
+        
+        return yongshin.actions.map((action, i) => {
+            const checkId = `sajuAction_${i}`;
+            const isChecked = savedActions[checkId] === true;
+            return `
+                <label style="display:flex; align-items:center; gap:10px; padding:10px 12px; margin-bottom:6px; background:${yongshin.colorBg}; border:1px solid ${yongshin.color}40; border-radius:6px; cursor:pointer; transition:all 0.2s ease;"
+                       onmouseover="this.style.background='${yongshin.color}25';"
+                       onmouseout="this.style.background='${yongshin.colorBg}';">
+                    <input type="checkbox" ${isChecked ? 'checked' : ''} 
+                           onchange="window.toggleSajuAction('${storageKey}', '${checkId}', this.checked)"
+                           style="width:18px; height:18px; cursor:pointer; accent-color:${yongshin.color};">
+                    <span style="color:rgba(255,255,255,0.92); font-size:0.85rem; line-height:1.5; ${isChecked ? 'text-decoration:line-through; opacity:0.6;' : ''}">
+                        ${action}
+                    </span>
+                </label>`;
+        }).join('');
+    }
     
     try {
         // [V31 #134] 응답 형식 안전 검증
@@ -11946,69 +12190,177 @@ function renderSajuResult(data) {
             <button onclick="window.handleSajuModalClose()"
                     style="position:absolute; top:14px; right:14px; background:none; border:none; color:#888; font-size:1.4rem; cursor:pointer;">×</button>
 
-            <!-- 헤더 -->
+            <!-- [V31 #163 사장님 6블록] [1] 핵심 요약 — 헤더 -->
             <div style="text-align:center; margin-bottom:14px;">
+                <div style="display:inline-block; padding:3px 10px; background:rgba(212,175,55,0.15); border-radius:12px; font-size:0.66rem; color:#FFD970; font-weight:900; letter-spacing:0.05em; margin-bottom:8px;">
+                    [1/6] 핵심 요약
+                </div>
                 <div style="font-size:2.4rem;">☯</div>
                 <h2 style="color:#FFD970; font-size:1.15rem; margin:6px 0; font-weight:900;">${text.title || '사주 신탁'}</h2>
                 <div style="color:#FFE08A; font-size:0.84rem; font-weight:700;">${text.subtitle || ''}</div>
                 ${data.accuracy ? `<div style="color:rgba(255,255,255,0.5); font-size:0.66rem; margin-top:4px;">${data.accuracy.note}</div>` : ''}
             </div>
 
-            <!-- 사주 명식 -->
+            <!-- [V31 #163 사장님 6블록] [2] 사주 명식 — 팩트 -->
             <div style="margin:14px 0;">
-                <div style="color:#FFE08A; font-size:0.84rem; font-weight:700; margin-bottom:4px;">📜 사주 명식</div>
+                <div style="display:flex; align-items:center; gap:6px; margin-bottom:6px;">
+                    <span style="font-size:0.7rem; color:#FFD970; font-weight:900; letter-spacing:0.05em;">[2/6]</span>
+                    <span style="color:#FFE08A; font-size:0.84rem; font-weight:700;">📜 사주 명식</span>
+                </div>
                 ${meongSik}
             </div>
 
-            <!-- 오행 분포 -->
+            <!-- [V31 #163 사장님 6블록] [2-2] 오행 분포 — 팩트 시각화 -->
             <div style="margin:14px 0;">
                 <div style="color:#FFE08A; font-size:0.84rem; font-weight:700; margin-bottom:8px;">⚖️ 오행 분포</div>
                 ${elBars}
             </div>
 
-            <!-- 본문 -->
+            <!-- [V31 #163 사장님 6블록] [3] 본질 흐름 — 해석 (3줄 이내) -->
             <div style="margin:18px 0; padding:14px; background:rgba(212,175,55,0.06); border-left:3px solid rgba(212,175,55,0.5); border-radius:0 6px 6px 0;">
-                <div style="color:#FFD970; font-size:0.82rem; font-weight:800; margin-bottom:8px;">🔍 본질 흐름</div>
-                <div style="color:rgba(255,255,255,0.92); font-size:0.85rem; line-height:1.7; margin-bottom:8px;">
-                    <strong style="color:#FFE08A;">일주 본질:</strong><br>${text.dayEssence}
+                <div style="display:flex; align-items:center; gap:6px; margin-bottom:8px;">
+                    <span style="font-size:0.7rem; color:#FFD970; font-weight:900; letter-spacing:0.05em;">[3/6]</span>
+                    <span style="color:#FFD970; font-size:0.84rem; font-weight:800;">🔍 본질 흐름</span>
                 </div>
                 <div style="color:rgba(255,255,255,0.92); font-size:0.85rem; line-height:1.7; margin-bottom:8px;">
-                    <strong style="color:#FFE08A;">${text.balanceLabel || '오행 균형'}:</strong><br>${text.balancePhrase}
+                    <strong style="color:#FFE08A;">▸ 일주 본질:</strong><br>${text.dayEssence}
+                </div>
+                <div style="color:rgba(255,255,255,0.92); font-size:0.85rem; line-height:1.7; margin-bottom:8px;">
+                    <strong style="color:#FFE08A;">▸ ${text.balanceLabel || '오행 균형'}:</strong><br>${text.balancePhrase}
                 </div>
                 <div style="color:rgba(255,255,255,0.92); font-size:0.85rem; line-height:1.7;">
-                    <strong style="color:#FFE08A;">${text.strengthLabel || '본질 흐름'}:</strong><br>${text.strengthPhrase}
+                    <strong style="color:#FFE08A;">▸ ${text.strengthLabel || '본질 흐름'}:</strong><br>${text.strengthPhrase}
                 </div>
             </div>
 
-            <!-- 종합 신탁 -->
-            <div style="margin:18px 0; padding:14px; background:rgba(46,204,113,0.06); border-left:3px solid #2ecc71; border-radius:0 6px 6px 0;">
-                <div style="color:#2ecc71; font-size:0.84rem; font-weight:800; margin-bottom:8px;">⚡ 종합 신탁</div>
-                <div style="color:rgba(255,255,255,0.95); font-size:0.92rem; line-height:1.6; font-weight:700; margin-bottom:8px;">
-                    👉 ${text.tldr}
+            <!-- ════════════════════════════════════════════════════════════
+                 [V31 #163 사장님 6블록] 사주 출력 디자인 통일
+                   [4] ⚡ 종합 신탁 — 행동 강제 (매출 80% 결정)
+                   [5] 🔥 에너지 가이드 — 용신 + 트리거
+                 ════════════════════════════════════════════════════════════ -->
+            ${(function() {
+                // 용신 + 현실 상태 추정 (워커 응답 분석)
+                const dayMaster = (text.meta?.pillars?.day || '').charAt(0);
+                const yongshinKey = detectYongshin(elements, dayMaster);
+                const lifeState = detectLifeState(elements, dayMaster);
+                const yongshinData = YONGSHIN_MATRIX[yongshinKey] || YONGSHIN_MATRIX['火'];
+                
+                // 현실 보정 — 사장님 안 핵심 교체
+                const correctedTldr = applyRealityCorrection(text.tldr || '', lifeState);
+                
+                // 행동 체크박스 (오늘 날짜 localStorage 저장)
+                const actionCheckboxes = buildActionBlock(yongshinKey, lifeState);
+                
+                return `
+                <!-- [4] ⚡ 종합 신탁 — 행동 강제 -->
+                <div style="margin:20px 0; padding:16px; background:linear-gradient(135deg, rgba(46,204,113,0.10), rgba(46,204,113,0.04)); border:2px solid rgba(46,204,113,0.45); border-radius:10px;">
+                    <div style="display:flex; align-items:center; gap:6px; margin-bottom:12px;">
+                        <span style="font-size:0.7rem; color:#7ad188; font-weight:900; letter-spacing:0.05em;">[4/6]</span>
+                        <span style="color:#2ecc71; font-size:0.92rem; font-weight:900;">⚡ 종합 신탁</span>
+                    </div>
+                    
+                    <!-- 핵심 1줄 (현실 보정 적용) -->
+                    <div style="color:#FFE08A; font-size:0.95rem; line-height:1.6; font-weight:800; margin-bottom:14px; padding:10px 12px; background:rgba(0,0,0,0.25); border-left:3px solid #2ecc71; border-radius:0 4px 4px 0;">
+                        👉 ${correctedTldr}
+                    </div>
+                    
+                    <!-- 행동 강제 (체크박스 + localStorage) -->
+                    <div style="margin-top:14px;">
+                        <div style="color:#7ad188; font-size:0.84rem; font-weight:800; margin-bottom:8px;">
+                            🎯 오늘의 행동 (3가지 — 흐름 활성화)
+                        </div>
+                        ${actionCheckboxes}
+                        <div style="margin-top:6px; color:rgba(255,255,255,0.5); font-size:0.7rem; line-height:1.5; text-align:center;">
+                            ※ 이 3개가 충족되어야 사주 흐름이 실제로 작동합니다
+                        </div>
+                    </div>
+                    
+                    <!-- 타이밍 -->
+                    <div style="margin-top:14px; padding:8px 10px; background:rgba(46,204,113,0.06); border-radius:6px;">
+                        <div style="color:#7ad188; font-size:0.78rem; font-weight:800; margin-bottom:3px;">⏱ 타이밍</div>
+                        <div style="color:rgba(255,255,255,0.85); font-size:0.82rem; line-height:1.5;">${text.timing || '현 시점 흐름 점검 권장'}</div>
+                    </div>
                 </div>
-                <div style="color:rgba(255,255,255,0.85); font-size:0.84rem; line-height:1.6; margin-bottom:6px;">
-                    <strong style="color:#2ecc71;">🎯 행동:</strong> ${text.action}
+                
+                <!-- [5] 🔥 에너지 가이드 — 용신 + 트리거 -->
+                <div style="margin:20px 0; padding:16px; background:linear-gradient(135deg, ${yongshinData.colorBg}, ${yongshinData.color}10); border:2px solid ${yongshinData.color}80; border-radius:10px;">
+                    <div style="display:flex; align-items:center; gap:6px; margin-bottom:12px;">
+                        <span style="font-size:0.7rem; color:${yongshinData.color}; font-weight:900; letter-spacing:0.05em;">[5/6]</span>
+                        <span style="color:${yongshinData.color}; font-size:0.92rem; font-weight:900;">🔥 에너지 가이드</span>
+                    </div>
+                    
+                    <!-- 용신 -->
+                    <div style="margin-bottom:12px;">
+                        <div style="color:rgba(255,255,255,0.6); font-size:0.74rem; margin-bottom:4px;">용신</div>
+                        <div style="color:${yongshinData.color}; font-size:1.1rem; font-weight:900;">
+                            ${yongshinData.label}
+                        </div>
+                    </div>
+                    
+                    <!-- 필요한 방향 -->
+                    <div style="margin-bottom:10px; padding:9px 12px; background:rgba(0,0,0,0.25); border-radius:6px;">
+                        <div style="color:${yongshinData.color}; font-size:0.78rem; font-weight:800; margin-bottom:3px;">▸ 필요한 에너지</div>
+                        <div style="color:rgba(255,255,255,0.92); font-size:0.85rem; line-height:1.5;">${yongshinData.meaning}</div>
+                    </div>
+                    
+                    <!-- 활성 트리거 -->
+                    <div style="margin-bottom:10px; padding:9px 12px; background:rgba(0,0,0,0.25); border-radius:6px;">
+                        <div style="color:${yongshinData.color}; font-size:0.78rem; font-weight:800; margin-bottom:3px;">🎨 활성 트리거</div>
+                        <div style="color:rgba(255,255,255,0.92); font-size:0.85rem; line-height:1.5;">${yongshinData.trigger}</div>
+                    </div>
+                    
+                    <!-- 한 줄 핵심 -->
+                    <div style="margin-top:12px; padding:10px 12px; background:linear-gradient(135deg, ${yongshinData.color}30, ${yongshinData.color}15); border-left:3px solid ${yongshinData.color}; border-radius:0 6px 6px 0;">
+                        <div style="color:${yongshinData.color}; font-size:0.86rem; font-weight:800; line-height:1.55;">
+                            👉 ${yongshinData.oneLine}
+                        </div>
+                    </div>
                 </div>
-                <div style="color:rgba(255,255,255,0.85); font-size:0.84rem; line-height:1.6;">
-                    <strong style="color:#2ecc71;">⏱ 타이밍:</strong> ${text.timing}
-                </div>
-            </div>
+                `;
+            })()}
 
-            <!-- PRO 영역 안내 + 클릭 시 결제 모달 호출 (V31 #142 결함 수정) -->
+            <!-- [V31 #163 사장님 6블록] [6] PRO 영역 — 결제 유도 -->
             <!-- [V31 #142] 사장님 진단: PRO 신탁 받기 단추 무반응
                   원인: #141에서 onclick 안에 멀티라인 IIFE → HTML 파싱 실패
                   해결: window.handleSajuProClick 전역 함수 호출 1줄로 단순화 -->
             ${data.pro && data.pro.tier === 'free' ? `
             <div onclick="window.handleSajuProClick()"
-                 style="margin:14px 0; padding:16px; background:linear-gradient(135deg, rgba(255,165,80,0.12), rgba(212,175,55,0.10)); border:1px solid rgba(255,200,100,0.5); border-radius:8px; text-align:center; cursor:pointer; transition:all 0.25s ease; position:relative; overflow:hidden;"
-                 onmouseover="this.style.background='linear-gradient(135deg, rgba(255,165,80,0.22), rgba(212,175,55,0.20))'; this.style.borderColor='rgba(255,217,112,0.85)'; this.style.transform='scale(1.015)'; this.style.boxShadow='0 4px 18px rgba(212,175,55,0.35)';"
-                 onmouseout="this.style.background='linear-gradient(135deg, rgba(255,165,80,0.12), rgba(212,175,55,0.10))'; this.style.borderColor='rgba(255,200,100,0.5)'; this.style.transform='scale(1)'; this.style.boxShadow='none';">
-                <div style="color:#FFD970; font-size:0.92rem; font-weight:900; margin-bottom:6px;">🔒 PRO 신탁 영역</div>
-                <div style="color:rgba(255,255,255,0.85); font-size:0.78rem; line-height:1.6; margin-bottom:10px;">
-                    십성 · 격국 · 용신 · 신살 · 대운 · 매년 운세
+                 style="margin:14px 0; padding:18px 16px; background:linear-gradient(135deg, rgba(155,89,182,0.18), rgba(212,175,55,0.10)); border:2px solid rgba(212,175,55,0.55); border-radius:10px; cursor:pointer; transition:all 0.25s ease; position:relative; overflow:hidden; box-shadow:0 4px 18px rgba(155,89,182,0.15);"
+                 onmouseover="this.style.background='linear-gradient(135deg, rgba(155,89,182,0.28), rgba(212,175,55,0.20))'; this.style.borderColor='rgba(255,217,112,0.85)'; this.style.transform='scale(1.015)'; this.style.boxShadow='0 6px 24px rgba(212,175,55,0.35)';"
+                 onmouseout="this.style.background='linear-gradient(135deg, rgba(155,89,182,0.18), rgba(212,175,55,0.10))'; this.style.borderColor='rgba(212,175,55,0.55)'; this.style.transform='scale(1)'; this.style.boxShadow='0 4px 18px rgba(155,89,182,0.15)';">
+                <div style="display:flex; align-items:center; gap:6px; margin-bottom:10px;">
+                    <span style="font-size:0.7rem; color:#FFD970; font-weight:900; letter-spacing:0.05em;">[6/6]</span>
+                    <span style="color:#FFD970; font-size:0.92rem; font-weight:900;">🔒 PRO 신탁 영역</span>
                 </div>
-                <div style="display:inline-block; padding:7px 18px; background:linear-gradient(135deg, #D4AF37, #FFD970); color:#000; font-size:0.78rem; font-weight:900; border-radius:6px; box-shadow:0 3px 12px rgba(212,175,55,0.5); animation: ctaPulse 3.5s ease-in-out infinite;">
-                    ✨ PRO 신탁 받기 →
+                
+                <!-- [V31 #163] 매출 강화 — 잠금 미리보기 5종 -->
+                <div style="margin-bottom:14px;">
+                    <div style="padding:7px 10px; margin-bottom:5px; background:rgba(0,0,0,0.25); border-left:2px solid #C39BD3; border-radius:0 4px 4px 0;">
+                        <span style="color:#C39BD3; font-size:0.78rem; font-weight:800;">✔ 십성 정밀 분석</span>
+                        <span style="color:rgba(255,255,255,0.5); font-size:0.72rem; margin-left:6px;">— 당신은 ★★★...(잠금)</span>
+                    </div>
+                    <div style="padding:7px 10px; margin-bottom:5px; background:rgba(0,0,0,0.25); border-left:2px solid #FFD970; border-radius:0 4px 4px 0;">
+                        <span style="color:#FFD970; font-size:0.78rem; font-weight:800;">✔ 격국 + 인생 방향</span>
+                        <span style="color:rgba(255,255,255,0.5); font-size:0.72rem; margin-left:6px;">— ★격으로 분류...(잠금)</span>
+                    </div>
+                    <div style="padding:7px 10px; margin-bottom:5px; background:rgba(0,0,0,0.25); border-left:2px solid #FF8870; border-radius:0 4px 4px 0;">
+                        <span style="color:#FF8870; font-size:0.78rem; font-weight:800;">✔ 숨은 리스크 구간</span>
+                        <span style="color:rgba(255,255,255,0.5); font-size:0.72rem; margin-left:6px;">— ⚠ 주의...(잠금)</span>
+                    </div>
+                    <div style="padding:7px 10px; margin-bottom:5px; background:rgba(0,0,0,0.25); border-left:2px solid #5DD68A; border-radius:0 4px 4px 0;">
+                        <span style="color:#5DD68A; font-size:0.78rem; font-weight:800;">✔ 12운성 타이밍</span>
+                        <span style="color:rgba(255,255,255,0.5); font-size:0.72rem; margin-left:6px;">— 현재 ★단계...(잠금)</span>
+                    </div>
+                    <div style="padding:7px 10px; background:rgba(0,0,0,0.25); border-left:2px solid #7FCDFF; border-radius:0 4px 4px 0;">
+                        <span style="color:#7FCDFF; font-size:0.78rem; font-weight:800;">✔ 신살 검출 + 대운</span>
+                        <span style="color:rgba(255,255,255,0.5); font-size:0.72rem; margin-left:6px;">— 검출된 신살 ★개...(잠금)</span>
+                    </div>
+                </div>
+                
+                <div style="text-align:center;">
+                    <div style="display:inline-block; padding:10px 22px; background:linear-gradient(135deg, #D4AF37, #FFD970); color:#000; font-size:0.85rem; font-weight:900; border-radius:8px; box-shadow:0 4px 14px rgba(212,175,55,0.5); animation: ctaPulse 3.5s ease-in-out infinite; letter-spacing:0.02em;">
+                        ✨ PRO 신탁 받기 →
+                    </div>
                 </div>
             </div>
             ` : ''}
@@ -12023,11 +12375,26 @@ function renderSajuResult(data) {
             <div style="margin:18px 0; padding:18px; background:linear-gradient(135deg, rgba(212,175,55,0.18), rgba(212,175,55,0.06)); border:2px solid rgba(212,175,55,0.6); border-radius:10px; box-shadow:0 4px 18px rgba(212,175,55,0.2);">
                 <div style="text-align:center; margin-bottom:14px;">
                     <div style="display:inline-block; padding:6px 14px; background:linear-gradient(135deg, #D4AF37, #FFD970); color:#000; font-size:0.74rem; font-weight:900; border-radius:4px; letter-spacing:0.05em;">
-                        ✨ PRO 신탁 (${
-                          data.pro.tier === 'trial' ? '1시간 체험' :
-                          data.pro.tier === 'day' ? '1일' : 
-                          data.pro.tier === 'month' ? '30일' : '평생'
-                        } 이용권)
+                        ✨ PRO 신탁 (${(function() {
+                          // [V31 #161] 사주 결제 plan 우선 → 워커 응답 tier 폴백
+                          //   사장님 진단: "990원 결제 후 30일 표시 / 3900원 결제 후 1일 표시 등"
+                          //   해결: localStorage.sajuPaidPlan 우선 (실제 결제 금액 기준)
+                          let paidPlan = '';
+                          try { paidPlan = localStorage.getItem('sajuPaidPlan') || ''; } catch(e) {}
+                          
+                          if (paidPlan === 'trial') return '1시간 체험';
+                          if (paidPlan === 'day') return '1일';
+                          if (paidPlan === 'month' || paidPlan === 'monthly') return '30일';
+                          if (paidPlan === 'yearly') return '1년';
+                          if (paidPlan === 'lifetime') return '평생';
+                          
+                          // 폴백 — 워커 응답 tier 사용
+                          if (data.pro.tier === 'trial') return '1시간 체험';
+                          if (data.pro.tier === 'day') return '1일';
+                          if (data.pro.tier === 'month') return '30일';
+                          if (data.pro.tier === 'lifetime') return '평생';
+                          return '1일';  // 안전 폴백
+                        })()} 이용권)
                     </div>
                 </div>
                 
@@ -12348,12 +12715,16 @@ function showPayModal() {
         </div>`;
 
     // 기존 계좌이체 섹션 (폴백 — 접힌 상태)
-    // [V31 #159] 사주 컨텍스트면 990원, 아니면 cfg.amount (3900원 기본)
-    //   사장님 진단: "990원 표시인데 입금 금액 ₩3,900 (불일치)"
-    //   원인: cfg.amount가 3900원 default → 사주 컨텍스트 무시
-    //   해결: isSajuContext면 990원으로 동적 변경
-    const sajuAmount = isSajuContext ? 990 : cfg.amount;
-    const sajuTossAmount = isSajuContext ? 990 : cfg.amount;
+    // [V31 #161 사장님 결정] 계좌이체는 990원 → 3900원 1일권 단일
+    //   사장님 데이터적 결정: "990원 이체할 바엔 3900원 1일권"
+    //   근거:
+    //     ① 계좌이체 수수료 1000원 = 990원 결제 시 사용자 손해
+    //     ② 매출 효율: 3900원 = 990원의 4배
+    //     ③ 처리 부담: 990원과 3900원 동일
+    //   → 계좌이체는 사주/타로 모두 3900원 단일 (1일권)
+    //   → 토스/카카오/네이버는 990원 체험권 OK (수수료 없음)
+    const sajuAmount = 3900;  // 계좌이체 = 3900원 단일 (사주/타로 공통)
+    const sajuTossAmount = 3900;
     const amountFmt = sajuAmount.toLocaleString('ko-KR');
     
     // [V20.1 + V31 #159] 토스 송금 버튼 — 사주 컨텍스트 시 990원
@@ -12578,7 +12949,7 @@ function showPayModal() {
                                    onblur="this.style.boxShadow='inset 0 1px 4px rgba(0,0,0,0.1), 0 0 12px rgba(255,215,0,0.35)'; this.style.borderColor='#FFD700';" />
                         </div>
 
-                        <button onclick="zeusClaimSubmit('${cfg.amount === 990 ? 'trial' : cfg.amount === 3900 ? 'day' : 'month'}')" style="
+                        <button onclick="zeusClaimSubmit('day')" style="
                                 width:100%; padding:11px;
                                 background: linear-gradient(135deg, #2ecc71, #27ae60);
                                 color:#fff; border:none; border-radius:7px;
@@ -13024,7 +13395,13 @@ async function zeusClaimSubmit(plan) {
                                 input: sajuData.input,
                                 category: sajuData.category,
                                 timePhase: sajuData.timePhase || 'medium',
-                                tier: plan === 'trial' ? 'trial' : 'month'
+                                tier: (function() {
+                                    if (plan === 'trial') return 'trial';
+                                    if (plan === 'day') return 'day';
+                                    if (plan === 'month' || plan === 'monthly') return 'month';
+                                    if (plan === 'lifetime' || plan === 'yearly') return 'month';  // PRO 콘텐츠
+                                    return 'day';  // fallback
+                                })()
                             })
                         });
                         
