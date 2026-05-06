@@ -16754,38 +16754,61 @@ function buildTimeSeriesLuckV184_5(core, currentDate) {
   };
 }
 
-// ─── [Sec 13] buildSajuCore — V31 #137 진짜 엔진 호출 (★ NaN 방어 FINAL+ 4) ───
+// ─── [Sec 13] buildSajuCore — v31ExtractSaju 직접 활용 (★ 시그니처 안전) ───
+//   ★ v31 진짜 엔진은 v31ExtractSaju 한 함수로 4기둥 모두 정확 계산
+//   ★ V184.5는 그 결과만 활용 → 시그니처 mismatch 0 + 데이터 일관성 100%
+//   ★ 사장님 화면에 보이는 사주 명식과 동일한 4기둥 사용
 function buildSajuCoreV184_5(input) {
   const norm = normalizeSajuInputV184_5(input);
   
-  let solar = norm;
-  let lunarConverted = false;
-  if (norm.isLunar) {
-    try {
-      const conv = v31LunarToSolar(norm.year, norm.month, norm.day, norm.isLeapMonth);
-      if (conv) { solar = { ...norm, ...conv }; lunarConverted = true; }
-    } catch (_) { /* 실패 시 양력으로 폴백 */ }
+  // V184.5 정규화 → v31ValidateSajuInput 형식 변환
+  const v31Input = {
+    year:        norm.year,
+    month:       norm.month,
+    day:         norm.day,
+    hour:        norm.hour,
+    calendar:    norm.isLunar ? 'lunar' : 'solar',
+    isLeapMonth: norm.isLeapMonth,
+    gender:      norm.gender === 'F' ? 'female' : 'male'
+  };
+  
+  // v31 검증 (필수 — 진짜 엔진의 정규화 거쳐야 안전)
+  const validation = (typeof v31ValidateSajuInput === 'function') 
+                     ? v31ValidateSajuInput(v31Input) 
+                     : { valid: true, normalized: v31Input };
+  if (!validation.valid) {
+    throw new Error('v31_validation_failed: ' + validation.error);
   }
   
-  // V31 #137 진짜 엔진 호출
-  const adjusted = (typeof v31AdjustSolarTerm === 'function')
-    ? v31AdjustSolarTerm(solar.year, solar.month, solar.day) 
-    : { year: solar.year, month: solar.month, day: solar.day };
+  // ★ v31ExtractSaju 호출 — 4기둥 + 오행 + 신강약 모두 정확 계산 ★
+  const sajuData = v31ExtractSaju(validation.normalized);
+  if (!sajuData || !sajuData.pillars) {
+    throw new Error('v31ExtractSaju_no_pillars');
+  }
   
-  // v31GetYearPillar는 ganzhiYear 인자를 받음 — adjusted year 그대로 전달
-  const yearPillar  = v31GetYearPillar(adjusted.year);
-  // monthPillar는 yearStem + monthBranch 필요
-  const monthBranchIdx = ((adjusted.month + 1) % 12);  // 인월=2월
-  const V31_BRANCHES = ['자','축','인','묘','진','사','오','미','신','유','술','해'];
-  const monthBranch = V31_BRANCHES[monthBranchIdx] || '인';
-  const monthPillar = v31GetMonthPillar(yearPillar.stem, monthBranch);
-  const dayPillar   = v31GetDayPillar(adjusted.year, adjusted.month, adjusted.day);
-  const hourPillar  = v31GetHourPillar(dayPillar.stem, norm.hour);
+  // pillars 추출 — v31ExtractSaju가 반환하는 정확한 구조
+  const yearPillar  = sajuData.pillars.year  || { stem: '', branch: '', ganzhi: '' };
+  const monthPillar = sajuData.pillars.month || { stem: '', branch: '', ganzhi: '' };
+  const dayPillar   = sajuData.pillars.day   || { stem: '갑', branch: '자', ganzhi: '갑자' };
+  const hourPillar  = sajuData.pillars.hour  || { stem: '', branch: '', ganzhi: '' };
   
-  const ohaeng = countOhaengV184_5([yearPillar, monthPillar, dayPillar, hourPillar]);
+  // 오행 — v31CalcElements 결과 우선 사용 (사장님 화면과 일치)
+  let ohaeng;
+  if (sajuData.elements && typeof sajuData.elements === 'object') {
+    ohaeng = {
+      목: Number(sajuData.elements['목'] || sajuData.elements.wood  || 0),
+      화: Number(sajuData.elements['화'] || sajuData.elements.fire  || 0),
+      토: Number(sajuData.elements['토'] || sajuData.elements.earth || 0),
+      금: Number(sajuData.elements['금'] || sajuData.elements.metal || 0),
+      수: Number(sajuData.elements['수'] || sajuData.elements.water || 0)
+    };
+  } else {
+    ohaeng = countOhaengV184_5([yearPillar, monthPillar, dayPillar, hourPillar]);
+  }
+  
   const total = Object.values(ohaeng).reduce((a,b)=>a+b, 0);
   
-  // ★ FINAL+ 4: NaN 방어 (total=0/NaN 시 균등 fallback)
+  // ★ NaN 방어 (FINAL+ 4)
   let ohaengPercent;
   if (!total || isNaN(total)) {
     ohaengPercent = { 목:20, 화:20, 토:20, 금:20, 수:20 };
@@ -16798,15 +16821,17 @@ function buildSajuCoreV184_5(input) {
   return {
     pillars: { year: yearPillar, month: monthPillar, day: dayPillar, hour: hourPillar },
     meta: { 
-      dayMaster: dayPillar?.stem || '갑', 
+      dayMaster: dayPillar.stem || '갑', 
       gender: norm.gender, 
       input: norm,
-      lunarConverted,
+      lunarConverted: norm.isLunar,
       isLeapMonth: norm.isLeapMonth,
-      timezoneApplied: norm.timezone
+      timezoneApplied: norm.timezone,
+      v31Strength: sajuData.strength
     },
     ohaeng,
-    ohaengPercent
+    ohaengPercent,
+    _v31SajuData: sajuData
   };
 }
 
