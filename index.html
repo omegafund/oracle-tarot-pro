@@ -12,10 +12,10 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <meta name="version" content="V31_191_2026-05-06_INTEGRATED">
-    <meta name="zeus-build-tag" content="V31_191_FREEMIUM_PC_OPT_HEADER_PAYMENT_ISOLATION">
+    <meta name="version" content="V31_191_1_2026-05-06_KAKAO_UI_FIX">
+    <meta name="zeus-build-tag" content="V31_191_1_FREEMIUM_KAKAO_UI_FORCE">
     
-    <title>ZEUS · Tarot Oracle [V31 #191 INTEGRATED]</title>
+    <title>ZEUS · Tarot Oracle [V31 #191.1 KAKAO FIX]</title>
 
     <!-- ════════════════════════════════════════════════════════════ -->
     <!-- [V24.10] 파비콘 명시 선언 — 사장님 진단                       -->
@@ -2836,7 +2836,7 @@
             pointer-events: none;
             backdrop-filter: blur(2px);
             -webkit-backdrop-filter: blur(2px);
-        ">🛡 V31 #191</div>
+        ">🛡 V31 #191.1</div>
 
         <!-- [V21.0] ✦ 아치형 별빛 — 하이브리드 (큰 스파클 + 작은 점 + 골드 글로우) -->
         <div class="arch-title-wrapper">
@@ -13048,6 +13048,21 @@ async function runSajuOracle() {
         document.body.style.overflow = '';
         console.log('✅ [V31 #188 핫픽스] 잔류 모달 정리 완료');
     } catch (e) {}
+    
+    // ★ [V31 #191.1 CRITICAL 핫픽스] sajuChatStyle 자동 정리 ★
+    //   사장님 발견 결함:
+    //     이전 테스트 시 "▼ 정밀 데이터 보기" 클릭으로 sajuChatStyle='classic' 영구 저장
+    //     → 그 후 사주 점사 시 카카오 UI 진입 차단 → 클래식 UI 표시
+    //     → 990/4900 결제 게이트 작동 안 함
+    //   해결: 새 사주 점사 시작 시 sajuChatStyle 자동 정리 → 카카오 UI 강제 진입
+    //   영향: 사용자가 원래 클래식 UI 보고 싶었어도 ★ 매번 카카오 UI ★ (Freemium 효과 보장)
+    try {
+        const oldStyle = localStorage.getItem('sajuChatStyle');
+        if (oldStyle) {
+            localStorage.removeItem('sajuChatStyle');
+            console.log('✅ [V31 #191.1] sajuChatStyle 잔류 정리 (' + oldStyle + ' → 카카오 UI)');
+        }
+    } catch (e) {}
 
     // 모달 닫기 + 로딩
     closeSajuInputModal();
@@ -14246,14 +14261,20 @@ window.handleSajuPremiumCTA = function() {
     _handleSajuPaymentCTA('saju_premium', '4,900원 사주 PREMIUM');
 };
 
-// ─── 자세히 보기 토글 (클래식 UI 폴백) ───
+// ─── 자세히 보기 토글 (V31 #191.1 핫픽스: sessionStorage로 임시) ───
+//   사장님 발견 결함:
+//     localStorage.sajuChatStyle = 'classic' 영구 저장 → 다음 점사부터 카카오 UI 차단
+//   해결:
+//     sessionStorage 사용 (브라우저 닫으면 자동 삭제)
+//     + 페이지 새로고침해도 다음 사주 점사 시 runSajuOracle에서 자동 정리됨
 window.handleSajuDetailToggle = function() {
     try {
-        localStorage.setItem('sajuChatStyle', 'classic');
+        // 영구 저장 X (sessionStorage 임시 저장만)
+        sessionStorage.setItem('sajuChatStyle', 'classic');
     } catch (_) {}
     const data = window._v185Data;
     if (data && typeof renderSajuResult === 'function') {
-        renderSajuResult(data);  // 클래식 UI로 다시 렌더
+        renderSajuResult(data);  // 클래식 UI로 다시 렌더 (현재 세션만)
     }
 };
 
@@ -14262,16 +14283,18 @@ window.handleSajuDetailToggle = function() {
  */
 function renderSajuResult(data) {
     // ════════════════════════════════════════════════════════════════════════
-    // [V31 #185 + V186 핫픽스] 카카오 스타일 vs 기존 스타일 분기
+    // [V31 #185 + V186 + V191.1] 카카오 스타일 vs 기존 스타일 분기
     //   사장님 명시: "다른 카테고리 (타로/주식/부동산/운세) 영향 0"
-    //   ★ V186 핫픽스 ★
-    //     - data.domain 의존성 제거 (sajuPendingResult에 domain 없을 수 있음)
-    //     - renderSajuResult 자체가 사주 전용 함수 → 무조건 사주 처리 OK
-    //     - localStorage.sajuChatStyle === 'classic' 명시 시만 클래식
+    //   ★ V191.1 핫픽스 ★
+    //     - sajuChatStyle은 sessionStorage에서만 검사 (localStorage 무시)
+    //     - localStorage 잔류 자동 무시 (V31 #191.1 자동 정리와 양립)
+    //     - 사용자가 같은 세션 안에서만 클래식 UI 유지 가능
+    //     - 새 세션 또는 새 사주 점사 시 → 카카오 UI 자동 복귀
     // ════════════════════════════════════════════════════════════════════════
     let useKakaoStyle = true;
     try {
-        const pref = localStorage.getItem('sajuChatStyle');
+        // sessionStorage만 확인 (localStorage 잔류 영향 0)
+        const pref = sessionStorage.getItem('sajuChatStyle');
         if (pref === 'classic') useKakaoStyle = false;
     } catch (_) {}
     
