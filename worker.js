@@ -6845,7 +6845,10 @@ function v31GeneratePro(sajuData, judgeResult, tier = 'free') {
   const shinSal = v31DetectShinSal(sajuData);
 
   // ── PRO 1일권 (3,900원) ──
-  if (tier === 'day' || tier === 'month' || tier === 'lifetime') {
+  // [V31 #193] saju_basic (990원) 추가 — V184.7 클래식 6블록 기본 콘텐츠
+  // [V31 #193] saju_premium (4,900원) 추가 — 모든 PRO 콘텐츠 (day/month/lifetime 동급)
+  if (tier === 'day' || tier === 'month' || tier === 'lifetime' 
+      || tier === 'saju_basic' || tier === 'saju_premium') {
     proContent.available = true;
     proContent.locked = false;
 
@@ -6930,8 +6933,9 @@ function v31GeneratePro(sajuData, judgeResult, tier = 'free') {
     };
   }
 
-  // ── PRO 30일권 (9,900원) ──
-  if (tier === 'month' || tier === 'lifetime') {
+  // ── PRO 30일권 (9,900원) — saju_premium도 동일 (4,900원 정밀 분석) ──
+  // ★ [V31 #193] saju_basic은 ★ 진입 차단 ★ — 990원은 day/saju_basic 콘텐츠만 ★
+  if (tier === 'month' || tier === 'lifetime' || tier === 'saju_premium') {
     
     // ★ [V31 #137] 12운성 정밀
     let luckPhaseContent = '';
@@ -17413,7 +17417,7 @@ function buildSajuSafeCoreV184_5(input) {
       core, interpretation, ohaengAnalysis, yongshin, sixDomain, timeSeries,
       potentialPatterns,  // [V31 #184.7] 특수 잠재력 응답 추가
       daewoon,            // [V31 #186] 대운 8단계 응답 추가
-      _meta: { version: 'V31_192_PAID_RESET' }
+      _meta: { version: 'V31_193_TIER_FIX' }
     };
   } catch (e) {
     sajuCB_V184_5.record({ error: true });
@@ -18179,12 +18183,21 @@ export default {
                            { expirationTtl: 86400 });
         }
 
+        // [V31 #193] 사주 전용 안내 메시지 (사장님 발견 결함 핫픽스)
+        //   기존: "입금 신고 접수 + PRO 활성화" (모든 plan 동일)
+        //   사장님 의도: "같은 사람 1회 체험권"
+        const sajuPlanMessage = (plan === 'saju_basic')
+          ? "입금 신고 접수 — 본인 사주 1회 (기본 정밀) 활성화 완료"
+          : (plan === 'saju_premium')
+          ? "입금 신고 접수 — 본인 사주 1회 (정밀 분석) 활성화 완료"
+          : "입금 신고가 접수되어 즉시 PRO를 활성화했습니다. 송금이 확인되지 않으면 향후 이용이 제한될 수 있습니다.";
+        
         return new Response(JSON.stringify({
           ok: true,
           token: fullToken,
           plan,
           expiresAt: expiry,
-          message: "입금 신고가 접수되어 즉시 PRO를 활성화했습니다. 송금이 확인되지 않으면 향후 이용이 제한될 수 있습니다."
+          message: sajuPlanMessage
         }), { headers: { ...corsHeaders(), "Content-Type": "application/json" } });
 
       } catch (e) {
