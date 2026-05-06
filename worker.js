@@ -17417,7 +17417,7 @@ function buildSajuSafeCoreV184_5(input) {
       core, interpretation, ohaengAnalysis, yongshin, sixDomain, timeSeries,
       potentialPatterns,  // [V31 #184.7] 특수 잠재력 응답 추가
       daewoon,            // [V31 #186] 대운 8단계 응답 추가
-      _meta: { version: 'V31_193_TIER_FIX' }
+      _meta: { version: 'V31_194_TOSS_FIX' }
     };
   } catch (e) {
     sajuCB_V184_5.record({ error: true });
