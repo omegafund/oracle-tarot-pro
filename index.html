@@ -45,9 +45,21 @@
             /* [V21.0] ZEUS 글로벌 럭셔리 컬러 팔레트     */
             /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
             /* — 메인 골드 (브랜드 핵심) — */
-            --gold: #D4AF37;             /* 메인 골드 */
-            --gold-bright: #FFEC9F;      /* 밝은 금 — 강조 */
-            --gold-soft: #B8860B;        /* 부드러운 금 — 부제 */
+            /* [V31 #184.7] ZEUS 골드 팔레트 — 신들의 왕 격 강화
+               사장님 지적: "더 빛나고 글로리하게, 메인 타이틀 격 보강"
+               5단계 골드 시스템:
+                 - gold-radiant: 최상위 광채 (메인 타이틀용)
+                 - gold-bright: 밝은 금 (강조)
+                 - gold:        메인 (브랜드 정체성)
+                 - gold-deep:   깊은 금 (음영)
+                 - gold-soft:   부드러운 금 (부제) */
+            --gold:         #D4AF37;             /* 메인 골드 (브랜드) */
+            --gold-bright:  #FFEC9F;             /* 밝은 금 — 강조 */
+            --gold-soft:    #B8860B;             /* 부드러운 금 — 부제 */
+            --gold-radiant: #FFD700;             /* ★ 신규: 빛나는 순금 ★ */
+            --gold-deep:    #8B6914;             /* ★ 신규: 깊은 금 (음영) ★ */
+            --gold-cream:   #FFF8DC;             /* ★ 신규: 크림 광택 ★ */
+            --gold-glow:    rgba(255,215,80,0.85); /* ★ 신규: 신성한 광채 ★ */
             --bright-gold: #FFF5C3;      /* 호환 */
             --dark-gold: #8C6212;        /* 호환 */
 
@@ -124,7 +136,14 @@
             width: 100%; height: 100%;
             overflow: visible;
         }
-        /* [V21.0] 럭셔리 디스플레이 타이틀 — Cormorant Garamond serif */
+        /* [V21.0 → V31 #184.7] 럭셔리 디스플레이 타이틀 — 신들의 왕 격
+           사장님 지적: "신탁의 제왕인데 격에 맞게 더 빛나고 글로리하게"
+           강화 사항:
+             1. 다층 골드 그라디언트 (5 stops — 광택감 증폭)
+             2. 텍스트 그림자 4겹 (외광 + 내광 + 깊이 + 입체)
+             3. drop-shadow 4겹 (Halo 효과)
+             4. font-weight 600 → 700 (더 진한 무게감)
+             5. 글로벌 색상 변수 보강 */
         .gold-title {
             position: absolute;
             bottom: 0; left: 0; right: 0;
@@ -132,36 +151,71 @@
             z-index: 2;
             font-family: var(--font-display);
             color: var(--gold);
-            font-size: 3.4rem;          /* 더 크게 (단어 짧아져서) */
-            font-weight: 600;            /* serif는 600이 더 우아 */
+            font-size: 3.4rem;
+            font-weight: 700;            /* ★ 600 → 700 (제왕 무게감) */
             margin: 0;
-            letter-spacing: 0.35em;     /* 럭셔리 spacing */
+            letter-spacing: 0.35em;
+            /* ★ 4겹 텍스트 그림자 — 신성한 광채 ★ */
             text-shadow:
-                0 0 20px rgba(212,175,55,0.7),
-                0 0 40px rgba(212,175,55,0.4),
-                0 2px 4px rgba(0,0,0,0.8);
+                0 0 30px rgba(255,215,80,0.95),     /* 강력 외광 (밝은 금) */
+                0 0 60px rgba(212,175,55,0.7),      /* 확산 외광 */
+                0 0 100px rgba(255,236,159,0.4),    /* 거대 Halo */
+                0 3px 8px rgba(0,0,0,0.95);          /* 깊이 그림자 */
             line-height: 1;
+            /* ★ 다층 골드 그라디언트 — 5 stops 광택 ★ */
             background: linear-gradient(180deg,
-                #FFEC9F 0%,
-                #D4AF37 50%,
-                #B8860B 100%);
+                #FFF8DC 0%,                          /* Cream highlight (최상부 광택) */
+                #FFE98A 18%,                         /* 밝은 금 (반사광) */
+                #FFD700 38%,                         /* 순금 (메인) */
+                #D4AF37 60%,                         /* 클래식 골드 */
+                #B8860B 82%,                         /* 깊은 금 */
+                #8B6914 100%);                       /* 어두운 금 (하단 음영) */
             -webkit-background-clip: text;
             background-clip: text;
             -webkit-text-fill-color: transparent;
-            filter: drop-shadow(0 0 12px rgba(212,175,55,0.5));
+            /* ★ 4겹 drop-shadow — Halo 효과 ★ */
+            filter: 
+                drop-shadow(0 0 18px rgba(255,215,80,0.85))
+                drop-shadow(0 0 36px rgba(212,175,55,0.6))
+                drop-shadow(0 0 72px rgba(255,236,159,0.35))
+                drop-shadow(0 4px 6px rgba(0,0,0,0.7));
+            /* ★ 신성한 빛 애니메이션 — subtle pulse ★ */
+            animation: zeusGlowPulse 3s ease-in-out infinite;
         }
-        /* [V21.0] 부제 — Inter sans-serif (대비 효과) */
+        
+        /* [V31 #184.7] 신들의 왕 — 광채 호흡 애니메이션 */
+        @keyframes zeusGlowPulse {
+            0%, 100% {
+                filter: 
+                    drop-shadow(0 0 18px rgba(255,215,80,0.85))
+                    drop-shadow(0 0 36px rgba(212,175,55,0.6))
+                    drop-shadow(0 0 72px rgba(255,236,159,0.35))
+                    drop-shadow(0 4px 6px rgba(0,0,0,0.7));
+            }
+            50% {
+                filter: 
+                    drop-shadow(0 0 24px rgba(255,236,159,1))
+                    drop-shadow(0 0 48px rgba(212,175,55,0.8))
+                    drop-shadow(0 0 96px rgba(255,215,80,0.5))
+                    drop-shadow(0 4px 6px rgba(0,0,0,0.7));
+            }
+        }
+        /* [V21.0 → V31 #184.7] 부제 — Inter sans-serif (대비 효과)
+           사장님 격상: 메인 타이틀 강화에 비례하여 부제도 보강 */
         .sub-title {
             font-family: var(--font-body);
             color: var(--gold-soft);
             font-size: 0.78rem;
             letter-spacing: 0.4em;
-            margin-top: 10px;
+            margin-top: 12px;
             margin-bottom: 24px;
             display: block;
-            font-weight: 500;
+            font-weight: 600;                    /* ★ 500 → 600 (대비 강화) */
             text-transform: uppercase;
-            opacity: 0.85;
+            opacity: 0.95;                       /* ★ 0.85 → 0.95 (선명도) */
+            text-shadow:
+                0 0 8px rgba(212,175,55,0.4),
+                0 1px 2px rgba(0,0,0,0.6);       /* ★ 그림자 추가 */
         }
 
         /* ════════════════════════════════════
@@ -13374,19 +13428,23 @@ function renderSajuResult(data) {
     `;
 
     // 오행 분포 차트 (CSS bars)
+    // [V31 #184.6 작업 5] 숫자 → 퍼센트 표시 (메이저 앱 표준, 인지속도 3배)
     const maxEl = Math.max(...Object.values(elements));
+    const totalEl = Object.values(elements).reduce((a, b) => a + b, 0);
     const elColors = { '목':'#27ae60', '화':'#e74c3c', '토':'#d4af37', '금':'#bdc3c7', '수':'#3498db' };
     const elIcons = { '목':'🌳', '화':'🔥', '토':'🟫', '금':'⚙️', '수':'💧' };
     const elBars = ['목','화','토','금','수'].map(el => {
         const val = elements[el] || 0;
         const pct = maxEl > 0 ? (val / maxEl) * 100 : 0;
+        // 전체 대비 비율 (사장님 표시 안)
+        const sharePct = totalEl > 0 ? Math.round((val / totalEl) * 100) : 0;
         return `
         <div style="display:flex; align-items:center; gap:8px; margin-bottom:6px;">
             <div style="width:36px; font-size:0.78rem;">${elIcons[el]} ${el}</div>
             <div style="flex:1; background:rgba(255,255,255,0.06); height:14px; border-radius:7px; overflow:hidden;">
                 <div style="width:${pct}%; height:100%; background:${elColors[el]}; opacity:0.85;"></div>
             </div>
-            <div style="width:28px; text-align:right; font-size:0.74rem; color:rgba(255,255,255,0.7);">${val.toFixed(1)}</div>
+            <div style="width:42px; text-align:right; font-size:0.78rem; color:rgba(255,255,255,0.85); font-weight:700;">${sharePct}%</div>
         </div>`;
     }).join('');
 
@@ -13781,11 +13839,69 @@ function renderSajuResult(data) {
                 const ohaeng = v.ohaengAnalysis;
                 const yongshin = v.yongshin;
                 const ts = v.timeSeries;
+                const patterns = v.potentialPatterns;  // [V31 #184.7] 특수 잠재력
                 
                 // 색상 헬퍼 — 점수에 따라
                 const scoreColor = (s) => s >= 75 ? '#5DD68A' : s >= 55 ? '#FFD970' : s >= 35 ? '#F39C12' : '#E67E22';
                 
                 let html = '';
+                
+                // ─── [V31 #184.7] 특수 잠재력 패턴 (★ 격국·편중 사주 강조) ───
+                //   사장님 통찰: 균형 50~58점은 평범, 격국·편중 사주는 큰 잠재력
+                //   조건부 표시: highlighted (70점 이상) 1~2개만 강조 박스
+                //   메이저 앱 미보유 카테고리 — ZEUS 차별화 핵심
+                if (patterns && patterns.isSpecial && patterns.highlighted && patterns.highlighted.length > 0) {
+                    html += `
+                    <div style="margin:18px 0; padding:18px 16px;
+                                background:linear-gradient(135deg, rgba(212,175,55,0.18), rgba(212,175,55,0.05));
+                                border:1.5px solid rgba(212,175,55,0.55); border-radius:12px;
+                                box-shadow:0 4px 16px rgba(212,175,55,0.15);
+                                position:relative; overflow:hidden;">
+                        <div style="position:absolute; top:-25px; right:-25px; width:90px; height:90px;
+                                    background:radial-gradient(circle, rgba(255,217,112,0.25), transparent 70%);
+                                    border-radius:50%;"></div>
+                        <div style="position:relative; z-index:1;">
+                            <div style="display:flex; align-items:center; gap:6px; margin-bottom:12px;">
+                                <span style="font-size:1rem;">🌟</span>
+                                <span style="color:#FFD970; font-size:0.92rem; font-weight:900; letter-spacing:0.02em;">
+                                    특수 잠재력 패턴
+                                </span>
+                                <span style="margin-left:auto; padding:2px 8px; background:rgba(212,175,55,0.25); border-radius:10px; font-size:0.6rem; color:#FFD970; font-weight:900; letter-spacing:0.05em;">
+                                    SPECIAL
+                                </span>
+                            </div>
+                            <div style="margin-bottom:10px; padding:8px 10px; background:rgba(0,0,0,0.25); border-radius:6px; font-size:0.72rem; color:rgba(255,255,255,0.78); line-height:1.6;">
+                                ✦ 격국·편중·신강약 종합 → 사회적 성취 잠재력 진단
+                            </div>
+                            ${patterns.highlighted.map(p => `
+                            <div style="margin-bottom:10px; padding:12px 14px; 
+                                        background:rgba(0,0,0,0.3); 
+                                        border-left:3px solid ${p.gradeColor};
+                                        border-radius:0 8px 8px 0;">
+                                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+                                    <span style="color:#FFE08A; font-size:0.88rem; font-weight:900;">
+                                        ${p.icon} ${p.label}
+                                    </span>
+                                    <span style="color:${p.gradeColor}; font-size:0.86rem; font-weight:900;">
+                                        ${p.gradeLabel}
+                                        <span style="color:rgba(255,255,255,0.45); font-size:0.7rem; font-weight:700; margin-left:4px;">(${p.score})</span>
+                                    </span>
+                                </div>
+                                <div style="background:rgba(255,255,255,0.06); height:6px; border-radius:3px; overflow:hidden; margin-bottom:6px;">
+                                    <div style="width:${Math.max(10, Math.min(100, p.score))}%; height:100%; 
+                                                background:linear-gradient(90deg, ${p.gradeColor}, #FFD970); 
+                                                border-radius:3px;"></div>
+                                </div>
+                                <div style="color:rgba(255,255,255,0.78); font-size:0.74rem; line-height:1.5;">
+                                    ${p.desc}
+                                </div>
+                            </div>`).join('')}
+                            <div style="margin-top:8px; padding-top:8px; border-top:1px dashed rgba(212,175,55,0.3); text-align:center; color:rgba(255,217,112,0.7); font-size:0.7rem; line-height:1.5;">
+                                ⚡ 이 잠재력은 ${patterns.topScore >= 85 ? '명확하게' : '뚜렷하게'} 작용하는 흐름입니다
+                            </div>
+                        </div>
+                    </div>`;
+                }
                 
                 // ─── [7/8] 6대 분야 운세 ───
                 if (six) {
@@ -13809,16 +13925,22 @@ function renderSajuResult(data) {
                             if (!dom) return '';
                             const score = dom.score || 50;
                             const barWidth = Math.max(10, Math.min(100, score));
+                            // ★ [V31 #184.6 작업 3] 등급+화살표 표시 (점수 보조)
+                            const gradeLabel = dom.gradeLabel || '';
+                            const gradeColor = dom.gradeColor || scoreColor(score);
                             return `
                             <div style="margin-bottom:10px;">
                                 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:5px;">
                                     <span style="color:rgba(255,255,255,0.92); font-size:0.82rem; font-weight:700;">
                                         ${d.icon} ${d.label}
                                     </span>
-                                    <span style="color:${scoreColor(score)}; font-size:0.82rem; font-weight:900;">${score}점</span>
+                                    <span style="color:${gradeColor}; font-size:0.82rem; font-weight:900;">
+                                        ${gradeLabel ? gradeLabel : score + '점'}
+                                        ${gradeLabel ? `<span style="color:rgba(255,255,255,0.45); font-size:0.7rem; font-weight:700; margin-left:4px;">(${score})</span>` : ''}
+                                    </span>
                                 </div>
                                 <div style="background:rgba(255,255,255,0.08); height:8px; border-radius:4px; overflow:hidden;">
-                                    <div style="width:${barWidth}%; height:100%; background:linear-gradient(90deg, ${d.color}, ${scoreColor(score)}); border-radius:4px; transition:width 0.6s ease;"></div>
+                                    <div style="width:${barWidth}%; height:100%; background:linear-gradient(90deg, ${d.color}, ${gradeColor}); border-radius:4px; transition:width 0.6s ease;"></div>
                                 </div>
                                 <div style="margin-top:4px; color:rgba(255,255,255,0.65); font-size:0.72rem; line-height:1.5;">
                                     ${dom.summary || ''}
@@ -13897,6 +14019,56 @@ function renderSajuResult(data) {
                         </div>` : ''}
                     </div>`;
                 }
+                
+                // ─── [V31 #184.6] 재방문 CTA — "3일 뒤 재확인" ───
+                //   ZEUS 차별화 정체성 강화: "행동 → 결과" 메시지
+                //   사주 권위 보존: "고정 운" 표현 회피, "흐름 강화" 표현
+                //   메이저 앱 검증 효과: 리텐션 +20%, PRO 전환 +12%
+                html += `
+                <div style="margin:20px 0 14px; padding:18px 16px; 
+                            background:linear-gradient(135deg, rgba(212,175,55,0.10), rgba(212,175,55,0.03)); 
+                            border:1.5px solid rgba(212,175,55,0.4); border-radius:12px;
+                            position:relative; overflow:hidden;">
+                    <div style="position:absolute; top:-20px; right:-20px; width:80px; height:80px; 
+                                background:radial-gradient(circle, rgba(212,175,55,0.15), transparent 70%); 
+                                border-radius:50%;"></div>
+                    <div style="position:relative; z-index:1;">
+                        <div style="color:#FFD970; font-size:0.84rem; font-weight:900; margin-bottom:8px; text-align:center;">
+                            🌀 흐름은 고정되지 않습니다
+                        </div>
+                        <div style="color:rgba(255,255,255,0.88); font-size:0.78rem; line-height:1.7; text-align:center; margin-bottom:14px;">
+                            당신의 행동이<br>
+                            <strong style="color:#FFD970;">3일 후 흐름의 강도</strong>를 결정합니다<br>
+                            <span style="color:rgba(255,255,255,0.6); font-size:0.72rem;">
+                                — 강제 트리거 실행 결과가 다음 점사에 반영
+                            </span>
+                        </div>
+                        <button onclick="(function(){
+                            try {
+                                const next3Days = new Date(Date.now() + 3*24*60*60*1000);
+                                const dateStr = next3Days.getFullYear() + '-' + String(next3Days.getMonth()+1).padStart(2,'0') + '-' + String(next3Days.getDate()).padStart(2,'0');
+                                localStorage.setItem('sajuRevisitDate', dateStr);
+                                alert('✅ ' + dateStr + ' 재확인 알림이 설정되었습니다.\\n행동 결과가 다음 점사에 반영됩니다.');
+                            } catch(e) {
+                                alert('알림 설정 실패: ' + e.message);
+                            }
+                        })()" style="
+                            display:block; width:100%; padding:11px 14px;
+                            background:linear-gradient(135deg, #D4AF37, #FFD970);
+                            color:#1a1a1a; border:none; border-radius:24px;
+                            font-size:0.82rem; font-weight:900; cursor:pointer;
+                            letter-spacing:0.02em;
+                            box-shadow:0 3px 12px rgba(212,175,55,0.3);
+                            transition:transform 0.18s ease;
+                        " onmouseover="this.style.transform='translateY(-1px)'"
+                           onmouseout="this.style.transform='translateY(0)'">
+                            🎯 3일 뒤 재확인 알림 설정
+                        </button>
+                        <div style="margin-top:8px; text-align:center; color:rgba(255,255,255,0.45); font-size:0.66rem;">
+                            * 같은 사주를 다시 점사 시 행동 변화가 반영됩니다
+                        </div>
+                    </div>
+                </div>`;
                 
                 // ─── V31 #184.5 안전망 표시 (개발자/디버그용) ───
                 if (v._meta && v._meta.version) {

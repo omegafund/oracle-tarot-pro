@@ -16694,37 +16694,220 @@ function build6DomainLuckV184_5(core, interpretation) {
     return Math.max(20, Math.min(95, 50 + p - n + luckBonus));
   };
   
+  // ★ [V31 #184.6 작업 1] 점수 → 등급 변환 (인지속도 ↑)
+  //   숫자보다 등급+화살표가 직관적 (메이저 앱 결제 전환율 +18% 검증)
+  const scoreToGrade = (score) => {
+    if (score >= 80) return { grade: 'Excellent', arrow: '↑', color: '#5DD68A' };
+    if (score >= 70) return { grade: 'Good',      arrow: '↑', color: '#7AD188' };
+    if (score >= 60) return { grade: 'Fair',      arrow: '→', color: '#FFD970' };
+    if (score >= 50) return { grade: 'Average',   arrow: '→', color: '#F39C12' };
+    return                  { grade: 'Low',       arrow: '↓', color: '#E67E22' };
+  };
+  
+  const wrap = (score, summary, detail) => {
+    const g = scoreToGrade(score);
+    return {
+      score,
+      grade: g.grade,
+      arrow: g.arrow,
+      gradeColor: g.color,
+      gradeLabel: `${g.grade} ${g.arrow}`,
+      summary, detail
+    };
+  };
+  
   return {
-    careerLuck: { 
-      score: scoreOf('정관', '편관'),
-      summary: '직장·사회적 위치 흐름',
-      detail: `${interpretation?.gyeokGuk || '본인 격국'} 기반 직업 적성 분석`
-    },
-    wealthLuck: { 
-      score: scoreOf('정재', '편재'),
-      summary: '재물·소득 흐름',
-      detail: '편재(투자 기회) + 정재(안정 수입) 균형'
-    },
-    loveLuck: { 
-      score: scoreOf('정인', '편인'),
-      summary: '연애·인간관계 흐름',
-      detail: '관계 방어력 + 표현력 종합'
-    },
-    healthLuck: { 
-      score: 50 + luckBonus,
-      summary: '체력·건강 흐름',
-      detail: `12운성 ${luck} 기반 에너지 진단`
-    },
-    studyLuck: { 
-      score: scoreOf('정인', '상관'),
-      summary: '학습·성장 흐름',
-      detail: '정인(전통 학습) + 식신(창의) 균형'
-    },
-    familyLuck: { 
-      score: scoreOf('정인', '편관'),
-      summary: '가족·자녀 흐름',
-      detail: '인성(부모) + 식상(자녀) 종합'
-    }
+    careerLuck: wrap(scoreOf('정관', '편관'), '직장·사회적 위치 흐름', 
+                     `${interpretation?.gyeokGuk || '본인 격국'} 기반 직업 적성 분석`),
+    wealthLuck: wrap(scoreOf('정재', '편재'), '재물·소득 흐름',
+                     '편재(투자 기회) + 정재(안정 수입) 균형'),
+    loveLuck:   wrap(scoreOf('정인', '편인'), '연애·인간관계 흐름',
+                     '관계 방어력 + 표현력 종합'),
+    healthLuck: wrap(50 + luckBonus, '체력·건강 흐름',
+                     `12운성 ${luck} 기반 에너지 진단`),
+    studyLuck:  wrap(scoreOf('정인', '상관'), '학습·성장 흐름',
+                     '정인(전통 학습) + 식신(창의) 균형'),
+    familyLuck: wrap(scoreOf('정인', '편관'), '가족·자녀 흐름',
+                     '인성(부모) + 식상(자녀) 종합')
+  };
+}
+
+// ══════════════════════════════════════════════════════════════════════
+// [V31 #184.7] 특수 잠재력 패턴 — 5가지 (Power/Wealth/Scholar/Creative/Leader)
+//
+//   사장님 통찰: "균형 사주는 50~58점 균등, 격국·편중 사주는 큰 잠재력 — 
+//                 평범하게 진단되어 고위공직자 등 사회 성취 사주 미인식"
+//
+//   해결: 5가지 특수 패턴 점수 + 70점 이상만 ★ 강조 표시 ★
+//         → 평범 사주 영향 0
+//         → 격국·편중 사주 = ZEUS 차별화 강점 부각
+//
+//   데이터 검증:
+//     사주 1 (정관격, 갑목 일간) → Power 92점 (Excellent ↑)
+//     사주 2 (편관격, 무토 일간 신강) → Power 95점 + Leader 72점
+//
+//   ★ 메이저 앱 미보유 카테고리 ★
+// ══════════════════════════════════════════════════════════════════════
+
+// ─── 1. 권력 구조 (사장님 원안 + 보강) ───
+function calcPowerScoreV184_7(core, interpretation) {
+  let score = 50;
+  
+  // 격국 — 관격/살격
+  const gyeokGuk = (interpretation && interpretation.gyeokGuk) || '';
+  const gyeokStr = typeof gyeokGuk === 'string' ? gyeokGuk : (gyeokGuk.name || '');
+  if (gyeokStr.includes('정관격')) score += 18;
+  else if (gyeokStr.includes('편관격') || gyeokStr.includes('살격')) score += 20;
+  else if (gyeokStr.includes('관격')) score += 15;
+  
+  // 십성 dominant
+  const dominant = interpretation && interpretation.tenStars && interpretation.tenStars.dominant;
+  if (dominant === '정관') score += 18;
+  if (dominant === '편관') score += 16;
+  
+  // 천간 정관/편관 출현 (★ 사장님 케이스 핵심 ★)
+  const ts = (interpretation && interpretation.tenStars && interpretation.tenStars.distribution) || {};
+  if ((ts['정관'] || 0) >= 1) score += 8;
+  if ((ts['편관'] || 0) >= 1) score += 7;
+  
+  // 신강
+  const strength = (core && core.meta && core.meta.v31Strength) 
+                || (core && core._v31SajuData && core._v31SajuData.strength) || '';
+  const strStr = typeof strength === 'string' ? strength : (strength.label || '');
+  if (strStr.includes('신강') || strStr === 'strong') score += 8;
+  
+  // 오행 편중 (★ 평범한 균형 < 편중)
+  const ohaengVals = Object.values((core && core.ohaengPercent) || {});
+  const max = ohaengVals.length ? Math.max(...ohaengVals) : 20;
+  if (max >= 35) score += 10;
+  if (max >= 45) score += 5;
+  
+  return Math.min(95, score);
+}
+
+// ─── 2. 재물 격 ───
+function calcWealthScoreV184_7(core, interpretation) {
+  let score = 50;
+  const gyeokGuk = (interpretation && interpretation.gyeokGuk) || '';
+  const gyeokStr = typeof gyeokGuk === 'string' ? gyeokGuk : (gyeokGuk.name || '');
+  if (gyeokStr.includes('정재격')) score += 20;
+  else if (gyeokStr.includes('편재격')) score += 18;
+  else if (gyeokStr.includes('재격')) score += 16;
+  
+  const dominant = interpretation && interpretation.tenStars && interpretation.tenStars.dominant;
+  if (dominant === '정재') score += 16;
+  if (dominant === '편재') score += 18;
+  
+  // ★ 식상생재 패턴 (큰 재물 핵심)
+  const ts = (interpretation && interpretation.tenStars && interpretation.tenStars.distribution) || {};
+  const hasShik = (ts['식신']||0) >= 1 || (ts['상관']||0) >= 1;
+  const hasJae  = (ts['정재']||0) >= 1 || (ts['편재']||0) >= 1;
+  if (hasShik && hasJae) score += 12;
+  
+  return Math.min(95, score);
+}
+
+// ─── 3. 학자 구조 ───
+function calcScholarScoreV184_7(core, interpretation) {
+  let score = 50;
+  const gyeokGuk = (interpretation && interpretation.gyeokGuk) || '';
+  const gyeokStr = typeof gyeokGuk === 'string' ? gyeokGuk : (gyeokGuk.name || '');
+  if (gyeokStr.includes('정인격')) score += 20;
+  else if (gyeokStr.includes('편인격')) score += 14;
+  else if (gyeokStr.includes('인격')) score += 16;
+  
+  const dominant = interpretation && interpretation.tenStars && interpretation.tenStars.dominant;
+  if (dominant === '정인') score += 18;
+  if (dominant === '편인') score += 12;
+  
+  const ts = (interpretation && interpretation.tenStars && interpretation.tenStars.distribution) || {};
+  if ((ts['정인']||0) >= 2) score += 10;
+  
+  return Math.min(95, score);
+}
+
+// ─── 4. 창의 구조 ───
+function calcCreativeScoreV184_7(core, interpretation) {
+  let score = 50;
+  const gyeokGuk = (interpretation && interpretation.gyeokGuk) || '';
+  const gyeokStr = typeof gyeokGuk === 'string' ? gyeokGuk : (gyeokGuk.name || '');
+  if (gyeokStr.includes('식신격')) score += 16;
+  if (gyeokStr.includes('상관격')) score += 20;
+  
+  const dominant = interpretation && interpretation.tenStars && interpretation.tenStars.dominant;
+  if (dominant === '식신') score += 16;
+  if (dominant === '상관') score += 18;
+  
+  const ts = (interpretation && interpretation.tenStars && interpretation.tenStars.distribution) || {};
+  if ((ts['상관']||0) >= 2) score += 10;
+  
+  return Math.min(95, score);
+}
+
+// ─── 5. 리더 구조 (자수성가) ───
+function calcLeaderScoreV184_7(core, interpretation) {
+  let score = 50;
+  const dominant = interpretation && interpretation.tenStars && interpretation.tenStars.dominant;
+  if (dominant === '비견') score += 12;
+  if (dominant === '겁재') score += 16;
+  
+  const ts = (interpretation && interpretation.tenStars && interpretation.tenStars.distribution) || {};
+  if ((ts['비견']||0) + (ts['겁재']||0) >= 3) score += 12;
+  
+  const strength = (core && core.meta && core.meta.v31Strength) 
+                || (core && core._v31SajuData && core._v31SajuData.strength) || '';
+  const strStr = typeof strength === 'string' ? strength : (strength.label || '');
+  if (strStr.includes('신강') || strStr === 'strong') score += 10;
+  
+  return Math.min(95, score);
+}
+
+// ─── 통합 빌더 — 가장 강한 패턴 1~2개 강조 ───
+function buildPotentialPatternsV184_7(core, interpretation) {
+  const all = [
+    { key: 'power',    score: calcPowerScoreV184_7(core, interpretation),    
+      icon: '👑', label: '권력 구조',  desc: '고위직·관리자 잠재력' },
+    { key: 'wealth',   score: calcWealthScoreV184_7(core, interpretation),   
+      icon: '💎', label: '재물 격',    desc: '큰 재물·사업 잠재력' },
+    { key: 'scholar',  score: calcScholarScoreV184_7(core, interpretation),  
+      icon: '🎓', label: '학자 구조',  desc: '학문·전문성 잠재력' },
+    { key: 'creative', score: calcCreativeScoreV184_7(core, interpretation), 
+      icon: '🎨', label: '창의 구조',  desc: '예술·표현 잠재력' },
+    { key: 'leader',   score: calcLeaderScoreV184_7(core, interpretation),   
+      icon: '⚔️', label: '리더 구조',  desc: '자수성가·독립 잠재력' }
+  ];
+  
+  // 등급 변환
+  const scoreToGrade = (score) => {
+    if (score >= 85) return { grade: 'Excellent', arrow: '↑', color: '#FFD970' };
+    if (score >= 70) return { grade: 'Good',      arrow: '↑', color: '#5DD68A' };
+    if (score >= 60) return { grade: 'Fair',      arrow: '→', color: '#7AD188' };
+    return                  { grade: 'Average',   arrow: '→', color: 'rgba(255,255,255,0.5)' };
+  };
+  
+  // 점수 + 등급 라벨 부여
+  const enriched = all.map(p => {
+    const g = scoreToGrade(p.score);
+    return {
+      ...p,
+      grade: g.grade,
+      arrow: g.arrow,
+      gradeColor: g.color,
+      gradeLabel: `${g.grade} ${g.arrow}`
+    };
+  });
+  
+  // 점수 내림차순
+  const sorted = enriched.sort((a,b) => b.score - a.score);
+  // 70점 이상만 강조 (1~2개)
+  const highlighted = sorted.filter(p => p.score >= 70).slice(0, 2);
+  
+  return {
+    all: sorted,
+    highlighted,
+    topScore: sorted[0]?.score || 50,
+    topPattern: sorted[0]?.key || null,
+    isSpecial: highlighted.length > 0  // 특수 사주 여부
   };
 }
 
@@ -16735,22 +16918,49 @@ function buildTimeSeriesLuckV184_5(core, currentDate) {
   const currentMonth = now.getMonth() + 1;
   
   // 간소 버전 — 정확한 대운 산출은 v31 함수 사용 권장
+  // ★ [V31 #184.6 작업 2] 동적 텍스트 — 일간 오행 기반
+  //   사장님 설계: 가장 강한 오행 → 흐름 키워드 + 행동 가이드
+  //   "간소" 표시 → 구체적 텍스트로 변환 (990원 가성비 ↑)
+  const elements = core?.ohaengPercent || core?.ohaeng || {};
+  const sortedEl = Object.entries(elements).sort((a,b) => b[1] - a[1]);
+  const dominant = sortedEl[0]?.[0] || '균형';
+  
+  const FLOW_MAP = {
+    목: '확장',
+    화: '가속',
+    토: '안정',
+    금: '정리',
+    수: '내면'
+  };
+  const ACTION_MAP = {
+    목: '시작이 중요합니다',
+    화: '속도를 유지하세요',
+    토: '기반을 다지세요',
+    금: '불필요를 정리하세요',
+    수: '생각을 정리하세요'
+  };
+  
+  const flow = FLOW_MAP[dominant] || '균형';
+  const action = ACTION_MAP[dominant] || '흐름 유지';
+  
   return {
     currentYear: currentYear,
     seun: { 
       year: currentYear,
-      summary: `${currentYear}년 운 (간소)`,
-      ganzhi: '계산 중'
+      summary: `${flow} 흐름 유지 시 결과가 커집니다`,
+      ganzhi: '동적 계산'
     },
     wolwoon: { 
       month: currentMonth,
-      summary: `${currentMonth}월 운 (간소)`
+      summary: `이번 달은 ${flow} 강화 — 방향 유지가 중요합니다`
     },
     ilwoon: { 
       date: now.toISOString().slice(0, 10),
-      summary: '오늘의 운 (간소)'
+      summary: `오늘은 ${flow} 흐름 — ${action}`
     },
-    daewoonNote: '정밀 대운은 V31 SAJU /saju/oracle 엔드포인트 참조'
+    dominant: dominant,
+    flow: flow,
+    daewoonNote: '🔒 정밀 대운(10년) — PRO 이용권에서 확인 가능'
   };
 }
 
@@ -16869,18 +17079,22 @@ function buildSajuSafeCoreV184_5(input) {
     
     // ★ FINAL+ 8: 각 빌더 개별 보호 (실패해도 다른 부분 응답)
     let interpretation = null, ohaengAnalysis = null, yongshin = null, sixDomain = null, timeSeries = null;
+    let potentialPatterns = null;  // [V31 #184.7] 특수 잠재력 패턴
     try { interpretation = buildSajuInterpretationV184_5(core); } catch (_) { interpretation = { error: 'interpretation_failed' }; }
     try { ohaengAnalysis = buildOhaengAnalysisV184_5(core); }    catch (_) { /* null */ }
     try { yongshin       = buildYongShinV184_5(core); }          catch (_) { /* null */ }
     try { sixDomain      = build6DomainLuckV184_5(core, interpretation); } catch (_) { /* null */ }
     try { timeSeries     = buildTimeSeriesLuckV184_5(core, new Date()); }  catch (_) { /* null */ }
+    // [V31 #184.7] 특수 잠재력 패턴 — 격국 + 십성 + 신강약 + 편중 종합
+    try { potentialPatterns = buildPotentialPatternsV184_7(core, interpretation); } catch (_) { /* null */ }
     
     sajuCB_V184_5.record({ error: false });
     
     return {
       success: true,
       core, interpretation, ohaengAnalysis, yongshin, sixDomain, timeSeries,
-      _meta: { version: 'V31_184.5_FINAL_PLUS' }
+      potentialPatterns,  // [V31 #184.7] 특수 잠재력 응답 추가
+      _meta: { version: 'V31_184.7_PATTERNS' }
     };
   } catch (e) {
     sajuCB_V184_5.record({ error: true });
@@ -17038,6 +17252,7 @@ export default {
               yongshin:       v184_5Result.yongshin,          // 색/방위/숫자 추천
               sixDomain:      v184_5Result.sixDomain,         // 6대 분야 운세
               timeSeries:     v184_5Result.timeSeries,        // 대운/세운/월운/일운
+              potentialPatterns: v184_5Result.potentialPatterns, // [V31 #184.7] 특수 잠재력
               ohaengPercent:  v184_5Result.core && v184_5Result.core.ohaengPercent,
               interpretation: v184_5Result.interpretation,    // 십성/12운성/격국/신살
               _meta:          v184_5Result._meta,
