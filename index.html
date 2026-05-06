@@ -15,7 +15,7 @@
     <meta name="version" content="V31_186_2026-05-06_DAEWOON_HOTFIX">
     <meta name="zeus-build-tag" content="V31_186_DAEWOON_KAKAO_UI">
     
-    <title>ZEUS · Tarot Oracle [V31 #184.5 FINAL+]</title>
+    <title>ZEUS · Tarot Oracle [V31 #186 DAEWOON]</title>
 
     <!-- ════════════════════════════════════════════════════════════ -->
     <!-- [V24.10] 파비콘 명시 선언 — 사장님 진단                       -->
@@ -294,7 +294,7 @@
             gap: 8px;
             opacity: 0;
             transform: translateY(8px);
-            animation: sajuMsgIn 0.4s ease-out forwards;
+            animation: sajuMsgIn 0.25s ease-out forwards;  /* ★ V186: 0.4s → 0.25s 가속 */
         }
         @keyframes sajuMsgIn {
             to { opacity: 1; transform: translateY(0); }
@@ -3303,6 +3303,18 @@ const PAYMENT_PLANS = {
         emoji:  '🧪',
         desc:   '1시간 무제한 점사 (체험)',
         hours:  1
+    },
+    // [V31 #185 Phase 2] 4,900원 사주 프리미엄 — 카카오 UI 잠긴 메시지 CTA
+    //   대상: 사주 정밀 분석 (대운 8단계 + 십성 + 6대 분야 + 5대 잠재력 + 오행 정밀)
+    //   포지셔닝: 990원과 9,900원 사이 — 사주 단일 정밀
+    saju_premium: {
+        id:     'saju_premium',
+        amount: 4900,
+        label:  '사주 정밀 분석',
+        emoji:  '☯',
+        desc:   '대운 8단계 + 십성 + 잠재력 정밀 (1회)',
+        hours:  24,        // 24시간 유효
+        sajuOnly: true     // 사주 전용 플랜 (다른 카테고리 영향 0)
     },
     day: {
         id:     'day',
@@ -13160,7 +13172,7 @@ function buildSajuChatSequenceV185(data) {
         type: 'normal',
         text: '안녕하세요! 사주 봐드릴게요 ☯️',
         time: timeStr,
-        delay: 200
+        delay: 50  // ★ V186 가속: 200 → 50
     });
     
     // ─── 메시지 2: 본질 (일주 물상) ───
@@ -13181,7 +13193,7 @@ function buildSajuChatSequenceV185(data) {
         title: physiog,
         text: text.subtitle || `${dayMaster}(${dayElement}) 일간 — ${dayElement === '목' ? '곧고 강한' : dayElement === '화' ? '추진력 있는' : dayElement === '토' ? '안정적인' : dayElement === '금' ? '결단력 있는' : '깊이 있는'} 본성을 가지셨네요`,
         time: timeStr,
-        delay: 400
+        delay: 100  // ★ V186 가속: 400 → 100
     });
     
     // ─── 메시지 3: 특수 잠재력 (V184.7 patterns 활용) ───
@@ -13193,7 +13205,7 @@ function buildSajuChatSequenceV185(data) {
             text: `${top.icon} ${top.label} <span class="saju-chat-score-mini gold">${top.score} (${top.grade} ${top.arrow})</span>`,
             sub: top.desc,
             time: timeStr,
-            delay: 600
+            delay: 150  // ★ V186 가속: 600 → 150
         });
     }
     
@@ -13204,7 +13216,7 @@ function buildSajuChatSequenceV185(data) {
         title: `⚠ ${yearNow} 갈림길`,
         text: '선택 하나가 향후 흐름의 강도를 결정합니다',
         time: timeStr,
-        delay: 800
+        delay: 200  // ★ V186 가속: 800 → 200
     });
     
     // ─── 메시지 5: 시계열 (V184.6 동적 텍스트) ───
@@ -13214,13 +13226,11 @@ function buildSajuChatSequenceV185(data) {
             type: 'normal',
             text: `📅 오늘: ${(ts.ilwoon && ts.ilwoon.summary) || '관찰이 유리한 흐름'}<br>🗓 ${(ts.wolwoon && ts.wolwoon.month) || (now.getMonth()+1)}월: ${(ts.wolwoon && ts.wolwoon.summary) || '방향 점검 시기'}<br>🎯 ${(ts.seun && ts.seun.year) || yearNow}: ${(ts.seun && ts.seun.summary) || '중요한 전환점'}`,
             time: timeStr,
-            delay: 1000
+            delay: 250  // ★ V186 가속: 1000 → 250
         });
     }
     
     // ─── 메시지 6 (★ V31 #186): 대운 — 인생 흐름 핵심 1개 ★ ───
-    //   FREE 사용자: 현재 대운 1개 + 다음 대운 미리보기 (호기심 유발)
-    //   PAID 사용자: 별도 추가 메시지로 8단계 모두
     const dw = v && v.daewoon ? v.daewoon : null;
     if (dw && dw.current) {
         const cur = dw.current;
@@ -13234,7 +13244,7 @@ function buildSajuChatSequenceV185(data) {
             title: '🌊 인생 흐름 (대운)',
             text: dwText,
             time: timeStr,
-            delay: 1100
+            delay: 300  // ★ V186 가속: 1100 → 300
         });
     }
     
@@ -13246,7 +13256,7 @@ function buildSajuChatSequenceV185(data) {
             title: `✨ 용신 ${ys.yongshin} — 행운 가이드`,
             text: `🎨 ${(ys.recommendations && ys.recommendations.colors || []).slice(0,2).join(', ')} · 🧭 ${(ys.recommendations && ys.recommendations.directions || []).slice(0,1).join(', ')}`,
             time: timeStr,
-            delay: 1200
+            delay: 350  // ★ V186 가속: 1200 → 350
         });
     }
     
@@ -13356,7 +13366,7 @@ function renderSajuKakaoChatV185(data) {
         const dominant = interp.tenStars && interp.tenStars.dominant;
         if (dominant) {
             paidContent += `
-            <div class="saju-chat-msg" style="animation-delay:200ms;">
+            <div class="saju-chat-msg" style="animation-delay:50ms;">
                 <div class="saju-chat-avatar">☯️</div>
                 <div class="saju-chat-bubble highlight">
                     <div class="saju-chat-bubble-title">⭐ 십성 정밀 — ${dominant}</div>
@@ -13394,7 +13404,7 @@ function renderSajuKakaoChatV185(data) {
         });
         if (sixHtml) {
             paidContent += `
-            <div class="saju-chat-msg" style="animation-delay:400ms;">
+            <div class="saju-chat-msg" style="animation-delay:100ms;">
                 <div class="saju-chat-avatar">☯️</div>
                 <div class="saju-chat-bubble">
                     <div class="saju-chat-bubble-title">📊 6대 분야 정밀</div>
@@ -13414,7 +13424,7 @@ function renderSajuKakaoChatV185(data) {
                 </div>`;
             });
             paidContent += `
-            <div class="saju-chat-msg" style="animation-delay:600ms;">
+            <div class="saju-chat-msg" style="animation-delay:150ms;">
                 <div class="saju-chat-avatar">☯️</div>
                 <div class="saju-chat-bubble special">
                     <div class="saju-chat-bubble-title">🌟 5대 잠재력 전체</div>
@@ -13427,7 +13437,7 @@ function renderSajuKakaoChatV185(data) {
         // PAID 메시지 4: 오행 정밀 + 약점 보강
         if (ohaeng && ohaeng.distribution) {
             paidContent += `
-            <div class="saju-chat-msg" style="animation-delay:800ms;">
+            <div class="saju-chat-msg" style="animation-delay:200ms;">
                 <div class="saju-chat-avatar">☯️</div>
                 <div class="saju-chat-bubble">
                     <div class="saju-chat-bubble-title">⚖️ 오행 정밀 분석</div>
@@ -13490,7 +13500,7 @@ function renderSajuKakaoChatV185(data) {
             }
             
             paidContent += `
-            <div class="saju-chat-msg" style="animation-delay:1000ms;">
+            <div class="saju-chat-msg" style="animation-delay:250ms;">
                 <div class="saju-chat-avatar">☯️</div>
                 <div class="saju-chat-bubble special">
                     <div class="saju-chat-bubble-title">🌊 대운 8단계 — 평생 인생 흐름</div>
@@ -13506,7 +13516,7 @@ function renderSajuKakaoChatV185(data) {
         
         // PAID 메시지 6: 정밀 분석 완료 안내 (★ 위치 변경 — 마지막)
         paidContent += `
-        <div class="saju-chat-msg" style="animation-delay:1200ms;">
+        <div class="saju-chat-msg" style="animation-delay:300ms;">
             <div class="saju-chat-avatar">☯️</div>
             <div class="saju-chat-bubble special">
                 <div class="saju-chat-bubble-title">✨ 정밀 분석 완료</div>
@@ -13660,106 +13670,91 @@ window.handleSajuQuickReply = function(type) {
     }
 };
 
-// ─── 4,900원 결제 CTA 핸들러 (V31 #185 Phase 2) ───
-//   기존 결제 시스템 (showPayModal + handleSajuProClick) 그대로 활용
-//   4,900원 1일권을 자동 선택 (사용자 클릭 단축)
-//   카카오 UI 모달 → 결제 모달 z-index 충돌 회피
+// ─── 4,900원 결제 CTA 핸들러 (V31 #185 Phase 2 + V186 핫픽스) ───
+//   ★ V186 핫픽스 ★ 
+//     - 기존: showPayModal() → 990/3900/9900 옵션 모달 (4900 미존재)
+//     - 신규: saju_premium (4,900원) 플랜 직접 호출 → 결제 방법 모달 즉시
+//     - 사주 데이터 보존 형식 수정 (sajuPendingResult mismatch 해결)
 window.handleSajuPremiumCTA = function() {
-    console.log('🔓 [V31 #185 Phase 2] 4,900원 PREMIUM CTA 클릭');
+    console.log('🔓 [V31 #186] 4,900원 사주 프리미엄 CTA 클릭');
     
-    // 1. 카카오 UI 모달 즉시 제거 (z-index 충돌 회피 — V31 #156 패턴 차용)
+    // 1. 카카오 UI 모달 즉시 제거 (z-index 충돌 회피)
     const sajuModal = document.getElementById('sajuResultModal');
     if (sajuModal) {
-        sajuModal.remove();
-        console.log('  ✅ 카카오 UI 모달 즉시 제거');
-    }
-    // saju-chat-modal 클래스 컨테이너도 제거 (혹시 다른 컨테이너로 렌더된 경우)
-    const chatModal = document.querySelector('.saju-chat-modal');
-    if (chatModal && chatModal.parentElement) {
-        // 부모 result-area 비우기 (전체 제거 X — 결제 후 복귀 가능하게)
-        chatModal.style.display = 'none';
+        sajuModal.style.display = 'none';  // 결제 후 복귀 위해 remove 대신 hide
     }
     
-    // 2. 결제 컨텍스트 설정 (기존 V31 #146 패턴)
+    // 2. 결제 컨텍스트 설정
     window._sajuPaymentContext = true;
     try { localStorage.setItem('sajuPaymentContext', 'true'); } catch(e) {}
     
-    // 3. 사주 점사 데이터 보존 (결제 후 복귀 시 사용)
+    // 3. ★ V186 핫픽스: 사주 데이터 보존 형식 수정 ★
+    //    기존 결함: window._v185Data 그대로 저장 → 결제 후 복귀 시 빈 객체
+    //    수정: 기존 sajuPendingResult 형식 그대로 보존 (생성 시점)
     try {
-        const data = window._v185Data || null;
-        if (data) {
+        // 기존 sajuPendingResult가 있으면 만료만 갱신 (V31 #146 패턴)
+        const existing = localStorage.getItem('sajuPendingResult');
+        if (existing) {
+            try {
+                const obj = JSON.parse(existing);
+                obj.savedAt = Date.now();
+                obj.source = obj.source || 'v186_premium';
+                const updated = JSON.stringify(obj);
+                localStorage.setItem('sajuPendingResult', updated);
+                try { sessionStorage.setItem('sajuPendingResult', updated); } catch(e) {}
+                console.log('  ✅ 기존 sajuPendingResult 만료 갱신 (데이터 보존)');
+            } catch (e) {
+                console.warn('  ⚠ sajuPendingResult 파싱 실패, 새로 생성');
+                // 파싱 실패 시 _v185Data로 폴백 (구조 보존)
+                if (window._v185Data) {
+                    const obj = {
+                        ...window._v185Data,  // 기존 데이터 spread
+                        savedAt: Date.now(),
+                        source: 'v186_premium_fallback'
+                    };
+                    localStorage.setItem('sajuPendingResult', JSON.stringify(obj));
+                }
+            }
+        } else if (window._v185Data) {
+            // sajuPendingResult가 아예 없으면 _v185Data로 생성
+            // 단, _v185Data는 결과 응답 전체이므로 spread로 풀어서 저장
             const obj = {
-                data: data,
+                ...window._v185Data,
                 savedAt: Date.now(),
-                source: 'v185_premium_cta'
+                source: 'v186_premium_new'
             };
-            const updated = JSON.stringify(obj);
-            localStorage.setItem('sajuPendingResult', updated);
-            try { sessionStorage.setItem('sajuPendingResult', updated); } catch(e) {}
-            console.log('  ✅ 사주 데이터 보존 (sajuPendingResult)');
+            localStorage.setItem('sajuPendingResult', JSON.stringify(obj));
+            console.log('  ✅ sajuPendingResult 신규 생성 (_v185Data 기반)');
         }
     } catch(e) {
         console.warn('  ⚠ 사주 데이터 보존 실패:', e.message);
     }
     
-    // 4. 4,900원 PREMIUM 플랜 마킹 (결제 모달이 자동 선택)
-    //    showPayModal은 PAYMENT_CONFIG의 plan을 보고 가격 결정
-    //    4,900원 = '1일권' 또는 '체험 PRO' 등 기존 플랜에 매핑
+    // 4. 4,900원 사주 프리미엄 플랜 마킹 (결제 후 활성화 시 사용)
     try {
-        localStorage.setItem('sajuTargetPlan', 'premium_4900');
+        localStorage.setItem('sajuTargetPlan', 'saju_premium');
         localStorage.setItem('sajuTargetAmount', '4900');
-        console.log('  ✅ PREMIUM 플랜 4,900원 마킹');
+        console.log('  ✅ saju_premium 플랜 마킹');
     } catch(e) {}
     
-    // 5. 기존 결제 모달 호출 (showPayModal)
-    if (typeof showPayModal === 'function') {
-        console.log('  ✅ showPayModal 호출 시작');
+    // 5. ★ V186 핫픽스: showPaymentMethodModal('saju_premium') 직접 호출 ★
+    //    showPayModal 우회 → 4,900원 결제 방법 모달 즉시 표시
+    if (typeof showPaymentMethodModal === 'function') {
+        console.log('  ✅ showPaymentMethodModal(saju_premium) 호출');
+        try {
+            showPaymentMethodModal('saju_premium');
+        } catch (err) {
+            console.error('  ❌ showPaymentMethodModal 실패:', err.message);
+            // 폴백: showPayModal (기존 시스템)
+            if (typeof showPayModal === 'function') {
+                showPayModal();
+            }
+        }
+    } else if (typeof showPayModal === 'function') {
+        console.warn('  ⚠ showPaymentMethodModal 없음 → showPayModal 폴백');
         showPayModal();
-        
-        // 6. 4,900원 옵션 자동 강조 (모달 표시 후 0.3초 대기)
-        setTimeout(function() {
-            try {
-                // 4,900원 옵션 찾기 (기존 결제 모달 안에서)
-                const options = document.querySelectorAll('.pay-modal-overlay [data-amount], .pay-modal-overlay button, .pay-modal-overlay .plan-option');
-                options.forEach(function(opt) {
-                    const amt = opt.getAttribute('data-amount') || opt.textContent || '';
-                    if (amt && amt.indexOf('4,900') !== -1 || amt.indexOf('4900') !== -1) {
-                        // 시각적 강조 (펄스 효과)
-                        opt.style.boxShadow = '0 0 24px rgba(212,175,55,0.6)';
-                        opt.style.border = '2px solid #FFD700';
-                        opt.style.animation = 'sajuPlanHighlight 1.5s ease-in-out infinite';
-                        console.log('  ✅ 4,900원 옵션 시각 강조 적용');
-                    }
-                });
-                
-                // 강조 애니메이션 CSS 동적 주입 (없으면)
-                if (!document.getElementById('sajuPlanHighlightStyle')) {
-                    const style = document.createElement('style');
-                    style.id = 'sajuPlanHighlightStyle';
-                    style.textContent = `
-                        @keyframes sajuPlanHighlight {
-                            0%, 100% { box-shadow: 0 0 24px rgba(212,175,55,0.6); }
-                            50%      { box-shadow: 0 0 36px rgba(255,215,80,0.95), 0 0 60px rgba(212,175,55,0.5); }
-                        }`;
-                    document.head.appendChild(style);
-                }
-            } catch(e) {
-                console.warn('  ⚠ 옵션 강조 실패:', e.message);
-            }
-        }, 300);
-        
-        // 7. 결제 모달 표시 검증 (1초 후)
-        setTimeout(function() {
-            const payOverlay = document.querySelector('.pay-modal-overlay');
-            if (payOverlay) {
-                console.log('  ✅ 결제 모달 표시 확인');
-            } else {
-                console.error('  ❌ 결제 모달 화면에 없음 — showPayModal 결함 의심');
-            }
-        }, 1000);
-        
     } else {
-        console.error('  ❌ showPayModal 함수 정의 안 됨');
+        console.error('  ❌ 결제 함수 정의 안 됨');
         alert('결제 시스템을 불러올 수 없습니다. 페이지를 새로고침해주세요.');
     }
 };
@@ -13790,31 +13785,15 @@ function renderSajuResult(data) {
     let useKakaoStyle = true;
     try {
         const pref = localStorage.getItem('sajuChatStyle');
-        if (pref === 'classic') {
-            useKakaoStyle = false;
-            console.log('[V31 #185] 사용자 명시 클래식 선택');
-        }
+        if (pref === 'classic') useKakaoStyle = false;
     } catch (_) {}
     
-    // ★ V186 핫픽스: 진단 로그 추가 ★
-    console.log('[V31 #185 V186-핫픽스] renderSajuResult 진입');
-    console.log('  data.domain:', data && data.domain);
-    console.log('  data.v184_5 존재:', !!(data && data.v184_5));
-    console.log('  data.v184_5.daewoon 존재:', !!(data && data.v184_5 && data.v184_5.daewoon));
-    console.log('  data._cached:', !!(data && data._cached));
-    console.log('  useKakaoStyle:', useKakaoStyle);
-    
     if (useKakaoStyle) {
-        console.log('🎨 [V31 #185 V186-핫픽스] 카카오 스타일 진입 시도');
         try {
             const ok = renderSajuKakaoChatV185(data);
-            if (ok) {
-                console.log('✅ [V31 #185 V186-핫픽스] 카카오 UI 렌더 성공');
-                return;
-            }
+            if (ok) return;
         } catch (err) {
-            console.warn('[V31 #185 V186-핫픽스] 카카오 UI 렌더 실패:', err.message);
-            console.warn('  스택:', err.stack);
+            console.warn('[V31 #185] 카카오 UI 폴백:', err.message);
             // 폴백: 기존 V31 #163 6블록 UI
         }
     }
