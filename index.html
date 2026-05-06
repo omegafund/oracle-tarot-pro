@@ -12,10 +12,10 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <meta name="version" content="V31_186_2026-05-06_DAEWOON_HOTFIX">
-    <meta name="zeus-build-tag" content="V31_186_DAEWOON_KAKAO_UI">
+    <meta name="version" content="V31_188_2026-05-06_PC_OPT">
+    <meta name="zeus-build-tag" content="V31_188_FREEMIUM_PC_OPTIMIZED">
     
-    <title>ZEUS · Tarot Oracle [V31 #186 DAEWOON]</title>
+    <title>ZEUS · Tarot Oracle [V31 #188 PC OPT]</title>
 
     <!-- ════════════════════════════════════════════════════════════ -->
     <!-- [V24.10] 파비콘 명시 선언 — 사장님 진단                       -->
@@ -503,6 +503,92 @@
             background: rgba(255,255,255,0.08);
             color: var(--saju-text);
         }
+        
+        /* ════════════════════════════════════════════════════════════════
+           [V31 #188] PC 최적화 — 사장님 3안 + 클로드 보완 4
+             ★ PC = 무거운 GPU 부담 발생 ★
+             ★ 모바일 = 그대로 (사용자 95% 모바일이라 영향 0) ★
+           ════════════════════════════════════════════════════════════════ */
+        
+        /* ★ 사장님 안 #3: 채팅 모달 max-width 420px 레이아웃 안정화 ★ */
+        @media (min-width: 768px) {
+            /* 모달 컨테이너 PC 중앙 정렬 + 폭 제한 (모바일 비율 유지) */
+            .saju-chat-modal {
+                max-width: 440px;
+                margin: 0 auto;
+                box-shadow: 0 0 40px rgba(0,0,0,0.4);  /* 외곽만 살짝, 내부는 모두 제거 */
+            }
+            
+            /* ★ 사장님 안 #2: PC에서 box-shadow + backdrop-filter 제거 ★ */
+            .saju-chat-header {
+                backdrop-filter: none !important;
+                -webkit-backdrop-filter: none !important;
+                /* 헤더 단단한 배경으로 대체 (블러 제거) */
+                background: rgba(20, 25, 22, 0.95) !important;
+            }
+            
+            /* 메시지 버블 — 모든 그림자 + 발광 제거 */
+            .saju-chat-bubble,
+            .saju-chat-bubble.highlight,
+            .saju-chat-bubble.special,
+            .saju-chat-bubble.warning {
+                box-shadow: none !important;
+            }
+            
+            /* 아바타 발광 제거 */
+            .saju-chat-avatar {
+                box-shadow: none !important;
+                /* GPU drop-shadow 무거움 */
+            }
+            
+            /* 잠긴 메시지 호버 효과 단순화 */
+            .saju-chat-locked:hover {
+                transform: none !important;
+                box-shadow: none !important;
+            }
+            
+            /* 결제 카드 — 보더로 강조 (그림자 제거) */
+            .saju-plan-card.saju-plan-basic,
+            .saju-plan-card.saju-plan-premium {
+                box-shadow: none !important;
+            }
+            .saju-plan-card.saju-plan-premium {
+                /* 골드 보더만 유지 (그림자 제거) — 강조감 보존 */
+                border-width: 2px !important;
+            }
+            
+            /* 빠른 답장 호버 단순화 */
+            .saju-chat-quick-btn:hover {
+                transform: none !important;
+                box-shadow: none !important;
+            }
+            
+            /* ★ 클로드 보완 1: PC 애니메이션 단축 ★ */
+            .saju-chat-msg {
+                animation-duration: 0.15s !important;  /* 0.25s → 0.15s */
+            }
+            
+            /* ★ 클로드 보완 3: PC drop-shadow 제거 (헤더 아이콘) ★ */
+            .saju-chat-header-icon,
+            .saju-chat-locked-icon {
+                filter: none !important;
+            }
+            
+            .saju-chat-header-title {
+                text-shadow: none !important;
+            }
+            
+            /* 헤더 dots pulse 단순화 */
+            .saju-chat-header-dots {
+                animation: none !important;
+                opacity: 0.7 !important;
+            }
+        }
+        
+        /* ★ 사장님 안 #1: PC 메시지 개수 제한 (V31 #190 빠른 답장 강화 대비) ★
+           현재는 메시지 11개 미만이라 즉시 효과 없음
+           V31 #190에서 빠른 답장 추가 시 효과 발생 */
+        /* 적용은 JS handleSajuQuickReply 로직에서 동적 처리 */
 
         /* [V21.0 → V31 #184.7] 부제 — Inter sans-serif (대비 효과)
            사장님 격상: 메인 타이틀 강화에 비례하여 부제도 보강 */
@@ -14002,6 +14088,25 @@ window.handleSajuQuickReply = function(type) {
         // 부드러운 스크롤
         const newMsg = insertEl.previousElementSibling;
         if (newMsg) newMsg.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        
+        // ★ [V31 #188] 사장님 안 #1: PC 메시지 개수 제한 ★
+        //   PC = 큰 화면, 많은 메시지 = 렌더링 부담
+        //   모바일 = 작은 화면, 자연 스크롤 (제한 큰 영향 X)
+        //   PC 20개 / 모바일 40개 한도 (사장님 권장값)
+        try {
+            const body = document.querySelector('.saju-chat-body');
+            if (body) {
+                const MAX_MSG = window.innerWidth > 768 ? 20 : 40;
+                const msgs = body.querySelectorAll('.saju-chat-msg');
+                if (msgs.length > MAX_MSG) {
+                    // 가장 오래된 메시지 제거 (인사 메시지 등)
+                    const removeCount = msgs.length - MAX_MSG;
+                    for (let i = 0; i < removeCount && i < msgs.length; i++) {
+                        msgs[i].remove();
+                    }
+                }
+            }
+        } catch (_) {}
     }
 };
 
