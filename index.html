@@ -12,8 +12,8 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <meta name="version" content="V31_181_2026-05-06">
-    <meta name="zeus-build-tag" content="V31_181_HOTFIX_15_DEFECTS">
+    <meta name="version" content="V31_186_2026-05-06_DAEWOON_HOTFIX">
+    <meta name="zeus-build-tag" content="V31_186_DAEWOON_KAKAO_UI">
     
     <title>ZEUS · Tarot Oracle [V31 #184.5 FINAL+]</title>
 
@@ -13277,13 +13277,51 @@ function renderSajuChatMessageV185(msg, index) {
 
 // ─── 메인 빌더 — 카카오 스타일 사주 결과창 ───
 function renderSajuKakaoChatV185(data) {
-    const result = document.getElementById('saju-result-area') 
-                || document.getElementById('result-area')
-                || document.getElementById('result');
+    // ★ V186 핫픽스: DOM 컨테이너 다중 폴백 + 진단 로그 ★
+    //   기존: saju-result-area / result-area / result만 시도
+    //   문제: 사주 결과는 'sajuResultModal' 모달 안에 그려지는 구조
+    //   해결: 1) 기존 모달 제거 → 2) 새 카카오 모달 생성 → 3) document.body에 추가
+    
+    let result = document.getElementById('saju-result-area') 
+              || document.getElementById('result-area')
+              || document.getElementById('result')
+              || document.getElementById('sajuResultModal');
+    
     if (!result) {
-        console.warn('[V31 #185] result element not found, fallback');
-        throw new Error('no_result_element');
+        // ★ V186 핫픽스: 컨테이너 없으면 직접 생성 (모달 형식) ★
+        console.log('[V31 #185 V186-핫픽스] 컨테이너 직접 생성 (sajuResultModal)');
+        
+        // 기존 모달 정리
+        const oldModal = document.getElementById('sajuResultModal');
+        if (oldModal) oldModal.remove();
+        
+        // 새 모달 컨테이너 생성
+        result = document.createElement('div');
+        result.id = 'sajuResultModal';
+        result.style.cssText = `
+            position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+            background: var(--saju-dark, #0F1411);
+            z-index: 99999; overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+        `;
+        document.body.appendChild(result);
+        document.body.style.overflow = 'hidden';
+    } else {
+        // 기존 컨테이너가 있으면 비우고 카카오 UI 표시 준비
+        // (단, sajuResultModal인 경우 모달 스타일 보존)
+        if (result.id === 'sajuResultModal') {
+            result.style.background = 'var(--saju-dark, #0F1411)';
+            result.style.zIndex = '99999';
+            result.style.position = 'fixed';
+            result.style.top = '0';
+            result.style.left = '0';
+            result.style.right = '0';
+            result.style.bottom = '0';
+            result.style.overflowY = 'auto';
+        }
     }
+    
+    console.log('[V31 #185 V186-핫픽스] 카카오 UI 진입 OK · container:', result.id);
     
     const messages = buildSajuChatSequenceV185(data);
     const v = data && data.v184_5 ? data.v184_5 : null;
@@ -13742,34 +13780,46 @@ window.handleSajuDetailToggle = function() {
  */
 function renderSajuResult(data) {
     // ════════════════════════════════════════════════════════════════════════
-    // [V31 #185] 카카오 스타일 vs 기존 스타일 분기
+    // [V31 #185 + V186 핫픽스] 카카오 스타일 vs 기존 스타일 분기
     //   사장님 명시: "다른 카테고리 (타로/주식/부동산/운세) 영향 0"
-    //   분기 기준: localStorage.sajuKakaoStyle 또는 기본값
-    //   안전: data.domain === 'saju' 일 때만 카카오 UI 적용
-    //   기존 V31 #163 6블록 코드는 그대로 보존 (백워드 호환)
+    //   ★ V186 핫픽스 ★
+    //     - data.domain 의존성 제거 (sajuPendingResult에 domain 없을 수 있음)
+    //     - renderSajuResult 자체가 사주 전용 함수 → 무조건 사주 처리 OK
+    //     - localStorage.sajuChatStyle === 'classic' 명시 시만 클래식
     // ════════════════════════════════════════════════════════════════════════
-    let useKakaoStyle = true;  // 기본 활성화 (V31 #185 신규 UI)
+    let useKakaoStyle = true;
     try {
         const pref = localStorage.getItem('sajuChatStyle');
-        if (pref === 'classic') useKakaoStyle = false;  // 사용자가 명시 클래식 선택 시
-    } catch (_) { /* 폴백: 카카오 스타일 사용 */ }
+        if (pref === 'classic') {
+            useKakaoStyle = false;
+            console.log('[V31 #185] 사용자 명시 클래식 선택');
+        }
+    } catch (_) {}
     
-    // 사주 도메인이 아닌 경우 (안전망 — 보통 호출 안 됨)
-    if (data && data.domain && data.domain !== 'saju') {
-        useKakaoStyle = false;
-    }
+    // ★ V186 핫픽스: 진단 로그 추가 ★
+    console.log('[V31 #185 V186-핫픽스] renderSajuResult 진입');
+    console.log('  data.domain:', data && data.domain);
+    console.log('  data.v184_5 존재:', !!(data && data.v184_5));
+    console.log('  data.v184_5.daewoon 존재:', !!(data && data.v184_5 && data.v184_5.daewoon));
+    console.log('  data._cached:', !!(data && data._cached));
+    console.log('  useKakaoStyle:', useKakaoStyle);
     
     if (useKakaoStyle) {
-        console.log('🎨 [V31 #185] 카카오 스타일 사주 채팅 UI');
+        console.log('🎨 [V31 #185 V186-핫픽스] 카카오 스타일 진입 시도');
         try {
-            return renderSajuKakaoChatV185(data);
+            const ok = renderSajuKakaoChatV185(data);
+            if (ok) {
+                console.log('✅ [V31 #185 V186-핫픽스] 카카오 UI 렌더 성공');
+                return;
+            }
         } catch (err) {
-            console.warn('[V31 #185] 카카오 UI 렌더 실패, 클래식 폴백:', err);
+            console.warn('[V31 #185 V186-핫픽스] 카카오 UI 렌더 실패:', err.message);
+            console.warn('  스택:', err.stack);
             // 폴백: 기존 V31 #163 6블록 UI
         }
     }
     
-    console.log('🎨 [V31 #163] renderSajuResult 시작 (6블록 통일)');
+    console.log('🎨 [V31 #163] renderSajuResult 클래식 6블록 진입');
     
     // ════════════════════════════════════════════════════════════════════════
     // [V31 #163 사장님 6블록 디자인 — index.html 단독 적용]
@@ -14916,6 +14966,69 @@ function renderSajuResult(data) {
                         <div style="margin-top:10px; padding:8px; background:rgba(255,255,255,0.04); border-radius:4px; color:rgba(255,255,255,0.55); font-size:0.7rem; text-align:center;">
                             ${ts.daewoonNote}
                         </div>` : ''}
+                    </div>`;
+                }
+                
+                // ─── [V31 #186] 대운 8단계 — 클래식 UI 폴백용 ★ 핫픽스 ★ ───
+                //   카카오 UI 미작동 시에도 대운 보이도록
+                //   메이저 앱 #1 결제 이유 (대운) 직접 표시
+                const dwClassic = v.daewoon;
+                if (dwClassic && dwClassic.details && dwClassic.details.length > 0) {
+                    const scoreColor = (s) => s >= 75 ? '#5DD68A' 
+                                            : s >= 60 ? '#7AD188' 
+                                            : s >= 45 ? '#FFD970' 
+                                            : '#F39C12';
+                    
+                    let dwBars = '';
+                    dwClassic.details.forEach((d) => {
+                        const color = scoreColor(d.score);
+                        const barWidth = Math.max(15, Math.min(100, d.score));
+                        const isCur = d.isCurrent;
+                        dwBars += `
+                        <div style="margin-bottom:8px; padding: ${isCur ? '8px 10px' : '0'}; background: ${isCur ? 'rgba(212,175,55,0.18)' : 'transparent'}; border-radius: ${isCur ? '6px' : '0'}; ${isCur ? 'border:1px solid #FFD970;' : ''}">
+                            <div style="display:flex; justify-content:space-between; font-size:0.74rem; margin-bottom:3px;">
+                                <span style="color: ${isCur ? '#FFD970' : 'rgba(255,255,255,0.85)'}; font-weight:${isCur?'900':'700'};">
+                                    ${isCur ? '★ ' : ''}${d.startAge}~${d.endAge}세 · <strong>${d.ganzhi}</strong>
+                                </span>
+                                <span style="color: ${color}; font-weight:900;">${d.score}</span>
+                            </div>
+                            <div style="background:rgba(255,255,255,0.06); height:6px; border-radius:3px; overflow:hidden; margin-bottom:4px;">
+                                <div style="width:${barWidth}%; height:100%; background:${color}; border-radius:3px;"></div>
+                            </div>
+                            <div style="font-size:0.68rem; color:rgba(255,255,255,0.6); line-height:1.4;">
+                                ${d.tenStar} · ${d.luckPhase} · ${d.keyword.tone}
+                            </div>
+                        </div>`;
+                    });
+                    
+                    // 인생 전환 시점
+                    let transHtml = '';
+                    if (dwClassic.transitions && dwClassic.transitions.length > 0) {
+                        transHtml = '<div style="margin-top:12px; padding-top:10px; border-top:1px dashed rgba(255,217,112,0.3);">';
+                        transHtml += '<div style="color:#FFD970; font-size:0.74rem; font-weight:900; margin-bottom:6px;">🎯 인생 전환 시점</div>';
+                        dwClassic.transitions.forEach(tr => {
+                            const arrow = tr.type === '상승 전환' ? '↑' : tr.type === '하강 전환' ? '↓' : '→';
+                            const arrowColor = tr.type === '상승 전환' ? '#5DD68A' : tr.type === '하강 전환' ? '#F39C12' : '#FFD970';
+                            transHtml += `
+                            <div style="font-size:0.74rem; color:rgba(255,255,255,0.78); margin-bottom:4px;">
+                                <span style="color:${arrowColor}; font-weight:900;">${arrow} ${tr.age}세</span> · ${tr.ganzhi} · ${tr.from} → ${tr.to}
+                            </div>`;
+                        });
+                        transHtml += '</div>';
+                    }
+                    
+                    html += `
+                    <div style="margin:18px 0; padding:16px; background:linear-gradient(135deg, rgba(212,175,55,0.12), rgba(122,209,136,0.08)); border:1.5px solid rgba(212,175,55,0.45); border-radius:10px; box-shadow:0 4px 14px rgba(212,175,55,0.15);">
+                        <div style="display:flex; align-items:center; gap:6px; margin-bottom:6px;">
+                            <span style="font-size:0.7rem; color:#FFD970; font-weight:900; letter-spacing:0.05em;">[V31 #186]</span>
+                            <span style="color:#FFE08A; font-size:0.95rem; font-weight:900;">🌊 대운 8단계 — 평생 인생 흐름</span>
+                            <span style="margin-left:auto; padding:2px 7px; background:rgba(212,175,55,0.25); border-radius:8px; font-size:0.6rem; color:#FFD970; font-weight:900;">NEW</span>
+                        </div>
+                        <div style="font-size:0.72rem; color:rgba(255,255,255,0.65); margin-bottom:12px; padding-bottom:8px; border-bottom:1px solid rgba(255,255,255,0.08);">
+                            ${dwClassic.direction === 'forward' ? '순행' : '역행'} · ${dwClassic.summary}
+                        </div>
+                        ${dwBars}
+                        ${transHtml}
                     </div>`;
                 }
                 

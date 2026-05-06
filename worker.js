@@ -17428,7 +17428,11 @@ async function buildSajuSafeV184_5(input, ctx) {
   catch (e) { return { success: false, error: e.message }; }
   
   // ★ FINAL+ 1: timezone 캐시 키 포함
-  const cacheKeyUrl = `https://saju-cache/${norm.year}-${norm.month}-${norm.day}-${norm.hour}` +
+  // ★ V31 #186 핫픽스: 버전 토큰 포함 → V184.5 캐시 자동 무효화
+  //   캐시 키에 V186 포함 시 이전 버전 캐시 자동 무시
+  //   (사장님 화면 "(cached)" 가 V184.5 응답이라 daewoon 필드 없는 문제 해결)
+  const SAJU_CACHE_VERSION = 'v186';  // 버전업 시 토큰만 변경하면 자동 캐시 무효화
+  const cacheKeyUrl = `https://saju-cache-${SAJU_CACHE_VERSION}/${norm.year}-${norm.month}-${norm.day}-${norm.hour}` +
                       `-${norm.gender}-${norm.isLunar?'L':'S'}-${norm.isLeapMonth?'leap':'norm'}` +
                       `-${encodeURIComponent(norm.timezone)}`;
   const cacheKey = new Request(cacheKeyUrl, { method: 'GET' });
@@ -17439,7 +17443,13 @@ async function buildSajuSafeV184_5(input, ctx) {
       const cached = await caches.default.match(cacheKey);
       if (cached) {
         const data = await cached.json();
-        return { ...data, _cached: true };
+        // ★ V186 핫픽스: 캐시 데이터에 daewoon 필드 검증 (없으면 무효 처리)
+        if (data && data.success && !data.daewoon) {
+          // 구버전 캐시 — 무효 처리하고 새로 계산
+          console.log('[V186] 구버전 캐시 감지 (daewoon 없음) → 새로 계산');
+        } else {
+          return { ...data, _cached: true };
+        }
       }
     }
   } catch (_) { /* miss → 진행 */ }
