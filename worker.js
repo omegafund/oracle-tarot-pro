@@ -16986,9 +16986,25 @@ export default {
         //   기존 응답 100% 보존 + 신규 필드 추가
         //   사용자에게 노출되는 [1/6]~[6/6] 단계 그대로 + 추가 단계 데이터 제공
         //   인덱스가 v184_5 필드를 점진적으로 활용 (backward compat 100%)
+        //
+        //   ★ 입력 형식 어댑터 (사장님 결제 점사 결함 수정) ★
+        //   워커 표준 입력 (calendar:'solar'|'lunar' / gender:'male'|'female')
+        //   → V184.5 입력 (isLunar:boolean / gender:'M'|'F')
         let v184_5Data = null;
         try {
-          const v184_5Result = await buildSajuSafeV184_5(input, {
+          const v184_5Input = {
+            year:        input && input.year,
+            month:       input && input.month,
+            day:         input && input.day,
+            hour:        (input && input.hour !== undefined && input.hour !== null && input.hour !== '') 
+                         ? input.hour : 12,  // 미입력 시 12시 기본값
+            gender:      (input && input.gender === 'female') ? 'F' : 'M',
+            isLunar:     (input && input.calendar === 'lunar'),
+            isLeapMonth: !!(input && input.isLeapMonth),
+            timezone:    (input && input.timezone) || 'Asia/Seoul'
+          };
+          
+          const v184_5Result = await buildSajuSafeV184_5(v184_5Input, {
             waitUntil: (env && env.waitUntil) ? env.waitUntil.bind(env) : null
           });
           if (v184_5Result && v184_5Result.success) {
@@ -17002,8 +17018,14 @@ export default {
               _meta:          v184_5Result._meta,
               _cached:        v184_5Result._cached
             };
+          } else {
+            // 디버그: 실패 이유 응답에 포함 (사장님 진단용)
+            v184_5Data = { _error: (v184_5Result && v184_5Result.error) || 'unknown', _input: v184_5Input };
           }
-        } catch (_) { /* 실패 시 기존 응답 그대로 (안전) */ }
+        } catch (e) { 
+          // 실패 시 기존 응답 그대로 (안전) + 디버그 정보
+          v184_5Data = { _error: String(e.message || e), _phase: 'try-catch' };
+        }
 
         return new Response(JSON.stringify({
           ...result,
