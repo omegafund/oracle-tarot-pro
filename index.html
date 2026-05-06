@@ -13761,6 +13761,22 @@ function renderSajuResult(data) {
             ═══════════════════════════════════════════════════════ -->
             ${data.v184_5 ? (() => {
                 const v = data.v184_5;
+                
+                // ★ 디버그 패널 — _error 있으면 실패 이유 표시 (사장님 진단용)
+                if (v._error) {
+                    return `
+                    <div style="margin:18px 0; padding:14px; background:rgba(231,76,60,0.10); border:1px solid rgba(231,76,60,0.4); border-radius:8px;">
+                        <div style="color:#FF8870; font-size:0.78rem; font-weight:800; margin-bottom:6px;">
+                            🛡 V31 #184.5 진단 정보
+                        </div>
+                        <div style="color:rgba(255,255,255,0.85); font-size:0.74rem; line-height:1.6;">
+                            <div>상태: 신규 패널 미생성 (안전 폴백 작동)</div>
+                            <div style="margin-top:4px; color:#FFB870;">사유: ${v._error}</div>
+                            ${v._phase ? `<div style="color:rgba(255,255,255,0.5); font-size:0.7rem;">단계: ${v._phase}</div>` : ''}
+                        </div>
+                    </div>`;
+                }
+                
                 const six = v.sixDomain;
                 const ohaeng = v.ohaengAnalysis;
                 const yongshin = v.yongshin;
