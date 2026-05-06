@@ -12,10 +12,10 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <meta name="version" content="V31_191_1_2026-05-06_KAKAO_UI_FIX">
-    <meta name="zeus-build-tag" content="V31_191_1_FREEMIUM_KAKAO_UI_FORCE">
+    <meta name="version" content="V31_192_2026-05-06_PAID_RESET_BASIC_CLASSIC">
+    <meta name="zeus-build-tag" content="V31_192_PAID_RESET_990_CLASSIC_4900_PREMIUM">
     
-    <title>ZEUS · Tarot Oracle [V31 #191.1 KAKAO FIX]</title>
+    <title>ZEUS · Tarot Oracle [V31 #192]</title>
 
     <!-- ════════════════════════════════════════════════════════════ -->
     <!-- [V24.10] 파비콘 명시 선언 — 사장님 진단                       -->
@@ -2836,7 +2836,7 @@
             pointer-events: none;
             backdrop-filter: blur(2px);
             -webkit-backdrop-filter: blur(2px);
-        ">🛡 V31 #191.1</div>
+        ">🛡 V31 #192</div>
 
         <!-- [V21.0] ✦ 아치형 별빛 — 하이브리드 (큰 스파클 + 작은 점 + 골드 글로우) -->
         <div class="arch-title-wrapper">
@@ -3025,14 +3025,15 @@
             </div>
         </div>
         <!-- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ -->
-        <!-- ☯ 보조 — 사주 체험 (990원 / 가로 풀와이드)   -->
+        <!-- ☯ 보조 — 사주 (990원 체험 + 4,900원 PRO 두 카드)   -->
+        <!--   사장님 V31 #192 가이드라인: 홈뷰에서 분기 시작     -->
         <!-- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ -->
         <div class="saju-aux-card" onclick="selectCategory('saju', this)">
-            <!-- [V31 #138] NEW + 990원 체험 (PRO 라벨 제거 — 사장님 명령) -->
+            <!-- [V31 #192] 사장님 가이드: 990원 + 4,900원 PRO 두 옵션 노출 -->
             <div class="saju-aux-badges">
                 <span class="badge-new-dot"></span>
                 <span class="badge-new-text">NEW</span>
-                <span class="badge-pro-gold">990원</span>
+                <span class="badge-pro-gold">990 / 4,900</span>
             </div>
 
             <!-- ━━━ 좌측: 태극 청홍 SVG (사장님 명령 — 정확한 표준 + 밝은 청홍) ━━━ -->
@@ -3093,13 +3094,17 @@
 
             <!-- ━━━ 우측: 정보 영역 (타이틀 + 부제 + 특징 + CTA) ━━━ -->
             <div class="saju-aux-info">
-                <div class="saju-aux-title">☯ 사주 체험</div>
+                <div class="saju-aux-title">☯ 사주 신탁</div>
                 <div class="saju-aux-divider"></div>
-                <div class="saju-aux-sub">생년월일시 기반 4주 명식 + 오행 분석</div>
-                <div class="saju-aux-features">990원 · 가벼운 체험</div>
+                <div class="saju-aux-sub">생년월일시 기반 명식 + 대운 분석</div>
+                <div class="saju-aux-features" style="display:flex; gap:6px; flex-wrap:wrap; align-items:center; font-size:0.74rem;">
+                    <span style="color:#7AD188; font-weight:700;">💫 990원 체험</span>
+                    <span style="color:rgba(255,255,255,0.4);">|</span>
+                    <span style="color:#FFD700; font-weight:700;">⭐ 4,900원 PRO</span>
+                </div>
 
                 <button class="saju-aux-cta" type="button" onclick="event.stopPropagation(); selectCategory('saju', this.closest('.saju-aux-card'));">
-                    체험 시작 →
+                    사주 시작 →
                 </button>
             </div>
         </div>
@@ -13049,18 +13054,28 @@ async function runSajuOracle() {
         console.log('✅ [V31 #188 핫픽스] 잔류 모달 정리 완료');
     } catch (e) {}
     
-    // ★ [V31 #191.1 CRITICAL 핫픽스] sajuChatStyle 자동 정리 ★
-    //   사장님 발견 결함:
-    //     이전 테스트 시 "▼ 정밀 데이터 보기" 클릭으로 sajuChatStyle='classic' 영구 저장
-    //     → 그 후 사주 점사 시 카카오 UI 진입 차단 → 클래식 UI 표시
-    //     → 990/4900 결제 게이트 작동 안 함
-    //   해결: 새 사주 점사 시작 시 sajuChatStyle 자동 정리 → 카카오 UI 강제 진입
-    //   영향: 사용자가 원래 클래식 UI 보고 싶었어도 ★ 매번 카카오 UI ★ (Freemium 효과 보장)
+    // ★ [V31 #192 CRITICAL 핫픽스] 사주 점사 시작 시 모든 PAID 잔류 데이터 정리 ★
+    //   사장님 발견 결함 (CRITICAL):
+    //     "FREE 사용자인데 ★ PREMIUM 모든 메시지 표시 ★"
+    //     원인: 이전 테스트 시 sajuPaidPlan 영구 저장
+    //     영향: ★ 모든 사용자가 무료 PREMIUM ★ → 매출 0원
+    //   해결: runSajuOracle 진입 시 모든 잔류 paid 데이터 정리
+    //         → FREE 사용자가 정확히 FREE로 인식
+    //         → 990/4900 결제 게이트 정상 표시
+    //   영향: 정상 결제한 사용자도 새 사주 점사 시 ★ 다시 결제 게이트 ★ 만남
+    //         → 단, 결제 후 24시간 안에 정상 표시 (sajuPendingResult로 복원)
+    //         → 새 사주 = 새 결제 (사장님 의도)
     try {
-        const oldStyle = localStorage.getItem('sajuChatStyle');
-        if (oldStyle) {
-            localStorage.removeItem('sajuChatStyle');
-            console.log('✅ [V31 #191.1] sajuChatStyle 잔류 정리 (' + oldStyle + ' → 카카오 UI)');
+        const cleared = [];
+        ['sajuPaidPlan', 'sajuChatStyle', 'sajuTargetPlan', 'sajuTargetAmount', 
+         'paid', 'paid_token', 'oracleSessionToken'].forEach(key => {
+            if (localStorage.getItem(key)) {
+                cleared.push(key);
+                localStorage.removeItem(key);
+            }
+        });
+        if (cleared.length > 0) {
+            console.log('✅ [V31 #192] 잔류 PAID 데이터 정리:', cleared.join(', '));
         }
     } catch (e) {}
 
@@ -14279,32 +14294,43 @@ window.handleSajuDetailToggle = function() {
 };
 
 /**
- * 사주 결과 화면 렌더링 (V31 #134 안전 보강 + V31 #185 카카오 UI 분기)
+ * 사주 결과 화면 렌더링 (V31 #134 안전 보강 + V31 #185 카카오 UI 분기 + V31 #192 사장님 분기)
  */
 function renderSajuResult(data) {
     // ════════════════════════════════════════════════════════════════════════
-    // [V31 #185 + V186 + V191.1] 카카오 스타일 vs 기존 스타일 분기
-    //   사장님 명시: "다른 카테고리 (타로/주식/부동산/운세) 영향 0"
-    //   ★ V191.1 핫픽스 ★
-    //     - sajuChatStyle은 sessionStorage에서만 검사 (localStorage 무시)
-    //     - localStorage 잔류 자동 무시 (V31 #191.1 자동 정리와 양립)
-    //     - 사용자가 같은 세션 안에서만 클래식 UI 유지 가능
-    //     - 새 세션 또는 새 사주 점사 시 → 카카오 UI 자동 복귀
+    // [V31 #192 ★ 사장님 가이드라인 정확 적용 ★]
+    //   - FREE 사용자:    카카오 UI (3 메시지 + 결제 게이트)
+    //   - 990원 (saju_basic): ★ V184.7 클래식 6블록 ★ (사장님 의도)
+    //   - 4,900원 (saju_premium): ★ 카카오 UI PREMIUM 모든 메시지 ★
+    //   - 기타 PAID:      카카오 UI PREMIUM (V31 #186 그대로)
     // ════════════════════════════════════════════════════════════════════════
-    let useKakaoStyle = true;
+    
+    // 990원 BASIC 결제 사용자 — 클래식 UI 강제 진입
+    let paidPlan = '';
     try {
-        // sessionStorage만 확인 (localStorage 잔류 영향 0)
-        const pref = sessionStorage.getItem('sajuChatStyle');
-        if (pref === 'classic') useKakaoStyle = false;
+        paidPlan = localStorage.getItem('sajuPaidPlan') || '';
     } catch (_) {}
     
-    if (useKakaoStyle) {
+    if (paidPlan === 'saju_basic') {
+        console.log('🎨 [V31 #192] 990원 BASIC → V184.7 클래식 6블록 진입');
+        // 카카오 UI 우회 → 직접 클래식 UI로 진입
+        // (아래 클래식 UI 코드로 바로 이동)
+    } else {
+        // FREE 또는 PREMIUM 등 → 카카오 UI 분기
+        let useKakaoStyle = true;
         try {
-            const ok = renderSajuKakaoChatV185(data);
-            if (ok) return;
-        } catch (err) {
-            console.warn('[V31 #185] 카카오 UI 폴백:', err.message);
-            // 폴백: 기존 V31 #163 6블록 UI
+            const pref = sessionStorage.getItem('sajuChatStyle');
+            if (pref === 'classic') useKakaoStyle = false;
+        } catch (_) {}
+        
+        if (useKakaoStyle) {
+            try {
+                const ok = renderSajuKakaoChatV185(data);
+                if (ok) return;
+            } catch (err) {
+                console.warn('[V31 #185] 카카오 UI 폴백:', err.message);
+                // 폴백: 기존 V31 #163 6블록 UI
+            }
         }
     }
     
