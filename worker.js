@@ -16972,7 +16972,7 @@ export default {
         const body = await request.json();
         const { input, category = 'fortune', timePhase = 'medium', tier = 'free' } = body;
 
-        // Chunk 5 통합: 풀 플로우 + 감사 + 자동 fallback
+        // Chunk 5 통합: 풀 플로우 + 감사 + 자동 fallback (★ 기존 100% 보존 ★)
         const result = v31RunSajuOracleWithAudit(input, category, timePhase, tier);
 
         if (!result.ok) {
@@ -16982,11 +16982,35 @@ export default {
           });
         }
 
+        // ★ [V31 #184.5 FINAL+] Tier 1 카테고리 + 안전망 통합 ★
+        //   기존 응답 100% 보존 + 신규 필드 추가
+        //   사용자에게 노출되는 [1/6]~[6/6] 단계 그대로 + 추가 단계 데이터 제공
+        //   인덱스가 v184_5 필드를 점진적으로 활용 (backward compat 100%)
+        let v184_5Data = null;
+        try {
+          const v184_5Result = await buildSajuSafeV184_5(input, {
+            waitUntil: (env && env.waitUntil) ? env.waitUntil.bind(env) : null
+          });
+          if (v184_5Result && v184_5Result.success) {
+            v184_5Data = {
+              ohaengAnalysis: v184_5Result.ohaengAnalysis,    // 5원소 차트 데이터
+              yongshin:       v184_5Result.yongshin,          // 색/방위/숫자 추천
+              sixDomain:      v184_5Result.sixDomain,         // 6대 분야 운세
+              timeSeries:     v184_5Result.timeSeries,        // 대운/세운/월운/일운
+              ohaengPercent:  v184_5Result.core && v184_5Result.core.ohaengPercent,
+              interpretation: v184_5Result.interpretation,    // 십성/12운성/격국/신살
+              _meta:          v184_5Result._meta,
+              _cached:        v184_5Result._cached
+            };
+          }
+        } catch (_) { /* 실패 시 기존 응답 그대로 (안전) */ }
+
         return new Response(JSON.stringify({
           ...result,
           domain: 'saju',           // ★ [V31 #135 사장님 4번] 클라이언트가 사주 응답인지 명시 인식
           category: category,       // ★ 입력받은 카테고리 그대로 반환
-          message: "[V31 Chunk 5] TEXT + INTENT ENFORCER + PRO + AUDIT (V28.B Layer 2) 통합 완료"
+          v184_5: v184_5Data,       // ★ [V31 #184.5 FINAL+] Tier 1 데이터 추가 필드
+          message: "[V31 Chunk 5 + V31 #184.5 FINAL+] TEXT + INTENT + PRO + AUDIT + Tier 1 통합 완료"
         }), {
           headers: { ...corsHeaders(), "Content-Type": "application/json" }
         });

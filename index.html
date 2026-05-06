@@ -13751,6 +13751,148 @@ function renderSajuResult(data) {
             </div>
             ` : ''}
 
+            <!-- ═══════════════════════════════════════════════════════
+                 [V31 #184.5 FINAL+] Tier 1 카테고리 — 라이브 연동
+                   조건부 렌더: data.v184_5 데이터 있을 때만
+                   • 6대 분야 운세 (재물/직업/연애/건강/학업/가족)
+                   • 시계열 (오늘/이번달/올해)
+                   • 오행 차트 시각화 (5원소 막대 그래프)
+                   기존 [1/6]~[6/6] 단계 그대로 유지 + 추가 노출
+            ═══════════════════════════════════════════════════════ -->
+            ${data.v184_5 ? (() => {
+                const v = data.v184_5;
+                const six = v.sixDomain;
+                const ohaeng = v.ohaengAnalysis;
+                const yongshin = v.yongshin;
+                const ts = v.timeSeries;
+                
+                // 색상 헬퍼 — 점수에 따라
+                const scoreColor = (s) => s >= 75 ? '#5DD68A' : s >= 55 ? '#FFD970' : s >= 35 ? '#F39C12' : '#E67E22';
+                
+                let html = '';
+                
+                // ─── [7/8] 6대 분야 운세 ───
+                if (six) {
+                    const domains = [
+                        { key: 'careerLuck',  icon: '💼', label: '직업운', color: '#5DADE2' },
+                        { key: 'wealthLuck',  icon: '💰', label: '재물운', color: '#FFD970' },
+                        { key: 'loveLuck',    icon: '💕', label: '연애운', color: '#FF8FA3' },
+                        { key: 'healthLuck',  icon: '🌿', label: '건강운', color: '#7AD188' },
+                        { key: 'studyLuck',   icon: '📚', label: '학업운', color: '#BB8FCE' },
+                        { key: 'familyLuck',  icon: '👨‍👩‍👧', label: '가족운', color: '#C39BD3' }
+                    ];
+                    
+                    html += `
+                    <div style="margin:18px 0; padding:16px; background:linear-gradient(135deg, rgba(46,204,113,0.10), rgba(46,204,113,0.03)); border:1px solid rgba(46,204,113,0.35); border-radius:10px;">
+                        <div style="display:flex; align-items:center; gap:6px; margin-bottom:14px;">
+                            <span style="font-size:0.7rem; color:#5DD68A; font-weight:900; letter-spacing:0.05em;">[7/8]</span>
+                            <span style="color:#5DD68A; font-size:0.9rem; font-weight:900;">🎯 6대 분야 운세</span>
+                        </div>
+                        ${domains.map(d => {
+                            const dom = six[d.key];
+                            if (!dom) return '';
+                            const score = dom.score || 50;
+                            const barWidth = Math.max(10, Math.min(100, score));
+                            return `
+                            <div style="margin-bottom:10px;">
+                                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:5px;">
+                                    <span style="color:rgba(255,255,255,0.92); font-size:0.82rem; font-weight:700;">
+                                        ${d.icon} ${d.label}
+                                    </span>
+                                    <span style="color:${scoreColor(score)}; font-size:0.82rem; font-weight:900;">${score}점</span>
+                                </div>
+                                <div style="background:rgba(255,255,255,0.08); height:8px; border-radius:4px; overflow:hidden;">
+                                    <div style="width:${barWidth}%; height:100%; background:linear-gradient(90deg, ${d.color}, ${scoreColor(score)}); border-radius:4px; transition:width 0.6s ease;"></div>
+                                </div>
+                                <div style="margin-top:4px; color:rgba(255,255,255,0.65); font-size:0.72rem; line-height:1.5;">
+                                    ${dom.summary || ''}
+                                </div>
+                            </div>`;
+                        }).join('')}
+                    </div>`;
+                }
+                
+                // ─── [8/8] 시계열 (오늘/이번달/올해) ───
+                if (ts) {
+                    html += `
+                    <div style="margin:18px 0; padding:16px; background:linear-gradient(135deg, rgba(93,173,226,0.10), rgba(93,173,226,0.03)); border:1px solid rgba(93,173,226,0.35); border-radius:10px;">
+                        <div style="display:flex; align-items:center; gap:6px; margin-bottom:14px;">
+                            <span style="font-size:0.7rem; color:#7FCDFF; font-weight:900; letter-spacing:0.05em;">[8/8]</span>
+                            <span style="color:#7FCDFF; font-size:0.9rem; font-weight:900;">⏱ 시계열 흐름</span>
+                        </div>
+                        <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px;">
+                            ${ts.ilwoon ? `
+                            <div style="padding:10px; background:rgba(0,0,0,0.25); border-radius:6px; text-align:center;">
+                                <div style="color:#7FCDFF; font-size:0.7rem; font-weight:800; margin-bottom:4px;">📅 오늘</div>
+                                <div style="color:rgba(255,255,255,0.85); font-size:0.74rem; line-height:1.4;">${ts.ilwoon.summary || '계산 중'}</div>
+                            </div>` : ''}
+                            ${ts.wolwoon ? `
+                            <div style="padding:10px; background:rgba(0,0,0,0.25); border-radius:6px; text-align:center;">
+                                <div style="color:#7FCDFF; font-size:0.7rem; font-weight:800; margin-bottom:4px;">🗓 ${ts.wolwoon.month || ''}월</div>
+                                <div style="color:rgba(255,255,255,0.85); font-size:0.74rem; line-height:1.4;">${ts.wolwoon.summary || '계산 중'}</div>
+                            </div>` : ''}
+                            ${ts.seun ? `
+                            <div style="padding:10px; background:rgba(0,0,0,0.25); border-radius:6px; text-align:center;">
+                                <div style="color:#7FCDFF; font-size:0.7rem; font-weight:800; margin-bottom:4px;">🎯 ${ts.seun.year || ''}</div>
+                                <div style="color:rgba(255,255,255,0.85); font-size:0.74rem; line-height:1.4;">${ts.seun.summary || '계산 중'}</div>
+                            </div>` : ''}
+                        </div>
+                        ${ts.daewoonNote ? `
+                        <div style="margin-top:10px; padding:8px; background:rgba(255,255,255,0.04); border-radius:4px; color:rgba(255,255,255,0.55); font-size:0.7rem; text-align:center;">
+                            ${ts.daewoonNote}
+                        </div>` : ''}
+                    </div>`;
+                }
+                
+                // ─── 용신 추천 강화 (있으면) ───
+                if (yongshin && yongshin.recommendations) {
+                    const rec = yongshin.recommendations;
+                    html += `
+                    <div style="margin:18px 0; padding:16px; background:linear-gradient(135deg, rgba(155,89,182,0.10), rgba(155,89,182,0.03)); border:1px solid rgba(155,89,182,0.35); border-radius:10px;">
+                        <div style="display:flex; align-items:center; gap:6px; margin-bottom:12px;">
+                            <span style="color:#C39BD3; font-size:0.9rem; font-weight:900;">✨ 용신 ${yongshin.yongshin || ''} — 행운 가이드</span>
+                        </div>
+                        <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
+                            ${rec.colors ? `
+                            <div style="padding:8px 10px; background:rgba(0,0,0,0.25); border-radius:6px;">
+                                <div style="color:#C39BD3; font-size:0.7rem; font-weight:800;">🎨 행운 색상</div>
+                                <div style="color:rgba(255,255,255,0.88); font-size:0.78rem; margin-top:3px;">${rec.colors.join(', ')}</div>
+                            </div>` : ''}
+                            ${rec.directions ? `
+                            <div style="padding:8px 10px; background:rgba(0,0,0,0.25); border-radius:6px;">
+                                <div style="color:#C39BD3; font-size:0.7rem; font-weight:800;">🧭 행운 방위</div>
+                                <div style="color:rgba(255,255,255,0.88); font-size:0.78rem; margin-top:3px;">${rec.directions.join(', ')}</div>
+                            </div>` : ''}
+                            ${rec.numbers ? `
+                            <div style="padding:8px 10px; background:rgba(0,0,0,0.25); border-radius:6px;">
+                                <div style="color:#C39BD3; font-size:0.7rem; font-weight:800;">🔢 행운 숫자</div>
+                                <div style="color:rgba(255,255,255,0.88); font-size:0.78rem; margin-top:3px;">${rec.numbers.join(', ')}</div>
+                            </div>` : ''}
+                            ${rec.foods ? `
+                            <div style="padding:8px 10px; background:rgba(0,0,0,0.25); border-radius:6px;">
+                                <div style="color:#C39BD3; font-size:0.7rem; font-weight:800;">🍴 도움 음식</div>
+                                <div style="color:rgba(255,255,255,0.88); font-size:0.78rem; margin-top:3px;">${rec.foods.join(', ')}</div>
+                            </div>` : ''}
+                        </div>
+                        ${rec.hobbies ? `
+                        <div style="margin-top:8px; padding:8px 10px; background:rgba(0,0,0,0.25); border-radius:6px;">
+                            <div style="color:#C39BD3; font-size:0.7rem; font-weight:800;">🎯 도움 활동</div>
+                            <div style="color:rgba(255,255,255,0.88); font-size:0.78rem; margin-top:3px;">${rec.hobbies.join(' · ')}</div>
+                        </div>` : ''}
+                    </div>`;
+                }
+                
+                // ─── V31 #184.5 안전망 표시 (개발자/디버그용) ───
+                if (v._meta && v._meta.version) {
+                    html += `
+                    <div style="margin-top:8px; padding:6px 10px; background:rgba(46,204,113,0.06); border-radius:4px; font-size:0.62rem; color:rgba(46,204,113,0.55); text-align:center;">
+                        🛡 ${v._meta.version} ${v._cached ? '(cached)' : ''}
+                    </div>`;
+                }
+                
+                return html;
+            })() : ''}
+
             <!-- 면책 -->
             <div style="margin-top:14px; padding:8px 10px; background:rgba(255,255,255,0.04); border-radius:4px; font-size:0.66rem; color:rgba(255,255,255,0.45); line-height:1.5;">
                 ※ 본 서비스는 사주명리를 활용한 엔터테인먼트 콘텐츠입니다.
