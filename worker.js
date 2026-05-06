@@ -17413,7 +17413,7 @@ function buildSajuSafeCoreV184_5(input) {
       core, interpretation, ohaengAnalysis, yongshin, sixDomain, timeSeries,
       potentialPatterns,  // [V31 #184.7] 특수 잠재력 응답 추가
       daewoon,            // [V31 #186] 대운 8단계 응답 추가
-      _meta: { version: 'V31_188_PC_OPT' }
+      _meta: { version: 'V31_190_FREEMIUM_PAYMENT_FIX' }
     };
   } catch (e) {
     sajuCB_V184_5.record({ error: true });
@@ -17932,7 +17932,10 @@ export default {
           month:    30 * 24 * 60 * 60 * 1000,        // 30일 (단일)
           monthly:  30 * 24 * 60 * 60 * 1000,        // 30일 (월 구독)
           yearly:   365 * 24 * 60 * 60 * 1000,       // 365일 (연 구독)
-          lifetime: 100 * 365 * 24 * 60 * 60 * 1000  // 100년 (평생)
+          lifetime: 100 * 365 * 24 * 60 * 60 * 1000, // 100년 (평생)
+          // [V31 #190] 사장님 V31 #187 Freemium 신규 플랜 (24시간)
+          saju_basic:   24 * 60 * 60 * 1000,         // 990원 24시간
+          saju_premium: 24 * 60 * 60 * 1000          // 4,900원 24시간
         };
         const durationMs = PLAN_DURATION_MS[plan] || (60 * 60 * 1000)
         const expiry = Date.now() + durationMs;
@@ -17981,8 +17984,12 @@ export default {
         // 2. 요청 파싱
         const body = await request.json();
         const { plan, userId } = body;
-        if (!["trial", "day", "month"].includes(plan)) {
-          return new Response(JSON.stringify({ success: false, error: "invalid plan (trial|day|month)" }), {
+        // [V31 #190 핫픽스] saju_basic (990원) + saju_premium (4,900원) + 6 plan 추가
+        //   사장님 V31 #187 Freemium 결제 게이트 후속 작업
+        //   기존 화이트리스트: trial/day/month 만 → 사장님 신규 플랜 거부 결함
+        //   해결: 8 plan 모두 허용
+        if (!["trial", "day", "month", "monthly", "yearly", "lifetime", "saju_basic", "saju_premium"].includes(plan)) {
+          return new Response(JSON.stringify({ success: false, error: "invalid plan" }), {
             status: 400,
             headers: { ...corsHeaders(), "Content-Type": "application/json" }
           });
@@ -17995,7 +18002,10 @@ export default {
           month:    30 * 24 * 60 * 60 * 1000,        // 30일 (단일)
           monthly:  30 * 24 * 60 * 60 * 1000,        // 30일 (월 구독)
           yearly:   365 * 24 * 60 * 60 * 1000,       // 365일 (연 구독)
-          lifetime: 100 * 365 * 24 * 60 * 60 * 1000  // 100년 (평생)
+          lifetime: 100 * 365 * 24 * 60 * 60 * 1000, // 100년 (평생)
+          // [V31 #190] 사장님 V31 #187 Freemium 신규 플랜 (24시간)
+          saju_basic:   24 * 60 * 60 * 1000,         // 990원 24시간
+          saju_premium: 24 * 60 * 60 * 1000          // 4,900원 24시간
         };
         const durationMs = PLAN_DURATION_MS[plan] || (60 * 60 * 1000)
         const expiry = Date.now() + durationMs;
@@ -18063,7 +18073,11 @@ export default {
         //   기존: ["trial", "day", "month"] → monthly/yearly/lifetime 자동 거부
         //   영향: 9,900 + 79,000 + 199,000 = 287,900원 매출 100% 차단
         //   해결: 6 plan 모두 허용 (기존 trial/day/month + monthly/yearly/lifetime)
-        if (!["trial", "day", "month", "monthly", "yearly", "lifetime"].includes(plan)) {
+        // [V31 #190 핫픽스] saju_basic (990원) + saju_premium (4,900원) 추가
+        //   사장님 V31 #187 Freemium 2단 결제 게이트 후속 작업
+        //   원인: 사장님 신규 플랜이 화이트리스트 미등록 → "유효하지 않은 플랜" 에러
+        //   해결: 8 plan 모두 허용
+        if (!["trial", "day", "month", "monthly", "yearly", "lifetime", "saju_basic", "saju_premium"].includes(plan)) {
           return new Response(JSON.stringify({
             ok: false, error: "유효하지 않은 플랜입니다"
           }), { status: 400, headers: { ...corsHeaders(), "Content-Type": "application/json" } });
@@ -18134,7 +18148,10 @@ export default {
           month:    30 * 24 * 60 * 60 * 1000,        // 30일 (단일)
           monthly:  30 * 24 * 60 * 60 * 1000,        // 30일 (월 구독)
           yearly:   365 * 24 * 60 * 60 * 1000,       // 365일 (연 구독)
-          lifetime: 100 * 365 * 24 * 60 * 60 * 1000  // 100년 (평생)
+          lifetime: 100 * 365 * 24 * 60 * 60 * 1000, // 100년 (평생)
+          // [V31 #190] 사장님 V31 #187 Freemium 신규 플랜 (24시간)
+          saju_basic:   24 * 60 * 60 * 1000,         // 990원 24시간
+          saju_premium: 24 * 60 * 60 * 1000          // 4,900원 24시간
         };
         const durationMs = PLAN_DURATION_MS[plan] || (60 * 60 * 1000)
         const expiry = Date.now() + durationMs;
