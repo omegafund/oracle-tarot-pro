@@ -15,7 +15,7 @@
     <meta name="version" content="V31_200.6_2026-05-07_INPUT_SUMMARY">
     <meta name="zeus-build-tag" content="V31_200.6_GATE_INPUT_PREVIEW">
     
-    <title>ZEUS · Tarot Oracle [V31 #200.7.4]</title>
+    <title>ZEUS · Tarot Oracle [V31 #200.7.5]</title>
 
     <!-- ════════════════════════════════════════════════════════════ -->
     <!-- [V24.10] 파비콘 명시 선언 — 사장님 진단                       -->
@@ -2908,7 +2908,7 @@
             pointer-events: none;
             backdrop-filter: blur(2px);
             -webkit-backdrop-filter: blur(2px);
-        ">🛡 V31 #200.7.4</div>
+        ">🛡 V31 #200.7.5</div>
 
         <!-- [V21.0] ✦ 아치형 별빛 — 하이브리드 (큰 스파클 + 작은 점 + 골드 글로우) -->
         <div class="arch-title-wrapper">
@@ -17010,8 +17010,9 @@ function renderSajuResult(data) {
                 // ─── [V31 #186] 대운 8단계 — 클래식 UI 폴백용 ★ 핫픽스 ★ ───
                 //   카카오 UI 미작동 시에도 대운 보이도록
                 //   메이저 앱 #1 결제 이유 (대운) 직접 표시
+                //   ★ [V200.7.5 사장님 명령] saju_basic 차단 (4,900원 PREMIUM 콘텐츠) ★
                 const dwClassic = v.daewoon;
-                if (dwClassic && dwClassic.details && dwClassic.details.length > 0) {
+                if (!_isSajuBasic && dwClassic && dwClassic.details && dwClassic.details.length > 0) {
                     const scoreColor = (s) => s >= 75 ? '#5DD68A' 
                                             : s >= 60 ? '#7AD188' 
                                             : s >= 45 ? '#FFD970' 
@@ -17071,7 +17072,8 @@ function renderSajuResult(data) {
                 }
                 
                 // ─── 용신 추천 강화 (있으면) ───
-                if (yongshin && yongshin.recommendations) {
+                //   ★ [V200.7.5 사장님 명령] saju_basic 차단 (4,900원 PREMIUM 콘텐츠) ★
+                if (!_isSajuBasic && yongshin && yongshin.recommendations) {
                     const rec = yongshin.recommendations;
                     html += `
                     <div style="margin:18px 0; padding:16px; background:linear-gradient(135deg, rgba(155,89,182,0.10), rgba(155,89,182,0.03)); border:1px solid rgba(155,89,182,0.35); border-radius:10px;">
@@ -17112,6 +17114,8 @@ function renderSajuResult(data) {
                 //   ZEUS 차별화 정체성 강화: "행동 → 결과" 메시지
                 //   사주 권위 보존: "고정 운" 표현 회피, "흐름 강화" 표현
                 //   메이저 앱 검증 효과: 리텐션 +20%, PRO 전환 +12%
+                //   ★ [V200.7.5 사장님 명령] saju_basic 차단 (4,900원 PREMIUM 콘텐츠) ★
+                if (!_isSajuBasic) {
                 html += `
                 <div style="margin:20px 0 14px; padding:18px 16px; 
                             background:linear-gradient(135deg, rgba(212,175,55,0.10), rgba(212,175,55,0.03)); 
@@ -17157,13 +17161,16 @@ function renderSajuResult(data) {
                         </div>
                     </div>
                 </div>`;
+                } // ★ V200.7.5: if (!_isSajuBasic) 닫기 — 재방문 CTA saju_basic 차단 ★
                 
-                // ─── V31 #184.5 안전망 표시 (개발자/디버그용) ───
+                // ─── ★ V200.7.5 사장님 명령 ★ 워커 버전 표시 ★ 제거 ★ ───
+                //   사장님 발견 결함:
+                //     사용자 화면에 "🛡 V31_197_TIER_BRANCH_FIX" 표시
+                //     = 개발용 디버그 정보가 사용자에게 노출됨
+                //   해결: 표시 코드 ★ 차단 ★ (워커 응답 _meta.version은 console.log만 사용)
                 if (v._meta && v._meta.version) {
-                    html += `
-                    <div style="margin-top:8px; padding:6px 10px; background:rgba(46,204,113,0.06); border-radius:4px; font-size:0.62rem; color:rgba(46,204,113,0.55); text-align:center;">
-                        🛡 ${v._meta.version} ${v._cached ? '(cached)' : ''}
-                    </div>`;
+                    console.log('[V200.7.5] 워커 응답 버전:', v._meta.version, v._cached ? '(cached)' : '');
+                    // ❌ 사용자 화면에 노출 안 함 (사장님 명령)
                 }
                 
                 return html;
