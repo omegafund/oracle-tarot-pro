@@ -12,10 +12,10 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <meta name="version" content="V31_199.7_2026-05-07_ISPAID_3CHECK">
-    <meta name="zeus-build-tag" content="V31_199.7_OHAENG_BAR_RESTORE">
+    <meta name="version" content="V31_199.9_2026-05-07_CACHE_RESET">
+    <meta name="zeus-build-tag" content="V31_199.9_V185_DATA_CLEAR">
     
-    <title>ZEUS · Tarot Oracle [V31 #199.7]</title>
+    <title>ZEUS · Tarot Oracle [V31 #199.9]</title>
 
     <!-- ════════════════════════════════════════════════════════════ -->
     <!-- [V24.10] 파비콘 명시 선언 — 사장님 진단                       -->
@@ -2890,7 +2890,7 @@
             pointer-events: none;
             backdrop-filter: blur(2px);
             -webkit-backdrop-filter: blur(2px);
-        ">🛡 V31 #199.7</div>
+        ">🛡 V31 #199.9</div>
 
         <!-- [V21.0] ✦ 아치형 별빛 — 하이브리드 (큰 스파클 + 작은 점 + 골드 글로우) -->
         <div class="arch-title-wrapper">
@@ -13439,6 +13439,27 @@ async function runSajuOracle() {
         console.log('✅ [V31 #188 핫픽스] 잔류 모달 정리 완료');
     } catch (e) {}
     
+    // ★★★ [V199.9 사장님 명령] 캐시 결함 안전망 ★★★
+    //   사장님 V199.8 검증: "휴대폰에서 모든 사주 결과가 처음 본 결과만 뿌려진다"
+    //   원인 추정: window._v185Data / window._sajuPendingResultBackup 메모리 잔재
+    //              또는 sajuPendingResult가 새 데이터로 덮어쓰기 전 다른 코드가 fetch
+    //   해결: ★ 새 사주 입력 시작 시점에 ★ 모든 캐시 변수 ★ 강제 초기화 ★
+    try {
+        window._v185Data = null;
+        window._sajuPendingResultBackup = null;
+        window._sajuPaymentContext = false;
+        sessionStorage.removeItem('sajuPendingResultBackup');
+        // sajuPendingResult는 곧 새 값으로 덮어쓰기되므로 여기선 제거 X
+        console.log('✅ [V199.9] 캐시 변수 강제 초기화 완료 (새 사주 입력)');
+    } catch (e) {
+        console.warn('[V199.9] 캐시 초기화 실패:', e.message);
+    }
+    
+    // ★★★ [V199.9 디버그] 새 사주 입력 데이터 콘솔 출력 ★★★
+    console.log('━━━ [V199.9 새 사주 입력 데이터] ━━━');
+    console.log('  - 입력값:', { year, month, day, hour, calendar, gender, category });
+    console.log('  - 시간:', new Date().toLocaleTimeString());
+    
     // ════════════════════════════════════════════════════════════════════════
     // ★ [V31 #195 CRITICAL 핫픽스] PAID 잔류 정리 + 도돌이 결제 차단 ★
     //   사장님 발견 결함 (V194 추가):
@@ -13524,27 +13545,23 @@ async function runSajuOracle() {
                 input: { year, month, day, hour: hour ? parseInt(hour) : null, calendar, gender },
                 category,
                 timePhase: 'medium',
-                // ★ [V199.6 사장님 명령] tier 'free' 하드코딩 제거 ★
-                //   사장님 발견 결정적 결함:
-                //     "결제 안 했는데 PREMIUM 콘텐츠 풀 노출 / 990원 결제해도 4900 콘텐츠"
-                //   원인: 항상 tier:'free' 강제 → worker가 분기 못 함 → PREMIUM 응답
-                //   해결: localStorage.sajuPaidPlan + sajuPaidExpiresAt 기반 동적 결정
-                //   분기:
-                //     - 결제 안 함 또는 만료      → free (3블록)
-                //     - 사주 베이직 (990원)        → saju_basic (6블록)
-                //     - 사주 프리미엄 (4,900원)     → saju_premium (모든 블록)
+                // ★ [V199.8 사장님 명령] tier 화이트리스트 강제 ★
+                //   사장님 V199.7 검증: "PC+휴대폰 둘 다 4900 점사 직행"
+                //   원인: V199.6은 'monthly' 'yearly' 'lifetime' 'day' 'trial'을
+                //         saju_basic/saju_premium으로 매핑 → 잔재 plan이 PREMIUM 응답 받음
+                //   해결: ★ saju_basic / saju_premium 만 인정, 다른 값은 무조건 free ★
                 tier: (function() {
                     const expiresAt = parseInt(localStorage.getItem('sajuPaidExpiresAt') || '0', 10);
                     const stillPaid = expiresAt > Date.now();
-                    if (!stillPaid) return 'free';
+                    const hasToken = !!localStorage.getItem('paid_token');
                     const paidPlan = localStorage.getItem('sajuPaidPlan') || '';
+                    
+                    // ★ 4중 검증 모두 충족해야 PAID 인정 ★
+                    if (!stillPaid)  return 'free';     // 만료
+                    if (!hasToken)   return 'free';     // 토큰 없음
                     if (paidPlan === 'saju_basic')   return 'saju_basic';
                     if (paidPlan === 'saju_premium') return 'saju_premium';
-                    // 기존 plan 호환 (구버전 잔재)
-                    if (paidPlan === 'monthly' || paidPlan === 'yearly' 
-                        || paidPlan === 'lifetime' || paidPlan === 'month') return 'saju_premium';
-                    if (paidPlan === 'day' || paidPlan === 'trial') return 'saju_basic';
-                    return 'free';  // ★ 안전 폴백 — 결제 미확인 시 항상 free ★
+                    return 'free';  // ★ 다른 값은 무조건 free (화이트리스트) ★
                 })()
             })
         });
@@ -13851,33 +13868,34 @@ function buildSajuChatSequenceV185(data) {
     const yearNow = now.getFullYear();
     
     // ★ V31 #187: 결제 단계 확인 ★
-    // ★ [V199.6 사장님 명령] 만료 검증 추가 — 잔재 토큰 차단 ★
-    //   사장님 발견 결함:
-    //     "결제 안 했는데 사주 입력하면 PREMIUM 콘텐츠 풀 노출"
-    //   원인: paidPlan만 체크, sajuPaidExpiresAt 만료 검증 없음
-    //         → 이전 테스트의 paidPlan='saju_premium' 잔재로 PREMIUM 인식
-    //   해결: expiresAt > Date.now() 일 때만 PAID 인정
+    // ★ [V199.8 사장님 명령] 화이트리스트 강제 — 잔재 plan 값 차단 ★
+    //   사장님 V199.7 검증: "PC+휴대폰 둘 다 4900 점사 직행"
+    //   원인: 'monthly' 'yearly' 'lifetime' 'day' 등 잔재 plan 값 → PREMIUM 인식
+    //   해결: ★ saju_basic / saju_premium 만 인정 ★ — 그 외 모두 free
     let paidPlan = '';
     try {
         paidPlan = localStorage.getItem('sajuPaidPlan') || '';
     } catch (_) {}
     
-    // ★ 만료 검증 ★
+    // ★ 만료 검증 + 토큰 검증 + 화이트리스트 ★
     const _expiresAt = parseInt(localStorage.getItem('sajuPaidExpiresAt') || '0', 10);
     const _stillPaid = _expiresAt > Date.now();
+    const _hasToken = !!localStorage.getItem('paid_token');
+    const _ALLOWED = ['saju_basic', 'saju_premium'];
+    const _isAllowed = _ALLOWED.indexOf(paidPlan) >= 0;
     
-    // 만료됐으면 paidPlan 무시 (잔재 차단)
-    const _effectivePlan = _stillPaid ? paidPlan : '';
+    const _effectivePlan = (_stillPaid && _hasToken && _isAllowed) ? paidPlan : '';
     
-    const isFree    = !_effectivePlan || _effectivePlan === 'free';
+    const isFree    = !_effectivePlan;  // 화이트리스트 통과 못하면 무조건 free
     const isBasic   = _effectivePlan === 'saju_basic';
-    const isPremium = _effectivePlan === 'saju_premium' || _effectivePlan === 'monthly' || _effectivePlan === 'yearly' || _effectivePlan === 'day' || _effectivePlan === 'lifetime';
+    const isPremium = _effectivePlan === 'saju_premium';
     
-    console.log('[V199.6 카카오 UI tier 분기]', {
-        paidPlan: paidPlan || '(없음)',
-        expiresAt: _expiresAt > 0 ? new Date(_expiresAt).toLocaleTimeString() : '(없음)',
-        stillPaid: _stillPaid,
-        결정: isFree ? 'FREE' : (isBasic ? 'BASIC' : 'PREMIUM')
+    console.log('[V199.8 카카오 UI 빌더 분기]', {
+        paidPlan_원본: paidPlan || '(없음)',
+        화이트리스트_통과: _isAllowed,
+        만료시각_유효: _stillPaid,
+        토큰_있음: _hasToken,
+        결정: isFree ? 'FREE' : (isBasic ? 'BASIC (990원)' : 'PREMIUM (4,900원)')
     });
     
     // ─── [공통] 메시지 1: 인사 ───
@@ -14125,11 +14143,14 @@ function renderSajuKakaoChatV185(data) {
     //   PREMIUM (saju_premium 4900원): 카카오 UI 정밀 메시지 5종 + 대운 8단계
     //   기타 PAID (day/monthly/yearly/lifetime): PREMIUM 동일 처리
     //
-    // ★★★ [V199.7 결정적 결함 수정] isPaid 만료 검증 + HMAC 토큰 검증 ★★★
-    //   사장님 V199.6 검증 결과: "결제 안 했는데 PREMIUM 콘텐츠 풀 노출" 결함 지속
-    //   원인: paidPlan만 체크 → 잔재 토큰 그대로 PREMIUM 인식
-    //   해결: 3중 검증 — paidPlan + sajuPaidExpiresAt + paid_token (HMAC)
-    //         3개 모두 충족해야 isPaid=true (잔재 차단)
+    // ★★★ [V199.8 결정적 차단] isPaid 화이트리스트 강제 ★★★
+    //   사장님 V199.7 검증 결과: "PC + 휴대폰 둘 다 4900 점사 직행" 결함 지속
+    //   진짜 원인: V199.7은 _effectivePlan !== 'free' 만 체크 → blacklist
+    //              → 'monthly' 'yearly' 'lifetime' 'day' 'trial' 'paid' 등
+    //              → 다른 결제 시스템의 잔재 plan 값 모두 통과 → PREMIUM 풀 노출
+    //   해결: ★ 화이트리스트 ★ — 'saju_basic' 'saju_premium' ★ 만 ★ 인정
+    //         → 어떤 잔재든 차단 100% 보장
+    //         → 사용자가 localStorage 정리 안 해도 안전
     let isPaid = false;
     let isBasicOnly = false;
     let paidPlan = '';
@@ -14138,23 +14159,30 @@ function renderSajuKakaoChatV185(data) {
         const _expiresAt = parseInt(localStorage.getItem('sajuPaidExpiresAt') || '0', 10);
         const _stillPaid = _expiresAt > Date.now();
         const _hasToken = !!localStorage.getItem('paid_token');
-        const _effectivePlan = (_stillPaid && _hasToken) ? paidPlan : '';
         
-        console.log('━━━ [V199.7 isPaid 결정] ━━━');
+        // ★ 화이트리스트 강제 ★ — 정확히 두 값만 인정
+        const _ALLOWED_PLANS = ['saju_basic', 'saju_premium'];
+        const _isAllowedPlan = _ALLOWED_PLANS.indexOf(paidPlan) >= 0;
+        
+        const _effectivePlan = (_stillPaid && _hasToken && _isAllowedPlan) ? paidPlan : '';
+        
+        console.log('━━━ [V199.8 isPaid 화이트리스트] ━━━');
         console.log('  - paidPlan (원본):', paidPlan || '(없음)');
-        console.log('  - expiresAt:', _expiresAt > 0 ? new Date(_expiresAt).toLocaleString() : '(없음)');
-        console.log('  - stillPaid (만료):', _stillPaid);
-        console.log('  - hasToken (HMAC):', _hasToken);
-        console.log('  - 최종 effectivePlan:', _effectivePlan || '(차단됨)');
+        console.log('  - _isAllowedPlan (saju_basic/premium만):', _isAllowedPlan);
+        console.log('  - _stillPaid:', _stillPaid);
+        console.log('  - _hasToken:', _hasToken);
+        console.log('  - _effectivePlan (3개 모두 충족):', _effectivePlan || '(차단됨)');
         
-        if (_effectivePlan && _effectivePlan !== 'free') {
+        if (_effectivePlan === 'saju_basic') {
             isPaid = true;
-            if (_effectivePlan === 'saju_basic') {
-                isBasicOnly = true;
-            }
-            console.log('  - 결과: PAID (BASIC only:', isBasicOnly, ')');
+            isBasicOnly = true;
+            console.log('  - 결과: BASIC (990원)');
+        } else if (_effectivePlan === 'saju_premium') {
+            isPaid = true;
+            isBasicOnly = false;
+            console.log('  - 결과: PREMIUM (4,900원)');
         } else {
-            console.log('  - 결과: ★ FREE ★ (잔재 토큰 차단)');
+            console.log('  - 결과: ★ FREE ★ (잔재 plan 차단:', paidPlan || 'none', ')');
         }
     } catch (_) {}
     
