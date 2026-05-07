@@ -2743,6 +2743,51 @@
     <script src="https://js.tosspayments.com/v1"></script>
     
     <!-- ════════════════════════════════════════════════════════════════════════
+         ★ [V200.7.8] Emergency Reset URL — 사용자 자가복구 안전망 ★
+         
+         사장님 V200.7.7 라이브 검증 발견:
+           "안드 사용자 정지 화면에서 자물쇠/메뉴 아이콘 못 찾아 탈출 불가"
+           "테스터 10명 같은 결함 → 사이트 데이터 삭제 안내 불가"
+         
+         해결: ?reset=true URL 진입 시 모든 결제 관련 localStorage 청소
+                → 안드/iOS 무관, 어떤 브라우저든 한 줄 안내로 즉시 복구
+                → 사용자 안내: "주소창 끝에 ?reset=true 붙이고 엔터"
+         
+         보안 (V31 #158 100% 유지):
+           localStorage만 정리, isPaidUser 영향 0
+           ?reset=true는 권한 부여가 아닌 ★ 권한 박탈 ★ 작용
+           즉, 백도어 못 됨 — 청소 후 깨끗한 미결제 상태로 복귀
+         
+         ★ V200.7.6 overlay IIFE 보다 먼저 실행 ★ → 정지 결함 자체를 우회
+    ════════════════════════════════════════════════════════════════════════ -->
+    <script>
+    (function() {
+        try {
+            var p = new URLSearchParams(window.location.search);
+            if (p.get('reset') !== 'true') return;
+            
+            console.warn('🆘 [V200.7.8] Emergency Reset 작동 — 결제 flag 청소');
+            var keys = ['sajuPaymentContext','pendingOracle','sajuPaidExpiresAt',
+                        'sajuPaidPlan','sajuPendingResult','sajuTargetPlan',
+                        'sajuTargetAmount','paid_token','oracleSessionToken',
+                        'proUnlocked','verifiedAt','paid','sajuPendingResultBackup'];
+            keys.forEach(function(k){
+                try { localStorage.removeItem(k); } catch(_){}
+                try { sessionStorage.removeItem(k); } catch(_){}
+            });
+            try { sessionStorage.clear(); } catch(_){}
+            
+            console.warn('   ✅ ' + keys.length + '개 키 청소 완료 → 깨끗한 홈으로 redirect');
+            
+            // ?reset=true 제거 후 홈 진입 (history 오염 안 함)
+            window.location.replace(window.location.pathname);
+        } catch(e) {
+            console.warn('[V200.7.8] reset 예외:', e.message);
+        }
+    })();
+    </script>
+    
+    <!-- ════════════════════════════════════════════════════════════════════════
          [V31 #144] 결제 후 홈뷰 깜빡임 차단 — head 안 inline script
          
          사장님 진단: "결제 후 홈뷰 1-2초 → 중간 점사창 → 최종 신탁"
@@ -2868,7 +2913,75 @@
             console.warn('[V31 #144] early overlay 실패:', e);
         }
     })();
+    </script>
     
+    <!-- ════════════════════════════════════════════════════════════════════
+         ★ [V200.7.7 STUCK GUARD] 독립 safety net — overlay 정지 결함 차단 ★
+         
+         사장님 발견 결함 (V200.7.6 라이브):
+           "결제 완료 — 곧 정밀 사주 점사가 펼쳐집니다" 화면 무한 정지
+           F5 / Ctrl+Shift+R / PC 재부팅 모두 무용
+         
+         원인 (line 5033):
+           V199.2 IIFE의 5초 safety net(line ~5944)이
+           `if (params.get('paid') !== 'ok') return;` (line 5033)에 막혀
+           ?paid=ok 없으면 등록조차 안 됨.
+           V200.7.6에서 sajuPaymentContext='true' / pendingOracle 잔류만으로도
+           overlay 표시 트리거되지만 정리 코드는 ?paid=ok 분기 안에 갇힘
+           → 표시-정리 비대칭 = 무한 정지
+         
+         설계 원칙 (V31 #158 보안 100% 유지):
+           이 가드는 isPaidUser를 절대 true로 만들지 않음.
+           단지 ★ 시각적 overlay ★ 강제 정리 + stale flag 청소만 수행.
+           PRO 권한은 여전히 ?paid=ok + token 둘 다 필요 (V31 #149/#158).
+    ════════════════════════════════════════════════════════════════════ -->
+    <script>
+    (function() {
+        // overlay 실제 표시됐을 때만 가드 작동 (정상 진입 영향 0)
+        if (!window._V31_paidEarlyOverlay) return;
+        
+        setTimeout(function() {
+            var overlay = document.getElementById('paidEarlyOverlay');
+            if (!overlay) return;  // 정상 분기에서 이미 정리됐음 — 작동 X
+            
+            console.warn('🛡 [V200.7.7] STUCK GUARD 작동 — overlay 7초 정지 감지');
+            
+            // 1) overlay 강제 제거
+            overlay.remove();
+            var styleEl = document.getElementById('paidOverlayStyle');
+            if (styleEl) styleEl.remove();
+            document.documentElement.style.background = '';
+            console.warn('   ✅ overlay 강제 정리 완료');
+            
+            // 2) URL에 결제 신호 없으면 stale flag 청소 (재발 차단)
+            try {
+                var p = new URLSearchParams(window.location.search);
+                var h = window.location.hash || '';
+                var hasPaidOk = p.get('paid') === 'ok';
+                var hasVtHash = /(^|#|&)vt=/.test(h);
+                var hasSajuCtx = p.get('ctx') === 'saju'
+                              || p.get('plan') === 'saju_basic'
+                              || p.get('plan') === 'saju_premium';
+                
+                if (!hasPaidOk && !hasVtHash && !hasSajuCtx) {
+                    // 결제 신호 0개 = 잔류 flag 확정 → 청소
+                    localStorage.removeItem('sajuPaymentContext');
+                    sessionStorage.removeItem('sajuPaymentContext');
+                    localStorage.removeItem('pendingOracle');
+                    console.warn('   ✅ URL 결제 신호 없음 → stale flag 청소 완료');
+                    console.warn('      (sajuPaymentContext / pendingOracle)');
+                    console.warn('   → 다음 새로고침부터 overlay 재발 X');
+                } else {
+                    console.warn('   ℹ URL 결제 신호 있음 → flag 보존 (정상 결제 흐름 가능)');
+                }
+            } catch(e) {
+                console.warn('[V200.7.7] flag 청소 예외:', e.message);
+            }
+        }, 7000);  // 정상 5초 safety net 우선 작동 후 백업으로 7초
+    })();
+    </script>
+    
+    <script>
     // ════════════════════════════════════════════════════════════════════════
     // ★ [V31 #196 CRITICAL FIX 3] hardGuard — 페이지 진입 즉시 검증 ★
     //   사장님 받은 정답 코드:
@@ -17262,7 +17375,16 @@ function renderSajuResult(data) {
                     </div>
                     
                     <!-- 업그레이드 버튼 (꼬시는 CTA) -->
-                    <button onclick="if(typeof handleSajuPremiumPaymentCTA==='function'){handleSajuPremiumPaymentCTA();}else if(typeof _handleSajuPaymentCTA==='function'){_handleSajuPaymentCTA('saju_premium','4,900원 사주 PREMIUM');}else{alert('결제 모듈 로딩 중...');}"
+                    <!-- ★★★ [V200.7.9] 작명 결함 수정 + 진단 로그 ★★★
+                         사장님 V200.7.6 라이브 발견 (정확):
+                           "990원에서 4900원 클릭시 로직이 생성이 안되있는것 같다"
+                         원인: 1순위 함수 'handleSajuPremiumPaymentCTA' — 정의 0건
+                                (정의된 건 'handleSajuPremiumCTA' — Payment 없음)
+                         해결: 1순위를 정의 확인된 window.handleSajuPremiumCTA로 교체
+                                + 클릭 진단 로그 (다음 freeze 시 정확한 위치 추적용)
+                         freeze 자체 원인 X (fallback _handleSajuPaymentCTA 정상 작동)
+                                 → freeze는 V200.7.7 + V200.7.8이 처리 -->
+                    <button onclick="console.log('🔘 [V200.7.9] 4900 PREMIUM 업셀 버튼 클릭'); if(typeof window.handleSajuPremiumCTA==='function'){console.log('  → window.handleSajuPremiumCTA 호출'); window.handleSajuPremiumCTA();}else if(typeof _handleSajuPaymentCTA==='function'){console.log('  → _handleSajuPaymentCTA fallback 호출'); _handleSajuPaymentCTA('saju_premium','4,900원 사주 PREMIUM');}else{console.error('  ❌ 결제 함수 둘 다 정의 안 됨'); alert('결제 모듈 로딩 중입니다. 잠시 후 다시 시도해주세요.');}"
                             style="display:block; width:100%; padding:14px 20px;
                                    background:linear-gradient(135deg, #d4af37, #ffd970);
                                    color:#0e1117; border:0; border-radius:10px;
