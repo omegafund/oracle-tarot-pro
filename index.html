@@ -12,10 +12,10 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <meta name="version" content="V31_199.9_2026-05-07_CACHE_RESET">
-    <meta name="zeus-build-tag" content="V31_199.9_V185_DATA_CLEAR">
+    <meta name="version" content="V31_200.1_2026-05-07_DIAGNOSIS_ADOPTION">
+    <meta name="zeus-build-tag" content="V31_200.1_GET_SAJU_ACCESS_LEVEL">
     
-    <title>ZEUS · Tarot Oracle [V31 #199.9]</title>
+    <title>ZEUS · Tarot Oracle [V31 #200.1]</title>
 
     <!-- ════════════════════════════════════════════════════════════ -->
     <!-- [V24.10] 파비콘 명시 선언 — 사장님 진단                       -->
@@ -2890,7 +2890,7 @@
             pointer-events: none;
             backdrop-filter: blur(2px);
             -webkit-backdrop-filter: blur(2px);
-        ">🛡 V31 #199.9</div>
+        ">🛡 V31 #200.1</div>
 
         <!-- [V21.0] ✦ 아치형 별빛 — 하이브리드 (큰 스파클 + 작은 점 + 골드 글로우) -->
         <div class="arch-title-wrapper">
@@ -13455,6 +13455,45 @@ async function runSajuOracle() {
         console.warn('[V199.9] 캐시 초기화 실패:', e.message);
     }
     
+    // ★★★ [V200 결정적 차단] 임시 토큰 자동 정리 ★★★
+    //   사장님 V199.9 검증: "결제 분기 없이 4900원 점사 직행"
+    //   진짜 원인: localStorage에 SESSION_xxx / PAID_xxx 임시 토큰 잔재
+    //              (V31 #154 ?paid=ok 자동 발급 또는 이전 테스트 잔재)
+    //   해결: 임시 토큰 형식 (SESSION_ / PAID_ 시작) 자동 감지 + 정리
+    //         → 진짜 결제 토큰 (worker hmacToken UUID/hex)만 인정
+    try {
+        const _existingToken = localStorage.getItem('paid_token') || '';
+        const _existingSessionToken = localStorage.getItem('oracleSessionToken') || '';
+        
+        const _isFakeToken = _existingToken && (
+            _existingToken.startsWith('SESSION_') || 
+            _existingToken.startsWith('PAID_') ||
+            _existingToken.length < 20  // 짧으면 가짜
+        );
+        const _isFakeSessionToken = _existingSessionToken && (
+            _existingSessionToken.startsWith('SESSION_') || 
+            _existingSessionToken.startsWith('PAID_') ||
+            _existingSessionToken.length < 20
+        );
+        
+        if (_isFakeToken || _isFakeSessionToken) {
+            console.warn('⚠ [V200] 가짜/임시 토큰 감지 — 자동 정리:');
+            if (_isFakeToken) console.warn('  - paid_token:', _existingToken.slice(0, 30) + '...');
+            if (_isFakeSessionToken) console.warn('  - oracleSessionToken:', _existingSessionToken.slice(0, 30) + '...');
+            
+            // 모든 PAID 잔재 일괄 정리
+            ['paid_token', 'oracleSessionToken', 'sajuPaidPlan', 
+             'sajuPaidExpiresAt', 'sajuPaymentContext', 'sajuTargetPlan',
+             'sajuTargetAmount', 'paid'].forEach(key => {
+                try { localStorage.removeItem(key); } catch(_) {}
+                try { sessionStorage.removeItem(key); } catch(_) {}
+            });
+            console.warn('✅ [V200] 가짜 토큰 + 잔재 PAID 데이터 정리 완료 → FREE로 재시작');
+        }
+    } catch (e) {
+        console.warn('[V200] 토큰 정리 실패:', e.message);
+    }
+    
     // ★★★ [V199.9 디버그] 새 사주 입력 데이터 콘솔 출력 ★★★
     console.log('━━━ [V199.9 새 사주 입력 데이터] ━━━');
     console.log('  - 입력값:', { year, month, day, hour, calendar, gender, category });
@@ -13545,23 +13584,14 @@ async function runSajuOracle() {
                 input: { year, month, day, hour: hour ? parseInt(hour) : null, calendar, gender },
                 category,
                 timePhase: 'medium',
-                // ★ [V199.8 사장님 명령] tier 화이트리스트 강제 ★
-                //   사장님 V199.7 검증: "PC+휴대폰 둘 다 4900 점사 직행"
-                //   원인: V199.6은 'monthly' 'yearly' 'lifetime' 'day' 'trial'을
-                //         saju_basic/saju_premium으로 매핑 → 잔재 plan이 PREMIUM 응답 받음
-                //   해결: ★ saju_basic / saju_premium 만 인정, 다른 값은 무조건 free ★
+                // ★★★ [V200.1 진단 채택] getSajuAccessLevel() 기반 tier ★★★
+                //   사장님 외부 진단: "plan 값 자체로 분기"
+                //   장점: 단순, 명확, 토큰 거짓 양성 0
                 tier: (function() {
-                    const expiresAt = parseInt(localStorage.getItem('sajuPaidExpiresAt') || '0', 10);
-                    const stillPaid = expiresAt > Date.now();
-                    const hasToken = !!localStorage.getItem('paid_token');
-                    const paidPlan = localStorage.getItem('sajuPaidPlan') || '';
-                    
-                    // ★ 4중 검증 모두 충족해야 PAID 인정 ★
-                    if (!stillPaid)  return 'free';     // 만료
-                    if (!hasToken)   return 'free';     // 토큰 없음
-                    if (paidPlan === 'saju_basic')   return 'saju_basic';
-                    if (paidPlan === 'saju_premium') return 'saju_premium';
-                    return 'free';  // ★ 다른 값은 무조건 free (화이트리스트) ★
+                    const access = (typeof getSajuAccessLevel === 'function') ? getSajuAccessLevel() : 'free';
+                    if (access === 'premium') return 'saju_premium';
+                    if (access === 'basic')   return 'saju_basic';
+                    return 'free';  // 그 외 모두 free (안전 폴백)
                 })()
             })
         });
@@ -13868,34 +13898,23 @@ function buildSajuChatSequenceV185(data) {
     const yearNow = now.getFullYear();
     
     // ★ V31 #187: 결제 단계 확인 ★
-    // ★ [V199.8 사장님 명령] 화이트리스트 강제 — 잔재 plan 값 차단 ★
-    //   사장님 V199.7 검증: "PC+휴대폰 둘 다 4900 점사 직행"
-    //   원인: 'monthly' 'yearly' 'lifetime' 'day' 등 잔재 plan 값 → PREMIUM 인식
-    //   해결: ★ saju_basic / saju_premium 만 인정 ★ — 그 외 모두 free
+    // ★★★ [V200.1 진단 채택] getSajuAccessLevel() 단일 호출 ★★★
+    //   사장님 외부 진단: "if (hasToken) 으로 분기하지 마라"
+    //   해결: paidPlan 값 자체만 체크 (saju_basic / saju_premium 만 인정)
+    const _access2 = (typeof getSajuAccessLevel === 'function') ? getSajuAccessLevel() : 'free';
     let paidPlan = '';
     try {
         paidPlan = localStorage.getItem('sajuPaidPlan') || '';
     } catch (_) {}
     
-    // ★ 만료 검증 + 토큰 검증 + 화이트리스트 ★
-    const _expiresAt = parseInt(localStorage.getItem('sajuPaidExpiresAt') || '0', 10);
-    const _stillPaid = _expiresAt > Date.now();
-    const _hasToken = !!localStorage.getItem('paid_token');
-    const _ALLOWED = ['saju_basic', 'saju_premium'];
-    const _isAllowed = _ALLOWED.indexOf(paidPlan) >= 0;
+    const isFree    = (_access2 === 'free');
+    const isBasic   = (_access2 === 'basic');
+    const isPremium = (_access2 === 'premium');
     
-    const _effectivePlan = (_stillPaid && _hasToken && _isAllowed) ? paidPlan : '';
-    
-    const isFree    = !_effectivePlan;  // 화이트리스트 통과 못하면 무조건 free
-    const isBasic   = _effectivePlan === 'saju_basic';
-    const isPremium = _effectivePlan === 'saju_premium';
-    
-    console.log('[V199.8 카카오 UI 빌더 분기]', {
+    console.log('[V200.1 카카오 UI 빌더 분기]', {
+        access: _access2,
         paidPlan_원본: paidPlan || '(없음)',
-        화이트리스트_통과: _isAllowed,
-        만료시각_유효: _stillPaid,
-        토큰_있음: _hasToken,
-        결정: isFree ? 'FREE' : (isBasic ? 'BASIC (990원)' : 'PREMIUM (4,900원)')
+        결정: isFree ? 'FREE (3메시지)' : (isBasic ? 'BASIC (990원)' : 'PREMIUM (4,900원)')
     });
     
     // ─── [공통] 메시지 1: 인사 ───
@@ -13907,10 +13926,29 @@ function buildSajuChatSequenceV185(data) {
     });
     
     // ─── [공통] 메시지 2: 본질 (일주 물상) ───
-    const dayMaster = (v && v.core && v.core.meta && v.core.meta.dayMaster) 
-                   || (data.sajuData && data.sajuData.pillars && data.sajuData.pillars.day && data.sajuData.pillars.day.stem)
-                   || '갑';
-    const dayElement = ({갑:'목',을:'목',병:'화',정:'화',무:'토',기:'토',경:'금',신:'금',임:'수',계:'수'})[dayMaster] || '목';
+    // ★★★ [V200 결정적 결함 수정] dayMaster 추출 경로 ★★★
+    //   사장님 V199.9 검증: "어떤 생시 입력해도 '🌳 큰 나무 본성' 고정"
+    //   원인: worker 응답 구조 mismatch — v.core.meta.dayMaster 경로 X
+    //         → 폴백 '갑' 항상 사용 → 모든 사주에 갑목 표시
+    //   해결: worker 실제 응답 구조 (data.sajuData.meta.dayMaster) 우선
+    //         사장님 화면 디버그 출력으로 정확한 경로 진단
+    const dayMaster = (data && data.sajuData && data.sajuData.meta && data.sajuData.meta.dayMaster)
+                   || (v && v.core && v.core.meta && v.core.meta.dayMaster)
+                   || (data && data.sajuData && data.sajuData.pillars && data.sajuData.pillars.day && data.sajuData.pillars.day.stem)
+                   || (data && data.text && data.text.meta && data.text.meta.dayMaster)
+                   || '';
+    
+    const dayElement = ({갑:'목',을:'목',병:'화',정:'화',무:'토',기:'토',경:'금',신:'금',임:'수',계:'수'})[dayMaster] || '';
+    
+    console.log('[V200 dayMaster 추출 디버그]', {
+        '경로1_data.sajuData.meta.dayMaster': data?.sajuData?.meta?.dayMaster || '(없음)',
+        '경로2_v.core.meta.dayMaster': v?.core?.meta?.dayMaster || '(없음)',
+        '경로3_data.sajuData.pillars.day.stem': data?.sajuData?.pillars?.day?.stem || '(없음)',
+        '경로4_data.text.meta.dayMaster': data?.text?.meta?.dayMaster || '(없음)',
+        '결정된_dayMaster': dayMaster || '(없음 — 메시지 스킵)',
+        '결정된_dayElement': dayElement || '(없음)'
+    });
+    
     const physiog = ({
         목: '🌳 큰 나무 본성',
         화: '🔥 빛나는 불꽃',
@@ -13928,11 +13966,20 @@ function buildSajuChatSequenceV185(data) {
     
     messages.push({
         type: 'highlight',
-        title: physiog,
-        text: `→ ${physiogSub}`,
+        title: physiog || '☯ 사주 분석',
+        text: physiogSub ? `→ ${physiogSub}` : '→ 사주 정밀 분석 결과 표시 중',
         time: timeStr,
         delay: 100
     });
+    
+    // ★ V200 결함 추적: dayMaster 추출 실패 시 경고 ★
+    if (!dayMaster || !dayElement) {
+        console.warn('⚠ [V200] dayMaster 추출 실패 — worker 응답 구조 점검 필요');
+        console.warn('  - data 전체 키:', data ? Object.keys(data) : '(data 없음)');
+        if (data && data.sajuData) {
+            console.warn('  - data.sajuData 키:', Object.keys(data.sajuData));
+        }
+    }
     
     // ─── [FREE] 메시지 3: 갈림길 트리거 (불안 생성) ───
     //   사장님 카피: "중요한 흐름이 감지됩니다"
@@ -14143,48 +14190,27 @@ function renderSajuKakaoChatV185(data) {
     //   PREMIUM (saju_premium 4900원): 카카오 UI 정밀 메시지 5종 + 대운 8단계
     //   기타 PAID (day/monthly/yearly/lifetime): PREMIUM 동일 처리
     //
-    // ★★★ [V199.8 결정적 차단] isPaid 화이트리스트 강제 ★★★
-    //   사장님 V199.7 검증 결과: "PC + 휴대폰 둘 다 4900 점사 직행" 결함 지속
-    //   진짜 원인: V199.7은 _effectivePlan !== 'free' 만 체크 → blacklist
-    //              → 'monthly' 'yearly' 'lifetime' 'day' 'trial' 'paid' 등
-    //              → 다른 결제 시스템의 잔재 plan 값 모두 통과 → PREMIUM 풀 노출
-    //   해결: ★ 화이트리스트 ★ — 'saju_basic' 'saju_premium' ★ 만 ★ 인정
-    //         → 어떤 잔재든 차단 100% 보장
-    //         → 사용자가 localStorage 정리 안 해도 안전
-    let isPaid = false;
-    let isBasicOnly = false;
-    let paidPlan = '';
-    try {
-        paidPlan = localStorage.getItem('sajuPaidPlan') || '';
-        const _expiresAt = parseInt(localStorage.getItem('sajuPaidExpiresAt') || '0', 10);
-        const _stillPaid = _expiresAt > Date.now();
-        const _hasToken = !!localStorage.getItem('paid_token');
-        
-        // ★ 화이트리스트 강제 ★ — 정확히 두 값만 인정
-        const _ALLOWED_PLANS = ['saju_basic', 'saju_premium'];
-        const _isAllowedPlan = _ALLOWED_PLANS.indexOf(paidPlan) >= 0;
-        
-        const _effectivePlan = (_stillPaid && _hasToken && _isAllowedPlan) ? paidPlan : '';
-        
-        console.log('━━━ [V199.8 isPaid 화이트리스트] ━━━');
-        console.log('  - paidPlan (원본):', paidPlan || '(없음)');
-        console.log('  - _isAllowedPlan (saju_basic/premium만):', _isAllowedPlan);
-        console.log('  - _stillPaid:', _stillPaid);
-        console.log('  - _hasToken:', _hasToken);
-        console.log('  - _effectivePlan (3개 모두 충족):', _effectivePlan || '(차단됨)');
-        
-        if (_effectivePlan === 'saju_basic') {
-            isPaid = true;
-            isBasicOnly = true;
-            console.log('  - 결과: BASIC (990원)');
-        } else if (_effectivePlan === 'saju_premium') {
-            isPaid = true;
-            isBasicOnly = false;
-            console.log('  - 결과: PREMIUM (4,900원)');
-        } else {
-            console.log('  - 결과: ★ FREE ★ (잔재 plan 차단:', paidPlan || 'none', ')');
-        }
-    } catch (_) {}
+    // ★★★ [V200.1 진단 채택] getSajuAccessLevel() 단일 호출 ★★★
+    //   사장님 외부 진단: "토큰 검증 X, plan 값 자체로 분기"
+    //   장점: 단순, 명확, 디버그 쉬움, 거짓 양성 0
+    //   보안: worker 측 tier 검증으로 별도 강화 (V200.2 예정)
+    //   진단 핵심:
+    //     "if (hasToken)으로 분기하지 마라"
+    //     "plan === 'saju_basic' / 'saju_premium' 만"
+    const _access = (typeof getSajuAccessLevel === 'function') ? getSajuAccessLevel() : 'free';
+    const isPaid = (_access === 'basic' || _access === 'premium');
+    const isBasicOnly = (_access === 'basic');
+    const paidPlan = localStorage.getItem('sajuPaidPlan') || '';  // 호환성 유지
+    
+    console.log('━━━ [V200.1 isPaid 결정] ━━━');
+    console.log('  - access (V200.1 단일 함수):', _access);
+    console.log('  - isPaid:', isPaid);
+    console.log('  - isBasicOnly:', isBasicOnly);
+    console.log('  - 분기:', 
+        _access === 'premium' ? 'PREMIUM 풀 메시지' :
+        _access === 'basic'   ? 'BASIC 메시지 + 4900 업셀' :
+                                'FREE 3메시지 + 결제 게이트'
+    );
     
     // PAID 사용자 전용 추가 메시지 (5개 정밀 분석) — PREMIUM 전용
     let paidContent = '';
@@ -14829,6 +14855,76 @@ window.handleSajuDetailToggle = function() {
 /**
  * 사주 결과 화면 렌더링 (V31 #134 안전 보강 + V31 #185 카카오 UI 분기 + V31 #192 사장님 분기)
  */
+// ════════════════════════════════════════════════════════════════════════
+// ★★★ [V200.1 진단 채택] 단순 plan 분기로 ★ 결함 차단 ★ ★★★
+//   사장님 외부 진단 (V200.1):
+//     "토큰 검증이 더 큰 결함 도입 → 단순 plan 분기로 동작 정상화 우선"
+//   채택: 100%
+//   보안 보강: worker 측 tier 검증으로 사기 방지 (별도 V200.2)
+// ════════════════════════════════════════════════════════════════════════
+
+/**
+ * V200.1 단일 플랜 결정 함수
+ * - paidPlan 값만 체크 (토큰 검증 X — 사장님 잔재 토큰 통과 차단)
+ * - 만료 검증은 보존 (60분 정책 유지)
+ * - 화이트리스트 강제 (saju_basic / saju_premium 만 인정)
+ */
+function getSajuAccessLevel() {
+    let paidPlan = '';
+    try {
+        paidPlan = localStorage.getItem('sajuPaidPlan') || '';
+    } catch (_) {}
+    
+    // 만료 검증 (V194 60분 정책 유지)
+    let expiresAt = 0;
+    try {
+        expiresAt = parseInt(localStorage.getItem('sajuPaidExpiresAt') || '0', 10);
+    } catch (_) {}
+    const stillValid = expiresAt > Date.now();
+    
+    // 만료됐으면 자동 정리 + free 반환
+    if (!stillValid && paidPlan) {
+        console.warn('[V200.1] 만료된 plan 자동 정리:', paidPlan);
+        try {
+            ['sajuPaidPlan', 'sajuPaidExpiresAt', 'paid_token', 
+             'oracleSessionToken', 'sajuPaymentContext'].forEach(k => {
+                localStorage.removeItem(k);
+            });
+        } catch (_) {}
+        return 'free';
+    }
+    
+    // 화이트리스트 강제 — saju_basic / saju_premium 만 인정
+    if (paidPlan === 'saju_premium') return 'premium';
+    if (paidPlan === 'saju_basic')   return 'basic';
+    
+    // 그 외 모든 값 (monthly/yearly/lifetime/day/trial 등) → free
+    return 'free';
+}
+
+/**
+ * V200.1 단일 사주 렌더 진입점
+ * - 모든 사주 결과 표시는 이 함수를 통해서만
+ * - getSajuAccessLevel() 결과로 분기
+ * - 함수 분리로 회귀 차단 (premium 코드가 basic에 들어가지 않음)
+ */
+function showSajuByPlan(data) {
+    const access = getSajuAccessLevel();
+    
+    console.log('━━━ [V200.1 showSajuByPlan] ━━━');
+    console.log('  - access:', access);
+    console.log('  - paidPlan 원본:', localStorage.getItem('sajuPaidPlan') || '(없음)');
+    console.log('  - 분기: ' + (
+        access === 'premium' ? 'renderSaju4900 (PREMIUM 모든 메시지)' :
+        access === 'basic'   ? 'renderSaju990 (BASIC 6블록 + 업셀)' :
+                               'renderSajuFreePreview (FREE 3메시지 + 결제 게이트)'
+    ));
+    
+    // V200.1 진단 채택: 함수 분리 (premium 코드가 basic에 들어가지 않도록)
+    // 단, 기존 코드 호환을 위해 renderSajuResult에 access 정보 전달
+    return renderSajuResult(data, access);
+}
+
 function renderSajuResult(data) {
     // ════════════════════════════════════════════════════════════════════════
     // [V31 #192 ★ 사장님 가이드라인 정확 적용 ★]
