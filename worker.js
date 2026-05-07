@@ -17864,11 +17864,37 @@ export default {
           });
         }
 
+        // ════════════════════════════════════════════════════════════════════
+        // [V199.1 IDEMPOTENCY] paymentKey 캐싱 — 중복 confirm 호출 차단
+        //   동일 paymentKey로 두 번째 호출 시 캐시된 결과 반환 (Toss API 재호출 X)
+        //   - 같은 결제건 새로고침 시 안전
+        //   - 사기 시도 (paymentKey 재사용)도 자동 차단
+        // ════════════════════════════════════════════════════════════════════
+        const KV = env.ZEUS_TAROT_KV;
+        if (KV) {
+          try {
+            const cached = await KV.get(`pk:${paymentKey}`);
+            if (cached) {
+              console.log('[V199.1] paymentKey 재사용 — 캐시 반환:', paymentKey.slice(0, 12) + '...');
+              return new Response(cached, {
+                headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" }
+              });
+            }
+          } catch(kvErr) {
+            console.warn('[V199.1] KV idempotency check failed:', kvErr.message);
+          }
+        }
+
         // 1. orderId 파싱 → plan 추출 및 검증
         // [V24.1 P0-1 BUGFIX] 정규식 수정 — monthly/yearly/lifetime 추가
         //   기존: /^zeus_(trial|day|month)_\d+_.+$/ → monthly/yearly/lifetime 차단
         //   영향: 9,900 + 79,000 + 199,000 = 287,900원 매출 자동 거부 버그
-        const m = String(orderId).match(/^zeus_(trial|day|month|monthly|yearly|lifetime)_(\d+)_(.+)$/);
+        //
+        // [V199.1 SAJU MIGRATION] saju_basic|saju_premium 추가
+        //   기존: orderId 'zeus_saju_basic_xxx' → regex 매칭 실패 → "invalid orderId format"
+        //   결과: V31 #190~#198 사주 결제 흐름 ★ 사실상 작동 안 함 ★ (V198 도돌이 근본 원인)
+        //   해결: regex에 saju_basic|saju_premium 추가 → 정상 매칭
+        const m = String(orderId).match(/^zeus_(trial|day|month|monthly|yearly|lifetime|saju_basic|saju_premium)_(\d+)_(.+)$/);
         if (!m) {
           return new Response(JSON.stringify({ success: false, error: "invalid orderId format" }), {
             headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" }
@@ -17885,7 +17911,10 @@ export default {
           month:    9900,
           monthly:  9900,    // 월 자동결제 구독 (단일 month와 동일 가격)
           yearly:   79000,   // 연 구독 (월 6,583원 — 33% 할인)
-          lifetime: 199000   // 평생 이용권
+          lifetime: 199000,  // 평생 이용권
+          // [V199.1 SAJU MIGRATION] 사주 Freemium 신규 플랜
+          saju_basic:   990,    // 990원 24시간 (V31 #187 사장님 플랜)
+          saju_premium: 4900    // 4,900원 24시간 (V31 #190 신규)
         };
         const expectedAmount = PLAN_PRICES[plan];
         const paidAmount = Number(amount);
@@ -17948,17 +17977,335 @@ export default {
         const token = await signHmac(payload, env.TOKEN_SECRET || "default_secret");
         const fullToken = `${payload}|${token}`;
 
-        return new Response(JSON.stringify({
+        // ════════════════════════════════════════════════════════════════════
+        // [V199.1 NONCE] 일회용 verifiedToken 발급 + KV 저장 (5분 TTL)
+        //   목적: success.html → index.html redirect 시 모바일 격리 안전
+        //   - sessionStorage 격리 시 hash fragment의 verifiedToken으로 복구
+        //   - /consume-token이 일회용으로 검증 (재사용 차단)
+        //   - 사주 입력 데이터까지 함께 반환 (auth hole 차단)
+        // ════════════════════════════════════════════════════════════════════
+        let verifiedToken = null;
+        const isSajuPlan = (plan === 'saju_basic' || plan === 'saju_premium');
+        if (KV) {
+          try {
+            // crypto.randomUUID()는 Cloudflare Workers에서 사용 가능 (Web Crypto API)
+            verifiedToken = crypto.randomUUID() + '_' + Date.now();
+            await KV.put(
+              `verified:${verifiedToken}`,
+              JSON.stringify({
+                orderId,
+                plan,
+                amount: paidAmount,
+                hmacToken: fullToken,
+                expiry,
+                used: false,
+                createdAt: Date.now()
+              }),
+              { expirationTtl: 600 }  // 10분 (모바일 카카오페이 redirect 안전 마진)
+            );
+            console.log('[V199.1] verifiedToken 발급:', verifiedToken.slice(0, 16) + '...', 'plan=' + plan);
+          } catch(kvErr) {
+            console.warn('[V199.1] verifiedToken KV save failed:', kvErr.message);
+            // KV 실패해도 결제는 성공 처리 (sessionStorage fallback)
+          }
+        }
+
+        const responseBody = JSON.stringify({
           success: true,
           token: fullToken,
           plan,
-          expiresAt: expiry
-        }), {
+          expiresAt: expiry,
+          // [V199.1] 신규 필드 — sajuFlow에서만 사용 (기존 호환성 100%)
+          verifiedToken: verifiedToken,
+          isSajuPlan: isSajuPlan
+        });
+
+        // [V199.1 IDEMPOTENCY] paymentKey → 응답 캐싱 (10분, verifiedToken과 동일 윈도우)
+        if (KV) {
+          try {
+            await KV.put(`pk:${paymentKey}`, responseBody, { expirationTtl: 600 });
+          } catch(kvErr) {
+            console.warn('[V199.1] paymentKey cache save failed:', kvErr.message);
+          }
+        }
+
+        return new Response(responseBody, {
           headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" }
         });
 
       } catch(e) {
         return new Response(JSON.stringify({ success: false, error: e.message }), {
+          status: 500,
+          headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" }
+        });
+      }
+    }
+
+    // ════════════════════════════════════════════════════════════════════════
+    // [V199.1 SAJU MIGRATION] /save-saju-input — 사주 입력 사전 저장
+    //   목적: 모바일 카카오페이 결제 후 localStorage 격리 시 사주 데이터 복구
+    //   흐름: 사주 입력 → KV에 24시간 저장 → 결제 → 실패 시 worker에서 복원
+    //   인증: 미인증 (orderId만 알면 저장 가능 — 본인 결제건이므로 OK)
+    //   복구: /consume-token이 verifiedToken 인증 통과한 자에게만 반환
+    // ════════════════════════════════════════════════════════════════════════
+    if (url.pathname === "/save-saju-input" && request.method === "POST") {
+      try {
+        const KV = env.ZEUS_TAROT_KV;
+        if (!KV) {
+          return new Response(JSON.stringify({ ok: false, error: "kv_not_bound" }), {
+            status: 500,
+            headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" }
+          });
+        }
+
+        const body = await request.json();
+        const { orderId, input, category, timePhase } = body || {};
+
+        // orderId 형식 검증 — zeus_saju_basic_xxx / zeus_saju_premium_xxx
+        if (!orderId || !/^zeus_saju_(basic|premium)_\d+_/.test(String(orderId))) {
+          return new Response(JSON.stringify({ ok: false, error: "invalid_orderId" }), {
+            status: 400,
+            headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" }
+          });
+        }
+
+        // input schema 검증 (year/month/day 필수)
+        if (!input || typeof input !== 'object') {
+          return new Response(JSON.stringify({ ok: false, error: "missing_input" }), {
+            status: 400,
+            headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" }
+          });
+        }
+        const y = parseInt(input.year), mo = parseInt(input.month), d = parseInt(input.day);
+        if (!(y >= 1900 && y <= 2100) || !(mo >= 1 && mo <= 12) || !(d >= 1 && d <= 31)) {
+          return new Response(JSON.stringify({ ok: false, error: "invalid_birth" }), {
+            status: 400,
+            headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" }
+          });
+        }
+
+        const sanitized = {
+          year: y,
+          month: mo,
+          day: d,
+          hour: input.hour != null ? parseInt(input.hour) : null,
+          calendar: input.calendar === 'lunar' ? 'lunar' : 'solar',
+          gender: input.gender === 'female' ? 'female' : (input.gender === 'male' ? 'male' : ''),
+          category: category || 'fortune',
+          timePhase: timePhase || 'medium',
+          savedAt: Date.now()
+        };
+
+        await KV.put(`saju:${orderId}`, JSON.stringify(sanitized), {
+          expirationTtl: 60 * 60 * 24  // 24시간
+        });
+
+        console.log('[V199.1] saju 사전 저장:', orderId, 'y/m/d=' + y + '/' + mo + '/' + d);
+
+        return new Response(JSON.stringify({ ok: true, orderId }), {
+          headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" }
+        });
+
+      } catch(e) {
+        console.error('[V199.1] save-saju-input error:', e.message);
+        return new Response(JSON.stringify({ ok: false, error: e.message }), {
+          status: 500,
+          headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" }
+        });
+      }
+    }
+
+    // ════════════════════════════════════════════════════════════════════════
+    // [V199.1 SAJU MIGRATION] /consume-token — 일회용 verifiedToken 검증 + 사주 데이터 반환
+    //   목적: 모바일 격리 시 hash fragment의 verifiedToken으로 결제 인증 복구
+    //   특징:
+    //     - 일회용 (used=true 후 재사용 차단)
+    //     - 사주 입력 데이터까지 함께 반환 (★ get-saju-input auth hole 차단 ★)
+    //     - HMAC token도 함께 반환 (기존 흐름과 호환)
+    // ════════════════════════════════════════════════════════════════════════
+    if (url.pathname === "/consume-token" && request.method === "POST") {
+      try {
+        const KV = env.ZEUS_TAROT_KV;
+        if (!KV) {
+          return new Response(JSON.stringify({ valid: false, error: "kv_not_bound" }), {
+            status: 500,
+            headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" }
+          });
+        }
+
+        const body = await request.json();
+        const token = body?.token;
+        if (!token) {
+          return new Response(JSON.stringify({ valid: false, error: "missing_token" }), {
+            status: 400,
+            headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" }
+          });
+        }
+
+        const raw = await KV.get(`verified:${token}`);
+        if (!raw) {
+          console.log('[V199.1] consume-token not_found:', token.slice(0, 16) + '...');
+          return new Response(JSON.stringify({ valid: false, reason: "not_found_or_expired" }), {
+            status: 404,
+            headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" }
+          });
+        }
+
+        const data = JSON.parse(raw);
+
+        // 이미 사용됨 — 재사용 차단
+        if (data.used) {
+          console.log('[V199.1] consume-token already_used:', token.slice(0, 16) + '...');
+          return new Response(JSON.stringify({ valid: false, reason: "already_used" }), {
+            status: 403,
+            headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" }
+          });
+        }
+
+        // 사용 처리 (race condition 윈도우 ~10ms)
+        data.used = true;
+        data.usedAt = Date.now();
+        await KV.put(`verified:${token}`, JSON.stringify(data), {
+          expirationTtl: 60  // 사용 후 1분만 (감사 추적용)
+        });
+
+        // ★ 사주 입력 데이터 함께 반환 (auth hole 차단) ★
+        let sajuInput = null;
+        if (data.orderId && /^zeus_saju_/.test(data.orderId)) {
+          try {
+            const sajuRaw = await KV.get(`saju:${data.orderId}`);
+            if (sajuRaw) {
+              sajuInput = JSON.parse(sajuRaw);
+            }
+          } catch(sajuErr) {
+            console.warn('[V199.1] saju lookup failed:', sajuErr.message);
+          }
+        }
+
+        console.log('[V199.1] consume-token OK:', token.slice(0, 16) + '...', 'orderId=' + data.orderId);
+
+        return new Response(JSON.stringify({
+          valid: true,
+          plan: data.plan,
+          orderId: data.orderId,
+          amount: data.amount,
+          expiresAt: data.expiry,
+          hmacToken: data.hmacToken,  // 기존 흐름 호환
+          sajuInput: sajuInput        // 사주 결제 시에만 채워짐
+        }), {
+          headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" }
+        });
+
+      } catch(e) {
+        console.error('[V199.1] consume-token error:', e.message);
+        return new Response(JSON.stringify({ valid: false, error: e.message }), {
+          status: 500,
+          headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" }
+        });
+      }
+    }
+
+    // ════════════════════════════════════════════════════════════════════════
+    // [V199.1 ADMIN] /admin/kv-check — 개발자 테스트용 KV 조회 도구
+    //   사장님 명시: "테스트 결제가 KV에 정확히 기록되는지 확인이 핵심"
+    //   사용법:
+    //     GET /admin/kv-check?key=saju:zeus_saju_basic_xxx
+    //     GET /admin/kv-check?key=verified:UUID_TIMESTAMP
+    //     GET /admin/kv-check?key=pk:PAYMENTKEY
+    //   인증: x-admin-pass 헤더 (대시보드 ADMIN_PASSWORD env 사용)
+    // ════════════════════════════════════════════════════════════════════════
+    if (url.pathname === "/admin/kv-check" && request.method === "GET") {
+      try {
+        const adminPass = request.headers.get("x-admin-pass") || "";
+        if (!env.ADMIN_PASSWORD || adminPass !== env.ADMIN_PASSWORD) {
+          return new Response(JSON.stringify({ ok: false, error: "unauthorized" }), {
+            status: 401,
+            headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" }
+          });
+        }
+
+        const KV = env.ZEUS_TAROT_KV;
+        if (!KV) {
+          return new Response(JSON.stringify({ ok: false, error: "kv_not_bound" }), {
+            status: 500,
+            headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" }
+          });
+        }
+
+        const key = url.searchParams.get("key");
+        if (!key) {
+          return new Response(JSON.stringify({ ok: false, error: "missing_key" }), {
+            status: 400,
+            headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" }
+          });
+        }
+
+        const value = await KV.get(key);
+        return new Response(JSON.stringify({
+          ok: true,
+          key,
+          exists: value !== null,
+          value: value ? (value.length > 1000 ? value.slice(0, 1000) + '...[truncated]' : value) : null,
+          checkedAt: new Date().toISOString()
+        }), {
+          headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" }
+        });
+
+      } catch(e) {
+        return new Response(JSON.stringify({ ok: false, error: e.message }), {
+          status: 500,
+          headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" }
+        });
+      }
+    }
+
+    // ════════════════════════════════════════════════════════════════════════
+    // [V199.1 ADMIN] /admin/kv-list — KV namespace prefix 조회
+    //   사용법:
+    //     GET /admin/kv-list?prefix=saju:        (모든 사주 입력)
+    //     GET /admin/kv-list?prefix=verified:    (모든 nonce)
+    //     GET /admin/kv-list?prefix=pk:          (모든 paymentKey 캐시)
+    //     GET /admin/kv-list                     (전체 — 기본 100개)
+    //   인증: x-admin-pass
+    // ════════════════════════════════════════════════════════════════════════
+    if (url.pathname === "/admin/kv-list" && request.method === "GET") {
+      try {
+        const adminPass = request.headers.get("x-admin-pass") || "";
+        if (!env.ADMIN_PASSWORD || adminPass !== env.ADMIN_PASSWORD) {
+          return new Response(JSON.stringify({ ok: false, error: "unauthorized" }), {
+            status: 401,
+            headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" }
+          });
+        }
+
+        const KV = env.ZEUS_TAROT_KV;
+        if (!KV) {
+          return new Response(JSON.stringify({ ok: false, error: "kv_not_bound" }), {
+            status: 500,
+            headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" }
+          });
+        }
+
+        const prefix = url.searchParams.get("prefix") || "";
+        const limit = Math.min(parseInt(url.searchParams.get("limit") || "100"), 1000);
+
+        const list = await KV.list({ prefix, limit });
+        return new Response(JSON.stringify({
+          ok: true,
+          prefix: prefix || '(all)',
+          count: list.keys.length,
+          listComplete: list.list_complete,
+          keys: list.keys.map(k => ({
+            name: k.name,
+            expiration: k.expiration ? new Date(k.expiration * 1000).toISOString() : null
+          })),
+          checkedAt: new Date().toISOString()
+        }), {
+          headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" }
+        });
+
+      } catch(e) {
+        return new Response(JSON.stringify({ ok: false, error: e.message }), {
           status: 500,
           headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" }
         });
