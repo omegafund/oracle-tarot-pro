@@ -15,7 +15,7 @@
     <meta name="version" content="V31_200.6_2026-05-07_INPUT_SUMMARY">
     <meta name="zeus-build-tag" content="V31_200.6_GATE_INPUT_PREVIEW">
     
-    <title>ZEUS · Tarot Oracle [V31 #200.7.3]</title>
+    <title>ZEUS · Tarot Oracle [V31 #200.7.4]</title>
 
     <!-- ════════════════════════════════════════════════════════════ -->
     <!-- [V24.10] 파비콘 명시 선언 — 사장님 진단                       -->
@@ -2908,7 +2908,7 @@
             pointer-events: none;
             backdrop-filter: blur(2px);
             -webkit-backdrop-filter: blur(2px);
-        ">🛡 V31 #200.7.3</div>
+        ">🛡 V31 #200.7.4</div>
 
         <!-- [V21.0] ✦ 아치형 별빛 — 하이브리드 (큰 스파클 + 작은 점 + 골드 글로우) -->
         <div class="arch-title-wrapper">
@@ -16391,64 +16391,12 @@ function renderSajuResult(data) {
             </div>
 
             <!-- ════════════════════════════════════════════════════════════
-                 [V199.4 사장님 명령] 990원 (saju_basic) 잠금 + 업셀 박스
-                   사장님 명세:
-                     - 990원 표시: [1/6] 개관 + [2/6] 명식+오행 + [3/6] 본질 흐름
-                     - 4900원 전용: [4/6][5/6][6/6] + 6대 분야 + 시계열 + 특수 잠재력
-                     - 990원 사용자에게 잠금 + 업셀 박스로 4,900원 결제 유도
+                 [V200.7.4 사장님 명세] 4,900원 업셀 박스 ★ 위치 변경 ★
+                   사장님 V200.7.3 라이브 검증 후 명령:
+                     - 990원도 [1/6] ~ [6/6] 모든 6블럭 표시
+                     - ★ 6블럭 끝난 후 ★ 4,900원 꼬시는 문구 박스
+                   변경 위치: Line 17158~ 부근 (V200.7.4 작업 STEP 3에서 추가)
                  ════════════════════════════════════════════════════════════ -->
-            ${(function() {
-                let _paidPlan = '';
-                try { _paidPlan = localStorage.getItem('sajuPaidPlan') || ''; } catch(_) {}
-                const isBasic = _paidPlan === 'saju_basic';
-                if (!isBasic) return ''; // PREMIUM/FREE는 표시 안 함
-                
-                return `
-                <div style="margin:24px 0; padding:24px 20px; 
-                            background:linear-gradient(135deg, rgba(212,175,55,0.18), rgba(212,175,55,0.04));
-                            border:2px solid rgba(212,175,55,0.55); border-radius:14px;
-                            box-shadow:0 4px 20px rgba(212,175,55,0.18); position:relative;">
-                    
-                    <!-- 자물쇠 + 헤드라인 -->
-                    <div style="text-align:center; margin-bottom:16px;">
-                        <div style="font-size:2.4rem; line-height:1; margin-bottom:6px;">🔒</div>
-                        <div style="color:#FFD970; font-size:1.1rem; font-weight:900; letter-spacing:0.02em;">
-                            더 깊은 분석은 프리미엄에서
-                        </div>
-                        <div style="color:rgba(255,255,255,0.65); font-size:0.78rem; margin-top:6px; line-height:1.6;">
-                            아래 콘텐츠는 4,900원 프리미엄에서 만나보세요.
-                        </div>
-                    </div>
-                    
-                    <!-- 프리미엄 콘텐츠 미리보기 (희미하게) — V199.5: saju_basic이 [4/6][5/6][6/6]을 보므로 [7/8][8/8]+특수만 표시 -->
-                    <div style="margin:16px 0; padding:14px 16px; 
-                                background:rgba(0,0,0,0.32); border-radius:8px;
-                                color:rgba(255,255,255,0.6); font-size:0.82rem; line-height:1.85;">
-                        <div style="margin-bottom:6px;">🎯 <strong style="color:#FFD970;">[7/8] 6대 분야 운세</strong> · 재물·직업·연애·건강·학업·가족</div>
-                        <div style="margin-bottom:6px;">⏱ <strong style="color:#FFD970;">[8/8] 시계열 흐름</strong> · 오늘 / 이번달 / 올해</div>
-                        <div>🌟 <strong style="color:#FFD970;">특수 잠재력 패턴</strong> · 격국·편중·신강약 종합 진단</div>
-                    </div>
-                    
-                    <!-- 업그레이드 버튼 -->
-                    <button onclick="if(typeof handleSajuPremiumPaymentCTA==='function'){handleSajuPremiumPaymentCTA();}else if(typeof _handleSajuPaymentCTA==='function'){_handleSajuPaymentCTA('saju_premium','4,900원 사주 PREMIUM');}else{alert('결제 모듈 로딩 중...');}"
-                            style="display:block; width:100%; padding:14px 20px;
-                                   background:linear-gradient(135deg, #d4af37, #ffd970);
-                                   color:#0e1117; border:0; border-radius:10px;
-                                   font-size:0.95rem; font-weight:900; letter-spacing:0.02em;
-                                   cursor:pointer; box-shadow:0 4px 12px rgba(212,175,55,0.35);
-                                   transition:transform 0.15s ease, box-shadow 0.15s ease;"
-                            onmouseover="this.style.transform='translateY(-1px)'; this.style.boxShadow='0 6px 16px rgba(212,175,55,0.45)';"
-                            onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 12px rgba(212,175,55,0.35)';">
-                        ✦ 4,900원으로 프리미엄 잠금 해제 ✦
-                    </button>
-                    
-                    <!-- 보장 안내 -->
-                    <div style="text-align:center; margin-top:10px; color:rgba(255,255,255,0.55); font-size:0.7rem; line-height:1.5;">
-                        24시간 동안 모든 프리미엄 콘텐츠 이용 가능<br>
-                        🔒 SSL 보안결제 · 토스페이먼츠
-                    </div>
-                </div>`;
-            })()}
 
             <!-- ════════════════════════════════════════════════════════════
                  [V31 #163 사장님 6블록] 사주 출력 디자인 통일
@@ -16456,10 +16404,11 @@ function renderSajuResult(data) {
                    [5] 🔥 에너지 가이드 — 용신 + 트리거
                  ════════════════════════════════════════════════════════════ -->
             ${(function() {
-                // ★ [V199.4 사장님 명령] saju_basic은 [4/6] 이후 콘텐츠 차단 ★
-                let _paidPlan = '';
-                try { _paidPlan = localStorage.getItem('sajuPaidPlan') || ''; } catch(_) {}
-                if (_paidPlan === 'saju_basic') return ''; // 990원은 위 잠금 박스만
+                // ★★★ [V200.7.4 사장님 명세 정확 적용] V199.4 차단 해제 ★★★
+                //   사장님 V200.7.3 라이브 검증 후 명령:
+                //     "990원도 6개 블럭 모두 표시 + 끝난 후 4,900원 꼬시는 문구"
+                //   V199.4 차단 ★ 해제 ★ — saju_basic도 [4/6] [5/6] 표시
+                //   4,900원 업셀 박스는 [6/6] 끝난 후로 이동 (Line 16400~16451 → 17158~ 이동 예정)
                 
                 // 용신 + 현실 상태 추정 (워커 응답 분석)
                 const dayMaster = (text.meta?.pillars?.day || '').charAt(0);
@@ -16783,10 +16732,10 @@ function renderSajuResult(data) {
                    기존 [1/6]~[6/6] 단계 그대로 유지 + 추가 노출
             ═══════════════════════════════════════════════════════ -->
             ${data.v184_5 ? (() => {
-                // ★ [V199.4 사장님 명령] saju_basic은 v184_5 영역 차단 ★
-                let _paidPlan = '';
-                try { _paidPlan = localStorage.getItem('sajuPaidPlan') || ''; } catch(_) {}
-                if (_paidPlan === 'saju_basic') return ''; // 990원은 위 잠금 박스만
+                // ★★★ [V200.7.4 사장님 명세 정확 적용] V199.4 차단 해제 ★★★
+                //   사장님 명령: "990원도 6개 블럭 모두 표시"
+                //   v184_5 = [6/6] PRO 정밀 분석 영역 (십성 + 격국)
+                //   saju_basic도 [6/6] 표시 ★ 차단 해제 ★
                 
                 const v = data.v184_5;
                 
@@ -17219,6 +17168,69 @@ function renderSajuResult(data) {
                 
                 return html;
             })() : ''}
+
+            <!-- ════════════════════════════════════════════════════════════
+                 ★★★ [V200.7.4 사장님 명세 정확 적용] 4,900원 꼬시는 박스 ★★★
+                   사장님 V200.7.3 라이브 검증 후 명령:
+                     "990원 결제 후 6개 블럭 모두 표시 → 끝난 후 꼬시는 문구"
+                     "더 정확한 점사를 받아보겠냐는 둥 꼬시는 문구"
+                   
+                   위치: [6/6] PRO 정밀 분석 ★ 끝난 후 ★ 면책 ★ 직전 ★
+                   조건: saju_basic 결제자만 표시 (PREMIUM은 이미 다 봄)
+                 ════════════════════════════════════════════════════════════ -->
+            ${(function() {
+                let _paidPlan = '';
+                try { _paidPlan = localStorage.getItem('sajuPaidPlan') || ''; } catch(_) {}
+                const isBasic = _paidPlan === 'saju_basic';
+                if (!isBasic) return ''; // PREMIUM/FREE는 표시 안 함
+                
+                return `
+                <div style="margin:24px 0; padding:24px 20px; 
+                            background:linear-gradient(135deg, rgba(212,175,55,0.18), rgba(212,175,55,0.04));
+                            border:2px solid rgba(212,175,55,0.55); border-radius:14px;
+                            box-shadow:0 4px 20px rgba(212,175,55,0.18); position:relative;">
+                    
+                    <!-- 자물쇠 + 꼬시는 헤드라인 (V200.7.4 사장님 명령) -->
+                    <div style="text-align:center; margin-bottom:16px;">
+                        <div style="font-size:2.4rem; line-height:1; margin-bottom:6px;">✨</div>
+                        <div style="color:#FFD970; font-size:1.15rem; font-weight:900; letter-spacing:0.02em; line-height:1.5;">
+                            더 정확한 점사를 받아보시겠습니까?
+                        </div>
+                        <div style="color:rgba(255,255,255,0.75); font-size:0.82rem; margin-top:8px; line-height:1.6;">
+                            6대 분야 운세 + 시계열 흐름 + 특수 잠재력 패턴<br>
+                            깊이 있는 정밀 분석을 4,900원에 만나보세요
+                        </div>
+                    </div>
+                    
+                    <!-- 프리미엄 추가 콘텐츠 미리보기 -->
+                    <div style="margin:16px 0; padding:14px 16px; 
+                                background:rgba(0,0,0,0.32); border-radius:8px;
+                                color:rgba(255,255,255,0.7); font-size:0.84rem; line-height:1.85;">
+                        <div style="margin-bottom:6px;">🎯 <strong style="color:#FFD970;">[7/8] 6대 분야 운세</strong> · 재물·직업·연애·건강·학업·가족</div>
+                        <div style="margin-bottom:6px;">⏱ <strong style="color:#FFD970;">[8/8] 시계열 흐름</strong> · 오늘 / 이번달 / 올해</div>
+                        <div>🌟 <strong style="color:#FFD970;">특수 잠재력 패턴</strong> · 격국·편중·신강약 종합 진단</div>
+                    </div>
+                    
+                    <!-- 업그레이드 버튼 (꼬시는 CTA) -->
+                    <button onclick="if(typeof handleSajuPremiumPaymentCTA==='function'){handleSajuPremiumPaymentCTA();}else if(typeof _handleSajuPaymentCTA==='function'){_handleSajuPaymentCTA('saju_premium','4,900원 사주 PREMIUM');}else{alert('결제 모듈 로딩 중...');}"
+                            style="display:block; width:100%; padding:14px 20px;
+                                   background:linear-gradient(135deg, #d4af37, #ffd970);
+                                   color:#0e1117; border:0; border-radius:10px;
+                                   font-size:0.95rem; font-weight:900; letter-spacing:0.02em;
+                                   cursor:pointer; box-shadow:0 4px 12px rgba(212,175,55,0.35);
+                                   transition:transform 0.15s ease, box-shadow 0.15s ease;"
+                            onmouseover="this.style.transform='translateY(-1px)'; this.style.boxShadow='0 6px 16px rgba(212,175,55,0.45)';"
+                            onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 12px rgba(212,175,55,0.35)';">
+                        ✦ 4,900원으로 정밀 분석 받기 ✦
+                    </button>
+                    
+                    <!-- 보장 안내 -->
+                    <div style="text-align:center; margin-top:10px; color:rgba(255,255,255,0.55); font-size:0.7rem; line-height:1.5;">
+                        24시간 동안 모든 프리미엄 콘텐츠 이용 가능<br>
+                        🔒 SSL 보안결제 · 토스페이먼츠
+                    </div>
+                </div>`;
+            })()}
 
             <!-- 면책 -->
             <div style="margin-top:14px; padding:8px 10px; background:rgba(255,255,255,0.04); border-radius:4px; font-size:0.66rem; color:rgba(255,255,255,0.45); line-height:1.5;">
