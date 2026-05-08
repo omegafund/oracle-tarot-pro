@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="version" content="V31_199.1_2026-05-07_SUCCESS_MIGRATION">
+<meta name="version" content="V31_201.0_2026-05-09_HASH_BYPASS_FIX">
 <title>결제 확인 중 · ZEUS</title>
 <style>
   :root { --bg:#0e1117; --fg:#e6e6e6; --gold:#d4af37; --green:#9ed28a; }
@@ -101,7 +101,7 @@
   }
   
   // ════════════════════════════════════════════════════════════════
-  // 2. 검증 성공 → sessionStorage + hash fragment 이중 전달
+  // 2. 검증 성공 → sessionStorage + localStorage 저장
   // ════════════════════════════════════════════════════════════════
   
   // 2-A. sessionStorage (정상 케이스 — 같은 브라우저 컨텍스트)
@@ -131,21 +131,25 @@
   setTitle('결제 완료', 'ok');
   setMsg('잠시 후 결과 페이지로 이동합니다…');
   
-  // 2-C. hash fragment 백업 (모바일 격리 안전망)
-  //   - sessionStorage가 격리되어도 hash는 redirect에서 살아남음
-  //   - index.html boot가 /consume-token으로 일회용 검증 후 사주 데이터 복원
-  //   ★ V199.1 P1 핫픽스 ★: 절대 경로 '/index.html' 대신 상대 경로 사용
-  //     사유: GitHub Pages subdirectory 호스팅 시 절대 경로는 root로 가서 404
-  //     해결: success.html 위치 기준 동적 base 계산 (./index.html)
+  // ════════════════════════════════════════════════════════════════
+  // 3. Redirect — V201.0 HASH BYPASS FIX
+  //
+  //   V199.1~V200.8.x 결함 진원지 우회:
+  //     - 기존: data.verifiedToken 있으면 #vt=... 해시 경로
+  //     - 결함: 모바일에서 V199.2 STAGE 1 → consume-token 흐름이
+  //             영구 멈춤 (사장님 V200.7.6~V200.8.8 미봉책 정글의 진원지)
+  //     - 해결: ?paid=ok 단일 경로만 사용
+  //             (Cloudflare Worker 캐시 프록시로 same-domain 보장됨)
+  //             → localStorage 공유 → 해시 격리 안전망 불필요
+  //             → V199.2 STAGE 1 우회 → STAGE 2 직접 진입
+  //
+  //   V199.1 P1 핫픽스 보존: GitHub Pages subdirectory 호환
+  //     절대 경로 '/index.html' 대신 success.html 위치 기준 동적 base
+  // ════════════════════════════════════════════════════════════════
   const base = location.pathname.substring(0, location.pathname.lastIndexOf('/') + 1);
-  let redirectUrl = base + 'index.html?paid=ok';
-  if (data.verifiedToken) {
-    redirectUrl = base + 'index.html#vt=' + encodeURIComponent(data.verifiedToken)
-                + '&p=' + encodeURIComponent(data.plan || 'saju_basic')
-                + '&o=' + encodeURIComponent(orderId);
-  }
+  const redirectUrl = base + 'index.html?paid=ok&plan=' + encodeURIComponent(data.plan || 'saju_basic');
   
-  console.log('[V199.1] redirect →', redirectUrl);
+  console.log('[V201.0] HASH BYPASS — redirect →', redirectUrl);
   
   // 짧은 딜레이 후 redirect (사용자가 "결제 완료" 메시지 확인할 시간)
   setTimeout(() => { location.replace(redirectUrl); }, 800);
