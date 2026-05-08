@@ -17749,7 +17749,7 @@ export default {
     // ════════════════════════════════════════════════════════════════════
     if (url.pathname === "/version" && request.method === "GET") {
       return new Response(JSON.stringify({
-        version: "V200.8.3",      // ★ 매 배포마다 갱신 ★
+        version: "V200.8.4",      // ★ 매 배포마다 갱신 ★
         _ts: Date.now(),
         _ok: true
       }), {
