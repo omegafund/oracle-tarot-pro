@@ -15,7 +15,7 @@
     <meta name="version" content="V31_200.6_2026-05-07_INPUT_SUMMARY">
     <meta name="zeus-build-tag" content="V31_200.6_GATE_INPUT_PREVIEW">
     
-    <title>ZEUS · Tarot Oracle [V31 #200.8.4]</title>
+    <title>ZEUS · Tarot Oracle [V31 #200.8.6]</title>
 
     <!-- ════════════════════════════════════════════════════════════ -->
     <!-- [V24.10] 파비콘 명시 선언 — 사장님 진단                       -->
@@ -3193,8 +3193,36 @@
     (function() {
         'use strict';
         
-        const APP_VERSION = 'V200.8.4';  // ★ 매 배포마다 갱신 ★
+        const APP_VERSION = 'V200.8.6';  // ★ 매 배포마다 갱신 ★ — 이 한 곳만 수정하면 모든 위치 자동 동기화
         const VERSION_ENDPOINT = 'https://tarot-api.omegafund01.workers.dev/version';
+        
+        // ════════════════════════════════════════════════════════════════
+        // ★ V200.8.5 ★ 버전 표시 자동 동기화
+        //   사장님 명령: "버전업 시 한 곳만 갱신하면 화면 우측 표시 자동 적용"
+        //   효과: APP_VERSION 변수 1줄만 갱신 → 홈뷰 뱃지 + title 모두 자동 동기화
+        // ════════════════════════════════════════════════════════════════
+        function v85SyncVersionBadge() {
+            try {
+                const badge = document.getElementById('zeus-version-badge');
+                if (badge) {
+                    const versionText = APP_VERSION.replace(/^V/, '');  // 'V200.8.5' → '200.8.5'
+                    badge.textContent = `🛡 V31 #${versionText}`;
+                }
+                // title도 자동 동기화
+                const titleEl = document.querySelector('title');
+                if (titleEl && /\[V31 #[\d.]+\]/.test(titleEl.textContent)) {
+                    const versionText = APP_VERSION.replace(/^V/, '');
+                    titleEl.textContent = titleEl.textContent.replace(/\[V31 #[\d.]+\]/, `[V31 #${versionText}]`);
+                }
+            } catch(_) {}
+        }
+        
+        // DOM 준비되면 즉시 실행
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', v85SyncVersionBadge);
+        } else {
+            v85SyncVersionBadge();
+        }
         
         // ════════════════════════════════════════════════════════════════
         // ① 카카오톡 인앱 브라우저 자동 우회
@@ -3349,6 +3377,150 @@
                 console.log('✅ [V200.8.3] 새 버전 적용 완료 — URL 정리');
             } catch(_) {}
         }
+        
+        // ════════════════════════════════════════════════════════════════
+        // ★★★ [V200.8.6] 결제 후 ⟵ 돌아가기 먹통 결함 ★ 영구 차단 (보강) ★ ★★★
+        //
+        // V200.8.5 → V200.8.6 보강 사항 (사장님 C옵션 감사 결과):
+        //   F1 ★ 모달 ID 정정 ★ — payModal → payModalOverlay,
+        //                        paymentMethodModal → paymentMethodModalOverlay
+        //   F3 ★ V199.2 STAGE 1 충돌 가드 ★ — ?paid=ok reload 무한 루프 차단
+        //                                    (sessionStorage flag로 1회만 reload)
+        //   F4 ★ iOS Safari persisted=false 케이스 ★ — visibilitychange 추가
+        //   잠재 1 ★ 카테고리 정합성 ★ — bfcache 복귀 시 CURRENT_MODE 검증
+        //   잠재 2 ★ window.isProcessing 강제 해제 ★ — V200.8.5 그대로 유지
+        //
+        // 사장님 C옵션 감사 결과 (Step 1):
+        //   - 결제 모달 진입점 11곳 (사주/연애/투자/부동산/운세/일반)
+        //   - 모달 ID: payModalOverlay, paymentMethodModalOverlay, bankTransferModalOverlay
+        //   - V199.2 STAGE 1 충돌 위험 발견 → 가드 추가
+        // ════════════════════════════════════════════════════════════════
+        function v85ClearPaymentModals() {
+            // 모든 결제 관련 모달 강제 닫기 (3중 안전망)
+            try { 
+                if (typeof closePayModal === 'function') closePayModal(); 
+            } catch(_) {}
+            try { 
+                if (typeof closeBankTransferModal === 'function') closeBankTransferModal(); 
+            } catch(_) {}
+            try { 
+                if (typeof closePaymentMethodModal === 'function') closePaymentMethodModal(); 
+            } catch(_) {}
+            
+            // 폴백: DOM에서 직접 제거 (V200.8.6 — 정확한 element ID)
+            try {
+                const modalIds = [
+                    'payModalOverlay',              // showPayModal 모달
+                    'paymentMethodModalOverlay',    // showPaymentMethodModal 모달
+                    'bankTransferModalOverlay'      // showBankTransferModal 모달
+                ];
+                modalIds.forEach(function(id) {
+                    const el = document.getElementById(id);
+                    if (el) el.remove();
+                });
+            } catch(_) {}
+            
+            // window.isProcessing 락 해제 (bfcache 복귀 시 동결 가능)
+            try { 
+                if (typeof window.isProcessing !== 'undefined') {
+                    window.isProcessing = false;
+                }
+            } catch(_) {}
+            
+            // V200.8.6 — Toss 결제 진입 마커도 해제 (중복 방지)
+            try {
+                window._tossPaymentInProgress = false;
+            } catch(_) {}
+        }
+        
+        // ★ 핵심 핸들러 ★ pageshow — bfcache 복귀 감지 + 정상 흐름 복원
+        function v86HandlePageShow(event) {
+            const persisted = event && event.persisted;
+            const fromVisibilityChange = !event;  // visibilitychange가 호출한 경우
+            
+            // bfcache 복귀 또는 visibility 복귀
+            if (persisted || fromVisibilityChange) {
+                console.warn('🔄 [V200.8.6] 페이지 복귀 감지 — persisted:', persisted, 
+                             '/ fromVisibility:', fromVisibilityChange);
+                
+                // ★ V200.8.6 F3 ★ V199.2 STAGE 1 충돌 가드
+                //   ?paid=ok 또는 #vt= 진입 시 V199.2 STAGE 1이 자체 처리
+                //   여기서 reload하면 무한 루프 위험 → sessionStorage flag로 1회만
+                const url = new URL(window.location.href);
+                const hasPaidParam = url.searchParams.has('paid') 
+                                  || url.searchParams.has('vt')
+                                  || url.searchParams.has('orderId')
+                                  || (window.location.hash && /vt=|paid=/.test(window.location.hash));
+                
+                if (hasPaidParam) {
+                    // ★ 무한 루프 차단 ★ — 같은 세션에서 1회만 reload 허용
+                    const alreadyReloaded = sessionStorage.getItem('_v86PaidReloaded');
+                    if (alreadyReloaded) {
+                        console.log('  ℹ ?paid=ok reload 이미 1회 실행 — 추가 reload 차단 (V199.2 STAGE 1 자체 처리)');
+                        return;
+                    }
+                    sessionStorage.setItem('_v86PaidReloaded', '1');
+                    console.log('  → 결제 완료 흐름 → 강제 새로고침 (V199.2 STAGE 1 트리거)');
+                    window.location.reload();
+                } else {
+                    // 결제 취소/실패 — 모달만 닫고 정상 화면 복원
+                    console.log('  → 결제 취소/실패 추정 → 모달 닫기, 정상 화면 복원');
+                    v85ClearPaymentModals();
+                }
+            }
+        }
+        
+        // pageshow 이벤트 (Chrome / Firefox / Edge bfcache 복귀)
+        window.addEventListener('pageshow', v86HandlePageShow);
+        
+        // ★ V200.8.6 F4 ★ visibilitychange — iOS Safari persisted=false 대응
+        //   iOS Safari는 bfcache 사용해도 persisted=false 반환할 수 있음
+        //   → visibilitychange (visible) 이벤트로 보강
+        let _v86LastVisibility = document.visibilityState;
+        document.addEventListener('visibilitychange', function() {
+            if (document.visibilityState === 'visible' && _v86LastVisibility === 'hidden') {
+                // hidden → visible 전환 (탭 복귀 또는 bfcache 복귀)
+                // 결제 모달이 ★ 열려있다 ★ + URL에 ★ 결제 흔적 ★ 있으면 → 정상 처리
+                const hasPaymentModal = !!(
+                    document.getElementById('payModalOverlay')
+                    || document.getElementById('paymentMethodModalOverlay')
+                    || document.getElementById('bankTransferModalOverlay')
+                );
+                
+                if (hasPaymentModal && !window._tossPaymentInProgress) {
+                    console.warn('🔄 [V200.8.6 F4] visibilitychange 복귀 — 결제 모달 잔재 정리');
+                    v86HandlePageShow(null);  // pageshow 핸들러 재사용
+                }
+            }
+            _v86LastVisibility = document.visibilityState;
+        });
+        
+        // ★ pagehide ★ — 페이지 떠날 때 결제 모달 정리 (bfcache 진입 차단)
+        window.addEventListener('pagehide', function(event) {
+            console.log('📤 [V200.8.6] pagehide 감지 — persisted:', event.persisted);
+            // 떠나기 전 모달 정리 (bfcache 진입 시 깨끗한 상태로)
+            // 단, Toss 결제 진입 중이면 정리 안 함
+            const isOnPaymentFlow = window._tossPaymentInProgress === true;
+            if (!isOnPaymentFlow) {
+                v85ClearPaymentModals();
+            }
+        });
+        
+        // ★ popstate ★ — 사용자가 브라우저 뒤로가기 클릭
+        window.addEventListener('popstate', function(event) {
+            console.log('⬅ [V200.8.6] popstate 감지 — 결제 모달 정리');
+            // 뒤로가기 → 결제 모달 자동 닫기 (사용자 의도: 모달 닫고 싶음)
+            v85ClearPaymentModals();
+        });
+        
+        // 디버그용 글로벌 노출
+        window._v86 = { 
+            clearPaymentModals: v85ClearPaymentModals,
+            handlePageShow: v86HandlePageShow,
+            APP_VERSION: APP_VERSION 
+        };
+        // V200.8.5 backward compat
+        window._v85 = window._v86;
         
         // 디버그용 글로벌 노출
         window._v83 = { APP_VERSION, checkVersion: v83CheckVersion };
@@ -3660,6 +3832,9 @@
                사장님 명령: "홈뷰에 갱신됐는지 알 수 있게 표시"
                위치: 우측 상단 fixed (작고 은은하게)
                이미지 효과 0 (배포 갱신 식별 전용)
+             [V200.8.5 사장님 명령] 자동 갱신 시스템:
+               - 한 곳 (window.APP_VERSION) 만 갱신하면 자동 동기화
+               - id="zeus-version-badge"의 textContent 자동 적용
              ════════════════════════════════════════════════════════════ -->
         <div id="zeus-version-badge" style="
             position: fixed;
@@ -3677,7 +3852,7 @@
             pointer-events: none;
             backdrop-filter: blur(2px);
             -webkit-backdrop-filter: blur(2px);
-        ">🛡 V31 #200.7.6</div>
+        ">🛡 V31 #200.8.6</div>
 
         <!-- [V21.0] ✦ 아치형 별빛 — 하이브리드 (큰 스파클 + 작은 점 + 골드 글로우) -->
         <div class="arch-title-wrapper">
@@ -15445,17 +15620,14 @@ function buildSajuChatSequenceV185(data) {
         }
     }
     
-    // ─── [FREE] 메시지 3: 갈림길 트리거 (불안 생성) ───
-    //   사장님 카피: "중요한 흐름이 감지됩니다"
+    // ─── [FREE] 메시지 3: ★ V200.8.5 결함 1 ★ ───
+    //   사장님 V200.8.4 발견: "⚠ 중요한 흐름이 감지됩니다" 메시지가 페이월 위에 잔재
+    //   원인: V200.8.3 페이월 교체 시 이 별도 메시지가 외부에 있어 안 잡힘
+    //   해결: FREE 분기에서 이 메시지 ★ 삭제 ★ — V200.8.3 새 페이월 디자인으로 직진
     if (isFree) {
-        messages.push({
-            type: 'warning',
-            title: `⚠ 중요한 흐름이 감지됩니다`,
-            text: '→ 지금 선택 하나가 이후 흐름을 바꿀 수 있습니다',
-            time: timeStr,
-            delay: 150
-        });
-        // FREE는 여기서 끝 (결제 게이트로)
+        // ★ V200.8.5 ★ 옛 안내 메시지 제거 — V200.8.3 페이월에 통합돼 있음
+        // 기존: messages.push({ type:'warning', title:'⚠ 중요한 흐름이 감지됩니다', ... })
+        // 신규: 안내 없이 바로 페이월로 진행
         return messages;
     }
     
@@ -15688,9 +15860,105 @@ function renderSajuKakaoChatV185(data) {
         const time = new Date();
         const t = `${String(time.getHours()).padStart(2,'0')}:${String(time.getMinutes()).padStart(2,'0')}`;
         
-        // PAID 메시지 1: 십성 정밀
+        // ════════════════════════════════════════════════════════════════
+        // ★ V200.8.5 결함 2/3 ★ PAID 메시지 1: 십성 정밀 (V200.8.2 비주얼 바 + 인물형)
+        //   사장님 V200.8.4 발견:
+        //     "⭐ 십성 정밀 — 편인" + "당신의 핵심 성향은 편인입니다. 독창적 학습" 너무 짧음
+        //     V200.8.2의 인물형 라벨 (🎨 자유 창작자형) / 비주얼 바 / 격국 분석 안 보임
+        //   원인: V200.8.2 패치가 다른 렌더 경로에 있어서 V31 #185 카카오 시퀀스에 미적용
+        //   해결: V31 #185 PAID 시퀀스에 V200.8.2 데이터 (data.pro.tenStarsV2 / deepInsightV2) 직접 적용
+        // ════════════════════════════════════════════════════════════════
+        const v85_v2tenStars = data.pro && data.pro.tenStarsV2;
+        const v85_v2gyeokGuk = data.pro && data.pro.deepInsightV2;
         const dominant = interp.tenStars && interp.tenStars.dominant;
-        if (dominant) {
+        
+        if (v85_v2tenStars && v85_v2tenStars.bars && v85_v2tenStars.bars.length > 0) {
+            // V200.8.2 신규 디자인 — 인물형 라벨 + 비주얼 바 (정통 오행색)
+            const _ohaengColors = { '목':'#5DD68A','화':'#FF7B6B','토':'#D4A574','금':'#C0C0C0','수':'#5B9BD5' };
+            const _ohaengIcons  = { '목':'🌳','화':'🔥','토':'⛰️','금':'⚙️','수':'💧' };
+            
+            const archHTML = v85_v2tenStars.archetype ? `
+                <div style="margin-bottom:14px; padding:14px 16px; 
+                            background: linear-gradient(135deg, rgba(212,175,55,0.18), rgba(212,175,55,0.04)); 
+                            border:2px solid rgba(212,175,55,0.55); border-radius:10px; text-align:center;">
+                    <div style="color:#FFE08A; font-size:1.05rem; font-weight:900; line-height:1.3; margin-bottom:4px;">
+                        ${v85_v2tenStars.archetype.label}
+                    </div>
+                    <div style="color:rgba(255,255,255,0.78); font-size:0.78rem; line-height:1.4;">
+                        ${v85_v2tenStars.archetype.tagline}
+                    </div>
+                </div>` : '';
+            
+            const barsHTML = v85_v2tenStars.bars.map(b => {
+                const color = _ohaengColors[b.ohaeng] || '#FFD970';
+                const icon = _ohaengIcons[b.ohaeng] || '✨';
+                const fillPct = Math.max(8, Math.min(95, b.fillPct || 50));
+                const opacity = b.level >= 4 ? 1.0 : b.level >= 3 ? 0.85 : 0.65;
+                return `
+                    <div style="display:flex; align-items:center; gap:8px; margin-bottom:7px; opacity:${opacity};">
+                        <span style="min-width:78px; font-size:0.78rem; font-weight:800; color:${color};">
+                            ${icon} ${b.short}
+                        </span>
+                        <div style="flex:1; background:rgba(255,255,255,0.07); height:13px; border-radius:6.5px; overflow:hidden;">
+                            <div style="width:${fillPct}%; height:100%; 
+                                        background: linear-gradient(90deg, ${color}, ${color}cc); 
+                                        box-shadow: inset 0 -2px 4px rgba(0,0,0,0.15);"></div>
+                        </div>
+                        <span style="min-width:62px; text-align:right; font-size:0.72rem; font-weight:700; color:${color};">
+                            ${b.category}
+                        </span>
+                    </div>`;
+            }).join('');
+            
+            paidContent += `
+            <div class="saju-chat-msg" style="animation-delay:50ms;">
+                <div class="saju-chat-avatar">☯️</div>
+                <div class="saju-chat-bubble highlight" style="padding:14px;">
+                    <div class="saju-chat-bubble-title" style="margin-bottom:12px;">⭐ 십성 정밀 — 핵심 구조</div>
+                    ${archHTML}
+                    <div>${barsHTML}</div>
+                    <div class="saju-chat-bubble-time">${t}</div>
+                </div>
+            </div>`;
+            
+            // ★ V200.8.5 격국 분석 (V200.8.2 deepInsightV2 사용) ★
+            if (v85_v2gyeokGuk && v85_v2gyeokGuk.gyeokGuk) {
+                paidContent += `
+                <div class="saju-chat-msg" style="animation-delay:100ms;">
+                    <div class="saju-chat-avatar">☯️</div>
+                    <div class="saju-chat-bubble highlight" style="padding:14px;">
+                        <div class="saju-chat-bubble-title" style="margin-bottom:12px;">🔮 격국 — 깊이 통찰</div>
+                        <div style="margin-bottom:12px; padding:12px 14px; 
+                                    background: linear-gradient(135deg, rgba(212,175,55,0.15), rgba(212,175,55,0.03)); 
+                                    border-radius:8px;">
+                            <div style="color:#FFE08A; font-size:1rem; font-weight:900; margin-bottom:3px;">
+                                🔮 ${v85_v2gyeokGuk.gyeokGuk}
+                            </div>
+                            ${v85_v2gyeokGuk.archetype ? `
+                                <div style="color:rgba(255,255,255,0.85); font-size:0.78rem; font-style:italic;">
+                                    "${v85_v2gyeokGuk.archetype.label}" — ${v85_v2gyeokGuk.archetype.tagline}
+                                </div>` : ''}
+                        </div>
+                        <div style="display:flex; flex-direction:column; gap:8px;">
+                            <div style="display:flex; gap:10px; padding:8px 12px; background:rgba(93,214,138,0.08); border-radius:6px;">
+                                <span style="color:#5DD68A; font-weight:800; font-size:0.78rem; min-width:40px;">✔ 특징</span>
+                                <span style="color:rgba(255,255,255,0.9); font-size:0.82rem; line-height:1.5;">${v85_v2gyeokGuk.features || ''}</span>
+                            </div>
+                            <div style="display:flex; gap:10px; padding:8px 12px; background:rgba(243,156,18,0.08); border-radius:6px;">
+                                <span style="color:#FFD970; font-weight:800; font-size:0.78rem; min-width:40px;">⚠ 흐름</span>
+                                <span style="color:rgba(255,255,255,0.9); font-size:0.82rem; line-height:1.5;">${v85_v2gyeokGuk.flow || ''}</span>
+                            </div>
+                            <div style="display:flex; gap:10px; padding:8px 12px; background:rgba(91,155,213,0.08); border-radius:6px;">
+                                <span style="color:#5B9BD5; font-weight:800; font-size:0.78rem; min-width:40px;">🎯 방향</span>
+                                <span style="color:rgba(255,255,255,0.9); font-size:0.82rem; line-height:1.5;">${v85_v2gyeokGuk.direction || ''}</span>
+                            </div>
+                        </div>
+                        <div class="saju-chat-bubble-time">${t}</div>
+                    </div>
+                </div>`;
+            }
+        } else if (dominant) {
+            // 폴백 — V200.8.2 데이터 없으면 옛 짧은 표시 (안전망)
             paidContent += `
             <div class="saju-chat-msg" style="animation-delay:50ms;">
                 <div class="saju-chat-avatar">☯️</div>
@@ -15716,7 +15984,10 @@ function renderSajuKakaoChatV185(data) {
         
         // PAID 메시지 2: 6대 분야 정밀 (상세 텍스트)
         const sixKeys = ['careerLuck', 'wealthLuck', 'loveLuck', 'healthLuck', 'studyLuck', 'familyLuck'];
-        const sixIcons = { careerLuck: '💼', wealthLuck: '💰', loveLuck: '💕', healthLuck: '🌿', studyLuck: '📚', familyLuck: '👨‍👩‍👧' };
+        // ★ V200.8.5 사장님 명세 ★ — 6대 분야 아이콘
+        //   연애: 💕 (분홍 하트 둘) → ❤️ (단순 하트, 시인성 ↑)
+        //   학업: 📚 (책더미) → 📖 (펼친 책, 학습 의미 명확)
+        const sixIcons = { careerLuck: '💼', wealthLuck: '💰', loveLuck: '❤️', healthLuck: '🌿', studyLuck: '📖', familyLuck: '👨‍👩‍👧' };
         const sixLabels = { careerLuck: '직업운', wealthLuck: '재물운', loveLuck: '연애운', healthLuck: '건강운', studyLuck: '학업운', familyLuck: '가족운' };
         let sixHtml = '';
         sixKeys.forEach(k => {
@@ -18305,12 +18576,13 @@ function renderSajuResult(data) {
                 // ─── [7/8] 6대 분야 운세 ───
                 //   ★ V199.4: saju_basic 차단 (4,900원 결제 유인) ★
                 if (!_isSajuBasic && six) {
+                    // ★ V200.8.5 사장님 명세 ★ — 6대 분야 아이콘 (연애 ❤️ / 학업 📖)
                     const domains = [
                         { key: 'careerLuck',  icon: '💼', label: '직업운', color: '#5DADE2' },
                         { key: 'wealthLuck',  icon: '💰', label: '재물운', color: '#FFD970' },
-                        { key: 'loveLuck',    icon: '💕', label: '연애운', color: '#FF8FA3' },
+                        { key: 'loveLuck',    icon: '❤️', label: '연애운', color: '#FF8FA3' },
                         { key: 'healthLuck',  icon: '🌿', label: '건강운', color: '#7AD188' },
-                        { key: 'studyLuck',   icon: '📚', label: '학업운', color: '#BB8FCE' },
+                        { key: 'studyLuck',   icon: '📖', label: '학업운', color: '#BB8FCE' },
                         { key: 'familyLuck',  icon: '👨‍👩‍👧', label: '가족운', color: '#C39BD3' }
                     ];
                     
@@ -21263,6 +21535,16 @@ function startTossPayment(planKey, method) {
     // V199.1 successUrl/failUrl 단순화 — 신뢰 가능한 흐름은 worker가 담당
     // (V198 FIX 1의 URL 인코딩 제거 — KV로 대체됨)
     const sajuQueryFlag = isSajuCtx ? '?ctx=saju' : '';
+    
+    // ★ V200.8.5 ★ Toss 결제 진입 마커 — pagehide에서 모달 정리 안 하도록
+    //   사장님 진단: ⟵ 돌아가기 시 모달이 ★ 정리된 상태 ★ 로 보여야 정상
+    //   → pagehide가 모달 정리하면 bfcache 진입 시 깨끗한 상태
+    //   → 단, Toss 결제 진입 시엔 모달 유지 (사용자가 다시 돌아오면 결제 흐름 재개)
+    window._tossPaymentInProgress = true;
+    setTimeout(function() {
+        // 30초 후 자동 해제 (안전망 — 결제 안 가고 멈춘 경우 대비)
+        window._tossPaymentInProgress = false;
+    }, 30000);
     
     toss.requestPayment(paymentMethod, {
         amount:       plan.amount,
