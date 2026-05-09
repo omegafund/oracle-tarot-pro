@@ -5,29 +5,33 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
-<meta name="version" content="V31_201.2_2026-05-09_PRODUCTION_HASH_BYPASS">
+<meta name="version" content="V31_201.3_2026-05-09_USER_GESTURE_REQUIRED">
 <title>결제 확인 중 · ZEUS</title>
 <style>
-  :root { --bg:#0e1117; --fg:#e6e6e6; --gold:#d4af37; --green:#9ed28a; }
-  *{box-sizing:border-box}
-  html,body{margin:0;padding:0;background:var(--bg);color:var(--fg);font-family:-apple-system,'Apple SD Gothic Neo','Pretendard','Noto Sans KR',sans-serif}
+  :root { --bg:#0e1117; --fg:#e6e6e6; --gold:#d4af37; --green:#9ed28a; --gold-bright:#FFD970; }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{background:var(--bg);color:var(--fg);font-family:-apple-system,'Apple SD Gothic Neo','Pretendard','Noto Sans KR',sans-serif;min-height:100vh}
   .wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px}
-  .card{max-width:420px;width:100%;background:#1a1f2b;border:1px solid #2a2f3b;border-radius:16px;padding:32px 24px;text-align:center;box-shadow:0 20px 50px rgba(0,0,0,.4)}
-  .title{font-size:20px;font-weight:700;color:var(--gold);margin-bottom:8px}
-  .subtitle{font-size:14px;color:#aab1bd;margin-bottom:24px;line-height:1.55}
-  .spinner{width:40px;height:40px;margin:0 auto 16px;border:3px solid #2a2f3b;border-top-color:var(--gold);border-radius:50%;animation:spin 0.9s linear infinite}
+  .card{max-width:420px;width:100%;background:#1a1f2b;border:1px solid #2a2f3b;border-radius:16px;padding:36px 24px;text-align:center;box-shadow:0 20px 50px rgba(0,0,0,.4)}
+  .title{font-size:22px;font-weight:800;color:var(--gold);margin-bottom:10px}
+  .subtitle{font-size:14px;color:#aab1bd;margin-bottom:24px;line-height:1.6}
+  .spinner{width:48px;height:48px;margin:0 auto 18px;border:3px solid #2a2f3b;border-top-color:var(--gold);border-radius:50%;animation:spin 0.9s linear infinite}
   @keyframes spin{to{transform:rotate(360deg)}}
   .ok{color:var(--green)}
   .err{color:#ff7b7b}
-  .tiny{font-size:11px;color:#6a7280;margin-top:16px;font-family:Menlo,Monaco,Consolas,monospace}
-  button{margin-top:16px;background:var(--gold);color:#0e1117;border:0;padding:12px 24px;border-radius:10px;font-weight:700;cursor:pointer;font-size:14px}
-  button:hover{filter:brightness(1.08)}
+  .check-icon{font-size:48px;margin-bottom:8px;color:var(--green)}
+  .tiny{font-size:11px;color:#6a7280;margin-top:18px;font-family:Menlo,Monaco,Consolas,monospace}
+  button.cta{display:block;width:100%;margin-top:22px;background:linear-gradient(135deg,#FFD970 0%,#d4af37 100%);color:#0e1117;border:0;padding:18px 24px;border-radius:14px;font-weight:900;font-size:16px;cursor:pointer;letter-spacing:.02em;box-shadow:0 6px 20px rgba(212,175,55,.35);animation:pulse 2.4s ease-in-out infinite}
+  button.cta:hover,button.cta:active{filter:brightness(1.08);transform:translateY(-1px)}
+  @keyframes pulse{0%,100%{box-shadow:0 6px 20px rgba(212,175,55,.35)}50%{box-shadow:0 6px 32px rgba(212,175,55,.6)}}
+  button.alt{margin-top:12px;background:transparent;color:#aab1bd;border:1px solid #2a2f3b;padding:10px 20px;border-radius:8px;font-weight:600;cursor:pointer;font-size:13px}
+  button.alt:hover{border-color:var(--gold);color:var(--gold)}
 </style>
 </head>
 <body>
   <div class="wrap">
     <div class="card">
-      <div id="spin" class="spinner"></div>
+      <div id="iconArea"><div class="spinner"></div></div>
       <div id="title" class="title">결제를 확인하고 있습니다…</div>
       <div id="msg" class="subtitle">잠시만 기다려주세요. 결제 검증에는 보통 1~3초가 소요됩니다.</div>
       <div id="action"></div>
@@ -37,20 +41,17 @@
 
 <script>
 /* ════════════════════════════════════════════════════════════════════
- *   ZEUS Payment Success Handler  —  V201.2 PRODUCTION
- * ════════════════════════════════════════════════════════════════════
+ *   ZEUS Payment Success Handler  —  V201.3 PRODUCTION
  *
- *   결정적 변경 (V199.1 → V201.2):
- *     기존: data.verifiedToken 있으면 #vt=... 해시 경로로 이동
- *           → V199.2 STAGE 1 → consume-token → 모바일에서 영구 멈춤
- *           → V200.7.6 ~ V200.8.8 미봉책 51번의 진원지
- *     신규: 단일 ?paid=ok 경로만 사용
- *           → STAGE 2 직접 진입 → 정상 점사창 표시
+ *   결정적 변경 (V201.2 → V201.3):
+ *     기존 V201.2: 800ms 타이머 후 자동 location.replace
+ *                  → 모바일 브라우저(iOS Safari, KakaoPay 직후 컨텍스트)에서
+ *                    user-gesture 없는 자동 navigation 차단됨 → 백지
+ *     신규 V201.3: 사용자 클릭(user gesture) 1회 필요
+ *                  → 모든 모바일 환경에서 안정 작동
+ *                  → UX상으로도 "결제 완료 확인 후 결과 보기"가 자연
  *
- *   이 변경의 안전성:
- *     - Cloudflare Worker 캐시 프록시 도입으로 same-domain 보장됨
- *     - localStorage가 success.html과 index.html 사이 자동 공유
- *     - 따라서 #vt= 해시 안전망(cross-domain 격리 우회)이 더는 불필요
+ *   해시 우회 (V201.0~) 그대로 유지 — V199.2 STAGE 1 진원지 차단
  *
  *   2026-05-09 모바일 실기 검증 완료
  * ════════════════════════════════════════════════════════════════════ */
@@ -62,7 +63,7 @@
   const setTitle = (s, cls) => { $('title').textContent = s; if (cls) $('title').className = 'title ' + cls; };
   const setMsg   = (s) => { $('msg').textContent = s; };
   const setDiag  = (s) => { $('diag').textContent = s; };
-  const stopSpin = () => { const sp = $('spin'); if (sp) sp.style.display = 'none'; };
+  const swapIcon = (html) => { $('iconArea').innerHTML = html; };
   
   const params = new URLSearchParams(location.search);
   const paymentKey = params.get('paymentKey');
@@ -71,10 +72,10 @@
   
   // ─── 1. Toss redirect 파라미터 누락 방어 ─────────────────
   if (!paymentKey || !orderId || !amount) {
-    stopSpin();
+    swapIcon('<div style="font-size:48px;margin-bottom:8px">⚠️</div>');
     setTitle('결제 정보 누락', 'err');
-    setMsg('Toss로부터 받은 결제 정보가 불완전합니다. 다시 시도해주세요.');
-    $('action').innerHTML = '<button onclick="location.href=\'./\'">홈으로</button>';
+    setMsg('Toss로부터 받은 결제 정보가 불완전합니다.\n다시 시도해주세요.');
+    $('action').innerHTML = '<button class="cta" onclick="location.href=\'./\'">홈으로</button>';
     setDiag('paymentKey/orderId/amount 중 하나 이상 누락');
     return;
   }
@@ -98,23 +99,23 @@
     data = await res.json();
     
     if (!data.success) {
-      stopSpin();
+      swapIcon('<div style="font-size:48px;margin-bottom:8px">❌</div>');
       setTitle('결제 검증 실패', 'err');
       setMsg(data.error || '결제 검증 중 오류가 발생했습니다.');
-      $('action').innerHTML = '<button onclick="location.href=\'./fail.html\'">실패 안내로</button>';
+      $('action').innerHTML = '<button class="cta" onclick="location.href=\'./fail.html\'">실패 안내로</button>';
       setDiag('reason: ' + JSON.stringify(data).slice(0, 200));
       return;
     }
     
   } catch(e) {
-    stopSpin();
+    swapIcon('<div style="font-size:48px;margin-bottom:8px">⚠️</div>');
     setTitle('네트워크 오류', 'err');
     if (e.name === 'AbortError') {
       setMsg('검증 서버 응답이 지연되고 있습니다. 잠시 후 다시 시도해주세요.\n결제는 토스 서버에 정상 접수되었을 수 있으니, 동일 결제는 재시도하지 마세요.');
     } else {
-      setMsg('검증 서버에 연결할 수 없습니다. 잠시 후 다시 시도해주세요.');
+      setMsg('검증 서버에 연결할 수 없습니다.\n잠시 후 다시 시도해주세요.');
     }
-    $('action').innerHTML = '<button onclick="location.href=\'./\'">홈으로</button>';
+    $('action').innerHTML = '<button class="cta" onclick="location.href=\'./\'">홈으로</button>';
     setDiag('error: ' + e.message);
     return;
   }
@@ -125,9 +126,7 @@
   try {
     sessionStorage.setItem('verified_paid', 'true');
     sessionStorage.setItem('sajuPaidPlan', data.plan || 'saju_basic');
-    if (data.token) {
-      sessionStorage.setItem('paid_token', data.token);
-    }
+    if (data.token) sessionStorage.setItem('paid_token', data.token);
   } catch(_) {}
   
   // 3-B. localStorage (V194 60분 정책 호환 + 24시간 확장)
@@ -145,19 +144,29 @@
     }
   } catch(_) {}
   
-  setTitle('결제 완료', 'ok');
-  setMsg('잠시 후 결과 페이지로 이동합니다…');
-  
-  // ─── 4. ★ V201.2 핵심 ★ — 해시 경로 우회, ?paid=ok 단일 경로 ───
-  //   V199.1 P1 핫픽스 보존: GitHub Pages subdirectory 호환
-  //   → 절대 경로 '/index.html' 대신 success.html 위치 기준 동적 base
+  // ─── 4. ★ V201.3 핵심 ★ — 사용자 클릭 대기 (자동 이동 X) ───
+  //   해시 경로 우회 (V201.0~ 유지): ?paid=ok 단일 경로
   const base = location.pathname.substring(0, location.pathname.lastIndexOf('/') + 1);
   const redirectUrl = base + 'index.html?paid=ok&plan=' + encodeURIComponent(data.plan || 'saju_basic');
   
-  console.log('[V201.2] redirect →', redirectUrl);
+  console.log('[V201.3] redirect target →', redirectUrl);
   
-  // 800ms 딜레이 (사용자가 "결제 완료" 메시지 인지할 시간)
-  setTimeout(() => { location.replace(redirectUrl); }, 800);
+  // 결제 완료 UI — 큰 버튼 1개로 사용자가 직접 진입
+  swapIcon('<div class="check-icon">✓</div>');
+  setTitle('결제 완료', 'ok');
+  setMsg('결제가 정상적으로 처리되었습니다.\n아래 버튼을 눌러 점사 결과를 확인하세요.');
+  
+  $('action').innerHTML = 
+    '<button class="cta" id="goBtn">▶ 점사 결과 보기</button>' +
+    '<button class="alt" id="homeBtn">홈으로 돌아가기</button>';
+  
+  document.getElementById('goBtn').addEventListener('click', () => {
+    location.replace(redirectUrl);
+  });
+  
+  document.getElementById('homeBtn').addEventListener('click', () => {
+    location.href = base;
+  });
   
 })();
 </script>
