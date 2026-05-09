@@ -1,0 +1,2002 @@
+/* ════════════════════════════════════════════════════════════════
+ * ZEUS TAROT — main.css
+ * V203.0 분리 구조 (Phase 1)
+ * 
+ * 전역 변수, 리셋, 공통 컴포넌트, 폰트, 타이포그래피, 애니메이션
+ * 
+ * 원본: V202.2 index.html <style> 블록에서 분리
+ * 변경: 없음 (동일 룰, 위치만 변경)
+ * ════════════════════════════════════════════════════════════════ */
+
+
+
+        :root {
+            /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+            /* [V21.0] ZEUS 글로벌 럭셔리 컬러 팔레트     */
+            /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+            /* — 메인 골드 (브랜드 핵심) — */
+            /* [V31 #184.7] ZEUS 골드 팔레트 — 신들의 왕 격 강화
+               사장님 지적: "더 빛나고 글로리하게, 메인 타이틀 격 보강"
+               5단계 골드 시스템:
+                 - gold-radiant: 최상위 광채 (메인 타이틀용)
+                 - gold-bright: 밝은 금 (강조)
+                 - gold:        메인 (브랜드 정체성)
+                 - gold-deep:   깊은 금 (음영)
+                 - gold-soft:   부드러운 금 (부제) */
+            --gold:         #D4AF37;             /* 메인 골드 (브랜드) */
+            --gold-bright:  #FFEC9F;             /* 밝은 금 — 강조 */
+            --gold-soft:    #B8860B;             /* 부드러운 금 — 부제 */
+            --gold-radiant: #FFD700;             /* ★ 신규: 빛나는 순금 ★ */
+            --gold-deep:    #8B6914;             /* ★ 신규: 깊은 금 (음영) ★ */
+            --gold-cream:   #FFF8DC;             /* ★ 신규: 크림 광택 ★ */
+            --gold-glow:    rgba(255,215,80,0.85); /* ★ 신규: 신성한 광채 ★ */
+            
+            /* [V31 #185] 카카오 스타일 사주 — 사장님 연초록 + ZEUS 골드
+               IP 안전: 카카오 노랑 #FAE100 회피, 자체 색상 시스템
+               다른 카테고리 (타로/주식/부동산/운세) 영향 0 */
+            --saju-mint:        #7AD188;             /* ★ 사장님 메인 연초록 ★ */
+            --saju-mint-light:  #5DD68A;             /* 밝은 액센트 (Excellent) */
+            --saju-mint-deep:   #2A8D3F;             /* 배경 액센트 */
+            --saju-mint-glow:   rgba(122,209,136,0.45);  /* 발광 */
+            --saju-bubble-bg:   rgba(122,209,136,0.10); /* 메시지 버블 배경 */
+            --saju-bubble-bg-2: rgba(122,209,136,0.18); /* 버블 호버/강조 */
+            --saju-bubble-edge: rgba(122,209,136,0.30); /* 버블 테두리 */
+            --saju-dark:        #0F1411;              /* 살짝 그린 톤 다크 배경 */
+            --saju-dark-2:      #161A17;              /* 카드 배경 */
+            --saju-warning:     #F39C12;              /* ⚠ 경고 (트리거) */
+            --saju-risk:        #E67E22;              /* 위험 톤 */
+            --saju-text:        #FFFFFF;              /* 메인 텍스트 */
+            --saju-text-soft:   rgba(255,255,255,0.78);  /* 보조 텍스트 */
+            --saju-text-fade:   rgba(255,255,255,0.55);  /* 희미 */
+            --bright-gold: #FFF5C3;      /* 호환 */
+            --dark-gold: #8C6212;        /* 호환 */
+
+            /* — 액센트 컬러 (도메인별) — */
+            --accent-purple: #9B59B6;    /* Signal 분석 */
+            --accent-emerald: #50C878;   /* 성공/긍정 */
+            --accent-rose: #FF7BAC;      /* 연애 */
+            --accent-blue: #5DADE2;      /* 부동산/Market */
+            --accent-coral: #FF6B6B;     /* Critical/경고 */
+
+            /* — 깊이감 (배경) — */
+            --bg: #0A0A0F;               /* 더 깊은 검정 (블루 톤) */
+            --bg-mid: #14141F;           /* 중간 톤 */
+            --bg-card: rgba(20, 20, 31, 0.7);   /* 카드 배경 */
+
+            /* — 텍스트 톤 (계층화) — */
+            --text: #FFFFFF;
+            --text-soft: rgba(255,255,255,0.85);
+            --text-muted: rgba(255,255,255,0.6);
+            --text-dim: rgba(255,255,255,0.4);
+
+            /* — 폰트 — */
+            --font-display: 'Cormorant Garamond', 'Noto Serif KR', serif;   /* 타이틀 */
+            --font-body: 'Inter', 'Noto Sans KR', -apple-system, sans-serif; /* 본문 영문 */
+            --font-ko: 'Noto Sans KR', 'Apple SD Gothic Neo', sans-serif;     /* 본문 한글 */
+            --font: var(--font-body);    /* 기존 호환 */
+        }
+
+        * { box-sizing: border-box; }
+
+        body {
+            margin: 0; padding: 0;
+            background: radial-gradient(ellipse at center, #14141F 0%, #0A0A0F 70%, #000 100%);
+            color: var(--text);
+            font-family: var(--font-body), var(--font-ko);
+            min-height: 100vh;
+            overflow-x: hidden;
+            letter-spacing: 0.01em;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+
+        #app-container {
+            max-width: 500px;
+            width: 100%;
+            padding: 50px 25px 40px 25px;
+            text-align: center;
+            position: relative;
+            margin: 0 auto;
+            border-left: 1px solid rgba(212,175,55,0.15);
+            border-right: 1px solid rgba(212,175,55,0.15);
+            min-height: 100vh;
+        }
+
+
+
+        /* ════════════════════════════════════
+           ✦ 아치형 별 타이틀 영역
+        ════════════════════════════════════ */
+
+        .arch-title-wrapper {
+            position: relative;
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 4px;
+            padding-top: 10px;
+        }
+
+        .arch-svg-wrapper {
+            position: relative;
+            width: 320px;
+            height: 130px;
+            margin: 0 auto;
+        }
+
+        .arch-svg-wrapper svg {
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            overflow: visible;
+        }
+
+        /* [V21.0 → V31 #184.7] 럭셔리 디스플레이 타이틀 — 신들의 왕 격
+           사장님 지적: "신탁의 제왕인데 격에 맞게 더 빛나고 글로리하게"
+           강화 사항:
+             1. 다층 골드 그라디언트 (5 stops — 광택감 증폭)
+             2. 텍스트 그림자 4겹 (외광 + 내광 + 깊이 + 입체)
+             3. drop-shadow 4겹 (Halo 효과)
+             4. font-weight 600 → 700 (더 진한 무게감)
+             5. 글로벌 색상 변수 보강 */
+
+        .gold-title {
+            position: absolute;
+            bottom: 0; left: 0; right: 0;
+            text-align: center;
+            z-index: 2;
+            font-family: var(--font-display);
+            color: var(--gold);
+            font-size: 3.4rem;
+            font-weight: 700;            /* ★ 600 → 700 (제왕 무게감) */
+            margin: 0;
+            letter-spacing: 0.35em;
+            /* ★ 4겹 텍스트 그림자 — 신성한 광채 ★ */
+            text-shadow:
+                0 0 30px rgba(255,215,80,0.95),     /* 강력 외광 (밝은 금) */
+                0 0 60px rgba(212,175,55,0.7),      /* 확산 외광 */
+                0 0 100px rgba(255,236,159,0.4),    /* 거대 Halo */
+                0 3px 8px rgba(0,0,0,0.95);          /* 깊이 그림자 */
+            line-height: 1;
+            /* ★ 다층 골드 그라디언트 — 5 stops 광택 ★ */
+            background: linear-gradient(180deg,
+                #FFF8DC 0%,                          /* Cream highlight (최상부 광택) */
+                #FFE98A 18%,                         /* 밝은 금 (반사광) */
+                #FFD700 38%,                         /* 순금 (메인) */
+                #D4AF37 60%,                         /* 클래식 골드 */
+                #B8860B 82%,                         /* 깊은 금 */
+                #8B6914 100%);                       /* 어두운 금 (하단 음영) */
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+            /* ★ 4겹 drop-shadow — Halo 효과 ★ */
+            filter: 
+                drop-shadow(0 0 18px rgba(255,215,80,0.85))
+                drop-shadow(0 0 36px rgba(212,175,55,0.6))
+                drop-shadow(0 0 72px rgba(255,236,159,0.35))
+                drop-shadow(0 4px 6px rgba(0,0,0,0.7));
+            /* ★ 신성한 빛 애니메이션 — subtle pulse ★ */
+            animation: zeusGlowPulse 3s ease-in-out infinite;
+        }
+
+        
+
+        /* [V31 #184.7] 신들의 왕 — 광채 호흡 애니메이션 */
+
+        @keyframes zeusGlowPulse {
+            0%, 100% {
+                filter: 
+                    drop-shadow(0 0 18px rgba(255,215,80,0.85))
+                    drop-shadow(0 0 36px rgba(212,175,55,0.6))
+                    drop-shadow(0 0 72px rgba(255,236,159,0.35))
+                    drop-shadow(0 4px 6px rgba(0,0,0,0.7));
+            }
+            50% {
+                filter: 
+                    drop-shadow(0 0 24px rgba(255,236,159,1))
+                    drop-shadow(0 0 48px rgba(212,175,55,0.8))
+                    drop-shadow(0 0 96px rgba(255,215,80,0.5))
+                    drop-shadow(0 4px 6px rgba(0,0,0,0.7));
+            }
+        }
+
+
+
+        /* ════════════════════════════════════════════════════════════════
+           [V31 #185] 카카오 스타일 사주 결과창 — 사장님 연초록 + ZEUS 골드
+             ✦ 사장님 9개 안 + 클로드 7개 보완 = 16 컴포넌트
+             ✦ 카카오 IP 안전 (자체 색상/캐릭터/명칭)
+             ✦ 다른 카테고리 (타로/주식/부동산/운세) 영향 0
+             ✦ 클래스명 모두 'saju-chat-' 접두어로 격리
+        ════════════════════════════════════════════════════════════════ */
+
+        
+
+        /* 모달 컨테이너 */
+
+        .saju-chat-modal {
+            background: var(--saju-dark);
+            max-width: 440px;
+            margin: 0 auto;
+            min-height: 100vh;
+            position: relative;
+            overflow: hidden;
+            font-family: var(--font-body);
+        }
+
+        
+
+        /* 헤더 — ZEUS 신탁사 (골드 정체성 + 연초록 액센트) */
+
+        @keyframes sajuDotsPulse {
+            0%, 100% { opacity: 0.4; }
+            50% { opacity: 1; }
+        }
+
+        
+
+        /* 채팅 영역 */
+
+        .saju-chat-body {
+            padding: 16px 14px 100px 14px;  /* 하단 입력바 공간 */
+            min-height: 70vh;
+        }
+
+        
+
+        /* 메시지 버블 — 연초록 톤 (★ 카카오 IP 안전) */
+
+        .saju-chat-msg {
+            margin-bottom: 8px;
+            display: flex;
+            align-items: flex-start;
+            gap: 8px;
+            opacity: 0;
+            transform: translateY(8px);
+            animation: sajuMsgIn 0.25s ease-out forwards;  /* ★ V186: 0.4s → 0.25s 가속 */
+        }
+
+        @keyframes sajuMsgIn {
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        
+
+        .saju-chat-avatar {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--gold), var(--gold-radiant));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.85rem;
+            flex-shrink: 0;
+            box-shadow: 0 0 12px rgba(212,175,55,0.4);
+        }
+
+        
+
+        .saju-chat-bubble {
+            max-width: 78%;
+            padding: 10px 14px;
+            background: var(--saju-bubble-bg);
+            border: 1px solid var(--saju-bubble-edge);
+            border-radius: 4px 14px 14px 14px;
+            color: var(--saju-text);
+            font-size: 0.86rem;
+            line-height: 1.6;
+            position: relative;
+        }
+
+        
+
+        .saju-chat-bubble.highlight {
+            background: linear-gradient(135deg, var(--saju-bubble-bg-2), var(--saju-bubble-bg));
+            border-color: var(--saju-mint);
+            box-shadow: 0 0 18px rgba(122,209,136,0.2);
+        }
+
+        
+
+        .saju-chat-bubble.warning {
+            background: rgba(243,156,18,0.10);
+            border-color: rgba(243,156,18,0.5);
+        }
+
+        
+
+        .saju-chat-bubble.special {
+            background: linear-gradient(135deg, rgba(212,175,55,0.16), rgba(122,209,136,0.10));
+            border: 1.5px solid var(--gold);
+            box-shadow: 0 0 16px rgba(212,175,55,0.3);
+        }
+
+        
+
+        .saju-chat-bubble-title {
+            font-weight: 900;
+            font-size: 0.95rem;
+            margin-bottom: 4px;
+            color: var(--saju-mint-light);
+        }
+
+        .saju-chat-bubble.special .saju-chat-bubble-title {
+            color: var(--gold-radiant);
+        }
+
+        .saju-chat-bubble.warning .saju-chat-bubble-title {
+            color: var(--saju-warning);
+        }
+
+        
+
+        .saju-chat-bubble-time {
+            /* ★ V200.8.7 P6 사장님 명령 ★ — 시간 표시 (19:57, 19:58 등) 영구 삭제
+               - 8개 블럭 하단 시간 숫자 노이즈 제거 → 시각 깔끔
+               - CSS 한 줄로 모든 위치 (9곳) 일괄 차단 (코드 무손상) */
+            display: none !important;
+        }
+
+        
+
+        /* 잠긴 메시지 — 4,900원 CTA */
+
+        .saju-chat-locked {
+            margin: 14px 0;
+            padding: 16px;
+            background: linear-gradient(135deg, rgba(212,175,55,0.10), rgba(212,175,55,0.03));
+            border: 1.5px dashed var(--gold);
+            border-radius: 12px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.25s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .saju-chat-locked:hover {
+            background: linear-gradient(135deg, rgba(212,175,55,0.16), rgba(212,175,55,0.06));
+            border-color: var(--gold-radiant);
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(212,175,55,0.25);
+        }
+
+        .saju-chat-locked-blur {
+            color: var(--saju-text-soft);
+            font-size: 0.84rem;
+            line-height: 1.7;
+            filter: blur(4px);
+            user-select: none;
+            margin-bottom: 12px;
+        }
+
+        .saju-chat-locked-icon {
+            font-size: 1.6rem;
+            margin-bottom: 8px;
+            filter: drop-shadow(0 0 12px rgba(255,215,80,0.6));
+        }
+
+        .saju-chat-locked-cta {
+            display: inline-block;
+            padding: 10px 20px;
+            background: linear-gradient(135deg, var(--gold), var(--gold-radiant));
+            color: #000;
+            font-weight: 900;
+            font-size: 0.84rem;
+            border-radius: 22px;
+            letter-spacing: 0.02em;
+            box-shadow: 0 4px 14px rgba(212,175,55,0.4);
+        }
+
+        
+
+        /* 빠른 답장 영역 */
+
+        .saju-chat-quick-reply {
+            position: sticky;
+            bottom: 0;
+            background: linear-gradient(180deg, transparent, var(--saju-dark) 30%);
+            padding: 14px 12px 16px;
+            border-top: 1px solid rgba(122,209,136,0.15);
+            z-index: 50;
+        }
+
+        .saju-chat-quick-reply-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+        }
+
+        .saju-chat-quick-btn {
+            padding: 11px 12px;
+            background: var(--saju-bubble-bg);
+            border: 1px solid var(--saju-bubble-edge);
+            border-radius: 22px;
+            color: var(--saju-mint-light);
+            font-size: 0.78rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.18s ease;
+            text-align: center;
+        }
+
+        .saju-chat-quick-btn:hover {
+            background: var(--saju-bubble-bg-2);
+            border-color: var(--saju-mint);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(122,209,136,0.2);
+        }
+
+        .saju-chat-quick-btn.gold {
+            background: linear-gradient(135deg, rgba(212,175,55,0.12), rgba(212,175,55,0.04));
+            border-color: var(--gold);
+            color: var(--gold-radiant);
+        }
+
+        .saju-chat-quick-btn.gold:hover {
+            background: linear-gradient(135deg, rgba(212,175,55,0.22), rgba(212,175,55,0.08));
+            box-shadow: 0 4px 14px rgba(212,175,55,0.3);
+        }
+
+        
+
+        /* 점수 미니 표시 (메시지 안) */
+
+        .saju-chat-score-mini {
+            display: inline-block;
+            padding: 2px 10px;
+            background: rgba(93,214,138,0.15);
+            border-radius: 10px;
+            color: var(--saju-mint-light);
+            font-size: 0.74rem;
+            font-weight: 900;
+            margin-left: 6px;
+        }
+
+        .saju-chat-score-mini.gold {
+            background: rgba(212,175,55,0.18);
+            color: var(--gold-radiant);
+        }
+
+        .saju-chat-score-mini.warning {
+            background: rgba(243,156,18,0.18);
+            color: var(--saju-warning);
+        }
+
+        
+
+        /* 자세히 보기 (Layer B 모달 토글) */
+
+        .saju-chat-detail-btn {
+            margin: 18px 0;
+            padding: 12px;
+            background: rgba(255,255,255,0.04);
+            border: 1px solid rgba(255,255,255,0.12);
+            border-radius: 10px;
+            color: var(--saju-text-soft);
+            font-size: 0.78rem;
+            font-weight: 700;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .saju-chat-detail-btn:hover {
+            background: rgba(255,255,255,0.08);
+            border-color: var(--saju-mint);
+            color: var(--saju-mint);
+        }
+
+        
+
+        /* 닫기 버튼 (헤더) */
+
+        .saju-chat-close {
+            background: none;
+            border: none;
+            color: var(--saju-text-soft);
+            font-size: 1.4rem;
+            cursor: pointer;
+            padding: 4px 8px;
+            border-radius: 50%;
+            transition: all 0.18s ease;
+        }
+
+        .saju-chat-close:hover {
+            background: rgba(255,255,255,0.08);
+            color: var(--saju-text);
+        }
+
+        
+
+        /* ════════════════════════════════════════════════════════════════
+           [V31 #188] PC 최적화 — 사장님 3안 + 클로드 보완 4
+             ★ PC = 무거운 GPU 부담 발생 ★
+             ★ 모바일 = 그대로 (사용자 95% 모바일이라 영향 0) ★
+           ════════════════════════════════════════════════════════════════ */
+
+        @media (min-width: 768px) {
+            /* 모달 컨테이너 PC 중앙 정렬 + 폭 제한 (모바일 비율 유지) */
+            .saju-chat-modal {
+                max-width: 440px;
+                margin: 0 auto;
+                box-shadow: 0 0 40px rgba(0,0,0,0.4);
+            }
+            
+            /* PC backdrop-filter 제거 (가장 무거운 CSS 속성) */
+            .saju-chat-header {
+                backdrop-filter: none !important;
+                -webkit-backdrop-filter: none !important;
+                background: rgba(20, 25, 22, 0.95) !important;
+            }
+            
+            /* 메시지 버블 — 모든 그림자 + 발광 제거 */
+            .saju-chat-bubble,
+            .saju-chat-bubble.highlight,
+            .saju-chat-bubble.special,
+            .saju-chat-bubble.warning {
+                box-shadow: none !important;
+            }
+            
+            .saju-chat-avatar {
+                box-shadow: none !important;
+            }
+            
+            .saju-chat-locked:hover {
+                transform: none !important;
+                box-shadow: none !important;
+            }
+            
+            .saju-plan-card.saju-plan-basic,
+            .saju-plan-card.saju-plan-premium {
+                box-shadow: none !important;
+            }
+            .saju-plan-card.saju-plan-premium {
+                border-width: 2px !important;
+            }
+            
+            .saju-chat-quick-btn:hover {
+                transform: none !important;
+                box-shadow: none !important;
+            }
+            
+            /* PC 애니메이션 단축 */
+            .saju-chat-msg {
+                animation-duration: 0.15s !important;
+            }
+            
+            /* PC drop-shadow 제거 */
+            .saju-chat-header-icon,
+            .saju-chat-locked-icon {
+                filter: none !important;
+            }
+            .saju-chat-header-title {
+                text-shadow: none !important;
+            }
+            
+            /* 헤더 dots pulse 제거 */
+            .saju-chat-header-dots {
+                animation: none !important;
+                opacity: 0.7 !important;
+            }
+        }
+
+
+
+        /* [V21.0 → V31 #184.7] 부제 — Inter sans-serif (대비 효과)
+           사장님 격상: 메인 타이틀 강화에 비례하여 부제도 보강 */
+
+        .sub-title {
+            font-family: var(--font-body);
+            color: var(--gold-soft);
+            font-size: 0.78rem;
+            letter-spacing: 0.4em;
+            margin-top: 12px;
+            margin-bottom: 24px;
+            display: block;
+            font-weight: 600;                    /* ★ 500 → 600 (대비 강화) */
+            text-transform: uppercase;
+            opacity: 0.95;                       /* ★ 0.85 → 0.95 (선명도) */
+            text-shadow:
+                0 0 8px rgba(212,175,55,0.4),
+                0 1px 2px rgba(0,0,0,0.6);       /* ★ 그림자 추가 */
+        }
+
+
+
+        /* ════════════════════════════════════
+           ✦ 아치 별 깜빡임 애니메이션
+        ════════════════════════════════════ */
+
+        @keyframes archStarTwinkle1 {
+            0%,100%{opacity:0.2;}
+            50%{opacity:1;filter:drop-shadow(0 0 8px #FFF5C3) drop-shadow(0 0 16px #D4AF37);}
+        }
+
+        @keyframes archStarTwinkle2 {
+            0%,100%{opacity:0.5;}
+            40%{opacity:1;filter:drop-shadow(0 0 10px #FFF5C3);}
+        }
+
+        @keyframes archStarTwinkle3 {
+            0%,100%{opacity:0.15;}
+            60%{opacity:0.9;filter:drop-shadow(0 0 6px #D4AF37);}
+        }
+
+        @keyframes archStarTwinkle4 {
+            0%,100%{opacity:0.7;}
+            30%{opacity:0.2;}
+            70%{opacity:1;filter:drop-shadow(0 0 12px #FFF5C3);}
+        }
+
+        @keyframes archStarTwinkle5 {
+            0%,100%{opacity:0.3;}
+            55%{opacity:1;filter:drop-shadow(0 0 10px #D4AF37);}
+        }
+
+
+
+        /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+
+        /* [V21.0] 별빛 하이브리드 애니메이션 (3 레이어) */
+
+        /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+
+
+
+        /* Layer 1: 미세 점 — 부드러운 페이드 */
+
+        @keyframes starFade {
+            0%, 100% { opacity: 0.15; }
+            50%      { opacity: 0.7; }
+        }
+
+
+
+        /* Layer 2: 작은 ✦ 스파클 — 회전 + scale + glow */
+
+        @keyframes starTwinkleSmall {
+            0%, 100% {
+                opacity: 0.3;
+                transform: scale(0.7) rotate(0deg);
+            }
+            50% {
+                opacity: 1;
+                transform: scale(1.1) rotate(45deg);
+                filter: drop-shadow(0 0 6px #FFFFFF) drop-shadow(0 0 12px #D4AF37);
+            }
+        }
+
+
+
+        /* Layer 3: 큰 ✦ 메인 스파클 — 강한 빛 + 회전 + scale */
+
+        @keyframes starTwinkleLarge {
+            0%, 100% {
+                opacity: 0.5;
+                transform: scale(0.85) rotate(0deg);
+            }
+            50% {
+                opacity: 1;
+                transform: scale(1.25) rotate(45deg);
+                filter: drop-shadow(0 0 10px #FFFFFF) drop-shadow(0 0 20px #FFEC9F) drop-shadow(0 0 30px #D4AF37);
+            }
+        }
+
+
+
+        /* 중앙 가장 큰 별 (히어로) — 가장 화려하게 */
+
+
+
+        /* 접근성 — 모션 감소 모드 시 정지 */
+
+        @media (prefers-reduced-motion: reduce) {
+            [class*="starTwinkle"], [style*="starTwinkle"], [style*="starFade"] {
+                animation: none !important;
+                opacity: 0.6 !important;
+            }
+        }
+
+
+
+        .star-icon {
+            color: var(--gold);
+            font-size: 1.5rem;
+            text-shadow: 0 0 10px var(--gold);
+            animation: starPulse 2s infinite ease-in-out;
+        }
+
+        @keyframes starPulse {
+            0%, 100% { opacity: 0.5; transform: scale(0.8); }
+            50% { opacity: 1; transform: scale(1.2); }
+        }
+
+        .input-system-wrapper {
+            position: relative;
+            width: 100%;
+            height: 115px;
+            margin: 0 auto;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* [V25.1] 입력창은 카테고리/서브타입 선택 후에만 노출
+           사장님 진단: "한국인은 네이버·카카오 학습 패턴으로
+                          입력창 보이면 카테고리 무시하고 바로 입력"
+           해결: 초기 숨김 → 서브타입 선택 시 부드러운 펼침 애니메이션 */
+
+        .input-system-wrapper.hidden-init {
+            display: none;
+        }
+
+        /* [V25.2] 카드 영역 + Begin 버튼도 동일 처리 — 사장님 진단
+           "구조 변경이 없다 — 카드 영역이 항상 보여서 시각적으로 입력창이 가려진다"
+           해결: cards-stage + button-container 모두 hidden-init / reveal 적용
+           → 첫 화면에 4-카테고리만 보이는 진정한 단계형 UX */
+
+        .beveled-border {
+            position: absolute;
+            width: 100%; height: 100%;
+            background: linear-gradient(145deg, var(--bright-gold), var(--gold), var(--dark-gold));
+            clip-path: polygon(15px 0%, calc(100% - 15px) 0%, 100% 15px, 100% calc(100% - 14px), calc(100% - 15px) 100%, 15px 100%, 0% calc(100% - 14px), 0% 15px);
+        }
+
+        .beveled-inner {
+            position: absolute;
+            width: calc(100% - 6px);
+            height: calc(100% - 6px);
+            background: linear-gradient(135deg, #2D0054, #120022);
+            clip-path: polygon(14px 0%, calc(100% - 14px) 0%, 100% 14px, 100% calc(100% - 14px), calc(100% - 14px) 100%, 14px 100%, 0% calc(100% - 14px), 0% 14px);
+        }
+
+        /* [V21.0] 입력 박스 — 한글 가독성 ↑ + 럭셔리 폰트 */
+
+        .gold-input {
+            position: relative;
+            z-index: 10;
+            background: transparent;
+            border: none;
+            outline: none;
+            color: #fff;
+            font-size: 1rem;
+            width: 88%;
+            text-align: center;
+            resize: none;
+            height: 70px;
+            font-weight: 500;
+            font-family: var(--font-ko);
+            letter-spacing: 0.02em;
+            line-height: 1.7;
+        }
+
+        .gold-input::placeholder {
+            color: rgba(212,175,55,0.55);
+            font-weight: 400;
+            font-style: italic;
+        }
+
+        /* [V24.14] 입력창 시선 유도 — 사장님 진단: "타이틀 너무 많아 커서 못 찾음" */
+
+        .input-attention-pulse + .beveled-border,
+        .input-system-wrapper:has(.input-attention-pulse) .beveled-border {
+            animation: input-pulse 1.5s ease-in-out 3;
+        }
+
+        @keyframes input-pulse {
+            0%, 100% {
+                box-shadow: 0 0 0 0 rgba(212,175,55,0.0);
+                border-color: rgba(212,175,55,0.4);
+            }
+            50% {
+                box-shadow: 0 0 24px 4px rgba(212,175,55,0.55);
+                border-color: rgba(212,175,55,1);
+            }
+        }
+
+        /* fallback (Safari 구버전 :has 미지원) */
+
+        .input-attention-pulse {
+            animation: input-glow 1.5s ease-in-out 3;
+        }
+
+        @keyframes input-glow {
+            0%, 100% {
+                background: transparent;
+            }
+            50% {
+                background: rgba(212,175,55,0.06);
+            }
+        }
+
+        .slot-hourglass {
+            position: absolute;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 1.6rem;
+            color: var(--gold);
+            text-shadow: 0 0 10px var(--gold), 0 0 20px rgba(212,175,55,0.5);
+            animation: hgSpin 1.4s infinite ease-in-out;
+            line-height: 1;
+            font-style: normal;
+        }
+
+        @keyframes hgSpin {
+            0%   { transform: translate(-50%, -50%) rotate(0deg); opacity: 1; }
+            45%  { transform: translate(-50%, -50%) rotate(180deg); opacity: 0.6; }
+            50%  { transform: translate(-50%, -50%) rotate(180deg); opacity: 1; }
+            95%  { transform: translate(-50%, -50%) rotate(360deg); opacity: 0.6; }
+            100% { transform: translate(-50%, -50%) rotate(360deg); opacity: 1; }
+        }
+
+        /* [V25.5] 인라인 회전 모래시계 — 결제 안내 메시지용
+           사장님 진단: "⏳ 그 자리에서 빙글빙글 돌게 → 멈추면 점사 결과" */
+
+        .inline-spin {
+            display: inline-block;
+            animation: spinInPlace 1.2s infinite linear;
+            transform-origin: center center;
+            font-style: normal;
+        }
+
+        @keyframes spinInPlace {
+            0%   { transform: rotate(0deg);   opacity: 1; }
+            45%  { transform: rotate(180deg); opacity: 0.55; }
+            50%  { transform: rotate(180deg); opacity: 1; }
+            100% { transform: rotate(360deg); opacity: 1; }
+        }
+
+        /* [V21.0] 카드 라벨 — 영문(메인) + 한글(부제) 병기 럭셔리 */
+
+        @keyframes cardFlip {
+            0%   { transform: rotateY(0deg) scale(1); }
+            50%  { transform: rotateY(90deg) scale(1.05); }
+            100% { transform: rotateY(0deg) scale(1); }
+        }
+
+        .flipping { animation: cardFlip 0.6s ease forwards; }
+
+        @keyframes flyOutSoft {
+            0%   { transform: scale(1) rotate(0); opacity: 1; }
+            100% { transform: scale(0.5) rotate(15deg) translateY(-500px); opacity: 0; }
+        }
+
+        .card-fly { animation: flyOutSoft 0.8s forwards; }
+
+        .button-container {
+            position: relative;
+            width: 100%;
+            margin-top: 15px;
+        }
+
+        /* [V21.0] CTA 버튼 — 럭셔리 강화 (다층 glow + 호버 효과) */
+
+        .gold-button {
+            background: linear-gradient(135deg,
+                #FFEC9F 0%,
+                #D4AF37 50%,
+                #B8860B 100%);
+            color: #1A1A1A;
+            border: 1px solid rgba(255,236,159,0.6);
+            padding: 18px 24px;
+            width: 100%;
+            border-radius: 50px;
+            font-weight: 800;
+            cursor: pointer;
+            font-size: 1.05rem;
+            font-family: var(--font-body);
+            letter-spacing: 0.05em;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow:
+                0 4px 16px rgba(212,175,55,0.35),
+                0 0 0 1px rgba(255,236,159,0.2) inset,
+                0 -2px 4px rgba(0,0,0,0.1) inset;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .gold-button::before {
+            content: '';
+            position: absolute;
+            top: 0; left: -100%;
+            width: 100%; height: 100%;
+            background: linear-gradient(90deg,
+                transparent,
+                rgba(255,255,255,0.4),
+                transparent);
+            transition: left 0.6s;
+        }
+
+        .gold-button:hover::before { left: 100%; }
+
+        .gold-button:hover {
+            transform: translateY(-1px);
+            box-shadow:
+                0 6px 24px rgba(212,175,55,0.5),
+                0 0 0 1px rgba(255,236,159,0.4) inset;
+        }
+
+        .gold-button:active { transform: scale(0.98); }
+
+        .gold-button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            box-shadow: none;
+        }
+
+        .gold-button .orb-spin {
+            display: inline-block;
+            animation: orbPulse 0.8s ease-in-out infinite;
+        }
+
+        @keyframes orbPulse {
+            0%, 100% { transform: scale(1) rotate(-10deg); }
+            50%       { transform: scale(1.3) rotate(10deg); }
+        }
+
+        .spiritual-pointer {
+            position: absolute;
+            bottom: -20px; right: -10px;
+            font-size: 2.5rem;
+            z-index: 10;
+            transform: rotate(150deg);
+            animation: handMove 1.1s infinite ease-in-out;
+            filter: drop-shadow(0 0 10px var(--gold));
+        }
+
+        @keyframes handMove {
+            0%, 100% { transform: translateY(0) rotate(150deg); }
+            50%       { transform: translateY(-15px) rotate(150deg); }
+        }
+
+        /* [V21.0] 면책 고지 — 우아한 톤 + 영문 강조 */
+
+        .disclaimer-text {
+            margin-top: 32px;
+            font-size: 0.72rem;
+            color: var(--text-dim);
+            line-height: 1.7;
+            letter-spacing: 0.05em;
+            font-weight: 400;
+            font-family: var(--font-body);
+            border-top: 1px solid rgba(212,175,55,0.15);
+            padding-top: 16px;
+            padding-bottom: 8px;
+            text-align: center;
+            font-style: italic;
+        }
+
+
+
+        /* ══════════════════════════════════════════════════════════
+         * [V31 #123] HERO + 4 GRID 재설계 — 사장님 명령 + 클로드 5 보강
+         *
+         * 🌟 SAJU HERO CARD (히어로 / 매출 객단가 핵심)
+         *   - 풀 폭 (max-width 480px) 최대 시각 비중
+         *   - 골드 그라디언트 + 외곽 글로우
+         *   - 태극 청홍 SVG (대한민국 국기 표준)
+         *   - CTA 버튼 펄스 (3.5초/회 절제)
+         *
+         * 📦 4 GRID (보조 — 톤 다운)
+         *   - 2x2 그리드
+         *   - 다크 배경 + 미세 보더
+         *   - 히어로 대비 50% 시각 무게
+         * ══════════════════════════════════════════════════════════ */
+
+
+
+        /* ─── 🌟 사주 히어로 카드 — 안 3 하이브리드 + 피라미드 구조 ─── */
+
+        /* 
+         * [ 사장님 명령 — 시뮬레이션 후 13%×2 채택 ]
+         *   - 좌우 각 13% 축소 (좌+우 합 26%)
+         *   - 4 그리드: 480px (밑면 / 넓음)
+         *   - 사주 히어로: 355px (꼭대기 / 좁음 = 480 × 74%)
+         *   → 자연스러운 피라미드 황금비 1:1.35 ✅
+         *
+         * [ 시뮬레이션 결과 ]
+         *   12%×2 (365px): 피라미드 약함 ★★★★★
+         *   13%×2 (355px): ⭐ 최적 균형 ★★★★★ ← 채택
+         *   14%×2 (346px): 약간 좁음 ★★★★
+         *   15%×2 (336px): 정보 빠듯 ★★★
+         *
+         * [ 사장님 명령 — 한 칸 띄움 ]
+         *   - gap: 14px → 22px (편안하게)
+         */
+
+
+
+
+
+
+
+
+
+        /* 배지 영역 (NEW 붉은 점 + PRO 골드) */
+
+
+
+
+
+        @keyframes newDotPulse {
+            0%, 100% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.3); opacity: 0.7; }
+        }
+
+
+
+
+
+        .badge-pro-gold {
+            padding: 3px 8px;
+            background: linear-gradient(135deg, #D4AF37, #FFD970);
+            color: #000;
+            font-size: 0.62rem;
+            font-weight: 900;
+            border-radius: 4px;
+            letter-spacing: 0.05em;
+        }
+
+
+
+        /* ━━━ 안 3 하이브리드 — 가로 레이아웃 ━━━ */
+
+        /* 태극: 좌측 (60px) / 정보+CTA: 우측 (flex:1) */
+
+        
+
+        /* 태극 SVG — 좌측 고정 */
+
+
+
+
+
+
+
+        /* 우측 정보 영역 — flex column */
+
+
+
+        /* 히어로 타이틀 — 골드 1.5배 강화 */
+
+
+
+
+
+
+
+
+
+        /* CTA 버튼 — 골드 1.5배 강화 */
+
+
+
+
+
+        @keyframes ctaPulse {
+            /* ★ 펄스 1.5배 강화: 0.4→0.6 / 0.65→0.95 */
+            0%, 100% { 
+                box-shadow: 
+                    0 3px 14px rgba(212,175,55,0.6),
+                    0 0 18px rgba(255,217,112,0.25);
+            }
+            50% { 
+                box-shadow: 
+                    0 3px 20px rgba(212,175,55,0.95),
+                    0 0 28px rgba(255,217,112,0.45);
+            }
+        }
+
+
+
+        /* ═══════════════════════════════════════════════════════════════
+         * [V31 #138 + #139] 사주 보조 카드 — saju-aux-* (메인 4박스 아래)
+         *   사장님 명령 #139:
+         *     ① 좌 15% + 우 15% = 가로 30% 축소 (480 → 336px)
+         *     ② 상하 합 10% 축소 (padding 12 → 10)
+         *
+         *   효과: 메인 4박스 480px 대비 70% 가로폭 (보조성 강화)
+         * ═══════════════════════════════════════════════════════════════ */
+
+
+
+
+
+        /* 보조 카드 배지 (NEW + 990원) */
+
+
+
+        /* 태극 SVG — 작게 (#139: 48 → 40) */
+
+
+
+        /* 정보 영역 — 가로 길게 (한 줄에 더 많이) */
+
+
+
+
+
+
+
+
+
+
+
+        /* CTA — 보조 카드 (작은 펄스) */
+
+
+
+
+
+        /* 모바일 반응형 — 사주 보조 카드 (#139 추가 축소) */
+
+        @media (max-width: 480px) {
+            .saju-aux-card {
+                max-width: 92%;                  /* 모바일에선 화면의 92% (모바일 4박스도 동일) */
+                padding: 9px 12px;
+                gap: 10px;
+                margin: 10px auto 14px;
+            }
+            .saju-aux-taegeuk {
+                width: 34px;
+                height: 34px;
+            }
+            .saju-aux-title {
+                font-size: 0.82rem;
+            }
+            .saju-aux-sub {
+                font-size: 0.62rem;
+            }
+            .saju-aux-features {
+                font-size: 0.56rem;
+            }
+            .saju-aux-cta {
+                font-size: 0.64rem;
+                padding: 4px 9px;
+            }
+        }
+
+
+
+        /* ═══════════════════════════════════════════════════════════════
+         * [V31 #140] 결제 모달 — 사주 컨텍스트 시 990원만 노출
+         *   사장님 명령:
+         *     "990원 통일했는데 결제창은 모든 가격이 뿌려진다 — 중대 에러"
+         *   해결:
+         *     사주 카드 클릭 → window._sajuPaymentContext = true
+         *     → 결제 모달 .pay-plan-saju 클래스 → 990원 외 버튼 숨김
+         *     → 990원 버튼은 메인 CTA 톤으로 강조
+         * ═══════════════════════════════════════════════════════════════ */
+
+        /* 다른 카테고리 (love/stock/realestate/general)에선 saju_premium 숨김 */
+
+        /* 사주 컨텍스트 990원 버튼 — 보조 → 메인 CTA 톤 */
+
+        
+
+        /* ═══════════════════════════════════════════════════════════════
+         * [V31 #176 사장님 결정] 계좌이체 사주 컨텍스트 = 990원 단일
+         *   사장님 의도:
+         *     ✅ 사주 = 990원 단일 (메인/계좌이체 모두)
+         *     ✅ 타로 (연애/주식/부동산/운세) = 5종 모두
+         *   해결:
+         *     사주 컨텍스트면 .bank-plan-saju 클래스 → 990원 외 숨김
+         *     990원 버튼은 메인 CTA 톤 강조
+         * ═══════════════════════════════════════════════════════════════ */
+
+
+
+        /* ═══════════════════════════════════════════════════════════════
+         * [V31 #138] 메인 4박스 강조 — 테두리 굵게
+         * ═══════════════════════════════════════════════════════════════ */
+
+
+
+        /* [V202.0] 3-column variant — 부동산 제거 후 새 레이아웃 */
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+        /* 4 그리드 배지 정제 (사장님 명령) */
+
+
+
+
+
+        /* ═══ V31 #123 HERO + GRID 끝 ═══ */
+
+
+
+        /* ═══════════════════════════════════════════════════════════════
+         * [V31 #124] 사주 입력 필드 강화 — 사장님 명령 (테두리 명확화)
+         *   AS-IS: rgba(212,175,55,0.3) — 검은 배경에 거의 안 보임
+         *   TO-BE: rgba(212,175,55,0.65) 황금 + focus 시 녹색 (#2ecc71)
+         *   효과: 구획 분리 명확 + 입력 가능 영역 즉시 인지
+         * ═══════════════════════════════════════════════════════════════ */
+
+        .saju-input {
+            color-scheme: dark;
+        }
+
+
+
+        .saju-input:hover {
+            border-color: rgba(212,175,55,0.95) !important;
+            background: rgba(0,0,0,0.6) !important;
+            box-shadow: 0 0 0 2px rgba(212,175,55,0.15) inset, 0 0 8px rgba(212,175,55,0.2) !important;
+        }
+
+
+
+        .saju-input:focus {
+            border-color: #2ecc71 !important;
+            background: rgba(0,0,0,0.6) !important;
+            box-shadow: 0 0 0 2px rgba(46,204,113,0.25) inset, 0 0 12px rgba(46,204,113,0.3) !important;
+            color: #fff !important;
+        }
+
+
+
+        /* placeholder 색상 강화 */
+
+        .saju-input::placeholder {
+            color: rgba(255,224,138,0.5);
+            font-weight: 600;
+        }
+
+
+
+        /* select option 다크 배경 */
+
+        .saju-input option {
+            background: #0a0a14;
+            color: #FFE08A;
+            padding: 8px;
+        }
+
+        /* ═══ V31 #124 입력 필드 강화 끝 ═══ */
+
+
+
+
+
+        /* ── 서브타입 패널 (카테고리 클릭 후 펼침) ── */
+
+        @keyframes subtypeFadeIn {
+            from { opacity: 0; transform: translateY(-6px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+
+        .sub-btn {
+            background: rgba(0,0,0,0.4);
+            border: 1px solid rgba(212,175,55,0.4);
+            color: rgba(255,255,255,0.92);
+            padding: 9px 14px;
+            border-radius: 22px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            letter-spacing: 0.02em;
+        }
+
+        .sub-btn:hover, .sub-btn.active {
+            background: linear-gradient(135deg, rgba(212,175,55,0.3), rgba(155,89,182,0.15));
+            border-color: var(--gold);
+            color: var(--gold);
+            transform: scale(1.04);
+        }
+
+        .sub-btn.featured {
+            background: linear-gradient(135deg, rgba(212,175,55,0.18), rgba(255,200,80,0.08));
+            border-color: rgba(212,175,55,0.7);
+        }
+
+
+
+        /* ── 입력창 동적 안내 메시지 ── */
+
+        .input-context-hint {
+            text-align: center;
+            font-size: 0.74rem;
+            color: rgba(212,175,55,0.85);
+            margin: 0 auto 8px;
+            max-width: 480px;
+            padding: 0 14px;
+            font-weight: 600;
+            letter-spacing: 0.02em;
+            animation: subtypeFadeIn 0.3s ease;
+        }
+
+        .input-context-hint.hidden { display: none; }
+
+
+
+        /* [V25.20 B안] FREE/PRO 시각 배지 — 사장님 비즈니스 모델 명시
+           서브타입 버튼 옆에 작게 표시되어 클릭 전 인지 보장 */
+
+        .sub-badge {
+            display: inline-block;
+            margin-left: 6px;
+            padding: 2px 7px;
+            font-size: 0.62rem;
+            font-weight: 900;
+            letter-spacing: 0.06em;
+            border-radius: 8px;
+            vertical-align: middle;
+            line-height: 1.4;
+        }
+
+        .sub-badge-free {
+            background: rgba(46, 204, 113, 0.18);
+            color: #2ecc71;
+            border: 1px solid rgba(46, 204, 113, 0.45);
+        }
+
+        .sub-badge-pro {
+            background: linear-gradient(135deg, rgba(212, 175, 55, 0.22), rgba(241, 196, 15, 0.15));
+            color: #FFD970;
+            border: 1px solid rgba(212, 175, 55, 0.5);
+            text-shadow: 0 0 4px rgba(212, 175, 55, 0.3);
+        }
+
+        /* 카테고리 카드 미니 배지 — V25.20 (cat-badge 기존 위치 스타일과 결합) */
+
+
+
+        @media (max-width: 380px) {
+            .cat-card { min-height: 100px; padding: 12px 8px; }
+            .cat-icon { font-size: 1.65rem; }
+            .cat-title { font-size: 0.88rem; }
+            .cat-sub { font-size: 0.62rem; }
+            .sub-btn { padding: 8px 12px; font-size: 0.8rem; }
+            .sub-badge { font-size: 0.55rem; padding: 1px 5px; }
+        }
+
+
+
+        /* ══════════════════════════════════════════════════════════
+         * [V25.0] 4-CATEGORY MAIN MENU — 사장님 안 (자동 분류 폐기)
+         *   원리: 사용자가 카테고리를 직접 선택 → 자연어 분류 0%
+         *   효과: 분류 버그 100% 차단 + UX 명확 + 점사 정확도 자동 향상
+         *   배치: 오늘의 카드 + 최근 신탁 보존 → 그 아래 추가
+         * ══════════════════════════════════════════════════════════ */
+
+        .category-section-label {
+            text-align: center;
+            font-size: 0.78rem;
+            letter-spacing: 0.18em;
+            color: var(--gold);
+            font-weight: 800;
+            margin: 22px auto 6px;
+            line-height: 1.5;
+        }
+
+        .category-section-label .ko {
+            display: block;
+            font-size: 0.72rem;
+            opacity: 0.78;
+            letter-spacing: 0.1em;
+            margin-top: 3px;
+            font-weight: 700;
+        }
+
+
+
+        /* ── 서브타입 패널 (카테고리 클릭 후 펼침) ── */
+
+        @keyframes subtypeFadeIn {
+            from { opacity: 0; transform: translateY(-6px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+
+        .sub-btn {
+            background: rgba(0,0,0,0.4);
+            border: 1px solid rgba(212,175,55,0.4);
+            color: rgba(255,255,255,0.92);
+            padding: 9px 14px;
+            border-radius: 22px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            letter-spacing: 0.02em;
+        }
+
+        .sub-btn:hover, .sub-btn.active {
+            background: linear-gradient(135deg, rgba(212,175,55,0.3), rgba(155,89,182,0.15));
+            border-color: var(--gold);
+            color: var(--gold);
+            transform: scale(1.04);
+        }
+
+        .sub-btn.featured {
+            background: linear-gradient(135deg, rgba(212,175,55,0.18), rgba(255,200,80,0.08));
+            border-color: rgba(212,175,55,0.7);
+        }
+
+
+
+        /* ── 입력창 동적 안내 메시지 ── */
+
+        .input-context-hint {
+            text-align: center;
+            font-size: 0.78rem;
+            color: rgba(212,175,55,0.9);
+            margin: 6px auto 4px;
+            max-width: 480px;
+            padding: 0 14px;
+            font-weight: 700;
+            letter-spacing: 0.02em;
+            animation: subtypeFadeIn 0.3s ease;
+        }
+
+        .input-context-hint.hidden { display: none; }
+
+
+
+        @media (max-width: 380px) {
+            .cat-card { min-height: 100px; padding: 12px 8px; }
+            .cat-icon { font-size: 1.65rem; }
+            .cat-title { font-size: 0.88rem; }
+            .cat-sub { font-size: 0.62rem; }
+            .sub-btn { padding: 8px 12px; font-size: 0.8rem; }
+        }
+
+
+
+        /* [V19.2] 궁합 버튼 강조 스타일 — 핑크빛 그라디언트 + 은은한 펄스 */
+
+        @keyframes featuredPulse {
+            0%,100% { box-shadow: 0 0 6px rgba(255,105,180,0.25); }
+            50%     { box-shadow: 0 0 14px rgba(255,105,180,0.55); }
+        }
+
+
+
+        /* ── 후킹 서사 배너 */
+
+        /* [V19.4] 로딩 & 진행바 — 에메랄드 기반 차분한 대기 연출 */
+
+        #ai-loading-text {
+            color: #50C878;               /* 황금 → 에메랄드 (심리적 안정) */
+            text-align: center;
+            padding: 10px 0 6px;
+            font-size: 0.88rem;           /* 0.95 → 0.88 약간 축소 */
+            font-weight: 600;
+            letter-spacing: 0.05em;
+            min-height: 1.6em;            /* 2em → 1.6em 컴팩트화 */
+            text-shadow: 0 0 8px rgba(80,200,120,0.3);
+        }
+
+        /* [V19.4] 대기시간 영성 가이드 — 남용 방지 + 몰입 유도 */
+
+        @keyframes wisdomFade {
+            from { opacity: 0; transform: translateY(4px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+
+
+        /* ③ 스트리밍 커서 깜빡임 */
+
+        .streaming-cursor {
+            display: inline-block;
+            width: 2px;
+            height: 1em;
+            background: var(--gold);
+            margin-left: 2px;
+            vertical-align: middle;
+            animation: cursorBlink 0.7s infinite;
+        }
+
+        @keyframes cursorBlink {
+            0%,100%{ opacity: 1; }
+            50%{ opacity: 0; }
+        }
+
+        .reset-btn {
+            margin-top: 35px;
+            background: none;
+            border: 1.5px solid var(--gold);
+            color: var(--gold);
+            padding: 12px 30px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-family: var(--font);
+            font-size: 1rem;
+            transition: all 0.2s;
+        }
+
+        .reset-btn:hover { background: var(--gold); color: #000; }
+
+        .particle, .gold-dust {
+            position: fixed;
+            pointer-events: none;
+            z-index: 9999;
+            border-radius: 50%;
+        }
+
+        .card-block {
+            margin-bottom: 16px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid rgba(212,175,55,0.15);
+            overflow: hidden;
+        }
+
+        .card-block:last-of-type { border-bottom: none; }
+
+        .card-block h2 {
+            font-size: 1rem;
+            letter-spacing: 0.15em;
+            color: var(--gold);
+            margin: 0 0 4px 0;
+            font-weight: 900;
+        }
+
+        /* 카드 이미지 — 텍스트 왼쪽에 float */
+
+        .mini-card-float {
+            float: left;
+            width: 40px;
+            height: 60px;
+            object-fit: cover;
+            border-radius: 5px;
+            border: 1.5px solid rgba(212,175,55,0.6);
+            margin: 2px 10px 6px 0;
+            box-shadow: 0 0 8px rgba(212,175,55,0.2);
+            flex-shrink: 0;
+            cursor: pointer;
+        }
+
+        .card-text-wrap {
+            /* float된 이미지 옆에서 텍스트 시작 */
+            overflow: hidden;
+        }
+
+        .card-name-inline {
+            font-size: 0.78rem;
+            color: rgba(212,175,55,0.85);
+            font-style: italic;
+            letter-spacing: 0.05em;
+            margin-bottom: 4px;
+            display: block;
+        }
+
+        .card-text {
+            font-size: 0.93rem;
+            line-height: 1.85;
+            color: rgba(255,255,255,0.88);
+        }
+
+        .synergy-reading {
+            margin: 20px 0;
+            padding: 16px;
+            background: rgba(212,175,55,0.06);
+            border: 1px solid rgba(212,175,55,0.25);
+            border-radius: 10px;
+            font-size: 0.93rem;
+            line-height: 1.85;
+            color: rgba(255,255,255,0.88);
+        }
+
+        .synergy-reading strong { color: var(--gold); }
+
+        .final-reading {
+            margin-top: 28px;
+            padding: 0;
+            background: transparent;
+            border: none;
+            font-size: 0.93rem;
+            line-height: 1.85;
+            color: rgba(255,255,255,0.9);
+        }
+
+        .final-reading strong { color: var(--gold); }
+
+        .final-reading-inner {
+            padding-bottom: 0;
+        }
+
+        /* 신탁 타이틀 — 녹색, 과거/현재/미래와 동일 스타일 */
+
+        .zenith-title-block {
+            margin-top: 0;
+            margin-bottom: 14px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid rgba(46,204,113,0.4);
+        }
+
+        .zenith-title-main {
+            font-size: 1.2rem;
+            font-weight: 900;
+            letter-spacing: 0.15em;
+            color: #2ecc71;
+            margin: 0 0 2px 0;
+            display: block;
+        }
+
+        .zenith-title-sub {
+            font-size: 0.75rem;
+            font-weight: 700;
+            letter-spacing: 0.3em;
+            color: rgba(46,204,113,0.75);
+            display: block;
+        }
+
+
+
+        /* ── 유료 잠금 블러 */
+
+        .locked-section {
+            position: relative;
+            margin-top: 10px;
+        }
+
+        .locked-blur {
+            filter: blur(5px);
+            pointer-events: none;
+            user-select: none;
+            opacity: 0.7;
+        }
+
+        .unlock-btn {
+            background: linear-gradient(180deg, #FFF5C3 0%, #D4AF37 100%);
+            color: #000;
+            border: none;
+            padding: 14px 24px;
+            border-radius: 50px;
+            font-weight: 900;
+            font-size: 1rem;
+            font-family: var(--font);
+            cursor: pointer;
+            box-shadow: 0 0 20px rgba(212,175,55,0.5);
+            transition: transform 0.1s;
+        }
+
+        .unlock-btn:active { transform: scale(0.97); }
+
+        .unlock-desc {
+            color: rgba(212,175,55,0.8);
+            font-size: 0.78rem;
+            margin-top: 8px;
+            letter-spacing: 0.05em;
+        }
+
+        /* 결제 모달 */
+
+        /* [#113] 동의 체크박스 펄스 애니메이션 — 사장님 결제 UX 결함 직접 해결
+                  목적: V27.2.A 동의 체크박스를 사용자가 명확히 인지하도록 강조
+                  효과: 사장님 매출 회복 — 결제 진행률 ↑ */
+
+        @keyframes payAgreePulse {
+            0%, 100% {
+                box-shadow: 0 0 0 0 rgba(255,217,112,0.5);
+                transform: scale(1);
+            }
+            50% {
+                box-shadow: 0 0 0 8px rgba(255,217,112,0);
+                transform: scale(1.015);
+            }
+        }
+
+        @keyframes payAgreedGlow {
+            0%, 100% { background: rgba(46,204,113,0.10); }
+            50% { background: rgba(46,204,113,0.18); }
+        }
+
+        /* [V20.1] 닫기 버튼은 모달 하단에 sticky로 항상 보이게 */
+
+        /* ... 기존 스타일 코드 끝 ... */
+
+        .lock-open #lock-icon {
+            transform: scale(1.5) rotate(15deg);
+            filter: drop-shadow(0 0 20px var(--gold));
+        }
+
+
+
+        /* ════════════════════════════════════
+           ✦ [V18 Phase1] 78장 카드 뽑기 셔플 오버레이
+           - [V18.1] 카드 위치를 상단으로 이동, 힌트 에메랄드화
+        ════════════════════════════════════ */
+
+        /* [V18.1] 부제목 밝기 상향 — 금색 계열 대신 밝은 흰색 */
+
+        /* [V18.1] 진행 도트 — 에메랄드 계열로 전환 */
+
+        /* [V18.1] 카드 덱 — 상단 배치로 변경 */
+
+        .deck-arch {
+            position: relative;
+            width: 100%;
+            max-width: 480px;
+            height: 56vh;
+            min-height: 360px;
+            margin: 0 auto 6px auto;
+            perspective: 1200px;
+        }
+
+        /* [V20.5] 모바일 — 계단식 2줄 부채꼴 (컨테이너 높이 최적화) */
+
+        @media (max-width: 768px) {
+            .deck-arch {
+                height: 50vh;            /* 60vh → 50vh (불필요한 빈공간 축소) */
+                min-height: 380px;       /* 460 → 380 (하단 공허감 80px 해소) */
+                max-width: 380px;
+                position: relative;
+            }
+            .deck-card-mobile {
+                width: 36px !important;
+                height: 54px !important;
+                margin-left: -18px !important;
+            }
+        }
+
+        .deck-card {
+            position: absolute;
+            left: 50%;
+            /* [V18.1 핵심] bottom 고정 → top 고정으로 변경 
+               카드를 컨테이너 상단 쪽에 배치하여 중앙~상단이 꽉 차 보이게 함 */
+            top: 40px;
+            width: 46px;
+            height: 70px;
+            margin-left: -23px;
+            border-radius: 5px;
+            background-image: url('https://omegafund.github.io/oracle-tarot-pro/images/cards/back.jpg');
+            background-size: cover;
+            background-position: center;
+            border: 1px solid rgba(212,175,55,0.55);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.6), inset 0 0 4px rgba(212,175,55,0.25);
+            cursor: pointer;
+            /* [V18.1 핵심] transform-origin을 카드 아래쪽 260px 지점으로 설정
+               → 부채꼴 곡률이 완만해지면서 카드가 위로 올라가 중앙 공간을 채움 */
+            transform-origin: 50% 260px;
+            transition: transform 0.35s cubic-bezier(.2,.8,.4,1.4), box-shadow 0.25s, filter 0.25s;
+            will-change: transform;
+        }
+
+        .deck-card:hover, .deck-card:active {
+            filter: brightness(1.4) drop-shadow(0 0 10px #50C878);
+            z-index: 10;
+        }
+
+        .deck-card.picked {
+            pointer-events: none;
+            animation: cardFlyOut 0.7s forwards;
+            filter: brightness(1.6) drop-shadow(0 0 16px #2ecc71);
+            z-index: 100;
+        }
+
+        @keyframes cardFlyOut {
+            0%   { opacity: 1; }
+            60%  { opacity: 1; }
+            100% { transform: translate(0, -80vh) scale(0.6) rotate(0deg) !important; opacity: 0; }
+        }
+
+        /* 셔플 진입 애니메이션 — 카드 덱이 물결치며 펼쳐짐 */
+
+        .deck-card.shuffling {
+            animation: deckWave 2.2s ease-out forwards;
+        }
+
+        @keyframes deckWave {
+            0%   { transform: rotate(0deg) translate(0, 100px); opacity: 0; }
+            40%  { opacity: 0.9; }
+            100% { opacity: 1; } /* 최종 부채꼴 위치는 JS에서 inline style로 적용 */
+        }
+
+        /* [V18.1 핵심] 힌트 문장 — 에메랄드 그린으로 시인성 극대화 */
+
+        @keyframes emeraldHintPulse {
+            0%,100% { text-shadow: 0 0 10px rgba(80,200,120,0.55), 0 0 20px rgba(46,204,113,0.3); }
+            50%     { text-shadow: 0 0 16px rgba(80,200,120,0.85), 0 0 28px rgba(46,204,113,0.55); }
+        }
+
+
+
+        /* [V19.3] 카드 선택 파티클 이펙트 */
+
+        @keyframes pickGlowAnim {
+            0%   { opacity: 0;   transform: translate(-50%, -50%) scale(0.6); }
+            30%  { opacity: 1;   transform: translate(-50%, -50%) scale(1.15); }
+            100% { opacity: 0;   transform: translate(-50%, -50%) scale(1.6); }
+        }
+
+        @keyframes pickDust {
+            0% {
+                opacity: 1;
+                transform: translate(0, 0) scale(1);
+            }
+            60% { opacity: 1; }
+            100% {
+                opacity: 0;
+                transform: translate(var(--dx), var(--dy)) scale(0.3);
+            }
+        }
+
+        @keyframes pickStar {
+            0% {
+                opacity: 0;
+                transform: translate(0, 0) scale(0.4) rotate(0deg);
+            }
+            25% { opacity: 1; }
+            100% {
+                opacity: 0;
+                transform: translate(var(--dx), var(--dy)) scale(1.5) rotate(180deg);
+            }
+        }
+
+
+
+        /* [V26.15 결함 2] 계좌번호 복사 시 폭발 시각 피드백 — 사장님 진단 "변화 표시 없이 먹통" 해결 */
+
+        @keyframes zeusCopyPulse {
+            0%   { transform: scale(1);    box-shadow: 0 0 0   rgba(46,204,113,0); }
+            40%  { transform: scale(1.2); box-shadow: 0 0 24px rgba(46,204,113,0.85); }
+            100% { transform: scale(1);    box-shadow: 0 0 12px rgba(46,204,113,0.6); }
+        }
+
+        @keyframes zeusToastIn {
+            0%   { opacity: 0; transform: translate(-50%, -40%) scale(0.7); }
+            70%  { opacity: 1; transform: translate(-50%, -52%) scale(1.05); }
+            100% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+        }
+
+        
+
+        /* ════════════════════════════════════════════════════════════════════
+           ★★★ [V200.8.0] 사주 페이월 — 사주 ★ 전용 ★ 격리 클래스 ★★★
+           
+           사장님 명세:
+             - 사주 입력 → 결과창 [1/6][2/6] 노출 + [3/6]~[6/6] 블러 + 페이월
+             - 990 결제 후 6 블럭 풀 + 4900 업셀 박스 (V200.7.4 그대로)
+             - 4900 결제 후 풀 콘텐츠
+           
+           격리 보장:
+             - 모든 클래스명에 saju-paywall- 접두사 강제
+             - .pay-modal 안에 있을 때만 활성 (부모 컨텍스트 강제)
+             - 다른 카테고리(연애/투자/부동산/운세) 결과창에 영향 0
+        ════════════════════════════════════════════════════════════════════ */
+
+        
+
+        /* 블러 처리 — 결과 [3/6]~[6/6] 블럭 위에 적용 */
+
+        
+
+        /* 페이월 박스 — 블러 위에 자연 노출 */
+
+        
+
+        
+
+        
+
+        
+
+        
+
+        
+
+        
+
+        
+
+        
+
+        
+
+        
+
+        
+
+        
+
+        /* 30초 정지 시 노출되는 "다시 시작" 링크 (V200.7.10 안전장치 연장) */
+
+        
+
+        /* 모바일 반응형 */
+
+        @media (max-width: 480px) {
+            .pay-modal .saju-paywall-block {
+                margin: 18px 0 16px 0;
+                padding: 18px 16px;
+            }
+            .pay-modal .saju-paywall-block .saju-paywall-title {
+                font-size: 1.08rem;
+            }
+        }
+
+        
+
+        /* ════════════════════════════════════════════════════════════════════
+           ★★★ [V200.8.1] 페이월 디자인 재설계 — 사장님 명세 ★★★
+           
+           기존 V200.8.0: 큰 헤더 + 긴 안내 + 옵션 버튼 (난삽)
+           V200.8.1:      ① 분석 미리보기 2박스 (현재 흐름 / 재물 흐름)
+                          ② 1줄 잠금 안내 + 호기심 키워드 4개
+                          ③ 990 카드 (회색톤) + 4900 카드 (골드톤 + 추천 배지)
+                          ④ 정밀 데이터 ▼ 작은 토글
+        ════════════════════════════════════════════════════════════════════ */
+
+        
+
+        /* ① 분석 미리보기 박스 (현재 흐름 / 재물 흐름) */
+
+        
+
+        /* ② 잠금 안내 + 키워드 칩 */
+
+        
+
+        /* ③ 카드 컨테이너 (990 + 4900) */
+
+        
+
+        /* 990 카드 — 회색톤 (보조) */
+
+        
+
+        /* 4900 카드 — 골드톤 (메인 + 추천) */
+
+        
+
+        /* 추천 배지 — 4900 카드 위 */
+
+        
+
+        /* 카드 헤더 (아이콘 + 이름) */
+
+        
+
+        /* 카드 글머리 (✔ 항목) */
+
+        
+
+        /* CTA 버튼 (V200.8.1 단일 텍스트 — "990원 시작하기 ▶" / "4,900원 전체 보기 ▶") */
+
+        
+
+        /* ④ 미니 토글 (▼ 정밀 데이터 보기 / 💧 보강 방법 / 👑 직업 적합도) */
+
+        
+
+        /* 미니 힌트 토스트 (정밀 데이터 클릭 시 짧게 노출) */
+
+        
+
+        /* V200.8.1 모바일 반응형 */
+
+        @media (max-width: 480px) {
+            .pay-modal .saju-paywall-block .saju-paywall-preview-box {
+                padding: 12px 14px;
+            }
+            .pay-modal .saju-paywall-block .saju-paywall-preview-text {
+                font-size: 0.88rem;
+            }
+            .pay-modal .saju-paywall-block .saju-paywall-card {
+                padding: 14px 14px;
+            }
+            .pay-modal .saju-paywall-block .saju-paywall-card-name {
+                font-size: 0.96rem;
+            }
+        }
+
+
