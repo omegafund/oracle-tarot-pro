@@ -1,0 +1,588 @@
+/* ════════════════════════════════════════════════════════════════
+ * ZEUS TAROT — payment.css
+ * V203.0 분리 구조 (Phase 1)
+ * 
+ * 결제 — 토스 모달, 오버레이, paidEarlyOverlay, 페이월
+ * 
+ * 원본: V202.2 index.html <style> 블록에서 분리
+ * 변경: 없음 (동일 룰, 위치만 변경)
+ * ════════════════════════════════════════════════════════════════ */
+
+        @keyframes sajuPaidPulse {
+            0%, 100% { box-shadow: 0 2px 10px rgba(212,175,55,0.10); }
+            50%      { box-shadow: 0 6px 28px rgba(255,217,112,0.85), 0 0 0 3px rgba(212,175,55,0.6) inset; }
+        }
+
+        .pay-plan-list.pay-plan-saju .pay-plan-btn:not([data-plan="trial"]):not([data-plan="saju_premium"]) {
+            display: none !important;
+        }
+
+        .pay-plan-list:not(.pay-plan-saju) .pay-plan-btn[data-plan="saju_premium"] {
+            display: none !important;
+        }
+
+        .pay-plan-list.pay-plan-saju .pay-plan-btn[data-plan="trial"] {
+            background: rgba(122,209,136,0.18) !important;
+            color: #fff !important;
+            border: 1.5px solid rgba(122,209,136,0.65) !important;
+            box-shadow: 0 4px 14px rgba(122,209,136,0.25) !important;
+            padding: 16px 14px !important;
+        }
+
+        .pay-plan-list.pay-plan-saju .pay-plan-btn[data-plan="trial"] span {
+            color: #fff !important;
+            opacity: 1 !important;
+        }
+
+        .pay-plan-list.pay-plan-saju .pay-plan-btn[data-plan="trial"] div:last-child {
+            color: rgba(255,255,255,0.85) !important;
+            opacity: 0.95 !important;
+        }
+
+        .bank-plan-list.bank-plan-saju .bank-plan-btn:not([data-bank-plan="trial"]) {
+            display: none !important;
+        }
+
+        .bank-plan-list.bank-plan-saju .bank-plan-btn[data-bank-plan="trial"] {
+            background: linear-gradient(135deg, #D4AF37, #FFD970) !important;
+            color: #1a1a1a !important;
+            border: 2px solid rgba(212,175,55,0.85) !important;
+            box-shadow: 0 4px 14px rgba(212,175,55,0.45) !important;
+            padding: 14px 14px !important;
+        }
+
+        .bank-plan-list.bank-plan-saju .bank-plan-btn[data-bank-plan="trial"] span {
+            color: #1a1a1a !important;
+        }
+
+        .unlock-overlay {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 10;
+            text-align: center;
+            width: 90%;
+        }
+
+        .pay-agreed-state {
+            animation: payAgreedGlow 2s ease-in-out infinite !important;
+            border-color: rgba(46,204,113,0.5) !important;
+        }
+
+        .pay-modal-overlay {
+            position: fixed;
+            top:0;left:0;width:100%;height:100%;
+            background: rgba(0,0,0,0.85);
+            /* [V31 #156] z-index 99998 → 100000 (사주 모달 99999 위 보장) */
+            /*   사장님 진단: "PRO 신탁 받기 클릭 후 결제 모달 안 보임" */
+            /*   원인: sajuResultModal z-index=99999 > pay-modal=99998 (가려짐) */
+            z-index: 100000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            /* [V20.1] 오버레이 자체 스크롤 — 모달이 화면보다 길어도 스크롤 가능 */
+            overflow-y: auto;
+            padding: 20px 0;
+        }
+
+        .pay-modal {
+            background: linear-gradient(135deg, #1a1a2e, #16213e);
+            border: 2px solid var(--gold);
+            border-radius: 16px;
+            padding: 30px 24px 80px 24px; /* 하단 padding 확장 — sticky 닫기 버튼 자리 */
+            max-width: 360px;
+            width: 90%;
+            text-align: center;
+            position: relative;
+            /* [V20.1] 모달 최대 높이 제한 + 내부 스크롤 */
+            max-height: calc(100vh - 40px);
+            overflow-y: auto;
+            margin: auto;
+        }
+
+        .pay-modal .pay-close-btn {
+            position: sticky;
+            bottom: -10px;
+            margin-top: 16px;
+            background: linear-gradient(135deg, rgba(0,0,0,0.95), rgba(20,20,30,0.95));
+            backdrop-filter: blur(8px);
+            border: 2px solid rgba(255,255,255,0.3);
+            color: #fff;
+            padding: 12px 24px;
+            border-radius: 30px;
+            font-weight: 800;
+            font-size: 0.9rem;
+            cursor: pointer;
+            width: 100%;
+            box-shadow: 0 -2px 10px rgba(0,0,0,0.5);
+        }
+
+        .pay-modal .pay-close-btn:hover {
+            background: rgba(255,82,82,0.3);
+            border-color: #ff5252;
+        }
+
+        .pay-modal h3 {
+            color: var(--gold);
+            font-size: 1.2rem;
+            margin: 0 0 12px;
+            letter-spacing: 0.1em;
+        }
+
+        .pay-modal p {
+            color: rgba(255,255,255,0.8);
+            font-size: 0.88rem;
+            line-height: 1.7;
+            margin: 0 0 20px;
+        }
+
+        .pay-account {
+            background: rgba(212,175,55,0.1);
+            border: 1px solid rgba(212,175,55,0.3);
+            border-radius: 10px;
+            padding: 14px;
+            margin-bottom: 20px;
+            text-align: left;
+        }
+
+        .pay-account div {
+            color: rgba(255,255,255,0.85);
+            font-size: 0.88rem;
+            line-height: 1.9;
+        }
+
+        .pay-account strong { color: var(--gold); }
+
+        .pay-confirm-btn {
+            background: linear-gradient(180deg, #FFF5C3 0%, #D4AF37 100%);
+            color: #000;
+            border: none;
+            padding: 13px 0;
+            width: 100%;
+            border-radius: 50px;
+            font-weight: 900;
+            font-size: 1rem;
+            font-family: var(--font);
+            cursor: pointer;
+            margin-bottom: 10px;
+        }
+
+        .pay-close-btn {
+            background: none;
+            border: 1px solid rgba(255,255,255,0.2);
+            color: rgba(255,255,255,0.5);
+            padding: 10px 0;
+            width: 100%;
+            border-radius: 50px;
+            font-family: var(--font);
+            cursor: pointer;
+            font-size: 0.88rem;
+        }
+
+        .pay-confirm-btn:disabled { opacity: 0.8; cursor: wait; }
+
+        .shuffle-overlay {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: radial-gradient(ellipse at center, #1a0f2e 0%, #000 85%);
+            z-index: 9000;
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-start;
+            /* [V20.5] 페이지 상단 20% 공백 — 사장님 설계 */
+            padding: 12vh 10px 16px 10px;
+            box-sizing: border-box;
+            overflow: hidden;
+        }
+
+        .shuffle-overlay.active { display: flex; }
+
+        .pay-modal .saju-paywall-blur-zone {
+            position: relative;
+            filter: blur(7px);
+            -webkit-filter: blur(7px);
+            pointer-events: none;
+            user-select: none;
+            -webkit-user-select: none;
+            transition: filter 0.4s ease;
+        }
+
+        .pay-modal .saju-paywall-block {
+            position: relative;
+            margin: 24px 0 20px 0;
+            padding: 24px 20px;
+            background: linear-gradient(135deg, rgba(212,175,55,0.18), rgba(212,175,55,0.04));
+            border: 2px solid rgba(212,175,55,0.55);
+            border-radius: 14px;
+            box-shadow: 0 6px 24px rgba(212,175,55,0.22);
+            z-index: 5;
+        }
+
+        .pay-modal .saju-paywall-block .saju-paywall-headline {
+            text-align: center;
+            margin-bottom: 18px;
+        }
+
+        .pay-modal .saju-paywall-block .saju-paywall-icon {
+            font-size: 2.5rem;
+            line-height: 1;
+            margin-bottom: 8px;
+        }
+
+        .pay-modal .saju-paywall-block .saju-paywall-title {
+            color: #FFD970;
+            font-size: 1.18rem;
+            font-weight: 900;
+            letter-spacing: 0.02em;
+            line-height: 1.5;
+            margin-bottom: 8px;
+        }
+
+        .pay-modal .saju-paywall-block .saju-paywall-subtitle {
+            color: rgba(255,255,255,0.78);
+            font-size: 0.84rem;
+            line-height: 1.7;
+        }
+
+        .pay-modal .saju-paywall-block .saju-paywall-options {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-top: 16px;
+        }
+
+        .pay-modal .saju-paywall-block .saju-paywall-cta {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            width: 100%;
+            padding: 14px 18px;
+            border: 0;
+            border-radius: 12px;
+            font-size: 0.95rem;
+            font-weight: 800;
+            letter-spacing: 0.01em;
+            cursor: pointer;
+            transition: transform 0.15s ease, box-shadow 0.15s ease;
+            font-family: inherit;
+        }
+
+        .pay-modal .saju-paywall-block .saju-paywall-cta-990 {
+            background: linear-gradient(135deg, rgba(255,255,255,0.13), rgba(255,255,255,0.06));
+            border: 1px solid rgba(255,255,255,0.25);
+            color: rgba(255,255,255,0.92);
+        }
+
+        .pay-modal .saju-paywall-block .saju-paywall-cta-4900 {
+            background: linear-gradient(135deg, #d4af37, #ffd970);
+            color: #0e1117;
+            box-shadow: 0 4px 14px rgba(212,175,55,0.4);
+            position: relative;
+        }
+
+        .pay-modal .saju-paywall-block .saju-paywall-cta-4900::after {
+            content: '★ 추천 ★';
+            position: absolute;
+            top: -10px;
+            right: 14px;
+            background: #ff6b6b;
+            color: #fff;
+            font-size: 0.62rem;
+            font-weight: 900;
+            padding: 3px 9px;
+            border-radius: 10px;
+            letter-spacing: 0.05em;
+        }
+
+        .pay-modal .saju-paywall-block .saju-paywall-cta:hover {
+            transform: translateY(-1px);
+        }
+
+        .pay-modal .saju-paywall-block .saju-paywall-cta-amount {
+            font-size: 1.05rem;
+            font-weight: 900;
+        }
+
+        .pay-modal .saju-paywall-block .saju-paywall-secure {
+            text-align: center;
+            margin-top: 12px;
+            color: rgba(255,255,255,0.55);
+            font-size: 0.7rem;
+            line-height: 1.5;
+        }
+
+        .pay-modal .saju-paywall-block .saju-paywall-restart-link {
+            display: none;
+            text-align: center;
+            margin-top: 14px;
+            color: rgba(255,255,255,0.4);
+            font-size: 0.7rem;
+            text-decoration: underline;
+            cursor: pointer;
+        }
+
+        .pay-modal .saju-paywall-block.saju-paywall-stuck .saju-paywall-restart-link {
+            display: block;
+        }
+
+        .pay-modal .saju-paywall-block .saju-paywall-preview-box {
+            margin: 0 0 12px 0;
+            padding: 14px 16px;
+            border-radius: 10px;
+            border-left: 3px solid;
+            background: rgba(255,255,255,0.04);
+        }
+
+        .pay-modal .saju-paywall-block .saju-paywall-preview-current {
+            border-left-color: #5DD68A;  /* 청록 톤 (긍정/흐름) */
+            background: linear-gradient(90deg, rgba(93,214,138,0.08), rgba(93,214,138,0.02));
+        }
+
+        .pay-modal .saju-paywall-block .saju-paywall-preview-wealth {
+            border-left-color: #FFD970;  /* 골드 톤 (재물) */
+            background: linear-gradient(90deg, rgba(255,217,112,0.10), rgba(255,217,112,0.02));
+        }
+
+        .pay-modal .saju-paywall-block .saju-paywall-preview-label {
+            color: rgba(255,255,255,0.65);
+            font-size: 0.75rem;
+            font-weight: 700;
+            letter-spacing: 0.04em;
+            margin-bottom: 6px;
+        }
+
+        .pay-modal .saju-paywall-block .saju-paywall-preview-text {
+            color: rgba(255,255,255,0.95);
+            font-size: 0.95rem;
+            line-height: 1.55;
+            font-weight: 500;
+        }
+
+        .pay-modal .saju-paywall-block .saju-paywall-locked-hint {
+            margin: 16px 0 18px 0;
+            padding: 12px 14px;
+            background: rgba(0,0,0,0.25);
+            border-radius: 8px;
+            border: 1px dashed rgba(212,175,55,0.35);
+        }
+
+        .pay-modal .saju-paywall-block .saju-paywall-locked-title {
+            color: rgba(255,217,112,0.92);
+            font-size: 0.82rem;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+
+        .pay-modal .saju-paywall-block .saju-paywall-locked-keywords {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+        }
+
+        .pay-modal .saju-paywall-block .saju-paywall-locked-keywords span {
+            display: inline-block;
+            padding: 4px 10px;
+            background: rgba(212,175,55,0.13);
+            border: 1px solid rgba(212,175,55,0.3);
+            border-radius: 12px;
+            color: rgba(255,217,112,0.95);
+            font-size: 0.72rem;
+            font-weight: 600;
+            white-space: nowrap;
+        }
+
+        .pay-modal .saju-paywall-block .saju-paywall-card {
+            position: relative;
+            margin: 0 0 12px 0;
+            padding: 16px 18px;
+            border-radius: 12px;
+            transition: transform 0.15s ease;
+        }
+
+        .pay-modal .saju-paywall-block .saju-paywall-card:hover {
+            transform: translateY(-1px);
+        }
+
+        .pay-modal .saju-paywall-block .saju-paywall-card-basic {
+            background: linear-gradient(135deg, rgba(255,255,255,0.06), rgba(255,255,255,0.02));
+            border: 1px solid rgba(255,255,255,0.18);
+        }
+
+        .pay-modal .saju-paywall-block .saju-paywall-card-premium {
+            background: linear-gradient(135deg, rgba(212,175,55,0.20), rgba(212,175,55,0.06));
+            border: 2px solid rgba(212,175,55,0.55);
+            box-shadow: 0 4px 16px rgba(212,175,55,0.25);
+        }
+
+        .pay-modal .saju-paywall-block .saju-paywall-card-badge {
+            position: absolute;
+            top: -10px;
+            left: 14px;
+            padding: 3px 10px;
+            background: #ff6b6b;
+            color: #fff;
+            font-size: 0.66rem;
+            font-weight: 900;
+            letter-spacing: 0.04em;
+            border-radius: 10px;
+            box-shadow: 0 2px 6px rgba(255,107,107,0.4);
+        }
+
+        .pay-modal .saju-paywall-block .saju-paywall-card-head {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 10px;
+        }
+
+        .pay-modal .saju-paywall-block .saju-paywall-card-icon {
+            font-size: 1.15rem;
+            line-height: 1;
+        }
+
+        .pay-modal .saju-paywall-block .saju-paywall-card-name {
+            color: #FFE08A;
+            font-size: 1.02rem;
+            font-weight: 800;
+        }
+
+        .pay-modal .saju-paywall-block .saju-paywall-card-basic .saju-paywall-card-name {
+            color: rgba(255,255,255,0.9);
+        }
+
+        .pay-modal .saju-paywall-block .saju-paywall-card-bullets {
+            list-style: none;
+            padding: 0;
+            margin: 0 0 14px 0;
+        }
+
+        .pay-modal .saju-paywall-block .saju-paywall-card-bullets li {
+            position: relative;
+            padding: 4px 0 4px 22px;
+            color: rgba(255,255,255,0.82);
+            font-size: 0.86rem;
+            line-height: 1.45;
+        }
+
+        .pay-modal .saju-paywall-block .saju-paywall-card-bullets li::before {
+            content: '✔';
+            position: absolute;
+            left: 0;
+            top: 4px;
+            color: rgba(255,217,112,0.85);
+            font-size: 0.82rem;
+            font-weight: 700;
+        }
+
+        .pay-modal .saju-paywall-block .saju-paywall-card-basic .saju-paywall-card-bullets li::before {
+            color: rgba(255,255,255,0.55);
+        }
+
+        .pay-modal .saju-paywall-block .saju-paywall-card .saju-paywall-cta {
+            display: block;
+            width: 100%;
+            padding: 13px 16px;
+            border: 0;
+            border-radius: 10px;
+            font-size: 0.96rem;
+            font-weight: 800;
+            letter-spacing: 0.01em;
+            cursor: pointer;
+            text-align: center;
+            font-family: inherit;
+            transition: transform 0.12s ease, box-shadow 0.12s ease;
+        }
+
+        .pay-modal .saju-paywall-block .saju-paywall-card .saju-paywall-cta-990 {
+            background: rgba(255,255,255,0.12);
+            border: 1px solid rgba(255,255,255,0.25);
+            color: rgba(255,255,255,0.95);
+        }
+
+        .pay-modal .saju-paywall-block .saju-paywall-card .saju-paywall-cta-4900 {
+            background: linear-gradient(135deg, #d4af37, #ffd970);
+            color: #0e1117;
+            box-shadow: 0 3px 10px rgba(212,175,55,0.4);
+        }
+
+        .pay-modal .saju-paywall-block .saju-paywall-card .saju-paywall-cta-4900::after {
+            content: '';
+        }
+
+        .pay-modal .saju-paywall-block .saju-paywall-card .saju-paywall-cta:hover {
+            transform: scale(1.01);
+        }
+
+        .pay-modal .saju-paywall-block .saju-paywall-card .saju-paywall-cta-4900:hover {
+            box-shadow: 0 5px 14px rgba(212,175,55,0.5);
+        }
+
+        .pay-modal .saju-paywall-block .saju-paywall-mini-toggles {
+            margin-top: 16px;
+            padding-top: 14px;
+            border-top: 1px solid rgba(255,255,255,0.08);
+            text-align: center;
+            position: relative;
+        }
+
+        .pay-modal .saju-paywall-block .saju-paywall-mini-toggle {
+            display: inline-block;
+            padding: 6px 14px;
+            margin: 4px;
+            background: transparent;
+            border: 1px solid rgba(255,255,255,0.18);
+            border-radius: 16px;
+            color: rgba(255,255,255,0.6);
+            font-size: 0.78rem;
+            font-weight: 600;
+            cursor: pointer;
+            font-family: inherit;
+            transition: all 0.15s ease;
+        }
+
+        .pay-modal .saju-paywall-block .saju-paywall-mini-toggle:hover {
+            border-color: rgba(212,175,55,0.5);
+            color: rgba(255,217,112,0.9);
+        }
+
+        .pay-modal .saju-paywall-block .saju-paywall-mini-row {
+            display: flex;
+            justify-content: center;
+            gap: 6px;
+            margin-top: 4px;
+            flex-wrap: wrap;
+        }
+
+        .pay-modal .saju-paywall-block .saju-paywall-mini-small {
+            font-size: 0.72rem;
+            padding: 5px 11px;
+        }
+
+        .pay-modal .saju-paywall-block .saju-paywall-mini-toast {
+            position: absolute;
+            left: 50%;
+            top: 100%;
+            transform: translate(-50%, 8px);
+            padding: 8px 14px;
+            background: rgba(0,0,0,0.92);
+            border: 1px solid rgba(212,175,55,0.5);
+            border-radius: 8px;
+            color: rgba(255,217,112,0.95);
+            font-size: 0.78rem;
+            white-space: nowrap;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.2s ease, transform 0.2s ease;
+            z-index: 10;
+            max-width: 90vw;
+            white-space: normal;
+            text-align: center;
+        }
+
+        .pay-modal .saju-paywall-block .saju-paywall-mini-toast.saju-paywall-mini-toast-show {
+            opacity: 1;
+            transform: translate(-50%, 4px);
+        }
