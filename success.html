@@ -3,117 +3,135 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="version" content="V31_201.0_2026-05-09_HASH_BYPASS_FIX">
-<title>결제 확인 중 · ZEUS</title>
+<meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta name="version" content="V31_201.1_2026-05-09_DIAGNOSTIC_MANUAL">
+<title>결제 확인 중 · ZEUS [V201.1 진단모드]</title>
 <style>
-  :root { --bg:#0e1117; --fg:#e6e6e6; --gold:#d4af37; --green:#9ed28a; }
-  *{box-sizing:border-box}
-  html,body{margin:0;padding:0;background:var(--bg);color:var(--fg);font-family:-apple-system,'Apple SD Gothic Neo','Pretendard','Noto Sans KR',sans-serif}
-  .wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px}
-  .card{max-width:420px;width:100%;background:#1a1f2b;border:1px solid #2a2f3b;border-radius:16px;padding:32px 24px;text-align:center;box-shadow:0 20px 50px rgba(0,0,0,.4)}
-  .title{font-size:20px;font-weight:700;color:var(--gold);margin-bottom:8px}
-  .subtitle{font-size:14px;color:#aab1bd;margin-bottom:24px;line-height:1.55}
-  .spinner{width:40px;height:40px;margin:0 auto 16px;border:3px solid #2a2f3b;border-top-color:var(--gold);border-radius:50%;animation:spin 0.9s linear infinite}
-  @keyframes spin{to{transform:rotate(360deg)}}
-  .ok{color:var(--green)}
-  .err{color:#ff7b7b}
-  .tiny{font-size:11px;color:#6a7280;margin-top:16px;font-family:Menlo,Monaco,Consolas,monospace}
-  button{margin-top:16px;background:var(--gold);color:#0e1117;border:0;padding:12px 24px;border-radius:10px;font-weight:700;cursor:pointer;font-size:14px}
-  button:hover{filter:brightness(1.08)}
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{background:#0e1117;color:#e6e6e6;font-family:-apple-system,'Apple SD Gothic Neo',sans-serif;min-height:100vh}
+  .badge{position:fixed;top:0;left:0;right:0;background:#FFD700;color:#000;text-align:center;padding:8px;font-weight:900;font-size:13px;letter-spacing:.05em;z-index:99}
+  .wrap{padding:50px 16px 80px;max-width:480px;margin:0 auto}
+  h1{color:#FFD970;font-size:22px;margin-bottom:6px;text-align:center}
+  .sub{color:#aab1bd;font-size:12px;text-align:center;margin-bottom:20px}
+  .log{background:#1a1f2b;border:1px solid #2a2f3b;border-radius:10px;padding:14px;margin-bottom:14px}
+  .log h3{color:#FFD970;font-size:14px;margin-bottom:8px}
+  .step{padding:8px 10px;margin:6px 0;border-radius:6px;font-size:13px;line-height:1.55;background:#0e1117;border-left:3px solid #444}
+  .step.ok{border-left-color:#9ed28a;background:#10261a}
+  .step.err{border-left-color:#ff7b7b;background:#2a1414}
+  .step.run{border-left-color:#FFD970;background:#252010}
+  .step .label{font-weight:700;color:#FFD970}
+  .step .data{color:#aab1bd;font-family:Menlo,monospace;font-size:11px;display:block;margin-top:4px;word-break:break-all}
+  .btn{display:block;width:100%;padding:14px;margin-top:18px;background:#FFD970;color:#0e1117;border:0;border-radius:10px;font-weight:900;font-size:15px;cursor:pointer}
+  .btn:disabled{opacity:.5;cursor:not-allowed}
+  .btn.danger{background:#ff7b7b;color:#fff}
+  .urlbox{background:#000;color:#9ed28a;padding:10px;border-radius:6px;font-family:Menlo,monospace;font-size:11px;word-break:break-all;margin-top:8px}
 </style>
 </head>
 <body>
-  <div class="wrap">
-    <div class="card">
-      <div id="spin" class="spinner"></div>
-      <div id="title" class="title">결제를 확인하고 있습니다…</div>
-      <div id="msg" class="subtitle">잠시만 기다려주세요. 결제 검증에는 보통 1~3초가 소요됩니다.</div>
-      <div id="action"></div>
-      <div id="diag" class="tiny"></div>
-    </div>
+
+<div class="badge">🔍 V201.1 진단모드 — 새 버전 도달 확인됨 ✅</div>
+
+<div class="wrap">
+  <h1>결제 진단 모드</h1>
+  <div class="sub">자동 이동 없음 — 사장님이 직접 다음 버튼 누르셔야 합니다</div>
+
+  <div class="log">
+    <h3>단계별 진행 상황</h3>
+    <div id="steps"></div>
   </div>
+
+  <button id="proceedBtn" class="btn" disabled onclick="proceed()">⏳ 검증 중… 잠시 기다려주세요</button>
+  <button class="btn danger" onclick="goHome()">🏠 진단 중단하고 홈으로</button>
+</div>
 
 <script>
 (async () => {
-  const WORKER_BASE = 'https://tarot-api.omegafund01.workers.dev';
-  
-  const $ = (id) => document.getElementById(id);
-  const setTitle = (s, cls) => { $('title').textContent = s; if (cls) $('title').className = 'title ' + cls; };
-  const setMsg   = (s) => { $('msg').textContent = s; };
-  const setDiag  = (s) => { $('diag').textContent = s; };
-  const stopSpin = () => { const sp = $('spin'); if (sp) sp.style.display = 'none'; };
-  
+  const stepsEl = document.getElementById('steps');
+  const btnEl = document.getElementById('proceedBtn');
+  let stepNum = 0;
+  let proceedFn = null;
+
+  function addStep(text, status, dataObj) {
+    stepNum++;
+    const div = document.createElement('div');
+    div.className = 'step ' + (status || 'run');
+    let html = '<span class="label">[' + stepNum + '] ' + text + '</span>';
+    if (dataObj) {
+      html += '<span class="data">' + JSON.stringify(dataObj).slice(0, 300) + '</span>';
+    }
+    div.innerHTML = html;
+    stepsEl.appendChild(div);
+    window.scrollTo(0, document.body.scrollHeight);
+    return div;
+  }
+
+  function setProceed(label, fn) {
+    proceedFn = fn;
+    btnEl.textContent = label;
+    btnEl.disabled = false;
+  }
+
+  window.proceed = () => { if (proceedFn) proceedFn(); };
+  window.goHome = () => {
+    const base = location.pathname.substring(0, location.pathname.lastIndexOf('/') + 1);
+    location.href = base;
+  };
+
+  // ─── 1. URL 파라미터 확인 ─────────────────────────────
   const params = new URLSearchParams(location.search);
   const paymentKey = params.get('paymentKey');
   const orderId    = params.get('orderId');
   const amount     = params.get('amount');
-  
-  // V199.1 FAIL FAST — Toss redirect 파라미터 누락 시
+
+  addStep('URL 파라미터 확인', paymentKey ? 'ok' : 'err', {
+    paymentKey: paymentKey ? paymentKey.slice(0, 20) + '…' : '(없음)',
+    orderId: orderId || '(없음)',
+    amount: amount || '(없음)'
+  });
+
   if (!paymentKey || !orderId || !amount) {
-    stopSpin();
-    setTitle('결제 정보 누락', 'err');
-    setMsg('Toss로부터 받은 결제 정보가 불완전합니다. 다시 시도해주세요.');
-    $('action').innerHTML = '<button onclick="location.href=\'./\'">홈으로</button>';
-    setDiag('paymentKey/orderId/amount 중 하나 이상 누락');
+    addStep('결제 파라미터 누락 — 종료', 'err');
+    setProceed('🏠 홈으로 이동', () => goHome());
     return;
   }
-  
-  setDiag('orderId=' + orderId.slice(0, 28) + '…');
-  
-  // ════════════════════════════════════════════════════════════════
-  // 1. Worker /verify-toss 호출 (10초 타임아웃)
-  // ════════════════════════════════════════════════════════════════
+
+  // ─── 2. /verify-toss 호출 ────────────────────────────
+  addStep('Worker /verify-toss 호출 중…', 'run');
   let data;
   try {
     const ctrl = new AbortController();
     const tt = setTimeout(() => ctrl.abort(), 10000);
-    
-    const res = await fetch(WORKER_BASE + '/verify-toss', {
+    const res = await fetch('https://tarot-api.omegafund01.workers.dev/verify-toss', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ paymentKey, orderId, amount }),
       signal: ctrl.signal
     });
     clearTimeout(tt);
-    
     data = await res.json();
-    
+    addStep('verify-toss 응답 수신', data.success ? 'ok' : 'err', {
+      success: data.success,
+      plan: data.plan,
+      hasToken: !!data.token,
+      hasVerifiedToken: !!data.verifiedToken,
+      isSajuPlan: data.isSajuPlan,
+      expiresAt: data.expiresAt,
+      error: data.error
+    });
     if (!data.success) {
-      stopSpin();
-      setTitle('결제 검증 실패', 'err');
-      setMsg(data.error || '결제 검증 중 오류가 발생했습니다.');
-      $('action').innerHTML = '<button onclick="location.href=\'./fail.html\'">실패 안내로</button>';
-      setDiag('reason: ' + JSON.stringify(data).slice(0, 200));
+      addStep('결제 검증 실패 — 종료', 'err');
+      setProceed('🏠 홈으로 이동', () => goHome());
       return;
     }
-    
-  } catch(e) {
-    stopSpin();
-    setTitle('네트워크 오류', 'err');
-    if (e.name === 'AbortError') {
-      setMsg('검증 서버 응답이 지연되고 있습니다. 잠시 후 다시 시도해주세요.\n결제는 토스 서버에 정상 접수되었을 수 있으니, 동일 결제는 재시도하지 마세요.');
-    } else {
-      setMsg('검증 서버에 연결할 수 없습니다. 잠시 후 다시 시도해주세요.');
-    }
-    $('action').innerHTML = '<button onclick="location.href=\'./\'">홈으로</button>';
-    setDiag('error: ' + e.message);
+  } catch (e) {
+    addStep('네트워크 오류 또는 timeout', 'err', { error: e.message, name: e.name });
+    setProceed('🔄 다시 시도', () => location.reload());
     return;
   }
-  
-  // ════════════════════════════════════════════════════════════════
-  // 2. 검증 성공 → sessionStorage + localStorage 저장
-  // ════════════════════════════════════════════════════════════════
-  
-  // 2-A. sessionStorage (정상 케이스 — 같은 브라우저 컨텍스트)
-  try {
-    sessionStorage.setItem('verified_paid', 'true');
-    sessionStorage.setItem('sajuPaidPlan', data.plan || 'saju_basic');
-    if (data.token) {
-      sessionStorage.setItem('paid_token', data.token);
-    }
-  } catch(_) {}
-  
-  // 2-B. localStorage (정상 케이스 — V194 60분 정책 호환 + 24시간 확장)
+
+  // ─── 3. localStorage 저장 ────────────────────────────
+  let storageOk = true;
   try {
     if (data.token) {
       localStorage.setItem('paid_token', data.token);
@@ -126,34 +144,45 @@
     if (data.isSajuPlan) {
       localStorage.setItem('sajuPaymentContext', 'true');
     }
-  } catch(_) {}
-  
-  setTitle('결제 완료', 'ok');
-  setMsg('잠시 후 결과 페이지로 이동합니다…');
-  
-  // ════════════════════════════════════════════════════════════════
-  // 3. Redirect — V201.0 HASH BYPASS FIX
-  //
-  //   V199.1~V200.8.x 결함 진원지 우회:
-  //     - 기존: data.verifiedToken 있으면 #vt=... 해시 경로
-  //     - 결함: 모바일에서 V199.2 STAGE 1 → consume-token 흐름이
-  //             영구 멈춤 (사장님 V200.7.6~V200.8.8 미봉책 정글의 진원지)
-  //     - 해결: ?paid=ok 단일 경로만 사용
-  //             (Cloudflare Worker 캐시 프록시로 same-domain 보장됨)
-  //             → localStorage 공유 → 해시 격리 안전망 불필요
-  //             → V199.2 STAGE 1 우회 → STAGE 2 직접 진입
-  //
-  //   V199.1 P1 핫픽스 보존: GitHub Pages subdirectory 호환
-  //     절대 경로 '/index.html' 대신 success.html 위치 기준 동적 base
-  // ════════════════════════════════════════════════════════════════
+    sessionStorage.setItem('verified_paid', 'true');
+    sessionStorage.setItem('sajuPaidPlan', data.plan || 'saju_basic');
+    if (data.token) sessionStorage.setItem('paid_token', data.token);
+  } catch (e) {
+    storageOk = false;
+    addStep('localStorage/sessionStorage 저장 실패', 'err', { error: e.message });
+  }
+
+  if (storageOk) {
+    addStep('localStorage/sessionStorage 저장 완료', 'ok', {
+      paid_token: localStorage.getItem('paid_token') ? '저장됨' : '(없음)',
+      oracleSessionToken: localStorage.getItem('oracleSessionToken') ? '저장됨' : '(없음)',
+      sajuPaidExpiresAt: localStorage.getItem('sajuPaidExpiresAt'),
+      sajuPaidPlan: localStorage.getItem('sajuPaidPlan'),
+      sajuPaymentContext: localStorage.getItem('sajuPaymentContext')
+    });
+  }
+
+  // ─── 4. sajuPendingResult 존재 확인 ──────────────────
+  const pendingResult = localStorage.getItem('sajuPendingResult');
+  addStep('결제 전 사주 입력 데이터 확인', pendingResult ? 'ok' : 'err', {
+    sajuPendingResult: pendingResult ? '있음 (' + pendingResult.length + ' bytes)' : '(없음 — 결정적 결함 신호!)'
+  });
+
+  // ─── 5. 다음 이동 URL 계산 ───────────────────────────
   const base = location.pathname.substring(0, location.pathname.lastIndexOf('/') + 1);
   const redirectUrl = base + 'index.html?paid=ok&plan=' + encodeURIComponent(data.plan || 'saju_basic');
-  
-  console.log('[V201.0] HASH BYPASS — redirect →', redirectUrl);
-  
-  // 짧은 딜레이 후 redirect (사용자가 "결제 완료" 메시지 확인할 시간)
-  setTimeout(() => { location.replace(redirectUrl); }, 800);
-  
+
+  const urlDiv = addStep('이동 예정 URL', 'ok');
+  const urlBox = document.createElement('div');
+  urlBox.className = 'urlbox';
+  urlBox.textContent = redirectUrl;
+  urlDiv.appendChild(urlBox);
+
+  addStep('수동 진행 대기 — 아래 버튼 누르세요', 'run');
+
+  setProceed('▶ index.html 로 이동 (수동)', () => {
+    location.replace(redirectUrl);
+  });
 })();
 </script>
 </body>
