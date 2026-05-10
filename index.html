@@ -3348,8 +3348,9 @@
                 
                 const r = await fetch(VERSION_ENDPOINT, {
                     cache: 'no-store',
-                    signal: controller.signal,
-                    headers: { 'Cache-Control': 'no-cache' }
+                    signal: controller.signal
+                    // [V202.4] Cache-Control 헤더 제거 — CORS preflight 차단 원인
+                    // cache: 'no-store'만으로 캐시 차단 충분
                 });
                 clearTimeout(timeoutId);
                 
