@@ -31,11 +31,7 @@ function corsHeaders() {
     "Access-Control-Allow-Origin": "*",
     "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
     // [V20.8.1] admin.html이 사용하는 x-admin-pass 헤더 허용 추가
-    // [V202.3] cache-control 헤더 추가 — 사장님 라이브 결함:
-    //          "Request header field cache-control is not allowed by Access-Control-Allow-Headers"
-    //          index.html의 fetch 호출 시 cache-control 헤더 자동 추가됨
-    //          → CORS preflight 차단 → 무한 로딩
-    "Access-Control-Allow-Headers": "Content-Type, x-session-token, x-admin-pass, cache-control, pragma, expires"
+    "Access-Control-Allow-Headers": "Content-Type, x-session-token, x-admin-pass"
   };
 }
 
@@ -17200,91 +17196,19 @@ function build6DomainLuckV184_5(core, interpretation) {
   const safeGyeokGuk = safeStr(interpretation?.gyeokGuk, '본인 격국');
   const safeLuck = safeStr(luck, '평운');
   
-  // ★★★ [V202.3] 6대 분야 진짜 점사 텍스트 시스템 ★★★
-  //
-  //   결함 진단 (사장님 V202.2 라이브 검증):
-  //     "💼 직업운: 균형 흐름 → 본인 격국 기반 직업 적성 분석"
-  //     ↑ 내부 코드 카테고리 설명이 그대로 사용자 화면에 노출됨
-  //     ↑ 진짜 점사가 아님 → 4,900원 결제자 신뢰도 추락
-  //
-  //   해결: 점수 기반 단순 점사 텍스트 (V202.3 임시)
-  //         V203에서 격국×십성×일간 깊은 매핑으로 진화 예정
-  //
-  //   각 분야별 5단계 (excellent/good/balanced/caution/weak)
-  const V202_3_ORACLES_6 = {
-    career: {
-      excellent: '✦ 강한 상승 흐름 — 명예와 책임이 따르는 시기',
-      good:      '안정 상승 — 책임 영역 확대로 평판 강화',
-      balanced:  '균형 흐름 — 꾸준한 실적이 신뢰 기반',
-      caution:   '주의 흐름 — 인간관계 신중하게, 충돌 회피',
-      weak:      '도전 흐름 — 자기 영역 구축이 우선'
-    },
-    wealth: {
-      excellent: '✦ 큰 재물 흐름 — 투자·사업 기회 강력',
-      good:      '확장 흐름 — 투자 영역 다변화 시기',
-      balanced:  '균형 흐름 — 안정 수입 + 작은 투자 병행',
-      caution:   '주의 흐름 — 큰 지출·투자 보류 권장',
-      weak:      '정체 흐름 — 보수적 관리·저축 우선'
-    },
-    love: {
-      excellent: '✦ 인연 강함 — 새 만남·관계 깊이 형성',
-      good:      '안정 흐름 — 기존 관계 신뢰 강화',
-      balanced:  '균형 흐름 — 자연스러운 흐름에 맡기기',
-      caution:   '주의 흐름 — 감정 표현 절제 필요',
-      weak:      '내면 흐름 — 자기 회복이 우선 시기'
-    },
-    health: {
-      excellent: '✦ 활력 강함 — 새 도전 가능 시기',
-      good:      '안정 흐름 — 꾸준한 활동 유지',
-      balanced:  '균형 흐름 — 일과 휴식 분배 중요',
-      caution:   '주의 흐름 — 과로·수면 부족 경계',
-      weak:      '회복 흐름 — 휴식·진단 우선'
-    },
-    study: {
-      excellent: '✦ 학습 강한 흐름 — 시험·자격·전문성 강화',
-      good:      '확장 흐름 — 새 분야 진입 적합',
-      balanced:  '균형 흐름 — 꾸준한 학습이 핵심',
-      caution:   '주의 흐름 — 집중력 흩어짐 경계',
-      weak:      '내면 흐름 — 깊이보다 정리가 우선'
-    },
-    family: {
-      excellent: '✦ 가족 인연 깊음 — 부모·자녀 관계 강화',
-      good:      '안정 흐름 — 가정 화목, 배려가 통함',
-      balanced:  '균형 흐름 — 자연스러운 거리감 유지',
-      caution:   '주의 흐름 — 의사소통 신중하게',
-      weak:      '회복 흐름 — 자기 시간 우선 권장'
-    }
-  };
-  function _v202_3_oracle6(score, category) {
-    if (score >= 65) return V202_3_ORACLES_6[category].excellent;
-    if (score >= 55) return V202_3_ORACLES_6[category].good;
-    if (score >= 45) return V202_3_ORACLES_6[category].balanced;
-    if (score >= 35) return V202_3_ORACLES_6[category].caution;
-    return V202_3_ORACLES_6[category].weak;
-  }
-
-  // 점수 미리 계산 (점사 텍스트 생성에 사용)
-  const _careerScore = scoreOf('정관', '편관');
-  const _wealthScore = scoreOf('정재', '편재');
-  const _loveScore   = scoreOf('정인', '편인');
-  const _healthScore = 50 + luckBonus;
-  const _studyScore  = scoreOf('정인', '상관');
-  const _familyScore = scoreOf('정인', '편관');
-
   return {
-    // [V202.3] detail 인자에 진짜 점사 텍스트 (내부 카테고리 설명 → 점사 응답)
-    careerLuck: wrap(_careerScore, '직장·사회적 위치 흐름', 
-                     _v202_3_oracle6(_careerScore, 'career')),
-    wealthLuck: wrap(_wealthScore, '재물·소득 흐름',
-                     _v202_3_oracle6(_wealthScore, 'wealth')),
-    loveLuck:   wrap(_loveScore, '연애·인간관계 흐름',
-                     _v202_3_oracle6(_loveScore, 'love')),
-    healthLuck: wrap(_healthScore, '체력·건강 흐름',
-                     _v202_3_oracle6(_healthScore, 'health')),
-    studyLuck:  wrap(_studyScore, '학습·성장 흐름',
-                     _v202_3_oracle6(_studyScore, 'study')),
-    familyLuck: wrap(_familyScore, '가족·자녀 흐름',
-                     _v202_3_oracle6(_familyScore, 'family'))
+    careerLuck: wrap(scoreOf('정관', '편관'), '직장·사회적 위치 흐름', 
+                     `${safeGyeokGuk} 기반 직업 적성 분석`),
+    wealthLuck: wrap(scoreOf('정재', '편재'), '재물·소득 흐름',
+                     '편재(투자 기회) + 정재(안정 수입) 균형'),
+    loveLuck:   wrap(scoreOf('정인', '편인'), '연애·인간관계 흐름',
+                     '관계 방어력 + 표현력 종합'),
+    healthLuck: wrap(50 + luckBonus, '체력·건강 흐름',
+                     `12운성 ${safeLuck} 기반 에너지 진단`),
+    studyLuck:  wrap(scoreOf('정인', '상관'), '학습·성장 흐름',
+                     '정인(전통 학습) + 식신(창의) 균형'),
+    familyLuck: wrap(scoreOf('정인', '편관'), '가족·자녀 흐름',
+                     '인성(부모) + 식상(자녀) 종합')
   };
 }
 
@@ -17420,76 +17344,17 @@ function calcLeaderScoreV184_7(core, interpretation) {
 
 // ─── 통합 빌더 — 가장 강한 패턴 1~2개 강조 ───
 function buildPotentialPatternsV184_7(core, interpretation) {
-  // ★★★ [V202.3] 5대 잠재력 진짜 점사 텍스트 ★★★
-  //   결함 진단: 점수만 표시되고 점사 텍스트가 없어 사용자가 의미 파악 어려움
-  //   해결: 점수 기반 단순 점사 (V203에서 격국×십성 깊은 매핑으로 진화)
-  const V202_3_ORACLES_5 = {
-    power: {
-      excellent: '✦ 최상 권력 흐름 — 고위직·관리자 성취 가능',
-      good:      '강한 흐름 — 책임 영역 확대로 성장',
-      balanced:  '균형 흐름 — 꾸준한 노력으로 안정 발현',
-      caution:   '주의 흐름 — 인내와 절제가 핵심',
-      weak:      '정체 흐름 — 자기 영역 구축이 우선'
-    },
-    wealth: {
-      excellent: '✦ 큰 재물 격 — 사업·투자로 부 형성',
-      good:      '확장 흐름 — 다양한 수입원 가능',
-      balanced:  '균형 흐름 — 안정 수입 + 작은 투자',
-      caution:   '주의 흐름 — 큰 지출 신중하게',
-      weak:      '보수 흐름 — 저축·관리가 우선'
-    },
-    scholar: {
-      excellent: '✦ 최상 학자 구조 — 학문·전문성 성취 강력',
-      good:      '확장 흐름 — 새 분야 도전 적합',
-      balanced:  '균형 흐름 — 꾸준한 학습이 핵심',
-      caution:   '주의 흐름 — 집중력 분산 경계',
-      weak:      '정리 흐름 — 깊이보다 정돈이 우선'
-    },
-    creative: {
-      excellent: '✦ 최상 창의 구조 — 예술·표현 잠재력 폭발',
-      good:      '확장 흐름 — 창작 활동 적기',
-      balanced:  '균형 흐름 — 일상 속 표현 시도',
-      caution:   '주의 흐름 — 감각의 과부하 경계',
-      weak:      '회복 흐름 — 자기 회복이 영감 원천'
-    },
-    leader: {
-      excellent: '✦ 최상 리더 구조 — 자수성가·독립 강력',
-      good:      '확장 흐름 — 자기 사업·조직 가능',
-      balanced:  '균형 흐름 — 협력과 독립의 조화',
-      caution:   '주의 흐름 — 독단보다 경청이 핵심',
-      weak:      '관망 흐름 — 동행자 곁에서 학습'
-    }
-  };
-  const _v202_3_oracle5 = (score, key) => {
-    if (score >= 80) return V202_3_ORACLES_5[key].excellent;
-    if (score >= 65) return V202_3_ORACLES_5[key].good;
-    if (score >= 45) return V202_3_ORACLES_5[key].balanced;
-    if (score >= 30) return V202_3_ORACLES_5[key].caution;
-    return V202_3_ORACLES_5[key].weak;
-  };
-
-  const _powerS    = calcPowerScoreV184_7(core, interpretation);
-  const _wealthS   = calcWealthScoreV184_7(core, interpretation);
-  const _scholarS  = calcScholarScoreV184_7(core, interpretation);
-  const _creativeS = calcCreativeScoreV184_7(core, interpretation);
-  const _leaderS   = calcLeaderScoreV184_7(core, interpretation);
-
   const all = [
-    { key: 'power',    score: _powerS,
-      icon: '👑', label: '권력 구조',  desc: '고위직·관리자 잠재력',
-      oracle: _v202_3_oracle5(_powerS, 'power') },
-    { key: 'wealth',   score: _wealthS,
-      icon: '💎', label: '재물 격',    desc: '큰 재물·사업 잠재력',
-      oracle: _v202_3_oracle5(_wealthS, 'wealth') },
-    { key: 'scholar',  score: _scholarS,
-      icon: '🎓', label: '학자 구조',  desc: '학문·전문성 잠재력',
-      oracle: _v202_3_oracle5(_scholarS, 'scholar') },
-    { key: 'creative', score: _creativeS,
-      icon: '🎨', label: '창의 구조',  desc: '예술·표현 잠재력',
-      oracle: _v202_3_oracle5(_creativeS, 'creative') },
-    { key: 'leader',   score: _leaderS,
-      icon: '⚔️', label: '리더 구조',  desc: '자수성가·독립 잠재력',
-      oracle: _v202_3_oracle5(_leaderS, 'leader') }
+    { key: 'power',    score: calcPowerScoreV184_7(core, interpretation),    
+      icon: '👑', label: '권력 구조',  desc: '고위직·관리자 잠재력' },
+    { key: 'wealth',   score: calcWealthScoreV184_7(core, interpretation),   
+      icon: '💎', label: '재물 격',    desc: '큰 재물·사업 잠재력' },
+    { key: 'scholar',  score: calcScholarScoreV184_7(core, interpretation),  
+      icon: '🎓', label: '학자 구조',  desc: '학문·전문성 잠재력' },
+    { key: 'creative', score: calcCreativeScoreV184_7(core, interpretation), 
+      icon: '🎨', label: '창의 구조',  desc: '예술·표현 잠재력' },
+    { key: 'leader',   score: calcLeaderScoreV184_7(core, interpretation),   
+      icon: '⚔️', label: '리더 구조',  desc: '자수성가·독립 잠재력' }
   ];
   
   // 등급 변환
