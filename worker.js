@@ -31,7 +31,11 @@ function corsHeaders() {
     "Access-Control-Allow-Origin": "*",
     "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
     // [V20.8.1] admin.html이 사용하는 x-admin-pass 헤더 허용 추가
-    "Access-Control-Allow-Headers": "Content-Type, x-session-token, x-admin-pass"
+    // [V202.3] cache-control 헤더 추가 — 사장님 라이브 결함:
+    //          "Request header field cache-control is not allowed by Access-Control-Allow-Headers"
+    //          index.html의 fetch 호출 시 cache-control 헤더 자동 추가됨
+    //          → CORS preflight 차단 → 무한 로딩
+    "Access-Control-Allow-Headers": "Content-Type, x-session-token, x-admin-pass, cache-control, pragma, expires"
   };
 }
 
