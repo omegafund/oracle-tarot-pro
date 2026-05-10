@@ -15415,6 +15415,26 @@ async function runSajuOracle() {
             })
         });
 
+        // ★★★ [V202.3 결함 ② 수정] 사용자 입력값 보존 ★★★
+        //   사장님 라이브 결함: "남/여 양력음력 1975.06.05 06:25 표시 안 됨"
+        //   원인: window._sajuInput 미저장 → 결과 렌더링 시 입력값 못 찾음
+        //   해결: fetch 직후 window._sajuInput에 사용자 입력값 저장
+        try {
+            window._sajuInput = {
+                year: parseInt(year),
+                month: parseInt(month),
+                day: parseInt(day),
+                hour: hour ? parseInt(hour) : null,
+                minute: 0,  // 사용자 입력 분이 별도 있으면 추가
+                gender: gender === '남' || gender === 'male' || gender === 'M' ? 'male' : 'female',
+                calendar: calendar,  // 'solar' or 'lunar'
+                isLunar: calendar === 'lunar'
+            };
+            console.log('[V202.3 입력값 보존]', window._sajuInput);
+        } catch (e) {
+            console.warn('[V202.3] window._sajuInput 저장 실패:', e.message);
+        }
+
         // [V31 #125] 응답 타입 정밀 검증
         const contentType = response.headers.get('content-type') || '';
         const rawText = await response.text();
@@ -16039,11 +16059,26 @@ function renderSajuChatMessageV185(msg, index) {
         const p = msg.pillars || {};
         const labels = ['시주', '일주', '월주', '년주'];
         const keys = ['hour', 'day', 'month', 'year'];
+        // ★ [V202.3 결함 수정] pillars 데이터 형식 robust 처리 ★
+        //   결함: pillars.day가 ★ 객체 ★ ({stem:'경', branch:'오', ganzhi:'경오'}) 일 때
+        //         String(객체) = "[object Object]" → 명식 표 깨짐
+        //   해결: 문자열 / 객체 둘 다 처리
+        const extractStemBranch = (v) => {
+            if (!v) return { stem: '', branch: '' };
+            if (typeof v === 'string') {
+                return { stem: v.charAt(0), branch: v.charAt(1) };
+            }
+            if (typeof v === 'object') {
+                const stem = v.stem || (v.ganzhi ? String(v.ganzhi).charAt(0) : '');
+                const branch = v.branch || (v.ganzhi ? String(v.ganzhi).charAt(1) : '');
+                return { stem, branch };
+            }
+            return { stem: '', branch: '' };
+        };
         const cells = labels.map((label, i) => {
             const v = p[keys[i]];
-            if (!v) return `<div style="text-align:center; padding:8px 4px; background:rgba(255,255,255,0.04); border-radius:4px; color:rgba(255,255,255,0.3); font-size:0.65rem;">${label}<br><br>—<br>—</div>`;
-            const stem = String(v).charAt(0);
-            const branch = String(v).charAt(1);
+            const { stem, branch } = extractStemBranch(v);
+            if (!stem && !branch) return `<div style="text-align:center; padding:8px 4px; background:rgba(255,255,255,0.04); border-radius:4px; color:rgba(255,255,255,0.3); font-size:0.65rem;">${label}<br><br>—<br>—</div>`;
             return `<div style="text-align:center; padding:8px 4px; background:rgba(212,175,55,0.10); border:1px solid rgba(212,175,55,0.30); border-radius:6px;">
                 <div style="color:rgba(255,255,255,0.55); font-size:0.62rem; margin-bottom:3px;">${label}</div>
                 <div style="color:#FFD970; font-size:1.35rem; font-weight:900; line-height:1;">${stem}</div>
