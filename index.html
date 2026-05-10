@@ -15811,14 +15811,18 @@ function buildSajuChatSequenceV185(data) {
     //
     //   해결: BASIC + PREMIUM 모두에 명식 표 + 오행 분포 + 입력값 표시 메시지 추가
     {
-        // 명식 데이터 추출 (worker.js 응답 구조)
+        // ★★★ [V202.5 결정적 수정] worker 응답 실제 구조 기반 추출 ★★★
+        //   진짜 워커 응답 (data.text.meta.pillars):
+        //     { year:'계축', month:'을묘', day:'갑자', hour:'기사' } — 문자열
+        //   옛 경로 (data.sajuData.pillars) — 안전망 폴백 유지
         const _pillars = (data && data.sajuData && data.sajuData.pillars)
                       || (data && data.pillars)
                       || (v && v.core && v.core.pillars)
+                      || (data && data.text && data.text.meta && data.text.meta.pillars)
                       || {};
         
-        // 명식 표가 있을 때만 표시
-        const hasPillars = _pillars.hour || _pillars.day || _pillars.month || _pillars.year;
+        // 명식 표가 있을 때만 표시 (문자열 또는 객체 둘 다 지원)
+        const hasPillars = !!(_pillars.hour || _pillars.day || _pillars.month || _pillars.year);
         
         // 입력값 표시 (남/여 양력/음력 1975.06.05 06:25 형식)
         let _inputDisplay = '';
@@ -15860,10 +15864,11 @@ function buildSajuChatSequenceV185(data) {
             });
         }
         
-        // 오행 분포 (PREMIUM에서 별도 메시지로 표시되지만, BASIC에서도 보여야 함)
+        // ★ V202.5 ★ 오행 분포 — 진짜 경로 추가
         const _ohaengDist = (data && data.sajuData && data.sajuData.elements)
                          || (v && v.core && v.core.elements)
-                         || (data && data.elements);
+                         || (data && data.elements)
+                         || (data && data.text && data.text.meta && data.text.meta.elements);
         if (_ohaengDist) {
             messages.push({
                 type: 'ohaeng',
@@ -15881,10 +15886,24 @@ function buildSajuChatSequenceV185(data) {
     //         → 폴백 '갑' 항상 사용 → 모든 사주에 갑목 표시
     //   해결: worker 실제 응답 구조 (data.sajuData.meta.dayMaster) 우선
     //         사장님 화면 디버그 출력으로 정확한 경로 진단
+    // ★★★ [V202.5 결정적 수정] worker 응답 실제 구조 기반 dayMaster 추출 ★★★
+    //   사장님 24시간 라이브 결함:
+    //     "data 전체 키: ['ok', 'version', 'text', 'pro', 'accuracy', ...]"
+    //     ★ sajuData 키 없음 ★ → dayMaster 추출 4경로 모두 실패 → 무한 로딩
+    //   진짜 워커 응답 구조 (V202.2 backup 기준):
+    //     data.text.meta.pillars = { year:'계축', month:'을묘', day:'갑자', hour:'기사' }
+    //     data.text.meta.elements = { 목:2, 화:1, ... }
+    //   해결: 실제 경로 우선 + 옛 경로 폴백 (안전망)
+    const _textMeta = data && data.text && data.text.meta;
+    const _textPillars = _textMeta && _textMeta.pillars;
+    
     const dayMaster = (data && data.sajuData && data.sajuData.meta && data.sajuData.meta.dayMaster)
                    || (v && v.core && v.core.meta && v.core.meta.dayMaster)
                    || (data && data.sajuData && data.sajuData.pillars && data.sajuData.pillars.day && data.sajuData.pillars.day.stem)
                    || (data && data.text && data.text.meta && data.text.meta.dayMaster)
+                   // ★ V202.5 진짜 경로 ★
+                   || (_textPillars && _textPillars.day && typeof _textPillars.day === 'string' && _textPillars.day.charAt(0))
+                   || (_textPillars && _textPillars.day && _textPillars.day.stem)
                    || '';
     
     const dayElement = ({갑:'목',을:'목',병:'화',정:'화',무:'토',기:'토',경:'금',신:'금',임:'수',계:'수'})[dayMaster] || '';
