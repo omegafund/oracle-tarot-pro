@@ -3214,7 +3214,7 @@
     (function() {
         'use strict';
         
-        const APP_VERSION = 'V202.9';  // ★ 매 배포마다 갱신 ★ — V202.9: 사주 결제 사주 한정 (연애·투자 결제 게이트 복구) + 사주 영향 0
+        const APP_VERSION = 'V202.10';  // ★ V202.10: 4,900도 클래식 UI / 단계별 진행 제거 / 3개 버튼 제거 (사장님 명령)
         
         // ★★★ [V202.7 결정적 차단] 전역 fetch lock ★★★
         //   사장님 라이브 결함: 4,900원 결제 후 무한 로딩 (10초 timeout)
@@ -16983,33 +16983,18 @@ function renderSajuKakaoChatV185(data) {
             </div>
         </div>
         
-        <!-- 빠른 답장 (V31 #187: FREE 시 재결제 루트 / PAID 시 정상 답장) -->
+        <!-- ★★★ [V202.10 사장님 명령] 빠른 답장 버튼 정리 ★★★ -->
+        <!--   사장님 명령:                                                    -->
+        <!--     "어떻게 보강해요/직업 추천/오늘 운세 버튼 없애고 다 점사 나오게" -->
+        <!--   해결:                                                           -->
+        <!--     ① 3개 버튼 (보강/직업/오늘) ★ 제거 ★                            -->
+        <!--     ② 점사는 ★ 위에 이미 다 표시 ★ (messages + paidContent)         -->
+        <!--     ③ 마지막에 [🏠 처음으로] 골드 버튼 ★ 하나만 ★                    -->
         <div class="saju-chat-quick-reply">
-            <div class="saju-chat-quick-reply-grid">
-                ${isPaid ? `
-                <button class="saju-chat-quick-btn" onclick="window.handleSajuQuickReply && window.handleSajuQuickReply('boost')">
-                    💧 어떻게 보강해요?
-                </button>
-                <button class="saju-chat-quick-btn" onclick="window.handleSajuQuickReply && window.handleSajuQuickReply('career')">
-                    👑 직업 추천
-                </button>
-                <button class="saju-chat-quick-btn" onclick="window.handleSajuQuickReply && window.handleSajuQuickReply('today')">
-                    📅 오늘 운세
-                </button>
-                <button class="saju-chat-quick-btn gold" onclick="window.handleSajuRestart && window.handleSajuRestart()">
+            <div class="saju-chat-quick-reply-grid" style="display:flex; justify-content:center;">
+                <button class="saju-chat-quick-btn gold" onclick="window.handleSajuRestart && window.handleSajuRestart()" style="min-width:180px;">
                     🏠 처음으로
                 </button>
-                ` : `
-                <button class="saju-chat-quick-btn" onclick="window.handleSajuPremiumCTA && window.handleSajuPremiumCTA()">
-                    💧 어떻게 보강해요?
-                </button>
-                <button class="saju-chat-quick-btn" onclick="window.handleSajuPremiumCTA && window.handleSajuPremiumCTA()">
-                    👑 내 직업 맞나요?
-                </button>
-                <button class="saju-chat-quick-btn gold" onclick="window.handleSajuRestart && window.handleSajuRestart()">
-                    🏠 처음으로
-                </button>
-                `}
             </div>
         </div>
     </div>`;
@@ -17765,12 +17750,23 @@ function renderSajuResult(data) {
         paidPlan = localStorage.getItem('sajuPaidPlan') || '';
     } catch (_) {}
     
-    if (paidPlan === 'saju_basic') {
-        console.log('🎨 [V31 #195] 990원 BASIC → V184.7 클래식 6블록 진입');
+    // ★★★ [V202.10 사장님 명령] 990/4,900 모두 클래식 UI ★★★
+    //   사장님 명령:                                                            
+    //     "990원 사주 점사 흐름이 4,900원 점사 흐름의 기본"                      
+    //     "기본 + 990원에 없는 것 4,900원 점사 차례로 +"                          
+    //     "정밀 데이터 보기 - 왜 터치해야 하나? 유저 불편"                       
+    //     "어떻게 보강해요/직업 추천/오늘 운세 버튼 없애고 다 점사 나오게"        
+    //                                                                            
+    //   해결: 990원(saju_basic) + 4,900원(saju_premium) 모두 ★ 클래식 UI ★      
+    //         → 명식 표 첫머리 ★ 기본 펼침 ★                                    
+    //         → 정밀 데이터 보기 클릭 불필요 (모두 펼쳐짐)                       
+    //         → 마지막 [돌아가기] 골드 버튼 하나만 (클래식 UI는 원래 그럼)        
+    if (paidPlan === 'saju_basic' || paidPlan === 'saju_premium') {
+        console.log('🎨 [V202.10] ' + (paidPlan === 'saju_premium' ? '4,900원 PREMIUM' : '990원 BASIC') + ' → V184.7 클래식 6블록 직행 (사장님 명령)');
         // 카카오 UI 우회 → 직접 클래식 UI로 진입
         // (아래 클래식 UI 코드로 바로 이동)
     } else {
-        // FREE 또는 PREMIUM 등 → 카카오 UI 분기
+        // FREE 또는 기타 PAID → 카카오 UI 분기
         let useKakaoStyle = true;
         try {
             const pref = sessionStorage.getItem('sajuChatStyle');
@@ -17939,18 +17935,33 @@ function renderSajuResult(data) {
         if (!originalSubtitle) return '사주 흐름 분석';
         
         let refined = originalSubtitle;
-        // 어색한 표현 매핑
-        const replacements = [
-            ['조건 진행', '단계별 진행'],
-            ['조건진행', '단계별 진행'],
-            ['조건 단계', '단계별 흐름'],
-            ['조건부 진행', '단계별 진행']
+        // ★★★ [V202.10 사장님 명령] '단계별 진행' 표시 ★ 제거 ★ ★★★
+        //   사장님 명령: "이건 우리 내부 로직인데 안 보여"
+        //   해결: '조건 진행' / '조건부 진행' 같은 텍스트가 들어있으면 ★ 제거 ★
+        //         (변환이 아니라 ★ 통째로 비움 ★ — '균형 사주' 만 남김)
+        const removalPatterns = [
+            /\s*-\s*조건\s*진행/g,
+            /\s*-\s*조건진행/g,
+            /\s*-\s*조건\s*단계/g,
+            /\s*-\s*조건부\s*진행/g,
+            /\s*-\s*단계별\s*진행/g,
+            /\s*·\s*조건\s*진행/g,
+            /\s*·\s*조건부\s*진행/g,
+            /\s*·\s*단계별\s*진행/g,
+            /조건\s*진행/g,
+            /조건진행/g,
+            /조건부\s*진행/g,
+            /단계별\s*진행/g
         ];
         
-        for (const [from, to] of replacements) {
-            refined = refined.split(from).join(to);
+        for (const pat of removalPatterns) {
+            refined = refined.replace(pat, '');
         }
-        return refined;
+        
+        // 끝에 남은 공백·하이픈·중간점 정리
+        refined = refined.replace(/[\s\-·]+$/, '').replace(/^[\s\-·]+/, '').trim();
+        
+        return refined || '사주 흐름 분석';
     }
     
     // [V31 #163 + #164 + #170] 현실 보정 문장 (사장님 안 — 핵심 교체)
