@@ -3214,7 +3214,7 @@
     (function() {
         'use strict';
         
-        const APP_VERSION = 'V202.18';  // ★ V202.18: V31_LUNAR_DATA 1900-1989 추가 (사장님 1975 결함 잡음)
+        const APP_VERSION = 'V202.19';  // ★ V202.19: CARD_DECISION_MAP 라인 10295 사용자 친화 + 주식 매도 박스 외곽 테두리 제거 (사장님 사진 결함)
         window.APP_VERSION = APP_VERSION;
         
         // ★★★ [V202.17 결정적 수정] _sajuInput 복원 ★ 페이지 로드 즉시 ★ ★★★
@@ -11995,7 +11995,13 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
             });
 
             return `
-            <div class="final-oracle final-oracle-stock" style="padding:20px; background:rgba(212,175,55,0.08); border:1px solid var(--gold); border-radius:12px; margin-top:25px;">
+            <!-- ★★★ [V202.19 사장님 명령] 주식/코인 매도 박스 외곽 테두리 제거 ★★★ -->
+            <!--   사장님 라이브 결함:                                            -->
+            <!--     주식 매도 박스 외곽 ★ 노란 테두리 ★ 그대로 표시              -->
+            <!--   V202.14에서 h3 border-bottom만 잡고 ★ div 외곽 border 누락 ★   -->
+            <!--   해결: border:1px solid var(--gold) ★ 제거 ★ (배경만 유지)      -->
+            <!--   효과: 모바일에서 텍스트 공간 확보 + 시인성 ↑                   -->
+            <div class="final-oracle final-oracle-stock" style="padding:20px; background:rgba(212,175,55,0.08); border-radius:12px; margin-top:25px;">
                 <h3 style="color:var(--gold); text-align:center; margin:0 0 15px 0; font-size:1.1rem; padding-bottom:10px;">
                     ${title}
                 </h3>
