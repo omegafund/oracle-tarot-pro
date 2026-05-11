@@ -2449,26 +2449,45 @@
             overflow-y: auto;
             margin: auto;
         }
-        /* [V20.1] 닫기 버튼은 모달 하단에 sticky로 항상 보이게 */
+        /* ★★★ [V202.21 사장님 명령] 페이월 닫기 버튼 ★ 화면 하단 고정 ★ ★★★ */
+        /*   사장님 라이브 결함:                                                  */
+        /*     - 닫기 버튼이 중간 위치 → 스크롤 시 ★ 간섭 ★ → 자동 닫힘             */
+        /*     - 사용자가 의도치 않게 결제 화면 닫힘                                */
+        /*   사장님 명령:                                                         */
+        /*     1. 휴대폰 ★ 제일 하단 ★ 고정                                        */
+        /*     2. 크기 ★ 50% 축소 ★                                                */
+        /*     3. 시인성 ★ 개선 ★                                                  */
+        /*   해결: position: fixed bottom 0 + 작은 사이즈 + 강한 시인성              */
         .pay-modal .pay-close-btn {
-            position: sticky;
-            bottom: -10px;
-            margin-top: 16px;
-            background: linear-gradient(135deg, rgba(0,0,0,0.95), rgba(20,20,30,0.95));
-            backdrop-filter: blur(8px);
-            border: 2px solid rgba(255,255,255,0.3);
-            color: #fff;
-            padding: 12px 24px;
-            border-radius: 30px;
+            position: fixed;
+            bottom: 12px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: auto;
+            min-width: 90px;
+            max-width: 140px;
+            margin: 0;
+            padding: 8px 18px;
+            background: linear-gradient(135deg, rgba(0,0,0,0.92), rgba(40,40,55,0.92));
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1.5px solid rgba(255,215,112,0.55);
+            color: #FFD970;
+            border-radius: 22px;
             font-weight: 800;
-            font-size: 0.9rem;
+            font-size: 0.78rem;
             cursor: pointer;
-            width: 100%;
-            box-shadow: 0 -2px 10px rgba(0,0,0,0.5);
+            box-shadow: 0 4px 16px rgba(0,0,0,0.7), 0 0 12px rgba(255,215,112,0.15);
+            z-index: 100002;
+            letter-spacing: 0.05em;
+            transition: all 0.2s ease;
         }
-        .pay-modal .pay-close-btn:hover {
-            background: rgba(255,82,82,0.3);
+        .pay-modal .pay-close-btn:hover,
+        .pay-modal .pay-close-btn:active {
+            background: linear-gradient(135deg, rgba(255,82,82,0.35), rgba(255,82,82,0.25));
             border-color: #ff5252;
+            color: #fff;
+            box-shadow: 0 4px 16px rgba(255,82,82,0.5), 0 0 12px rgba(255,82,82,0.3);
         }
         .pay-modal h3 {
             color: var(--gold);
@@ -3214,7 +3233,7 @@
     (function() {
         'use strict';
         
-        const APP_VERSION = 'V202.20';  // ★ V202.20: 95점 포맷 5가지 통합 (색상 🟢🟡🔴 + 수치 범위 + 카드→행동 + 어휘 3등급 + 시각 위계)
+        const APP_VERSION = 'V202.21';  // ★ V202.21: 닫기 버튼 하단 고정 50% 축소 + 로딩 스크롤 최상단 강제 (사장님 라이브 결함)
         window.APP_VERSION = APP_VERSION;
         
         // ★★★ [V202.17 결정적 수정] _sajuInput 복원 ★ 페이지 로드 즉시 ★ ★★★
@@ -7789,13 +7808,18 @@ async function renderStream(fetchPromise, cards) {
     if (wisdomEl) wisdomEl.style.display = 'block';
     contentEl.innerHTML        = '';
     
-    // ★★★ [V202.11 사장님 명령 2] 카드+로딩바 영역으로 ★ 스크롤 고정 ★ ★★★
-    //   사장님 명령: "카드 뽑고 다음 화면에 거의 완성되었습니다 하는 로딩바가 보여야"
-    //   결함: 자동 스크롤이 ★ 하단 ★ (대표자/주소 안내) 로 이동
-    //         → 사용자가 ★ 에러로 오해 ★
-    //   해결: 카드 영역으로 ★ 스크롤 위치 즉시 이동 ★
+    // ★★★ [V202.21 사장님 명령 강화] 로딩 화면 스크롤 ★ 화면 맨 위 ★ 강제 고정 ★★★
+    //   사장님 라이브 결함 (V202.11 미반영):
+    //     "곧 결과가 나옵니다" 로딩바 화면에서
+    //     → 스크롤이 하단으로 → 이용약관/개인정보 영역 더 많이 보임
+    //     → 사용자가 ★ 에러로 오해 ★
+    //   V202.11 결함: cardsArea (카드 영역) 으로만 이동 → 일부 환경에서 미작동
+    //   V202.21 해결: ★ 화면 맨 위 (window scrollTo 0) ★ 강제 + ★ 3회 반복 ★ 간섭 방지
     try {
-        // 카드 영역 찾기 (#oracle-cards 또는 #spread-display 등)
+        // ① 즉시 페이지 최상단으로 스크롤 (window 전체)
+        window.scrollTo({ top: 0, behavior: 'auto' });
+        
+        // ② 카드 영역 또는 로딩바 영역 함께 표시 (보강)
         const cardsArea = document.getElementById('oracle-cards') 
                        || document.getElementById('spread-display')
                        || document.getElementById('three-card-result')
@@ -7803,17 +7827,24 @@ async function renderStream(fetchPromise, cards) {
                        || document.querySelector('.cards-row')
                        || document.querySelector('.three-cards');
         
-        // 카드 영역 또는 로딩바 영역으로 스크롤
         const scrollTarget = cardsArea || progressWrap;
         if (scrollTarget && typeof scrollTarget.scrollIntoView === 'function') {
-            scrollTarget.scrollIntoView({ behavior: 'smooth', block: 'start' });
-            console.log('🔼 [V202.11] 로딩 화면 스크롤 ★ 카드+로딩바 영역 고정 ★');
-        } else {
-            // 폴백: 페이지 상단으로
-            window.scrollTo({ top: 0, behavior: 'smooth' });
+            scrollTarget.scrollIntoView({ behavior: 'auto', block: 'start' });
         }
+        
+        // ③ 200ms 후 다시 한번 강제 (다른 코드 간섭 방지)
+        setTimeout(() => {
+            window.scrollTo({ top: 0, behavior: 'auto' });
+        }, 200);
+        
+        // ④ 500ms 후 한번 더 (최종 보장)
+        setTimeout(() => {
+            window.scrollTo({ top: 0, behavior: 'auto' });
+        }, 500);
+        
+        console.log('🔼 [V202.21] 로딩 화면 스크롤 ★ 화면 맨 위 강제 고정 (3회 반복) ★');
     } catch(scrollErr) {
-        console.warn('[V202.11] 스크롤 고정 중 오류 (무시):', scrollErr);
+        console.warn('[V202.21] 스크롤 고정 중 오류 (무시):', scrollErr);
     }
 
     const loadingMessages = [
