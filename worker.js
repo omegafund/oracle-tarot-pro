@@ -10292,7 +10292,13 @@ function buildStockMetrics({ totalScore, riskScore, cleanCards, isLeverage, quer
     if (uncGate.isHighUncertainty && uncGate.reason) return uncGate.reason;
     if (riskGate.decisionMajority && riskGate.decisionMajority.majorityCaution) {
       const dm = riskGate.decisionMajority;
-      return `CARD_DECISION_MAP 다수결 — HOLD ${dm.hold}장 + SELL ${dm.sell}장 = ${dm.cautionCount}장 신중 카드 우세 (BUY ${dm.buy}장)`;
+      // ★★★ [V202.19 사장님 명령] 내부 코드명 ★ 제거 ★ 사용자 친화 표현 ★★★
+      //   사장님 라이브 결함 (V202.14 누락):
+      //     "CARD_DECISION_MAP 다수결 — HOLD 1장 + SELL 1장 = 2장..." 표출
+      //   V202.14에서 라인 727만 잡고 ★ 라인 10295 누락 ★
+      //   사용자 화면에 ★ 내부 코드 ★ 그대로 노출
+      //   해결: 사용자 친화 한국어 표현 (라인 727과 동일 패턴)
+      return `신중 흐름 — 3장 중 ${dm.cautionCount}장 신중 카드 (관망 권장)`;
     }
     return '복합 게이트 발동';
   })();
@@ -18451,7 +18457,7 @@ export default {
     // ════════════════════════════════════════════════════════════════════
     if (url.pathname === "/version" && request.method === "GET") {
       return new Response(JSON.stringify({
-        version: "V202.18",      // ★ 매 배포마다 갱신 ★ — V202.18: V31_LUNAR_DATA 1900-1989 추가 (1975 결함 잡음)
+        version: "V202.19",      // ★ 매 배포마다 갱신 ★ — V202.19: 라인 10295 CARD_DECISION_MAP 사용자 친화 + 박스 외곽 테두리 제거
         _ts: Date.now(),
         _ok: true
       }), {
