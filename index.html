@@ -3214,7 +3214,7 @@
     (function() {
         'use strict';
         
-        const APP_VERSION = 'V202.13';  // ★ V202.13: 양력만 입력 + 양력/음력 둘 다 표시 (사장님 명령)
+        const APP_VERSION = 'V202.14';  // ★ V202.14: 투자 점사 CARD_DECISION_MAP 내부 코드 제거 + 주식 실전 박스 위 구분선 제거 (사장님 명령)
         
         // ★★★ [V202.7 결정적 차단] 전역 fetch lock ★★★
         //   사장님 라이브 결함: 4,900원 결제 후 무한 로딩 (10초 timeout)
@@ -11898,7 +11898,7 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
 
             return `
             <div class="final-oracle final-oracle-stock" style="padding:20px; background:rgba(212,175,55,0.08); border:1px solid var(--gold); border-radius:12px; margin-top:25px;">
-                <h3 style="color:var(--gold); text-align:center; margin:0 0 15px 0; font-size:1.1rem; border-bottom:1px solid rgba(212,175,55,0.35); padding-bottom:10px;">
+                <h3 style="color:var(--gold); text-align:center; margin:0 0 15px 0; font-size:1.1rem; padding-bottom:10px;">
                     ${title}
                 </h3>
                 ${layer5HTML || (narrativeHTML + riskHTML + positionHTML + timingHTML + `
