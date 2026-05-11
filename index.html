@@ -3214,7 +3214,7 @@
     (function() {
         'use strict';
         
-        const APP_VERSION = 'V202.11';  // ★ V202.11: 입력값 표시 첫머리 / 카드+로딩바 스크롤 고정 / 투자 점사 테두리 2개 제거 (사장님 명령)
+        const APP_VERSION = 'V202.13';  // ★ V202.13: 양력만 입력 + 양력/음력 둘 다 표시 (사장님 명령)
         
         // ★★★ [V202.7 결정적 차단] 전역 fetch lock ★★★
         //   사장님 라이브 결함: 4,900원 결제 후 무한 로딩 (10초 timeout)
@@ -4875,6 +4875,34 @@ window.addEventListener('load', () => {
       if (!sajuPending) return;
       
       const sajuData = JSON.parse(sajuPending);
+      
+      // ★★★ [V202.12] 자동 복원 경로에서 window._sajuInput 복원 ★★★
+      //   사장님 명령: "생시 입력한 것이 사주 입력창에 나오게 — 반영 안 됨"
+      //   원인: 자동 복원 시 fetch 안 거침 → window._sajuInput 없음 → 입력값 표시 X
+      //   해결: sajuPendingResult 안의 input 데이터로 window._sajuInput 복원
+      try {
+        if (sajuData.input && typeof sajuData.input === 'object') {
+          window._sajuInput = {
+            year: parseInt(sajuData.input.year) || null,
+            month: parseInt(sajuData.input.month) || null,
+            day: parseInt(sajuData.input.day) || null,
+            hour: (sajuData.input.hour !== null && sajuData.input.hour !== undefined && sajuData.input.hour !== '') 
+                  ? parseInt(sajuData.input.hour) 
+                  : null,
+            minute: parseInt(sajuData.input.minute) || 0,
+            gender: sajuData.input.gender === '남' || sajuData.input.gender === 'male' || sajuData.input.gender === 'M' 
+                  ? 'male' 
+                  : (sajuData.input.gender === '여' || sajuData.input.gender === 'female' || sajuData.input.gender === 'F' 
+                    ? 'female' 
+                    : ''),
+            calendar: sajuData.input.calendar || 'solar',
+            isLunar: sajuData.input.calendar === 'lunar' || sajuData.input.isLunar === true
+          };
+          console.log('🔁 [V202.12] 자동 복원 — window._sajuInput 복원 완료:', window._sajuInput);
+        }
+      } catch(inputErr) {
+        console.warn('[V202.12] _sajuInput 복원 중 오류 (무시):', inputErr);
+      }
       
       // 30분 만료 체크 (오래된 데이터 정리)
       if (sajuData.savedAt && Date.now() - sajuData.savedAt > 60 * 60 * 1000) {
@@ -14885,27 +14913,30 @@ function showSajuInputModal() {
                 </div>
             </div>
 
-            <!-- 양력/음력 선택 — 사장님 BEST 기준: 양력 우선 / 음력은 보조 -->
+            <!-- ★★★ [V202.13 사장님 명령] 양력 입력만 허용 ★★★ -->
+            <!--   사장님 명령:                                                 -->
+            <!--     "입력은 오로지 양력으로만 하고"                              -->
+            <!--     "양력 1995.10.25 입력 → 결과 첫머리 (음:1995.09.08) 표시"   -->
+            <!--   해결:                                                        -->
+            <!--     ① 음력 라디오 버튼 ★ 제거 ★ (양력 선택 자체 X)              -->
+            <!--     ② 워커는 양력 → 음력 변환 후 lunarDate 응답 (V202.13 워커)   -->
+            <!--     ③ 결과 첫머리에 "(음: YYYY.MM.DD)" 표시                     -->
+            <!--   효과:                                                        -->
+            <!--     ✅ 음력 변환 결함 차단 (입력 자체 X)                          -->
+            <!--     ✅ 사용자에게 ★ 음력 정보 ★ 도 함께 제공 (완전 자동)            -->
+            <!--     ✅ 업계 표준 (만세력닷컴·운명닷컴 등 양력 입력 우선)          -->
             <div style="margin-bottom:14px;">
                 <label style="display:block; color:#FFE08A; font-size:0.82rem; font-weight:700; margin-bottom:6px;">
-                    📅 입력 방식 <span style="font-weight:400; color:rgba(255,255,255,0.5);">(양력 권장 ★)</span>
+                    📅 입력 방식
                 </label>
-                <div style="display:flex; gap:8px;">
-                    <label style="flex:1; padding:10px; background:rgba(46,204,113,0.12); border:1px solid rgba(46,204,113,0.4); border-radius:6px; cursor:pointer; text-align:center; font-size:0.86rem;">
-                        <input type="radio" name="sajuCalendar" value="solar" checked style="margin-right:4px;" onchange="_v31SajuCalendarChange(this)">
-                        <strong style="color:#2ecc71;">양력</strong>
-                        <div style="font-size:0.7rem; color:#2ecc71;">절기 + 간지 100% 정확 ★</div>
-                    </label>
-                    <label style="flex:1; padding:10px; background:rgba(255,165,80,0.06); border:1px solid rgba(255,165,80,0.2); border-radius:6px; cursor:pointer; text-align:center; font-size:0.86rem;">
-                        <input type="radio" name="sajuCalendar" value="lunar" style="margin-right:4px;" onchange="_v31SajuCalendarChange(this)">
-                        <strong style="color:#FFB870;">음력</strong>
-                        <div style="font-size:0.7rem; color:#FFB870;">변환 보조 (양력 권장)</div>
-                    </label>
-                </div>
-                <!-- 음력 선택 시 안내 -->
-                <div id="sajuLunarWarning" style="display:none; margin-top:8px; padding:8px 10px; background:rgba(255,165,80,0.08); border-left:2px solid rgba(255,165,80,0.5); border-radius:0 4px 4px 0; font-size:0.72rem; color:rgba(255,236,159,0.95); line-height:1.55;">
-                    ⚠ 음력 변환은 보조 기능입니다. 정확한 사주를 위해 <strong>양력 직접 입력</strong>을 권장합니다.<br>
-                    인터넷 만세력 사이트에서 양력 변환 후 입력하세요.
+                <div style="padding:10px; background:rgba(46,204,113,0.12); border:1px solid rgba(46,204,113,0.4); border-radius:6px; text-align:center; font-size:0.86rem;">
+                    <input type="hidden" name="sajuCalendar" value="solar">
+                    <strong style="color:#2ecc71;">📅 양력 입력</strong>
+                    <div style="font-size:0.7rem; color:#2ecc71; margin-top:3px;">절기 + 간지 100% 정확 ★</div>
+                    <div style="font-size:0.66rem; color:rgba(255,255,255,0.6); margin-top:6px; line-height:1.55;">
+                        ※ 음력 생일은 <a href="https://search.naver.com/search.naver?query=만세력" target="_blank" style="color:#FFD970; text-decoration:underline;">만세력 사이트</a>에서 양력 변환 후 입력하세요.<br>
+                        결과 화면에 ★ 음력 날짜도 자동 표시 ★ 됩니다.
+                    </div>
                 </div>
             </div>
 
@@ -18464,7 +18495,8 @@ function renderSajuResult(data) {
                 <h2 style="color:#FFD970; font-size:1.15rem; margin:6px 0; font-weight:900;">${text.title || '사주 신탁'}</h2>
                 <div style="color:#FFE08A; font-size:0.84rem; font-weight:700;">${refineSajuSubtitle(text.subtitle || '')}</div>
                 ${(function() {
-                    // ★ V202.11: 입력값 표시 우선, 없으면 accuracy.note 폴백 ★
+                    // ★ V202.13: 양력 + 음력 동시 표시 ★
+                    //   사장님 명령: "남 양력 1986.04.02 14:30 (음: 1986.03.15)"
                     try {
                         const _input = window._sajuInput || {};
                         const _gender = _input.gender === 'male' ? '남' : (_input.gender === 'female' ? '여' : '');
@@ -18479,7 +18511,25 @@ function renderSajuResult(data) {
                             const _hrStr = (typeof _hr === 'number' && _hr >= 0) ? String(_hr).padStart(2, '0') + ':00' : '';
                             const _timePart = _hrStr ? ` ${_hrStr}` : '';
                             const _genderPart = _gender ? _gender + ' ' : '';
-                            return `<div style="color:rgba(255,224,138,0.85); font-size:0.7rem; margin-top:6px; font-weight:600; letter-spacing:0.02em;">${_genderPart}${_calendar} ${_yStr}.${_mStr}.${_dStr}${_timePart}</div>`;
+                            
+                            // ★ V202.13: 반대 변환 표시 (양력 입력 → 음력 표시 / 음력 입력 → 양력 표시) ★
+                            let _altDate = '';
+                            try {
+                                if (_calendar === '양력' && data.lunarDate) {
+                                    const _ly = String(data.lunarDate.year);
+                                    const _lm = String(data.lunarDate.month).padStart(2, '0');
+                                    const _ld = String(data.lunarDate.day).padStart(2, '0');
+                                    const _leap = data.lunarDate.isLeapMonth ? '윤' : '';
+                                    _altDate = ` (음: ${_ly}.${_leap}${_lm}.${_ld})`;
+                                } else if (_calendar === '음력' && data.solarDate) {
+                                    const _sy = String(data.solarDate.year);
+                                    const _sm = String(data.solarDate.month).padStart(2, '0');
+                                    const _sd = String(data.solarDate.day).padStart(2, '0');
+                                    _altDate = ` (양: ${_sy}.${_sm}.${_sd})`;
+                                }
+                            } catch(altErr) {}
+                            
+                            return `<div style="color:rgba(255,224,138,0.85); font-size:0.7rem; margin-top:6px; font-weight:600; letter-spacing:0.02em;">${_genderPart}${_calendar} ${_yStr}.${_mStr}.${_dStr}${_timePart}${_altDate}</div>`;
                         }
                     } catch(e) {}
                     // 폴백: 기존 accuracy.note
