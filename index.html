@@ -3214,7 +3214,7 @@
     (function() {
         'use strict';
         
-        const APP_VERSION = 'V202.10';  // ★ V202.10: 4,900도 클래식 UI / 단계별 진행 제거 / 3개 버튼 제거 (사장님 명령)
+        const APP_VERSION = 'V202.11';  // ★ V202.11: 입력값 표시 첫머리 / 카드+로딩바 스크롤 고정 / 투자 점사 테두리 2개 제거 (사장님 명령)
         
         // ★★★ [V202.7 결정적 차단] 전역 fetch lock ★★★
         //   사장님 라이브 결함: 4,900원 결제 후 무한 로딩 (10초 timeout)
@@ -7662,6 +7662,33 @@ async function renderStream(fetchPromise, cards) {
     progressWrap.style.display = 'block';
     if (wisdomEl) wisdomEl.style.display = 'block';
     contentEl.innerHTML        = '';
+    
+    // ★★★ [V202.11 사장님 명령 2] 카드+로딩바 영역으로 ★ 스크롤 고정 ★ ★★★
+    //   사장님 명령: "카드 뽑고 다음 화면에 거의 완성되었습니다 하는 로딩바가 보여야"
+    //   결함: 자동 스크롤이 ★ 하단 ★ (대표자/주소 안내) 로 이동
+    //         → 사용자가 ★ 에러로 오해 ★
+    //   해결: 카드 영역으로 ★ 스크롤 위치 즉시 이동 ★
+    try {
+        // 카드 영역 찾기 (#oracle-cards 또는 #spread-display 등)
+        const cardsArea = document.getElementById('oracle-cards') 
+                       || document.getElementById('spread-display')
+                       || document.getElementById('three-card-result')
+                       || document.querySelector('.tarot-cards-row')
+                       || document.querySelector('.cards-row')
+                       || document.querySelector('.three-cards');
+        
+        // 카드 영역 또는 로딩바 영역으로 스크롤
+        const scrollTarget = cardsArea || progressWrap;
+        if (scrollTarget && typeof scrollTarget.scrollIntoView === 'function') {
+            scrollTarget.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            console.log('🔼 [V202.11] 로딩 화면 스크롤 ★ 카드+로딩바 영역 고정 ★');
+        } else {
+            // 폴백: 페이지 상단으로
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+    } catch(scrollErr) {
+        console.warn('[V202.11] 스크롤 고정 중 오류 (무시):', scrollErr);
+    }
 
     const loadingMessages = [
         '✨ 천상의 기운을 감지하는 중...',
@@ -10787,9 +10814,9 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
                     <!-- [V25.40 Phase 4] 시장 상태 박스 (사장님 안) — PRO 차별화 -->
                     <!--   카드 분석 + 리스크 + 변동성 결합 자동 생성              -->
                     <!--   포지션·전략 다음, 한줄 결론 직전 위치                    -->
+                    <!-- ★ [V202.11 사장님 명령 3] 테두리 제거 (시인성 개선, 모바일 텍스트 공간 확보) ★ -->
                     <div style="margin-top:4px; margin-bottom:10px; padding:11px 14px;
                                 background: linear-gradient(135deg, rgba(155,89,182,0.16), rgba(155,89,182,0.04));
-                                border: 1.5px solid rgba(155,89,182,0.45);
                                 border-radius: 10px;">
                         <div style="font-size:0.74rem; color:#C39BD3; font-weight:800; letter-spacing:0.12em; margin-bottom:6px;">
                             📊 현재 시장 상태
@@ -10805,11 +10832,10 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
                     <!--   포지션·전략 다음, 5계층 본문 시작 전 위치                  -->
                     <!--   효과: 본문 읽기 전 머리 정돈 + 5초 결제 결정의 법칙        -->
                     <!-- [V27.0.2] CORE+TAIL 줄바꿈 표시 (사장님 안) — \n → <br> -->
+                    <!-- ★ [V202.11 사장님 명령 3] 테두리 + 그림자 제거 (시인성) ★ -->
                     <div style="margin-top:4px; margin-bottom:14px; padding:11px 14px;
                                 background: linear-gradient(135deg, rgba(255,236,159,0.18), rgba(255,236,159,0.05));
-                                border: 1.5px solid rgba(255,236,159,0.5);
-                                border-radius: 10px;
-                                box-shadow: 0 0 12px rgba(255,236,159,0.12);">
+                                border-radius: 10px;">
                         <div style="font-size:0.74rem; color:#FFEC9F; font-weight:800; letter-spacing:0.12em; margin-bottom:5px;">
                             👉 한줄 결론
                         </div>
@@ -18421,6 +18447,15 @@ function renderSajuResult(data) {
                     style="position:absolute; top:14px; right:14px; background:none; border:none; color:#888; font-size:1.4rem; cursor:pointer;">×</button>
 
             <!-- [V31 #163 사장님 6블록] [1] 핵심 요약 — 헤더 -->
+            <!-- ★★★ [V202.11 사장님 명령] '절기+간지 100% 정확' 자리에 입력값 표시 ★★★ -->
+            <!--   사장님 명령:                                                          -->
+            <!--     "양력 입력 - 절기+간지 100% 정확 텍스트 없애고                       -->
+            <!--      남여 양음력 생년월일시 텍스트 표시"                                  -->
+            <!--   해결:                                                                  -->
+            <!--     window._sajuInput에서 입력값 추출하여 표시                            -->
+            <!--     형식: "남 양력 1986.04.02 14:30" 또는 "여 음력 1990.05.05 ..."        -->
+            <!--   안전망:                                                                -->
+            <!--     입력값 없으면 → 기존 accuracy.note 표시 (폴백)                       -->
             <div style="text-align:center; margin-bottom:14px;">
                 <div style="display:inline-block; padding:3px 10px; background:rgba(212,175,55,0.15); border-radius:12px; font-size:0.66rem; color:#FFD970; font-weight:900; letter-spacing:0.05em; margin-bottom:8px;">
                     [1/6] 핵심 요약
@@ -18428,7 +18463,28 @@ function renderSajuResult(data) {
                 <div style="font-size:2.4rem;">☯</div>
                 <h2 style="color:#FFD970; font-size:1.15rem; margin:6px 0; font-weight:900;">${text.title || '사주 신탁'}</h2>
                 <div style="color:#FFE08A; font-size:0.84rem; font-weight:700;">${refineSajuSubtitle(text.subtitle || '')}</div>
-                ${data.accuracy ? `<div style="color:rgba(255,255,255,0.5); font-size:0.66rem; margin-top:4px;">${data.accuracy.note}</div>` : ''}
+                ${(function() {
+                    // ★ V202.11: 입력값 표시 우선, 없으면 accuracy.note 폴백 ★
+                    try {
+                        const _input = window._sajuInput || {};
+                        const _gender = _input.gender === 'male' ? '남' : (_input.gender === 'female' ? '여' : '');
+                        const _calendar = (_input.isLunar || _input.calendar === 'lunar') ? '음력' : '양력';
+                        const _y = _input.year, _m = _input.month, _d = _input.day;
+                        const _hr = _input.hour;
+                        
+                        if (_y && _m && _d) {
+                            const _yStr = String(_y);
+                            const _mStr = String(_m).padStart(2, '0');
+                            const _dStr = String(_d).padStart(2, '0');
+                            const _hrStr = (typeof _hr === 'number' && _hr >= 0) ? String(_hr).padStart(2, '0') + ':00' : '';
+                            const _timePart = _hrStr ? ` ${_hrStr}` : '';
+                            const _genderPart = _gender ? _gender + ' ' : '';
+                            return `<div style="color:rgba(255,224,138,0.85); font-size:0.7rem; margin-top:6px; font-weight:600; letter-spacing:0.02em;">${_genderPart}${_calendar} ${_yStr}.${_mStr}.${_dStr}${_timePart}</div>`;
+                        }
+                    } catch(e) {}
+                    // 폴백: 기존 accuracy.note
+                    return data.accuracy ? `<div style="color:rgba(255,255,255,0.5); font-size:0.66rem; margin-top:4px;">${data.accuracy.note}</div>` : '';
+                })()}
             </div>
 
             <!-- [V31 #163 사장님 6블록] [2] 사주 명식 — 팩트 -->
