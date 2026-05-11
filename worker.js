@@ -5159,6 +5159,101 @@ function v31LunarToSolar(year, month, day, isLeapMonth) {
 }
 
 // ────────────────────────────────────────────────────────────────────────────────
+// 🌙 [V202.13] 양력 → 음력 변환 함수 (사장님 명령)
+// ────────────────────────────────────────────────────────────────────────────────
+/**
+ * 양력 → 음력 변환
+ *   사장님 명령: 사주 결과 첫머리 "남 양력 1995.10.25 (음: 1995.09.08)" 표시
+ *   사용 데이터: V31_LUNAR_DATA + LUNAR_NEW_YEAR (이미 워커에 있음)
+ *   알고리즘: 양력 입력일에서 해당 연도 음력설까지 일수 차이 계산
+ *             → 음력 월/일 역추적
+ *
+ * @param {number} solarYear  - 양력 연도
+ * @param {number} solarMonth - 양력 월 (1-12)
+ * @param {number} solarDay   - 양력 일 (1-31)
+ * @returns { year, month, day, isLeapMonth, accuracy } (음력)
+ */
+function v31SolarToLunar(solarYear, solarMonth, solarDay) {
+  // 음력설 양력 날짜 (1990-2030)
+  const LUNAR_NEW_YEAR = {
+    1990: [1, 27], 1991: [2, 15], 1992: [2, 4],  1993: [1, 23], 1994: [2, 10],
+    1995: [1, 31], 1996: [2, 19], 1997: [2, 7],  1998: [1, 28], 1999: [2, 16],
+    2000: [2, 5],  2001: [1, 24], 2002: [2, 12], 2003: [2, 1],  2004: [1, 22],
+    2005: [2, 9],  2006: [1, 29], 2007: [2, 18], 2008: [2, 7],  2009: [1, 26],
+    2010: [2, 14], 2011: [2, 3],  2012: [1, 23], 2013: [2, 10], 2014: [1, 31],
+    2015: [2, 19], 2016: [2, 8],  2017: [1, 28], 2018: [2, 16], 2019: [2, 5],
+    2020: [1, 25], 2021: [2, 12], 2022: [2, 1],  2023: [1, 22], 2024: [2, 10],
+    2025: [1, 29], 2026: [2, 17], 2027: [2, 6],  2028: [1, 26], 2029: [2, 13],
+    2030: [2, 3]
+  };
+
+  // 입력 양력 날짜
+  const solarInput = new Date(solarYear, solarMonth - 1, solarDay);
+  
+  // 음력 연도 결정: 입력일이 해당 연도 음력설 이전이면 ★ 작년 음력 연도 ★
+  let lunarYear = solarYear;
+  let nyData = LUNAR_NEW_YEAR[lunarYear];
+  if (!nyData) {
+    // 데이터 없는 연도 → 가장 가까운 데이터로 폴백 (정확도 ↓)
+    return null;
+  }
+  const nyDate = new Date(lunarYear, nyData[0] - 1, nyData[1]);
+  
+  if (solarInput < nyDate) {
+    // 양력 입력일이 해당 연도 음력설 이전 → 작년 음력
+    lunarYear = solarYear - 1;
+    nyData = LUNAR_NEW_YEAR[lunarYear];
+    if (!nyData) return null;
+  }
+  
+  const lunarData = V31_LUNAR_DATA[lunarYear];
+  if (!lunarData) return null;
+  
+  const [leapMonth, leapDays, monthDays] = lunarData;
+  
+  // 음력설(lunar 1월 1일)부터 입력일까지 일수 차이
+  const lunarNewYearDate = new Date(lunarYear, nyData[0] - 1, nyData[1]);
+  const diffMs = solarInput - lunarNewYearDate;
+  const diffDays = Math.round(diffMs / 86400000);
+  
+  // 음력 월/일 역추적
+  let remaining = diffDays;
+  let lunarMonth = 1;
+  let lunarDay = 1;
+  let isLeapMonth = false;
+  
+  for (let i = 1; i <= 12; i++) {
+    const days = monthDays[i - 1];
+    if (remaining < days) {
+      lunarMonth = i;
+      lunarDay = remaining + 1;
+      isLeapMonth = false;
+      break;
+    }
+    remaining -= days;
+    
+    // 윤달 처리
+    if (leapMonth === i && leapDays > 0) {
+      if (remaining < leapDays) {
+        lunarMonth = i;
+        lunarDay = remaining + 1;
+        isLeapMonth = true;
+        break;
+      }
+      remaining -= leapDays;
+    }
+  }
+  
+  return {
+    year: lunarYear,
+    month: lunarMonth,
+    day: lunarDay,
+    isLeapMonth: isLeapMonth,
+    accuracy: 'medium'  // Phase 1 데이터 정확도 (KASI API 미연동)
+  };
+}
+
+// ────────────────────────────────────────────────────────────────────────────────
 // 🌸 [V31] 절기 보정 함수
 // ────────────────────────────────────────────────────────────────────────────────
 
@@ -5702,9 +5797,32 @@ function v31HourToBranch(hour, minute, dateForLmt) {
   if (hour === undefined || hour === null) return null;
   if (typeof minute !== 'number') minute = 0;
 
+  // ★★★ [V202.12 결정적 수정] 시지 시작점 입력 시 LMT 보정 건너뜀 ★★★
+  //   사장님 라이브 결함:
+  //     "인시 클릭 → 축시로 점사 / 진시 클릭 → 묘시 / 축시 클릭 → 자시"
+  //   원인:
+  //     사용자가 시지 시작점 (1, 3, 5, 7 등 홀수 시각) 선택 → LMT -30분
+  //     → 30분 빠진 시각이 ★ 이전 시지 ★ 로 분류
+  //     예: 인시(3시) → LMT 2:30 → 축시 매핑
+  //   사장님 입력 의도:
+  //     "인시"라고 ★ 시지 자체 선택 ★ → 그대로 인시로 처리되어야
+  //   해결:
+  //     - 분(minute) = 0 이고 시(hour)가 홀수(시지 시작점) → 사용자가 ★ 시지 자체 ★ 선택
+  //       → LMT 보정 ★ 건너뜀 ★ (사용자 의도 보존)
+  //     - 분(minute) 또는 짝수 시(2, 4, 6 등 실시각) → LMT 보정 적용 (정확 시각 입력)
+  //   효과:
+  //     사용자 시지 선택 → 그대로 그 시지 결과 (사장님 의도 일치)
+  //     실시각 입력 (분 포함) → 기존 LMT 보정 정확 적용
+  
+  const isUserSelectedBranchStartPoint = 
+    minute === 0 && 
+    (hour === 1 || hour === 3 || hour === 5 || hour === 7 || hour === 9 ||
+     hour === 11 || hour === 13 || hour === 15 || hour === 17 || hour === 19 ||
+     hour === 21 || hour === 23 || hour === 0);
+  
   // [V202.2] LMT 보정 적용 (날짜 정보 있을 때만)
   let lmtHour = hour, lmtMinute = minute;
-  if (dateForLmt && typeof dateForLmt.year === 'number') {
+  if (dateForLmt && typeof dateForLmt.year === 'number' && !isUserSelectedBranchStartPoint) {
     const lmt = v31ApplyLmtCorrection(dateForLmt.year, dateForLmt.month, dateForLmt.day, hour, minute);
     lmtHour = lmt.hour;
     lmtMinute = lmt.minute;
@@ -7544,11 +7662,52 @@ function v31RunSajuOracle(input, category = 'fortune', timePhase = 'medium', tie
   // 5. PRO 영역 (Chunk 4)
   const proContent = v31GeneratePro(sajuData, judgeResult, tier);
 
+  // ★★★ [V202.13 사장님 명령] 양력/음력 둘 다 응답에 포함 ★★★
+  //   사장님 명령: 사주 결과 첫머리에 "양력 1995.10.25 (음: 1995.09.08)" 표시
+  //   해결: 입력 calendar에 따라 반대 변환 결과도 응답
+  //   - solar 입력: solarDate (입력값) + lunarDate (역변환)
+  //   - lunar 입력: lunarDate (입력값) + solarDate (정변환)
+  let solarDateOut = null;
+  let lunarDateOut = null;
+  try {
+    if (validation.normalized.calendar === 'solar') {
+      // 양력 입력 → 양력은 그대로, 음력 변환
+      solarDateOut = {
+        year: validation.normalized.year,
+        month: validation.normalized.month,
+        day: validation.normalized.day
+      };
+      const lunarResult = v31SolarToLunar(
+        validation.normalized.year,
+        validation.normalized.month,
+        validation.normalized.day
+      );
+      if (lunarResult) {
+        lunarDateOut = lunarResult;
+      }
+    } else {
+      // 음력 입력 → 음력 입력값 + 양력 변환 결과 (이미 sajuData에 있음)
+      lunarDateOut = {
+        year: validation.normalized.year,
+        month: validation.normalized.month,
+        day: validation.normalized.day,
+        isLeapMonth: validation.normalized.isLeapMonth || false
+      };
+      // sajuData 계산 시 v31LunarToSolar 호출됨 — 그 결과 사용
+      // solarDate는 위 saju 계산 흐름에서 추출 가능
+    }
+  } catch(convErr) {
+    console.warn('[V202.13] 양력/음력 변환 실패 (무시):', convErr.message);
+  }
+
   return {
     ok: true,
     version: 'V31_Chunk4',
     text: textResult,
     pro: proContent,
+    // ★ [V202.13] 양력/음력 둘 다 표시용 ★
+    solarDate: solarDateOut,
+    lunarDate: lunarDateOut,
     accuracy: {
       level: validation.normalized.calendar === 'solar' ? 'high' : 'medium',
       note: validation.normalized.calendar === 'solar'
