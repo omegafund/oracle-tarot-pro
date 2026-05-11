@@ -18334,7 +18334,7 @@ export default {
     // ════════════════════════════════════════════════════════════════════
     if (url.pathname === "/version" && request.method === "GET") {
       return new Response(JSON.stringify({
-        version: "V202.16",      // ★ 매 배포마다 갱신 ★ — V202.16: _sajuInput 복원 V202.6 전 이동 (결제 후 음력 표시 정상화)
+        version: "V202.17",      // ★ 매 배포마다 갱신 ★ — V202.17: _sajuInput 즉시 복원 + window.APP_VERSION 노출
         _ts: Date.now(),
         _ok: true
       }), {
