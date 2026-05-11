@@ -2750,27 +2750,44 @@ function buildOneLineSummary(metrics) {
   const stockIntent = metrics.stockIntent || 'buy';
 
   // ── 시나리오 키 결정 (사장님 정밀 분리 안 적용)
+  // ★★★ [V202.22 사장님 라이브 결함 잡음] ★★★
+  //   사장님 케이스:
+  //     질문 "엘지전자 매수 타이밍" → stockIntent='buy'
+  //     그런데 decision.position에 '익절' 단어 우연 포함
+  //     → wait_sell 시나리오 선택 → 매도 신탁 출력 (★ 사용자 혼란 ★)
+  //   해결:
+  //     stockIntent === 'sell' 일 때만 wait_sell/active(매도) 허용
+  //     stockIntent === 'buy' 면 ★ buy 시나리오만 ★ 선택 (절대 매도 X)
+  //   효과:
+  //     매수 질문 → 매수 신탁 (혼재 X) ★ 100% 보장 ★
   let scenarioKey;
-  if (/진입\s*보류|관망/.test(position) || /보류.*하락|관망.*우선/.test(verdict)) {
-    scenarioKey = stockIntent === 'sell' ? 'wait_sell' : 'wait_buy';
-  } else if (/검증\s*후\s*진입|조건\s*진입/.test(position)) {
-    scenarioKey = 'verified';
-  } else if (/제한적\s*시도/.test(position)) {
-    scenarioKey = 'limited';
-  // [V27.0.2 지적 3] 익절/축소(타이밍 게임) vs 매도(실행 단계) 정밀 분리
-  //   사장님 진단: 익절 = "언제 팔까 (타이밍)", 매도 = "이미 팔기로 결심 (실행)"
-  //   톤 완전히 달라야 함 → 결제 전환 분리
-  } else if (/익절|축소/.test(position)) {
-    scenarioKey = 'wait_sell';   // 타이밍 게임
-  } else if (/매도/.test(position)) {
-    scenarioKey = 'active';      // 실행 단계
-  } else if (/단기\s*매수|적극\s*매수/.test(position)) {
-    scenarioKey = 'active';
-  } else if (/분할\s*매수|단계적/.test(position)) {
-    scenarioKey = 'split';
+  
+  // ★ V202.22 보호막 ★: stockIntent='buy'일 때 SELL 시나리오 완전 차단
+  if (stockIntent === 'buy') {
+    // BUY 시나리오만 5종 (wait_buy/verified/limited/active/split) 중 선택
+    if (/진입\s*보류|관망/.test(position) || /보류.*하락|관망.*우선/.test(verdict)) {
+      scenarioKey = 'wait_buy';
+    } else if (/검증\s*후\s*진입|조건\s*진입/.test(position)) {
+      scenarioKey = 'verified';
+    } else if (/제한적\s*시도/.test(position)) {
+      scenarioKey = 'limited';
+    } else if (/단기\s*매수|적극\s*매수/.test(position)) {
+      scenarioKey = 'active';
+    } else if (/분할\s*매수|단계적/.test(position)) {
+      scenarioKey = 'split';
+    } else {
+      scenarioKey = 'wait_buy';  // fallback (BUY 안전 디폴트)
+    }
+  } else if (stockIntent === 'sell') {
+    // SELL 시나리오만 (현재 wait_sell 하나 + active 매도 분기)
+    if (/매도/.test(position)) {
+      scenarioKey = 'active';      // 실행 단계
+    } else {
+      scenarioKey = 'wait_sell';   // 타이밍 게임 (디폴트)
+    }
   } else {
-    // fallback — intent 기반
-    scenarioKey = stockIntent === 'sell' ? 'wait_sell' : 'wait_buy';
+    // hold/기타: fallback wait_buy
+    scenarioKey = 'wait_buy';
   }
 
   // ── [V27.0.4] 블록 시스템 — 시드 기반 결정적 다양화
@@ -18484,7 +18501,7 @@ export default {
     // ════════════════════════════════════════════════════════════════════
     if (url.pathname === "/version" && request.method === "GET") {
       return new Response(JSON.stringify({
-        version: "V202.21",      // ★ 매 배포마다 갱신 ★ — V202.21: 닫기 버튼 하단 고정 + 로딩 스크롤 최상단
+        version: "V202.22",      // ★ 매 배포마다 갱신 ★ — V202.22: 매수↔매도 시나리오 혼재 결함 100% 잡음 (stockIntent 우선)
         _ts: Date.now(),
         _ok: true
       }), {
