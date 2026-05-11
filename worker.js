@@ -18334,7 +18334,7 @@ export default {
     // ════════════════════════════════════════════════════════════════════
     if (url.pathname === "/version" && request.method === "GET") {
       return new Response(JSON.stringify({
-        version: "V202.15",      // ★ 매 배포마다 갱신 ★ — V202.15: 음력 변환 + 시지 LMT 우회 + CARD_DECISION_MAP 사용자 친화 + 사주 8/8
+        version: "V202.16",      // ★ 매 배포마다 갱신 ★ — V202.16: _sajuInput 복원 V202.6 전 이동 (결제 후 음력 표시 정상화)
         _ts: Date.now(),
         _ok: true
       }), {
