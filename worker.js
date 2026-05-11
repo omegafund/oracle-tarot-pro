@@ -18484,7 +18484,7 @@ export default {
     // ════════════════════════════════════════════════════════════════════
     if (url.pathname === "/version" && request.method === "GET") {
       return new Response(JSON.stringify({
-        version: "V202.20",      // ★ 매 배포마다 갱신 ★ — V202.20: 95점 포맷 5가지 통합 (색상 + 수치 + 행동 직결 + 어휘 3등급)
+        version: "V202.21",      // ★ 매 배포마다 갱신 ★ — V202.21: 닫기 버튼 하단 고정 + 로딩 스크롤 최상단
         _ts: Date.now(),
         _ok: true
       }), {
