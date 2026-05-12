@@ -18017,7 +18017,7 @@ export default {
     // ════════════════════════════════════════════════════════════════════
     if (url.pathname === "/version" && request.method === "GET") {
       return new Response(JSON.stringify({
-        version: "V202.34",      // ★ V202.34: 사장님 정밀 명령 - [3/6] 용신+희신 한 줄, 행운 가이드 헤더 용신 명시, 🔥 사주 키워드 박스 마지막 (용신 기반)
+        version: "V202.35",      // ★ V202.35: 라이브 결함 2종 수정 - yongshin 데이터 경로 (v184_5.yongshin) + PRO 펼침 박스 닫기 이동 (변수 scope 불일치 해결)
         _ts: Date.now(),
         _ok: true
       }), {
