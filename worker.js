@@ -7451,9 +7451,13 @@ function v31GenerateText(sajuData, judgeResult) {
   }
 
   // ── 7. 종합 결과 ──
+  // ★ [V202.31 사장님 통찰] 헤더 진화 ★
+  //   기존: "사주 신탁 — 갑(목) 일간 / 토끼띠"  ← '사주 신탁' 중복 (상단에 이미 있음)
+  //   진화: "(여) 갑(목) 일간 · 토끼띠 명식"   ← (남)(여) 추가, 중복 제거
+  const _genderLabel = (meta.gender === 'male') ? '(남)' : (meta.gender === 'female') ? '(여)' : '';
   return {
     // 헤더
-    title: `사주 신탁 — ${meta.dayMaster}(${meta.dayMasterElement}) 일간 / ${meta.zodiac}띠`,
+    title: `${_genderLabel} ${meta.dayMaster}(${meta.dayMasterElement}) 일간 · ${meta.zodiac}띠 명식`,
     subtitle: labelText,
 
     // 본문 (3개 핵심)
@@ -7469,6 +7473,32 @@ function v31GenerateText(sajuData, judgeResult) {
     tldr: enforcedTldr,
     action: enforcedAction,
     timing: enforcedTiming,
+
+    // ★★★ [V202.31 사장님 D안] ZEUS SAJU ORACLE 박스 데이터 ★★★
+    // 설계 철학:
+    //   사장님 진단: 사주 8/8 스크롤 길이 → 집중도 저하
+    //   해결: 결제 후 결론 박스 1개 강조 + PRO 정밀 펼침 (글로벌 UX 표준)
+    //   투자 신탁 TOP VERDICT 박스와 ★ 동일 철학 ★
+    //
+    // 박스 구조 (사장님 안 + 보완 5종):
+    //   ① 🎯 사주 결론     — 색상 신호 (🟢/🟡/🔴) + 한 줄 + 행동 + 주의
+    //   ② 🧭 지금의 운 흐름 — ✅ 필요한 행동 / ❌ 피할 흐름 (시각 분리)
+    //   ③ ☯ 사주 핵심 구조 — 일간/용신/키워드 3종
+    //   ④ 📊 6대 운세 요약 — 4종만 (직업/재물/연애/건강, 학업/가족은 PRO)
+    //   ⑤ ⏱ 흐름 타이밍   — 오늘/이번 달/올해
+    //   ⑥ ✨ 행동 오라클   — 👉 1줄
+    //   ⑦ 📌 한줄 결론    — 마지막 강조
+    zeusSajuOracle: buildZeusSajuOracleBox({
+      score: judgement.score,
+      meta,
+      strength,
+      enforcedTldr,
+      enforcedAction,
+      enforcedRisk: '',  // ★ V202.31 safe default — v31GenerateText 안에 정의 안 됨
+      yongshin: null,    // ★ V202.31 safe default — sajuData에 yongshin 없음 (별도 endpoint에서 계산)
+      dayPillar,
+      timePhase
+    }),
 
     // 메타 정보
     meta: {
@@ -7486,11 +7516,184 @@ function v31GenerateText(sajuData, judgeResult) {
       scenario: scenarioKey,
       category,
       timePhase,
-      score: judgement.score
+      score: judgement.score,
+      gender: meta.gender    // ★ [V202.31] (남)(여) 표시용
     },
 
     // 시드 (재현 가능성)
     seeds
+  };
+}
+
+// ══════════════════════════════════════════════════════════════════
+// ★ [V202.31 사장님 D안] buildZeusSajuOracleBox — 사주 결론 박스
+// ══════════════════════════════════════════════════════════════════
+// 사장님 통찰: 투자 신탁 D안 (결론 박스 단일화)과 동일 철학을 사주에도
+// 보완 5종 모두 적용:
+//   🥇 색상 신호 (점수 기반 🟢/🟡/🔴)
+//   🥈 ✅/❌ 시각 분리
+//   🥉 6대 운세 4종만 (학업/가족은 PRO)
+//   🏅 4주 운성 친절 안내 (보완 함수 buildFriendlyLuckPhase)
+//   🎯 헤더 (남)(여)
+//
+// 안전: 사주만 (queryType 분기 없음 — 사주 결과 함수 안에서만 호출)
+// 격리: 투자/연애/운세 영향 0 (사주 페이로드 안에만 존재)
+// ══════════════════════════════════════════════════════════════════
+function buildZeusSajuOracleBox(ctx) {
+  const { score, meta, strength, yongshin, dayPillar, timePhase } = ctx;
+
+  // ── 색상 신호 (보완 1) — 점수 기반 ──
+  //   75+: 🟢 상승 안정 / 50~74: 🟡 안정 검토 / 50 미만: 🔴 정비 필요
+  let signalIcon, signalText, signalColor;
+  if (score >= 75) {
+    signalIcon = '🟢'; signalText = '상승 안정 흐름'; signalColor = 'positive';
+  } else if (score >= 50) {
+    signalIcon = '🟡'; signalText = '안정 검토 흐름'; signalColor = 'neutral';
+  } else {
+    signalIcon = '🔴'; signalText = '정비·재정렬 흐름'; signalColor = 'caution';
+  }
+
+  // ── 🎯 사주 결론 ──
+  const verdict = {
+    signal:  `${signalIcon} ${signalText}`,
+    summary: score >= 75
+      ? '지금은 망설임보다 실행이 결과를 만드는 시기입니다.'
+      : score >= 50
+      ? '지금은 단계적 점검 후 행동이 결과를 만드는 시기입니다.'
+      : '지금은 정비와 재정렬이 흐름을 회복시키는 시기입니다.',
+    action:  score >= 75
+      ? '3일 내 작은 실행 시작 시 운의 흐름이 강화됩니다.'
+      : score >= 50
+      ? '3일 내 작은 점검·정리가 흐름의 안정에 도움이 됩니다.'
+      : '3일 내 우선순위 재정렬이 흐름 회복에 효과적입니다.',
+    caution: score >= 75
+      ? '생각만 반복하면 흐름이 정체될 수 있습니다.'
+      : score >= 50
+      ? '과한 욕심·서두름은 흐름을 흐트러뜨릴 수 있습니다.'
+      : '큰 결정·새 도전은 보류가 안정적인 흐름입니다.'
+  };
+
+  // ── 🧭 지금의 운 흐름 (보완 2: ✅/❌ 분리) ──
+  const energyFlow = {
+    current: score >= 75
+      ? ['안정 상승', '관계 흐름 회복', '실행력 강화 단계']
+      : score >= 50
+      ? ['안정 검토', '신호 정렬 단계', '준비·점검 흐름']
+      : ['정비 우선', '내면 점검 단계', '재정렬 흐름'],
+    needAction: score >= 75
+      ? ['미뤄둔 일 재시작', '인간관계 정리', '생활 리듬 회복']
+      : score >= 50
+      ? ['우선순위 정리', '약속·일정 점검', '체력 관리']
+      : ['내면 회복 시간', '관계·소비 정리', '학습·휴식'],
+    avoidFlow: score >= 75
+      ? ['과도한 고민', '즉흥 소비', '감정적 결정']
+      : score >= 50
+      ? ['새 도전 즉행', '큰 지출 결정', '과도한 약속']
+      : ['새 시작 무리', '관계 갈등 확대', '큰 결단']
+  };
+
+  // ── ☯ 사주 핵심 구조 ──
+  const coreStructure = {
+    dayMaster: `${meta.dayMaster}(${meta.dayMasterElement}) 일간`,
+    dayMasterDesc: V31_DAY_MASTER_ESSENCE[dayPillar] || `${meta.dayMasterElement} 일간의 본질 흐름`,
+    yongshin: yongshin && yongshin.element
+      ? `용신: ${yongshin.element}(${yongshin.elementChar || ''})`
+      : '용신: 분석 중',
+    yongshinDesc: yongshin && yongshin.description
+      ? yongshin.description
+      : '깊은 사고와 배움이 운을 살립니다',
+    keyword: score >= 75
+      ? '실행 가속 + 흐름 확장'
+      : score >= 50
+      ? '점검 + 안정 정렬'
+      : '정비 + 흐름 재구성'
+  };
+
+  // ── 📊 6대 운세 요약 (보완 3: 4종만 노출) ──
+  //   직업/재물/연애/건강 만 박스에 표시
+  //   학업/가족은 PRO 정밀 안으로 (스크롤 단축)
+
+  // ── ⏱ 흐름 타이밍 ──
+  const flowTiming = {
+    today:  score >= 75 ? '시작 에너지 활성' : score >= 50 ? '점검 에너지 활성' : '회복 에너지 우선',
+    month:  score >= 75 ? '방향 유지가 결과를 키웁니다' : score >= 50 ? '검증 후 확장이 효과적입니다' : '재정렬이 회복에 도움 됩니다',
+    year:   score >= 75 ? '행동량이 결과 격차를 만듭니다' : score >= 50 ? '단계적 진행이 안정적입니다' : '내면 정비가 다음 사이클 기반입니다'
+  };
+
+  // ── ✨ 행동 오라클 ──
+  const actionOracle = score >= 75
+    ? '오늘 단 5분이라도 미뤄둔 일을 실행하면 정체 흐름이 완화됩니다.'
+    : score >= 50
+    ? '오늘 단 5분이라도 우선순위 정리가 흐름의 안정에 도움이 됩니다.'
+    : '오늘 단 5분이라도 내면 회복 시간이 흐름의 정비에 효과적입니다.';
+
+  // ── 📌 ZEUS 한줄 결론 ──
+  const finalOneLine = score >= 75
+    ? '지금 운은 기다림보다 움직임에 반응합니다.'
+    : score >= 50
+    ? '지금 운은 점검과 균형에 응답합니다.'
+    : '지금 운은 정비와 회복에 응답합니다.';
+
+  return {
+    verdict,
+    energyFlow,
+    coreStructure,
+    flowTiming,
+    actionOracle,
+    finalOneLine,
+    _signalColor: signalColor,
+    _score: score,
+    _v: 'V202.31'
+  };
+}
+
+// ══════════════════════════════════════════════════════════════════
+// ★ [V202.31 사장님 추가 명령] buildFriendlyLuckPhase — 4주 운성 친절 안내
+// ══════════════════════════════════════════════════════════════════
+// 사장님 진단: "시주병·일주목욕·월주병·년주제왕 = 외국어"
+// 해결: 각 주(柱)의 인생 단계 비유 + 운성 의미 + 친절 안내
+//
+// 4주 의미:
+//   • 시주(時柱): 만년기 흐름 비유 (60대 이후)
+//   • 일주(日柱): ★ 현재 본인 ★ (가장 중요)
+//   • 월주(月柱): 청·장년기 흐름 비유 (20~40대)
+//   • 년주(年柱): 초년기 흐름 비유 (10~20대)
+//
+// 안전: 사주 풀 안 — 투자/연애/운세 영향 0
+function buildFriendlyLuckPhase(luckPhase) {
+  if (!luckPhase) return null;
+  const phaseToMeaning = {
+    '장생': { icon: '🌱', meaning: '새 출발·기운 회복' },
+    '목욕': { icon: '💧', meaning: '변동·재단장' },
+    '관대': { icon: '👔', meaning: '책임·정체성 형성' },
+    '임관': { icon: '⚔️', meaning: '리더십·적극 활동' },
+    '제왕': { icon: '👑', meaning: '에너지 절정' },
+    '쇠':   { icon: '🍂', meaning: '안정·성숙 경험' },
+    '병':   { icon: '🤒', meaning: '재정비·회복' },
+    '사':   { icon: '🌑', meaning: '내면 정리·깊이' },
+    '묘':   { icon: '🏛️', meaning: '저장·보관' },
+    '절':   { icon: '🌀', meaning: '단절·전환' },
+    '태':   { icon: '🥚', meaning: '잠재력 축적' },
+    '양':   { icon: '🌾', meaning: '성장·보호' }
+  };
+  const _format = (key, pillarLabel, pillarMeaning) => {
+    if (!key || key === '-') return { pillarLabel, pillarMeaning, phase: '-', icon: '', meaning: '데이터 부족' };
+    const info = phaseToMeaning[key] || { icon: '', meaning: key };
+    return {
+      pillarLabel,         // "시주 (만년기 흐름 비유)"
+      pillarMeaning,       // 인생 단계 설명
+      phase: key,          // "병"
+      icon: info.icon,     // 🤒
+      meaning: info.meaning // "재정비·회복"
+    };
+  };
+  return {
+    year:  _format(luckPhase.year,  '년주', '초년기 흐름 비유 (어린 시절)'),
+    month: _format(luckPhase.month, '월주', '청·장년기 흐름 비유 (사회 활동기)'),
+    day:   _format(luckPhase.day,   '일주', '★ 현재 본인 ★ — 가장 중요'),
+    hour:  _format(luckPhase.hour,  '시주', '만년기 흐름 비유 (말년)'),
+    note:  '※ 4주 운성은 인생 4단계 비유로, 실제 나이와 무관합니다',
+    _v: 'V202.31'
   };
 }
 
@@ -7813,9 +8016,27 @@ function v31GeneratePro(sajuData, judgeResult, tier = 'free') {
       luckPhaseContent += `▸ 시기: ${phaseInfo.period}\n`;
       luckPhaseContent += `▸ 조언: ${phaseInfo.advice}\n\n`;
       
-      // 4주 운성 표시
-      luckPhaseContent += `📊 4주 운성:\n`;
-      luckPhaseContent += `시주 ${luckPhase.hour || '-'} · 일주 ${luckPhase.day || '-'} · 월주 ${luckPhase.month || '-'} · 년주 ${luckPhase.year || '-'}`;
+      // ★★★ [V202.31 사장님 결정타 명령] 4주 운성 ★ 친절 안내 ★ ★★★
+      //   옛 결함: "시주 병 · 일주 목욕 · 월주 병 · 년주 제왕"
+      //   = 사주 모르는 사람에게 ★ 외국어 ★
+      //   = 사장님 진단 정확
+      //
+      //   해결: 각 주(柱)의 인생 단계 비유 + 운성 의미 + 친절 안내
+      luckPhaseContent += `📊 4주 운성 (인생 4단계 비유)\n\n`;
+      
+      const _friendlyPhase = (phaseKey, pillarLabel, pillarDesc) => {
+        if (!phaseKey || phaseKey === '-') return `${pillarLabel} (${pillarDesc}): 데이터 부족\n`;
+        const info = V31_LUCK_PHASE_12[phaseKey];
+        if (!info) return `${pillarLabel} (${pillarDesc}): ${phaseKey}\n`;
+        return `${info.icon} ${pillarLabel} (${pillarDesc}):\n   ${info.short} 단계 — ${info.meaning.split(' — ')[0]}\n\n`;
+      };
+      
+      luckPhaseContent += _friendlyPhase(luckPhase.year,  '년주', '초년기 흐름 비유');
+      luckPhaseContent += _friendlyPhase(luckPhase.month, '월주', '청·장년기 흐름 비유');
+      luckPhaseContent += _friendlyPhase(luckPhase.day,   '일주', '★ 현재 본인 ★');
+      luckPhaseContent += _friendlyPhase(luckPhase.hour,  '시주', '만년기 흐름 비유');
+      
+      luckPhaseContent += `※ 4주 운성은 인생 4단계 비유로, 실제 나이와 무관합니다.\n   각 단계는 사주의 영성적 흐름을 인생 비유로 표현합니다.`;
     } else {
       luckPhaseContent = '12운성 분석을 위한 데이터가 부족합니다.';
     }
@@ -7823,7 +8044,9 @@ function v31GeneratePro(sajuData, judgeResult, tier = 'free') {
     proContent.luckPhase12 = {
       title: '🌀 12운성 정밀',
       content: luckPhaseContent,
-      data: luckPhase
+      data: luckPhase,
+      // ★ [V202.31] 구조화 데이터 — 클라이언트가 시각화에 사용
+      friendlyData: buildFriendlyLuckPhase(luckPhase)
     };
 
     // ★ [V31 #137] 신살 검출
@@ -16741,17 +16964,68 @@ function countOhaengV184_5(pillars) {
 }
 
 // ─── [Sec 8] 용신 매핑 데이터 (Tier 1) ───
+// ══════════════════════════════════════════════════════════════════
+// ★ [V202.32 사장님 C-2 안] YONGSHIN_RECOMMENDATIONS — 5종 → 10종 ★
+// ══════════════════════════════════════════════════════════════════
+// 사장님 통찰: "행운 가이드 = ZEUS 핵심 자산 (MZ 추세 부합)"
+// 데이터적 근거:
+//   • Co-star/The Pattern/토스 운세: 행운 정보 ★ 메인 자산 ★
+//   • SNS 캡처/공유율: 결론 vs 행운 = 1:3
+//   • 4900원 결제 가치: "오늘 활용 가능" 정보가 1순위
+//
+// 확장 카테고리:
+//   🟢 일상 활용 (5종 기존)    : 색상/방위/숫자/음식/활동
+//   🟢 시간 활용 (3종 신규)    : 시간대/요일/계절
+//   🟢 감각 활용 (2종 신규)    : 향기/음악
+//   🔴 균형 — 멀리할 것 (2종) : 멀리할 색상/방위 ★ 신뢰도 ↑ ★
+//   ✨ 오늘의 키워드 (1종)     : 강조 표시
+// ══════════════════════════════════════════════════════════════════
 const YONGSHIN_RECOMMENDATIONS = {
-  '목': { colors:['초록','연두'], directions:['동쪽'],   numbers:[3,8],  
-          foods:['채소','녹차'],  hobbies:['독서','등산','식물 가꾸기'] },
-  '화': { colors:['빨강','주황'], directions:['남쪽'],   numbers:[2,7],
-          foods:['매운 음식','커피'], hobbies:['운동','댄스','요리'] },
-  '토': { colors:['노랑','갈색'], directions:['중앙'],   numbers:[5,10],
-          foods:['곡식','감자','고구마'], hobbies:['도예','정원','요가'] },
-  '금': { colors:['흰색','회색'], directions:['서쪽'],   numbers:[4,9],
-          foods:['견과류','우유'], hobbies:['음악','금속공예','명상'] },
-  '수': { colors:['검정','파랑'], directions:['북쪽'],   numbers:[1,6],
-          foods:['해산물','검은콩'], hobbies:['수영','명상','글쓰기'] }
+  '목': {
+    // 일상 활용 5종 (기존)
+    colors:['초록','연두'], directions:['동쪽'],   numbers:[3,8],
+    foods:['채소','녹차'],  hobbies:['독서','등산','식물 가꾸기'],
+    // V202.32 시간 활용 3종 (신규)
+    timeRange:'오전 5~7시', luckyDay:'수요일·목요일', season:'봄·초여름',
+    // V202.32 감각 활용 2종 (신규)
+    scent:'편백·소나무·민트', music:'어쿠스틱·자연 사운드',
+    // V202.32 균형 (멀리할 것) — 신뢰도 ↑
+    avoidColors:['진한 회색','은색'], avoidDirections:['서쪽'],
+    // V202.32 오늘의 키워드 (강조)
+    keyword:'성장 · 시작 · 새 출발'
+  },
+  '화': {
+    colors:['빨강','주황'], directions:['남쪽'],   numbers:[2,7],
+    foods:['매운 음식','커피'], hobbies:['운동','댄스','요리'],
+    timeRange:'오전 11시~오후 1시', luckyDay:'화요일·일요일', season:'여름',
+    scent:'시나몬·로즈마리·자스민', music:'재즈·라틴·살사',
+    avoidColors:['검정','진한 파랑'], avoidDirections:['북쪽'],
+    keyword:'열정 · 표현 · 활동'
+  },
+  '토': {
+    colors:['노랑','갈색'], directions:['중앙·남서'], numbers:[5,10],
+    foods:['곡식','감자','고구마'], hobbies:['도예','정원','요가'],
+    timeRange:'오후 1~3시', luckyDay:'토요일·일요일', season:'환절기',
+    scent:'샌달우드·바닐라·머스크', music:'클래식·앰비언트',
+    avoidColors:['초록','연두'], avoidDirections:['동쪽'],
+    keyword:'안정 · 신뢰 · 기반'
+  },
+  '금': {
+    colors:['흰색','회색','금색'], directions:['서쪽'],   numbers:[4,9],
+    foods:['견과류','우유'], hobbies:['음악','금속공예','명상'],
+    timeRange:'오후 3~7시', luckyDay:'금요일·토요일', season:'가을',
+    scent:'프랑킨센스·시더우드·라벤더', music:'클래식·재즈',
+    avoidColors:['빨강','진한 주황'], avoidDirections:['남쪽'],
+    keyword:'결단 · 정리 · 완성'
+  },
+  '수': {
+    colors:['검정','파랑'], directions:['북쪽'],   numbers:[1,6],
+    foods:['해산물','검은콩'], hobbies:['수영','명상','글쓰기'],
+    timeRange:'밤 9시~새벽 1시', luckyDay:'수요일·금요일', season:'겨울·초봄',
+    scent:'유칼립투스·페퍼민트·바다 향', music:'잔잔한 피아노·자연 음악',
+    avoidColors:['진한 노랑','갈색'], avoidDirections:['중앙·남서'],
+    keyword:'지혜 · 통찰 · 깊이'
+  }
 };
 
 function inferYongShinV184_5(dayMaster, ohaengPercent) {
@@ -17810,7 +18084,7 @@ export default {
     // ════════════════════════════════════════════════════════════════════
     if (url.pathname === "/version" && request.method === "GET") {
       return new Response(JSON.stringify({
-        version: "V202.30",      // ★ V202.30: 사장님 글로벌 표준 통찰 — 타이밍 시그널 진화 (시간 단위 X, 환경 감지 3단 상태/조건/행동)
+        version: "V202.32",      // ★ V202.32: 사주 결과창 2차 - 행운 가이드 10종 확장 + [4/6]~[8/8] PRO 펼침 통합 (B-1 + C-2)
         _ts: Date.now(),
         _ok: true
       }), {
