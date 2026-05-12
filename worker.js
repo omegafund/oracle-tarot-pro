@@ -2128,15 +2128,17 @@ function classifyByKeywords(prompt) {
                           "데이트","커플","연인","궁합","사귀","첫사랑","재회"];
   const STRONG_STOCK_KW = ["주식","코스피","코스닥","나스닥","종목","주가","매수","매도",
                            "단타","스윙","장투","상한가","하한가","코인","비트코인","이더리움"];
+  // ★ [V202.27] STRONG_RE_KW 유지 (사주 라우팅 우선순위 판단용) — 단, 반환은 'life'로 폴백
   const STRONG_RE_KW = ["부동산","아파트","오피스텔","상가","전세","월세","분양","청약","재건축","재개발","집값"];
 
   const hasStrongLove  = STRONG_LOVE_KW.some(k => txt.includes(k));
   const hasStrongStock = STRONG_STOCK_KW.some(k => txt.includes(k));
   const hasStrongRE    = STRONG_RE_KW.some(k => txt.includes(k));
 
-  if (hasStrongLove)  return { type: "love",       confidence: 3 };
-  if (hasStrongRE)    return { type: "realestate", confidence: 3 };
-  if (hasStrongStock) return { type: "stock",      confidence: 3 };
+  if (hasStrongLove)  return { type: "love",  confidence: 3 };
+  // ★ [V202.27] realestate → life 폴백 ★ (V202.0 클라이언트 라우팅으로 사주 진입 권장이지만 워커 안전망)
+  if (hasStrongRE)    return { type: "life",  confidence: 3 };
+  if (hasStrongStock) return { type: "stock", confidence: 3 };
   // ════════════════════════════════════════════════════════════
 
   // [V22.2] stockCount: 키워드 + 동사 의도 + 패턴 매칭 모두 합산
@@ -2148,10 +2150,11 @@ function classifyByKeywords(prompt) {
   const cryptoHit   = cryptoKeywords.some(k => txt.includes(k)) || cryptoPattern.test(prompt);
 
   // confidence: 0 (애매) ~ 2+ (확실)
-  if (reCount >= 1)     return { type: "realestate", confidence: Math.min(3, reCount) };
-  if (cryptoHit)        return { type: "crypto",     confidence: 3 };
-  if (stockCount >= 1)  return { type: "stock",      confidence: Math.min(3, stockCount) };
-  if (loveCount >= 1)   return { type: "love",       confidence: Math.min(3, loveCount) };
+  // ★ [V202.27] reCount → life 폴백 ★
+  if (reCount >= 1)     return { type: "life",   confidence: Math.min(3, reCount) };
+  if (cryptoHit)        return { type: "crypto", confidence: 3 };
+  if (stockCount >= 1)  return { type: "stock",  confidence: Math.min(3, stockCount) };
+  if (loveCount >= 1)   return { type: "love",   confidence: Math.min(3, loveCount) };
   return { type: "life", confidence: 0 }; // 아무 키워드 매칭 안 됨 → 애매
 }
 
@@ -2846,82 +2849,11 @@ function buildOneLineSummary(metrics) {
   return metrics;
 }
 
-// [V27.0.2] 부동산 한줄 결론 빌더 — 별도 시나리오 매핑
-//   부동산은 sell_active vs sell_passive (V27.0 Priority 1) 구분 필요
-function buildRealEstateOneLineSummary(metrics) {
-  if (!metrics || !metrics.layers || !metrics.layers.decision) return metrics;
-  if (metrics.queryType !== 'realestate') return metrics;
 
-  const decision = metrics.layers.decision;
-  const position = decision.position || '';
-  const intent = metrics.intent || 'buy';
+// ★ [V202.26] buildRealEstateOneLineSummary 함수 ★ 완전 제거 ★ (V202.0 의도 완성)
+//   75라인 부동산 한줄 결론 빌더 — 도달 불가 dead code
+//   효과: -약 4KB / 사용자 영향 0
 
-  let scenarioKey;
-  if (/관망|보류|대기/.test(position)) {
-    if (intent === 'sell_active')       scenarioKey = 're_wait_sell_act';
-    else if (intent === 'sell_passive') scenarioKey = 're_wait_sell_pas';
-    else if (intent === 'hold')         scenarioKey = 're_holding';
-    else                                scenarioKey = 're_wait_buy';
-  } else if (/검증/.test(position)) {
-    scenarioKey = 're_verified';
-  } else if (/적극|즉시|등록/.test(position)) {
-    scenarioKey = 're_active';
-  } else if (intent === 'sell_active') {
-    scenarioKey = 're_wait_sell_act';
-  } else if (intent === 'sell_passive') {
-    scenarioKey = 're_wait_sell_pas';
-  } else {
-    scenarioKey = 're_wait_buy';
-  }
-
-  // [V27.0.4] 블록 시스템 — 부동산 시나리오별 시드 다양화
-  //   시나리오당 225가지 (CORE 5 × TURN 3 × RISK 5 × RHYTHM 3)
-  //   안전: V27.0.3 단일 매트릭스 Fallback
-  // [V27.0.5] 영성 시드 — reversedFlags 전달 (정역방향 영성 반영)
-  const cards = (metrics.cleanCards || []).slice(0, 3);
-  const revFlags = (metrics.reversedFlags || []).slice(0, 3);
-  const seed = _getSeedV27(metrics.prompt || '', cards, scenarioKey, 'realestate', revFlags);
-  const fallbackCore = TLDR_CORE_MATRIX[scenarioKey] || TLDR_CORE_MATRIX.re_wait_buy;
-  const blocks = REALESTATE_BLOCK_MATRIX[scenarioKey];
-  const core = blocks
-    ? buildPhraseFromBlocks(blocks, seed, fallbackCore)
-    : fallbackCore;
-  // [V27.0.3] 부동산 TAIL BUY/SELL 분리
-  const isSellScenario = (scenarioKey === 're_wait_sell_act' || scenarioKey === 're_wait_sell_pas');
-  const tail = ASSET_TAIL_MATRIX[isSellScenario ? 'realestate_sell' : 'realestate_buy'];
-
-  decision.oneLineSummary = `${core}\n${tail}`;
-  
-  // [V28.A] ZEUS COMPOSITION ENGINE 통합 — 부동산 도메인
-  //   사장님 V28 + 7가지 보강 / 영성 시드 V27.0.5 100% 통합
-  //   안전: 실패 시 null 반환 → 기존 V27.0.4 그대로 (Regression 0)
-  try {
-    metrics.scenarioKey = scenarioKey;  // 부동산 시나리오 전달 (re_wait_buy / re_verified / re_wait_sell_act 등)
-    const v28 = applyZeusEngineV28(metrics);
-    if (v28) {
-      metrics.zeusV28 = {
-        intent:      v28.intent,
-        scenarioKey: v28.scenarioKey,
-        seed:        v28.seed,
-        core:        v28.core,
-        tone:        v28.tone,
-        finalText:   v28.finalText,
-        risks:       v28.risks,
-        guides:      v28.guides,
-        timing:      v28.timing
-      };
-    }
-  } catch (e) { /* Fallback */ }
-  
-  // [V28.B] enforceIntent 정밀 후처리 — 부동산도 동일 적용
-  //   부동산 BUY 시나리오에 HOLD 어휘 잔존 차단
-  //   부동산 SELL 시나리오에 BUY 어휘 잔존 차단
-  try {
-    enforceIntentV28(metrics);
-  } catch (e) { /* Fallback */ }
-  
-  return metrics;
-}
 
 // [V27.0.2 → V27.0.3] TLDR (한줄 결론) CORE 매트릭스 — 사장님 PRO 안 격상
 //   톤: [흐름 인정] + [, but] + [위험/결정 시나리오 직격]
@@ -3123,11 +3055,11 @@ const ASSET_TAIL_MATRIX = {
   //   BUY 톤 (진입 위험 경고) — 🟢/🟡 색상 + 수치 + 행동
   stock_buy:       '⚡ 행동: 신호 확인 → 30~50% 1차 분할 진입 → 추세 동조 시 보강',
   crypto_buy:      '⚡ 행동: 손절 -7~-10% 기준 → 30~50% 분할 → 단계별 보강',
-  realestate_buy:  '⚡ 행동: 입지·자금 검증 → 단계별 진입 → 장기 보유 전략',
+  // ★ [V202.27] realestate_buy 항목 제거 ★
   // SELL 톤 (청산 지연 위험 경고) — 🔴 색상 + 수치 + 행동
   stock_sell:      '⚡ 행동: 3~5일 분할 청산 30~50% → 추세 둔화 시 잔여 정리',
-  crypto_sell:     '⚡ 행동: 즉시 30~50% 분할 정리 → 변동성 확대 시 잔여 청산',
-  realestate_sell: '⚡ 행동: 매수자 유입 시 단계별 정리 → 호가 조정 유연 대응'
+  crypto_sell:     '⚡ 행동: 즉시 30~50% 분할 정리 → 변동성 확대 시 잔여 청산'
+  // ★ [V202.27] realestate_sell 항목 제거 ★
 };
 
 // ══════════════════════════════════════════════════════════════════
@@ -3143,6 +3075,137 @@ const ASSET_TAIL_MATRIX = {
 //   ④ 수치 범위화 — 30~50%, 3~5일 (법적 책임 회피 + 구체)
 //   ⑤ 색상 신호 — 🟢 BUY / 🟡 HOLD / 🔴 SELL 함축
 // ══════════════════════════════════════════════════════════════════
+
+// ══════════════════════════════════════════════════════════════════
+// [V202.25 사장님 D안] TOP_VERDICT_MATRIX — 결론 박스 단일화 기정치 풀
+// ══════════════════════════════════════════════════════════════════
+// 설계 철학:
+//   • 사장님 진단: 결론 6박스 노출 → 사용자 "그래서 결론이?" 혼란
+//   • D안: 6박스 → 1박스(🎯 TOP VERDICT) 통합 (결론+행동+리스크+근거)
+//   • 사장님 기정치 안: 구체 수치(30~50%/5일) 제거 → 법무 안전 + 보편 적용
+//
+// 안전 (★ 사장님 명령 ★):
+//   ✅ 수치 0개 (자본시장법·SEC·공인중개사법 안전)
+//   ✅ "유효", "가능" 어미 100% (legalSafetyGuide 부합)
+//   ✅ 보편 적용 (종목/코인/시점 무관)
+//
+// 격리 (★ 사장님 명령 ★):
+//   ✅ 적용: 주식 매수/매도 + 코인 매수/매도만
+//   ❌ 차단: 사주/운세/연애/부동산 (buildTopVerdict가 null 반환)
+// ══════════════════════════════════════════════════════════════════
+const TOP_VERDICT_MATRIX = {
+  // ─── 주식 매수 (BUY) — 5시나리오 ───
+  wait_buy: {
+    signal:  '🟡 검증 단계 — 분할 접근 유효',
+    action:  '거래량 확인 후 1차 진입',
+    caution: '추격 진입 시 변동성 확대 가능'
+  },
+  verified: {
+    signal:  '🟢 진입 조건 충족 — 분할 접근 유효',
+    action:  '1차 진입 후 신호 굳어지면 보강',
+    caution: '추격 매수 시 평균 단가 부담 가능'
+  },
+  limited: {
+    signal:  '🟡 제한적 시도 구간 — 소액 테스트 유효',
+    action:  '신호 검증 후 분할 진입 검토',
+    caution: '본격 진입 시 변동성 노출 가능'
+  },
+  active: {
+    signal:  '🟢 진입 흐름 형성 — 단계적 매수 유효',
+    action:  '거래량 동반 시 분할 진입',
+    caution: '일괄 매수 시 단가 노출 확대 가능'
+  },
+  split: {
+    signal:  '🟢 분할 진입 적기 — 단계적 접근 유효',
+    action:  '시장 신호 점검 후 단계별 매수',
+    caution: '한 번에 비중 확대 시 변동성 노출 가능'
+  },
+
+  // ─── 주식 매도 (SELL) ───
+  wait_sell: {
+    signal:  '🟡 보유 점검 — 단계적 정리 검토',
+    action:  '신호 확인 후 비중 조절',
+    caution: '호가 미확인 청산 시 손실 확대 가능'
+  },
+  sell_active: {
+    signal:  '🔴 청산 흐름 — 분할 정리 유효',
+    action:  '익절 단계별 비중 축소',
+    caution: '일괄 청산 시 평균 단가 손실 가능'
+  },
+
+  // ─── 코인 (CRYPTO) ───
+  crypto_buy: {
+    signal:  '🟢 진입 흐름 — 분할 접근 유효',
+    action:  '24시간 변동성 점검 후 분할 진입',
+    caution: '일괄 진입 시 단기 변동성 노출 가능'
+  },
+  crypto_sell: {
+    signal:  '🔴 청산 흐름 — 분할 정리 유효',
+    action:  '거래소 호가 점검 후 단계적 청산',
+    caution: '일괄 청산 시 슬리피지 노출 가능'
+  }
+};
+
+// ★ V202.25 ★ buildTopVerdict — 시나리오별 TOP VERDICT 박스 데이터 생성
+//   ★ 격리 보장 ★ — 사주/운세/연애/부동산 ★ 100% 차단 ★
+//
+// 입력: metrics 객체 (queryType, stockIntent, scenarioKey, cleanCards 사용)
+// 출력: {signal, action, caution, cardBasis} 또는 null
+//
+// 차단 로직:
+//   queryType !== 'stock' && queryType !== 'crypto'  → null
+//   = 사주(saju), 운세(fortune), 연애(love), 부동산(realestate) 모두 null
+function buildTopVerdict(metrics) {
+  if (!metrics || typeof metrics !== 'object') return null;
+  const qType  = metrics.queryType;
+  const intent = metrics.stockIntent || 'buy';
+
+  // ★ 격리 차단 ★ — stock/crypto 외 모두 null
+  if (qType !== 'stock' && qType !== 'crypto') return null;
+
+  // 시나리오 키 매핑
+  let key;
+  if (qType === 'crypto') {
+    key = (intent === 'sell') ? 'crypto_sell' : 'crypto_buy';
+  } else {
+    // stock
+    if (intent === 'sell') {
+      // wait_sell (기본) / sell_active (적극) 분기
+      key = (metrics.scenarioKey === 'active' || metrics.scenarioKey === 'sell_active')
+            ? 'sell_active'
+            : 'wait_sell';
+    } else {
+      // buy — V202.22 시나리오 키 (wait_buy/verified/limited/active/split)
+      key = metrics.scenarioKey || 'wait_buy';
+      if (!TOP_VERDICT_MATRIX[key]) key = 'wait_buy';  // 안전 폴백
+    }
+  }
+
+  const verdict = TOP_VERDICT_MATRIX[key] || TOP_VERDICT_MATRIX.wait_buy;
+
+  // 카드 근거 — 현재 + 미래 카드 조합 (Ace + Knight 흐름 형식)
+  const cards = (metrics.cleanCards || []).slice(0, 3);
+  let cardBasis;
+  if (cards.length >= 3) {
+    cardBasis = `${cards[1]} (현재) + ${cards[2]} (미래) 흐름`;
+  } else if (cards.length >= 2) {
+    cardBasis = `${cards[0]} + ${cards[1]} 흐름`;
+  } else if (cards.length === 1) {
+    cardBasis = `${cards[0]} 흐름`;
+  } else {
+    cardBasis = '카드 흐름';
+  }
+
+  return {
+    signal:    verdict.signal,
+    action:    verdict.action,
+    caution:   verdict.caution,
+    cardBasis: cardBasis,
+    _scenario: key,
+    _v: 'V202.25'
+  };
+}
+
 const STOCK_BLOCK_MATRIX = {
   // ── BUY 시나리오 5종 (wait_buy/verified/limited/active/split) — 🟢 / 🟡 ──
   
@@ -3274,147 +3337,11 @@ const STOCK_BLOCK_MATRIX = {
 //   각 시나리오: 5×3×5×3 = 225가지
 //   6 시나리오 = 1,350가지
 // ══════════════════════════════════════════════════════════════════
-const REALESTATE_BLOCK_MATRIX = {
-  // ── BUY 시나리오 (re_wait_buy / re_verified / re_active / re_holding)
-  re_wait_buy: {
-    CORE: [
-      '매수 기회는 존재합니다',
-      '시장은 매수 신호를 보이고 있습니다',
-      '진입 여지는 형성되어 있습니다',
-      '매물 흐름은 열리는 단계입니다',
-      '매수 환경은 점진적으로 정리되고 있습니다'
-    ],
-    TURN: ['다만,', '그러나', '단,'],
-    RISK: [
-      '입지 검증 없이 들어가면 장기 묶임 구조로 전환됩니다',
-      '실수요 검증 없는 진입은 자산 가치가 흔들리는 분기점입니다',
-      '입지 선택에 따라 장기 수익이 갈리는 결정 단계입니다',
-      '검증 전 진입은 수익이 아닌 부담 구조로 직결될 수 있습니다',
-      '입지·자금 점검 없이 들어가면 장기 손실 구간으로 이어질 수 있습니다'
-    ],
-    RHYTHM: ['short', 'mid', 'long']
-  },
-  re_verified: {
-    CORE: [
-      '진입 신호는 열려 있습니다',
-      '매수 조건은 충족 단계에 있습니다',
-      '검증 단계는 마무리 구간입니다',
-      '실수요 신호는 명확해지고 있습니다',
-      '입지 분석은 정리 단계입니다'
-    ],
-    TURN: ['다만,', '그러나', '단,'],
-    RISK: [
-      '입지·자금 검증 없이 들어가면 장기 수익이 아닌 부담 구조로 전환됩니다',
-      '검증 마무리 전 진입은 수익이 갈리는 결정 단계입니다',
-      '자금 점검 없이 풀 진입은 장기 묶임으로 직결될 수 있습니다',
-      '단계 점검 없는 진입은 협상력이 약화되는 분기점입니다',
-      '조건 미충족 진입은 자산 가치가 흔들릴 수 있는 구간입니다'
-    ],
-    RHYTHM: ['short', 'mid', 'long']
-  },
-  re_active: {
-    CORE: [
-      '결정은 명확합니다',
-      '매수 의지가 형성된 단계입니다',
-      '실행 구간이 열려 있습니다',
-      '진입 타이밍은 활성화되어 있습니다',
-      '결정 단계는 정리되고 있습니다'
-    ],
-    TURN: ['다만,', '그러나', '동시에'],
-    RISK: [
-      '입지 검증 없이 진입하면 장기 수익이 아닌 묶임 구조로 직결됩니다',
-      '실수요 점검 없는 매수는 자산 가치가 흔들리는 분기점입니다',
-      '검증 단계 생략은 장기 부담 구조로 전환되는 결정 단계입니다',
-      '입지 분석 없이 풀 진입은 협상력 약화로 이어질 수 있습니다',
-      '점검 없는 결정은 수익이 갈리는 분기점입니다'
-    ],
-    RHYTHM: ['short', 'mid', 'long']
-  },
-  re_holding: {
-    CORE: [
-      '보유 흐름은 유효합니다',
-      '자산 유지 구간이 형성되어 있습니다',
-      '보유 전략은 살아있는 단계입니다',
-      '시장 흐름은 유지 가능한 구조입니다',
-      '자산 가치는 안정 구간에 있습니다'
-    ],
-    TURN: ['다만,', '그러나', '단,'],
-    RISK: [
-      '시장 흐름 재평가 없이 유지하면 자산 가치가 흔들릴 수 있는 구간입니다',
-      '재평가 시점 놓치면 보유 구조가 부담 구조로 전환됩니다',
-      '시장 신호 무시는 장기 손실 구간으로 직결될 수 있습니다',
-      '보유 전략 점검 없이 유지는 자산 가치가 갈리는 분기점입니다',
-      '재평가 지연은 협상력 약화·기회 손실로 이어질 수 있습니다'
-    ],
-    RHYTHM: ['short', 'mid', 'long']
-  },
-  
-  // ── SELL 시나리오 (re_wait_sell_act / re_wait_sell_pas)
-  re_wait_sell_act: {
-    CORE: [
-      '매도 흐름은 열려 있습니다',
-      '매도 시점은 형성되고 있습니다',
-      '매도 환경은 활성화 단계입니다',
-      '시장은 매도 신호를 보내고 있습니다',
-      '매도 결정 단계가 정리되고 있습니다'
-    ],
-    TURN: ['다만,', '그러나', '동시에'],
-    RISK: [
-      '시점 선택을 놓치면 호가 협상력이 빠르게 약화될 수 있는 구간입니다',
-      '시점 선택에 따라 가격이 갈리는 결정 단계입니다',
-      '호가 고집은 거래 지연·협상력 약화로 이어집니다',
-      '청산 타이밍 놓치면 가격 하락으로 직결될 수 있습니다',
-      '늦은 매도는 수익 반납·기회 손실로 이어질 수 있는 구간입니다'
-    ],
-    RHYTHM: ['short', 'mid', 'long']
-  },
-  re_wait_sell_pas: {
-    CORE: [
-      '매도 흐름은 형성 중입니다',
-      '매수자 유입 단계가 시작되고 있습니다',
-      '시장 신호는 점진적으로 정리되고 있습니다',
-      '매도 환경은 회복 단계에 있습니다',
-      '거래 활성도는 점진적 회복 구간입니다'
-    ],
-    TURN: ['다만,', '그러나', '단,'],
-    RISK: [
-      '매수자 유입 전까지 호가 고집은 거래 지연으로 직결될 수 있습니다',
-      '매수자 유입 시점에 따라 결과가 달라지는 구간입니다',
-      '매물 노출 전략이 약하면 매수자 유입이 지연될 수 있습니다',
-      '매수자 유입 전까지 호가 고수는 협상력 약화로 이어집니다',
-      '유입 신호 무시는 거래 지연·기회 손실로 직결될 수 있습니다'
-    ],
-    RHYTHM: ['short', 'mid', 'long']
-  }
-};
 
-// ══════════════════════════════════════════════════════════════════
-// 🔥 [V28] ZEUS COMPOSITION ENGINE — 사장님 진화 안 + 7가지 보강
-//   사장님 명령: "블록을 늘리지 말고, 블록을 쪼개서 섞어라"
-//   본질: BUY/SELL/HOLD 완전 분리 + 다층 조합 + 시드 결정적
-//   
-//   사장님 V28 원안 + 저의 7가지 보강:
-//     ① scenarioKey 완전 매핑 (BUY 5 + SELL 4 + HOLD 2)
-//     ② V27.0.4 STOCK_BLOCK_MATRIX 호환 (충돌 0)
-//     ③ 신규 박스만 추가 (Regression 0)
-//     ④ pickMulti Knuth hash 분산 강화
-//     ⑤ detectIntent stockIntent 신뢰 시스템 (V22.6 정신)
-//     ⑥ V27.0.5 영성 시드 100% 통합 (CARD_SCORE + 수비학 + 정역방향)
-//     ⑦ Linter Boot 자동 검증 + Fallback 안전망
-//
-//   적용 박스 (신규):
-//     - FINAL_BOX (CORE + TONE 조합)
-//     - RISK_POINTS_BOX (3개 랜덤 선택)
-//     - GUIDE_BOX (행동 지침)
-//     - TIMING_BOX (시간대 가이드)
-//
-//   효과:
-//     - BUY/SELL/HOLD 어휘 충돌 0건
-//     - 시나리오당 다양성 80~120가지
-//     - 사장님 1년 영성 자산 + 진화 결합
-// ══════════════════════════════════════════════════════════════════
+// ★ [V202.26] REALESTATE_BLOCK_MATRIX 매트릭스 ★ 완전 제거 ★
+//   부동산 시나리오 블록 매트릭스 — 도달 불가 dead code
 
-// [V28] Layer Offset — 레이어별 독립 분포 (소수 사용)
+
 const V28_LAYER_OFFSETS = {
   CORE:        0,
   TONE:        7919,
@@ -10617,798 +10544,11 @@ function buildStockMetrics({ totalScore, riskScore, cleanCards, isLeverage, quer
 }
 
 // ══════════════════════════════════════════════════════════════════
-// 🏠 부동산 메트릭
+// ★ [V202.26] 부동산 메트릭 빌더 ★ 완전 제거 ★ (V202.0 의도 완성)
+//   V202.0에서 부동산 카테고리는 사주로 통합 (라인 5313 라우팅)
+//   기존 800라인 buildRealEstateMetrics 함수 — 도달 불가 dead code → 제거
+//   효과: -53KB / 사용자 영향 0 / 엔진 경량화
 // ══════════════════════════════════════════════════════════════════
-function buildRealEstateMetrics({ totalScore, riskScore, cleanCards, intent, prompt, reversedFlags }) {
-  const netScore = totalScore;
-  const revFlags = reversedFlags || [false, false, false];
-
-  // ══════════════════════════════════════════════════════════════
-  // [V24.0+V24.3] RISK GATE — 부동산도 통합 게이트 적용
-  //   부동산은 변동성보다 불확실성이 주요 — 그래도 isHighVolatility는 OR 조건으로
-  // ══════════════════════════════════════════════════════════════
-  const riskGate = detectRiskGate(cleanCards, intent);
-  const uncGate = riskGate.uncertainty;
-  const volGate = riskGate.volatility;
-  // ══════════════════════════════════════════════════════════════
-
-  // ══════════════════════════════════════════════════════════════
-  // [V24.9] URGENCY DETECTION — 시간 지연·꼬임 카드 감지
-  //   사장님 진단: "Temperance 역방향 = 시간 지나면 꼬임 → 시즌 추천 부적절"
-  //   원리: 미래 자리에 시간 지연/꼬임 카드가 있으면 "즉시 실행" 모드
-  //   대상 카드:
-  //     • Temperance 역방향: 조화 붕괴 → 시간 끌면 협상 깨짐
-  //     • Eight of Wands 역: 가속 지연 → 늦어지면 모멘텀 소멸
-  //     • Wheel of Fortune 역: 운명 정체 → 기회 창 좁아짐
-  //     • The Hanged Man (정/역): 정체 → 결단 시급
-  //     • Eight of Wands 정방향: 빠른 전개 → 빠른 행동이 정답
-  //     • Five of Swords (정/역): 손실 확대 위험
-  //     • Ten of Cups 역방향: 회복 시나리오 폐기
-  // ══════════════════════════════════════════════════════════════
-  // [V31 #183 사장님 결정 — URGENCY_CARDS_REV 분류 정정]
-  //   결함 진단:
-  //     ❌ 'Wheel of Fortune' 역방향 = "운명 정체" → 정체 카드인데 URGENCY 분류 (모순)
-  //     ❌ 'Eight of Wands' 역방향 = "전개 정체" → 정체 카드인데 URGENCY 분류 (모순)
-  //   본질:
-  //     - "정체"는 "지금 즉시 행동" (URGENCY)가 아니라 "지금 멈춤" (STAGNATION)
-  //     - 두 카드 역방향 = 흐름이 막힌 상태 → 인내·관망 권장 톤
-  //   해결: 두 카드 역방향 → STAGNATION_CARDS_LOCK_REV로 이동
-  //   유지: Temperance 역(조화 붕괴), Justice 역(불공정), Ten of Cups 역(가족 균열)은 URGENCY 적합
-  const URGENCY_CARDS_REV = ['Temperance', 'Ten of Cups', 'Justice'];
-  // [V31 #182 사장님 결정 — Pattern D 근본 해결]
-  //   결함: The Hanged Man이 URGENCY_CARDS_BOTH에 잘못 분류됨
-  //   - CARD_FLAVOR(line 1091): "강제 멈춤의 새 관점 확보" (정체 카드)
-  //   - CARD_DECISION_MAP(line 964): "SELL" (보유 신호)
-  //   - 본질: 인내·관망 카드인데 "즉시 검토" 트리거 발동 → 부동산 양재역 점사 결함 출처
-  //   해결: The Hanged Man 제거 — 정체 카드는 STAGNATION_CARDS_LOCK에서 별도 처리
-  const URGENCY_CARDS_BOTH = ['Five of Swords', 'Ten of Wands'];
-  const URGENCY_CARDS_FWD = ['Eight of Wands']; // 정방향도 빠른 행동
-  
-  // [V31 #182] 정체 카드 — URGENCY와 정반대 톤
-  const STAGNATION_CARDS_LOCK = ['The Hanged Man', 'Four of Cups', 'Eight of Cups', 'Four of Swords', 'Two of Swords'];
-  
-  // [V31 #183] 정체 카드 — 역방향 전용 (정방향에서는 추진 카드인데 역방향이 정체)
-  const STAGNATION_CARDS_LOCK_REV = ['Wheel of Fortune', 'Eight of Wands'];
-  
-  let isUrgent = false;
-  let urgencyCardName = null;
-  let urgencyReason = null;
-  
-  cleanCards.forEach((c, i) => {
-    if (isUrgent) return;
-    const rev = revFlags[i];
-    if (rev && URGENCY_CARDS_REV.includes(c)) {
-      isUrgent = true;
-      urgencyCardName = `${c} [역방향]`;
-      urgencyReason = i === 2 
-        ? `미래 카드 ${c} 역방향 — 시간 지연 시 협상·균형 붕괴 위험`
-        : `${c} 역방향 — 지연·꼬임 신호`;
-    } else if (URGENCY_CARDS_BOTH.includes(c)) {
-      isUrgent = true;
-      urgencyCardName = c + (rev ? ' [역방향]' : '');
-      urgencyReason = `${c} — 시간이 변수가 되는 카드 (즉시 행동 권장)`;
-    } else if (!rev && URGENCY_CARDS_FWD.includes(c)) {
-      isUrgent = true;
-      urgencyCardName = c;
-      urgencyReason = `${c} — 빠른 전개 신호 (모멘텀 활용)`;
-    }
-  });
-  // ══════════════════════════════════════════════════════════════
-
-  // ══════════════════════════════════════════════════════════════
-  // [V24.11] SPLIT 모드 — 시간 분리형 (저점 통과 V-shape) 감지
-  //   사장님 진단:
-  //     "Five of Pentacles + Page of Pentacles[역] + Empress 같은 흐름"
-  //     "지금 팔면 손해, 기다리면 정상가" — 단일 전략은 부적절
-  //   원리: past/current ≤ 0 + future ≥ 3 → 시간 분리형 V-shape
-  //         (현재는 매도 환경 약함, 미래는 수요 회복 → 두 전략 동시 제시)
-  //   조건:
-  //     1. URGENCY 미발동 (URGENCY 우선)
-  //     2. 미래 카드 점수 ≥ 3 (강한 긍정 — Empress, Sun, World, Star 급)
-  //     3. 현재 또는 과거 점수 ≤ 0 (현재 매도 환경 약함)
-  //     4. 미래 - 현재 점수차 ≥ 3 (분명한 반등 신호)
-  //   효과: SPLIT 발동 시 두 가지 전략(빠른 매도 vs 최적 매도) 동시 제시
-  // ══════════════════════════════════════════════════════════════
-  const _pastScore    = (CARD_SCORE[cleanCards[0]] ?? 0) * (revFlags[0] ? -1 : 1);
-  const _currentScore = (CARD_SCORE[cleanCards[1]] ?? 0) * (revFlags[1] ? -1 : 1);
-  const _futureScore  = (CARD_SCORE[cleanCards[2]] ?? 0) * (revFlags[2] ? -1 : 1);
-
-  const isSplit = !isUrgent
-    && _futureScore >= 3
-    && (_pastScore <= 0 || _currentScore <= 0)
-    && (_futureScore - _currentScore) >= 3;
-
-  let splitFutureCardName = null;
-  if (isSplit) {
-    splitFutureCardName = cleanCards[2] + (revFlags[2] ? ' [역방향]' : '');
-  }
-  
-  // ══════════════════════════════════════════════════════════════
-  // [V31 #182 사장님 결정 — Pattern C 근본 해결]
-  //   결함: 같은 점사에서 isUrgent("즉시 검토") + 보류("신규 매수 보류") 
-  //         동시 출력 가능 (양재역 모아타운 점사 결함 출처)
-  //   해결: 정체 카드 우선 처리 — STAGNATION 카드가 미래에 있으면
-  //         - isUrgent 강제 무력화
-  //         - URGENCY 분기 거치지 않고 PATIENT_WATCH 분기로 라우팅
-  //
-  // [V31 #183 확장] STAGNATION_CARDS_LOCK_REV 추가 (역방향 전용)
-  //   - Wheel of Fortune 역 (운명 정체)
-  //   - Eight of Wands 역 (전개 정체)
-  // ══════════════════════════════════════════════════════════════
-  let isStagnationFuture = false;
-  let stagnationCardName = null;
-  if (typeof STAGNATION_CARDS_LOCK !== 'undefined' && STAGNATION_CARDS_LOCK.includes(cleanCards[2])) {
-    isStagnationFuture = true;
-    stagnationCardName = cleanCards[2] + (revFlags[2] ? ' [역방향]' : '');
-    // ★ 정체 카드 우선 — URGENCY 무력화
-    isUrgent = false;
-    urgencyCardName = null;
-  } else if (typeof STAGNATION_CARDS_LOCK_REV !== 'undefined' 
-             && STAGNATION_CARDS_LOCK_REV.includes(cleanCards[2]) 
-             && revFlags[2]) {
-    // [V31 #183] 역방향 전용 정체 카드 (Wheel of Fortune 역 / Eight of Wands 역)
-    isStagnationFuture = true;
-    stagnationCardName = cleanCards[2] + ' [역방향]';
-    isUrgent = false;
-    urgencyCardName = null;
-  }
-  // ══════════════════════════════════════════════════════════════
-
-  let seed = 0;
-  for (let i = 0; i < (prompt||"").length; i++) seed += prompt.charCodeAt(i);
-  cleanCards.forEach(c => { for (let i = 0; i < c.length; i++) seed += c.charCodeAt(i); });
-  const pick = (arr) => arr[Math.abs(seed) % arr.length];
-
-  // [V2.2] 시즌과 월을 연동 — 각 시즌에서 첫 월을 추출하여 계약 완료 목표가 시즌보다 앞서지 않도록 보장
-  const sellSeasonList = [
-    { label: "3~4월 (봄 이사철 성수기)", startMonth: 3, endMonth: 4 },
-    { label: "10~11월 (가을 이사철 성수기)", startMonth: 10, endMonth: 11 },
-    { label: "6~7월 (여름 전 마지막 수요)", startMonth: 6, endMonth: 7 }
-  ];
-  const buySeasonList = [
-    { label: "2~3월 (봄 이사철 직전)", startMonth: 2, endMonth: 3 },
-    { label: "9~10월 (가을 이사철 직전)", startMonth: 9, endMonth: 10 },
-    { label: "12~1월 (비수기 저점)", startMonth: 12, endMonth: 1 }
-  ];
-
-  // [V2.5 수정 + V19.11 정밀화] 현재 시점 기준 "가장 가까운 미래 시즌" 선택
-  //   • 시즌 endMonth가 현재 월보다 빠르면 제외
-  //   • 시즌 endMonth == 현재 월이면, 일자가 20일 이상 지났으면 제외 (월 말 어색함 방지)
-  //   예: 4월 25일 질문 시 "3~4월"(4월 거의 끝) 제외 → "6~7월" 또는 "10~11월"
-  const now = new Date();
-  const currentMonth = now.getMonth() + 1; // 1~12
-  const currentDay   = now.getDate();      // 1~31
-
-  function pickFutureSeason(list) {
-    const validNow = list.filter(s => {
-      if (s.startMonth <= s.endMonth) {
-        // 일반 시즌
-        if (s.endMonth > currentMonth) return true;     // 미래 시즌
-        if (s.endMonth < currentMonth) return false;    // 과거 시즌
-        // 같은 월: 일자에 따라
-        return currentDay <= 20;                         // 20일 이전이면 아직 유효
-      } else {
-        // 12~1월 같은 연말연초 시즌
-        return currentMonth >= s.startMonth || currentMonth <= s.endMonth;
-      }
-    });
-    // 올해 유효한 시즌이 하나도 없으면 내년 첫 시즌
-    const candidates = validNow.length > 0 ? validNow : list;
-    return candidates[Math.abs(seed) % candidates.length];
-  }
-  const sellSeasonObj = pickFutureSeason(sellSeasonList);
-  const buySeasonObj  = pickFutureSeason(buySeasonList);
-
-  const trend_base = netScore >= 6 ? "강한 상승장 (매도자 유리 — 호가 공격적 유지 가능)"
-              : netScore >= 2 ? "완만한 상승장 (매도자 우호 — 정상 호가 유효)"
-              : netScore >= -1 ? "균형 구간 (방향 탐색 중)"
-              : netScore >= -5 ? "완만한 하락장 (매수자 우세 — 호가 조정 필요)"
-              : "강한 하락장 (매수자 우위 — 적극 조정 또는 대기 권장)";
-
-  // ── [V2.1 부동산 카드별 강화] 미래 카드가 특수 에너지면 trend/action 덮어쓰기
-  //    사장님 요구: Eight of Wands 같은 '속도/돌파' 카드면 자동 강화
-  const futureCard = cleanCards[2] || '';
-  let trend  = trend_base;
-  let action_override = null;
-  let subtitle_override = null; // 소제목 동적 변경용
-
-  if (netScore >= 2) {
-    // 긍정 구간에서만 강화 적용 (하락 구간에는 강화 X)
-    if (futureCard === "Eight of Wands") {
-      trend = "강한 상승장 (속도 가속 — 빠른 거래 가능성)";
-      action_override = intent === 'sell' ? "즉시 등록 — 타이밍 집중" : "즉시 계약 검토";
-      subtitle_override = "속도 구간";
-    } else if (futureCard === "The Chariot") {
-      trend = "강한 상승장 (돌파 에너지)";
-      action_override = intent === 'sell' ? "적극 등록, 호가 고수 + 빠른 협상" : "적극 탐색";
-    } else if (futureCard === "The Sun" || futureCard === "The World") {
-      trend = "강한 상승장 (완성 에너지)";
-      action_override = intent === 'sell' ? "희망가 등록, 신뢰 유지" : "장기 가치 매물 선점";
-    } else if (futureCard === "Wheel of Fortune") {
-      trend = "균형 구간 (추세 전환점 — 방향 주시)";
-      action_override = intent === 'sell' ? "시즌 내 등록" : "타이밍 주시";
-      subtitle_override = "전환 구간";
-    }
-  } else if (netScore <= -5 && futureCard === "The Tower") {
-    trend = "강한 하락장 (급조정 신호)";
-    action_override = intent === 'sell' ? "매도 보류 — 반등 대기" : "진입 보류 권장";
-    subtitle_override = "조정 경고 구간";
-  }
-
-  // ── [V2.1] 소제목(도메인 서브타입) — AI가 선택 가능한 동적 서브타이틀
-  //    재개발/분양 질문 감지 시 소제목 변경
-  if (!subtitle_override) {
-    const pRaw = (prompt || "").toLowerCase();
-    if (pRaw.includes("재개발")) subtitle_override = "재개발";
-    else if (pRaw.includes("분양") || pRaw.includes("청약")) subtitle_override = "분양/청약";
-    else if (pRaw.includes("재건축")) subtitle_override = "재건축";
-    else if (pRaw.includes("전세"))  subtitle_override = "전세";
-    else if (pRaw.includes("갭투자")) subtitle_override = "갭투자";
-  }
-
-  // [V19.11+V25.17] energyLabel — 사장님 V25.17 톤: "확인 후 진입" 안정화
-  //   변경: "매도 적기" / "매수 진입 적기" 단정 → "확인 후" 검증 톤
-  const energyLabel = intent === "sell"
-    ? (netScore >= 5 ? "상승장 강화 — 매도 우호 흐름, 호가 견고 유지가 적합한 흐름입니다"
-      : netScore >= 2 ? "완만 상승 — 매도 조건 양호 흐름"
-      : netScore >= 0 ? "중립 흐름 — 매도 시 시장 반응 살피며 조율하는 접근이 적합합니다"
-      : netScore >= -3 ? "하락 압력 — 매도 시 호가 조정 검토가 도움이 될 수 있는 흐름"
-      : "하락장 지속 — 매도 시간 필요, 다음 성수기 대기가 안정적인 흐름입니다")
-    : (netScore >= 5 ? "상승장 강화 — 매수 시 가격 검증이 우선되는 흐름"
-      : netScore >= 2 ? "완만 상승 — 매수 신중 검토 흐름"
-      : netScore >= 0 ? "중립 흐름 — 매수 기회 탐색 구간"
-      : netScore >= -3 ? "하락 압력 — 매수자에게 우호적 흐름 (확인 후 진입 구간)"
-      : "하락장 지속 — 매수자 우위 흐름 (확인 후 진입 구간, 자동 매수 추천 아님)");
-
-  const weeksEst = netScore >= 4 ? "4~6주" : netScore >= 1 ? "6~10주" : "10~16주 이상";
-  const priceStrategy = netScore >= 4 ? "희망가 그대로 등록 — 수요 우위, 협상력 보유"
-                      : netScore >= 1 ? "희망가 기준, 2~3% 조정 여지 확보"
-                      : "시세 대비 3~5% 할인 등록 시 거래 가능성 상승";
-
-  const posLabels = ["과거","현재","미래"];
-  const cardNarrative = cleanCards.map((c, i) => {
-    const m = cardMeaning(c);
-    return `${posLabels[i] || '?'}(${c}): ${m.flow}`;
-  });
-
-  const keyCard = cleanCards[2] || "미래 카드";
-  const worstCard = (() => {
-    let worst = null, min = 999;
-    cleanCards.forEach(c => { const s = CARD_SCORE[c] ?? 0; if (s < min) { min = s; worst = c; } });
-    return worst || keyCard;
-  })();
-
-  const action_base = (intent === "sell")
-    ? (netScore >= 3 ? "적극 등록, 호가 고수" : netScore >= 0 ? "등록 후 반응 관찰" : "호가 조정 후 등록")
-    : (netScore >= 3 ? "이사철 전 적극 탐색" : netScore >= 0 ? "관망 후 급매 포착" : "진입 보류");
-  const action = action_override || action_base;
-
-  const riskLevel = riskScore >= 7 ? "매우 높음 (금리·규제·평가 변수)"
-                  : riskScore >= 4 ? "높음 (시장 변동성)"
-                  : "보통 (입지 리스크)";
-
-  // ══════════════════════════════════════════════════════════════
-  // [V24.0] 부동산 시간대 — 카드와 분리, 일반 임장/계약 시간으로 고정
-  //   사장님 진단: "카드 점수가 시간대를 결정하는 건 근거 없음"
-  //   해결: 모든 카드 조합에서 동일한 일반 시간대 표기
-  //         (시간대는 부동산 거래의 일반 상식이지 점사 결과가 아님)
-  // ══════════════════════════════════════════════════════════════
-  const dailyActionTiming = '평일 오전 10시~12시 (중개사무소 집중 시간대) 또는 오후 2시~5시 (계약 상담 시간대) 권장';
-
-  let timingLabel, timing2, strategy, period, urgency, caution;
-  if (intent === "sell") {
-    // ══════════════════════════════════════════════════════════════
-    // [V24.9] URGENCY 모드 — 시간 지연 카드 감지 시 시즌 추천 무효화
-    //   사장님 진단:
-    //     ① "Temperance 역방향 = 시간 지나면 꼬임"인데 "6~7월 매도 적기" 추천
-    //     ② "8~12주 소요"는 카드 신호 무시한 길이
-    //   해결:
-    //     ① URGENCY 발동 시 → 시즌 → "즉시 실행 구간"
-    //     ② 기간 → "2~4주 (빠르면) / 6주 결론 (늦어도)"
-    //
-    // [V24.11] SPLIT 모드 — 시간 분리형 (V-shape 저점 통과)
-    //   사장님 진단:
-    //     "지금 팔면 손해, 기다리면 정상가" — 두 전략 동시 제시 필요
-    //   조건: 미래 카드 강한 긍정(≥3) + 현재/과거 약세 + 반등 폭 ≥3
-    //   출력: 빠른 매도(현실 타협) vs 최적 매도(수요 회복 대기) 두 가지
-    // ══════════════════════════════════════════════════════════════
-    if (isUrgent) {
-      timingLabel = `매도 적기: 즉시 — 시간 지연 시 조건 악화 신호 (${urgencyCardName})`;
-      timing2     = `계약 예상: 2~4주 (빠르면) / 6주 내 결론 (늦어도)`;
-      strategy    = `매물 전략: 즉시 시세 호가로 등록 → 2주 반응 없으면 -3~5% 조정 → 4~6주 내 결론 (버티기 금지)`;
-      period      = `거래 소요 예상: 2~4주 빠른 체결 또는 6주 내 결론 (이후는 가격 협상력 약화 구간)`;
-      urgency     = `🔴 즉시 실행 권장 — ${urgencyReason}`;
-      caution     = `⚠️ 시간이 변수 — 늦어질수록 조건 악화 (${urgencyCardName} 신호). 6주 넘기면 가격 인하 압박 강해짐`;
-    } else if (isSplit) {
-      // [V24.11] SPLIT — 두 전략 동시 제시
-      timingLabel = `매도 타이밍: 분리형 (현재 정체 → ${splitFutureCardName} 수요 회복)`;
-      timing2     = `전략 A (빠른 매도): 4~8주 / 전략 B (최적 매도): 8~12주 (수요 회복 대기)`;
-      strategy    = `🅰 빠른 매도: 시세 -3~5% 조정 + 4~8주 거래 / 🅱 최적 매도: 가격 유지 또는 -1~2% + 수요 회복 대기 (카드 추천)`;
-      period      = `초반 정체 (2~6주) → 이후 수요 유입 → 빠른 거래 가능 구간`;
-      urgency     = `🟢 선택형 전략 권장 — 미래 카드(${splitFutureCardName})가 가격 방어 가능 신호. "지금 팔면 손해, 기다리면 정상가"`;
-      caution     = `⚠️ 단일 전략 금지 — 자금 일정에 따라 A/B 선택. 수요 회복 신호(거래량 증가·실거래가 회복) 모니터링 필수`;
-    } else {
-      // [V2.2] 시즌 라벨 + 주 단위 계약 예상 (매도 적기보다 앞서지 않도록)
-      timingLabel = `매도 적기: ${sellSeasonObj.label}`;
-      timing2     = `계약 예상: ${weeksEst} 내 체결 가능`;
-      strategy    = `매물 전략: ${priceStrategy}`;
-      period      = `거래 소요 예상: 카드 에너지 기준 ${weeksEst} 내 계약 가능성`;
-      urgency     = netScore >= 3 ? "🟢 지금 바로 매물 등록이 최적 — 에너지가 정점에 있습니다"
-                  : netScore >= 0 ? "🟡 준비 후 이번 시즌 내 등록 권장"
-                  : "🔴 현재 에너지 약세 — 다음 성수기 준비 시작";
-      caution     = netScore < 0 ? "⚠️ 주의: 현재 하락 압력 감지 — 호가 조정이 거래 성사의 핵심" : null;
-    }
-  } else {
-    // [V24.9] 매수도 URGENCY 적용 — 시간 지연 카드는 양쪽 모두 위험
-    if (isUrgent) {
-      timingLabel = `매수 적기: 즉시 검토 구간 — 시간 지연 시 기회 소멸 (${urgencyCardName})`;
-      timing2     = `진입 검토 기간: 2~4주 내 결정 권장`;
-      strategy    = `접근 전략: 급매·우량 매물 즉시 탐색 — 시간 끌면 조건 악화 신호`;
-      period      = `보유 전략: 진입 후 최소 1~2년 (빠른 진입 + 중기 보유)`;
-      urgency     = `🔴 즉시 행동 권장 — ${urgencyReason}`;
-      caution     = `⚠️ 시간이 변수 — ${urgencyCardName} 신호. 4주 내 결단 필요`;
-    } else if (isSplit) {
-      // [V24.11] 매수도 SPLIT 적용 — 미래에 수요 유입이면 매수자에게는 가격 상승 위험
-      timingLabel = `매수 타이밍: 분리형 (현재 저점 매물 vs 미래 수요 유입 - ${splitFutureCardName})`;
-      timing2     = `전략 A (저점 매수): 현재 4~6주 내 / 전략 B (확신 매수): 시장 회복 신호 후`;
-      strategy    = `🅰 저점 매수: 현재 약세 활용 — 급매 적극 탐색 / 🅱 확신 매수: 거래량 회복 후 정상가 진입`;
-      period      = `보유 전략: 진입 시점 무관 1~2년 중기 보유 권장`;
-      urgency     = `🟢 선택형 매수 — ${splitFutureCardName} 수요 회복 시 매수 경쟁 심화 가능`;
-      caution     = `⚠️ 미래 수요 유입 신호 — 저점 매수 기회는 4~6주 내 사라질 수 있음`;
-    } else {
-      // [V2.2] 매수도 동일 원칙: 시즌 + 주 단위
-      timingLabel = `매수 적기: ${buySeasonObj.label}`;
-      timing2     = `진입 검토 기간: 카드 에너지 기준 ${weeksEst} 내 결정 권장`;
-      strategy    = `접근 전략: ${netScore >= 3 ? '적극 탐색, 정상 매물도 검토 가능' : netScore >= 0 ? '급매 위주 탐색' : '하락장 활용 — 급매 집중 탐색'}`;
-      period      = `보유 전략: 카드 에너지 기준 최소 ${netScore >= 3 ? '1~2년' : '2~3년'} 중장기 보유 권장`;
-      urgency     = netScore >= 3 ? "🟢 상승장 진입 — 이사철 전 선점 유리"
-                  : netScore >= 0 ? "🟡 신중한 탐색 구간 — 급매 물건 위주"
-                  : "🟢 하락장 — 매수자 유리한 구간 (저점 탐색 기회)";
-      caution     = netScore < -3 ? "⚠️ 주의: 하락 심화 — 추가 조정 가능성 있으므로 서두르지 말 것" : null;
-    }
-  }
-
-  // [V25.9.2] 부동산도 V25.9.2 가능성·해석 톤 통일
-  const interpretSell =
-    netScore >= 5 ? `현재 부동산 에너지는 강한 상승장 구간으로 해석됩니다. ${keyCard}의 기운은 호가를 견고하게 유지해도 거래 성사 가능성이 높은 흐름을 시사합니다. 이번 시즌을 활용한 적극적 대응이 유효한 선택지로 해석될 수 있습니다.`
-  : netScore >= 2 ? `흐름은 완만한 상승장으로 매도에 우호적인 구간으로 해석됩니다. ${keyCard}의 기운은 약간의 호가 유연성이 거래 속도를 바꿀 수 있음을 암시합니다. 시장 반응을 살피며 조건을 조율하는 접근이 도움이 될 수 있습니다.`
-  : netScore >= 0 ? `시장은 방향성을 탐색하는 균형 구간으로 해석됩니다. ${keyCard}의 에너지는 무리한 호가보다 '적정가·빠른 거래' 방향이 도움이 될 수 있음을 암시합니다. 등록 후 반응을 확인하며 조건을 유연하게 운용하는 접근이 고려될 수 있습니다.`
-  : `에너지는 하락장으로 기울어 있는 흐름으로 해석됩니다. ${worstCard}의 기운은 호가 집착이 장기 미거래로 이어질 수 있음을 시사합니다. 현실적인 호가 조정 또는 다음 성수기를 기다리는 접근이 보수적 선택지로 해석될 수 있습니다.`;
-
-  const interpretBuy =
-    netScore >= 5 ? `부동산 에너지는 강한 상승장 구간으로 매수자에게는 신중함이 필요한 흐름으로 해석됩니다. ${keyCard}의 기운은 정상 매물도 선점할 가치가 있음을 시사합니다. 이사철 전 집중 임장과 계약 준비가 유효한 접근으로 고려될 수 있습니다.`
-  : netScore >= 2 ? `에너지는 완만한 상승 구간으로 해석됩니다. ${keyCard}의 기운은 '정상 매물'보다 '급매·조건 우위 매물'에서 기회가 나타날 가능성을 암시합니다. 신중한 탐색과 조건 협상이 유효한 선택지로 해석될 수 있습니다.`
-  : netScore >= 0 ? `흐름은 방향성을 탐색하는 균형 구간으로 해석됩니다. ${keyCard}의 에너지는 서두른 취득이 후회로 이어질 가능성이 있음을 시사합니다. 자금 여력 유지와 명확한 신호 대기가 도움이 될 수 있습니다.`
-  : `에너지는 하락장 구간으로 매수자에게 유리한 환경으로 해석됩니다. ${worstCard}의 기운은 추가 조정 가능성을 시사하므로, 급하게 취득하기보다 저점에서 급매를 선별하는 접근이 유효한 선택지로 해석될 수 있습니다. 금리·규제 변수도 함께 점검하는 것이 도움이 될 수 있습니다.`;
-
-  // ═══════════════════════════════════════════════════════════
-  // [V20.0] 부동산 5계층 구조
-  // ═══════════════════════════════════════════════════════════
-
-  // Decision Layer
-  let reDecisionPosition, reDecisionStrategy;
-  // [V31 #182] 정체 카드 우선 처리 — Hanged Man 등
-  if (isStagnationFuture) {
-    if (intent === "sell") {
-      reDecisionPosition = `관점 전환 시점 (Patient Watch — ${stagnationCardName})`;
-      reDecisionStrategy = "현 호가 유지 + 시장 신호 관찰 — 인내가 결과를 만드는 구간";
-    } else {
-      reDecisionPosition = `신중 검토형 매수 (Patient Watch — ${stagnationCardName})`;
-      reDecisionStrategy = "급매·우량 매물 신중 탐색 + 관점 전환 시야 (성급한 결단 금지)";
-    }
-  } else if (isUrgent) {
-    // [V24.9] URGENCY 발동 시 — 즉시 실행형 포지션
-    if (intent === "sell") {
-      reDecisionPosition = `즉시 실행형 매도 (Urgent Sell — ${urgencyCardName})`;
-      reDecisionStrategy = "즉시 시세 호가 등록 → 2주 반응 없으면 -3~5% 조정 → 4~6주 내 결론";
-    } else {
-      reDecisionPosition = `즉시 검토형 매수 (Urgent Search — ${urgencyCardName})`;
-      reDecisionStrategy = "급매·우량 매물 즉시 탐색 + 4주 내 결단 (시간 끌기 금지)";
-    }
-  } else if (isSplit) {
-    // [V24.11] SPLIT 발동 시 — 선택형 전략
-    if (intent === "sell") {
-      reDecisionPosition = `선택형 매도 (Sell Timing Split — 미래 ${splitFutureCardName})`;
-      reDecisionStrategy = "🅰 빠른 매도 (-3~5% / 4~8주) 또는 🅱 최적 매도 (가격 유지 + 수요 회복 대기)";
-    } else {
-      reDecisionPosition = `선택형 매수 (Buy Timing Split — 미래 ${splitFutureCardName})`;
-      reDecisionStrategy = "🅰 저점 매수 (현재 약세 활용 4~6주) 또는 🅱 확신 매수 (수요 회복 후 정상가)";
-    }
-  } else if (intent === "sell") {
-    // [V25.17] 사장님 진단: 메시지 충돌 제거 — 관망 우세 단일 흐름
-    if (netScore >= 5) {
-      reDecisionPosition = "조건부 매도 (강세 흐름)";
-      reDecisionStrategy = "희망가 견고 유지 → 시즌 내 거래 성사 흐름";
-    } else if (netScore >= 0) {
-      reDecisionPosition = "조건부 매도 (균형 흐름)";
-      reDecisionStrategy = "호가 2~3% 조정 여지 + 시즌 내 등록 검토";
-    } else {
-      reDecisionPosition = "관망 우세 (호가 검증 우선)";
-      reDecisionStrategy = "호가 검증 후 조정 → 시세 대비 3~5% 할인 검토 또는 다음 성수기 대기";
-    }
-  } else {
-    if (netScore >= 5) {
-      reDecisionPosition = "조건부 진입 (강세 흐름)";
-      reDecisionStrategy = "정상 매물 검토 + 이사철 전 선점 흐름";
-    } else if (netScore >= 0) {
-      reDecisionPosition = "조건부 진입 (선별 흐름)";
-      reDecisionStrategy = "급매·조건 우위 매물 위주 탐색 흐름";
-    } else {
-      // [V25.17] 사장님 진단: '저점 탐색' vs '진입 보류' 충돌 제거
-      //   "관망 우세 (진입 보류) → 가격 메리트 확인 시 → 저점 급매 선별 진입"
-      reDecisionPosition = "관망 우세 (진입 보류)";
-      reDecisionStrategy = "가격 메리트 확인 전까지 대기 → 저점 급매 선별 접근";
-    }
-  }
-
-  // ══════════════════════════════════════════════════════════════
-  // [V24.0] 부동산 시간 구간 — 일반 거래 상식으로 고정
-  //   매수/매도 의도와 무관하게 동일한 일반 시간대 표기
-  //   카드 점수가 결정하는 건 시기(시즌)와 긴박도일 뿐, 시간대가 아님
-  // ══════════════════════════════════════════════════════════════
-  const reEntryRanges = intent === "sell"
-    ? ["오전 매물 등록 시간대 (10:00~12:00) — 중개사 집중 시간"]
-    : ["오전 임장 시간대 (10:00~12:00) — 자연광 채광 확인 가능"];
-
-  // 매도 의도일 때만 계약 체결 시간 표시, 매수 의도면 비움 (V22.7 호환)
-  const reExitRanges = intent === "sell"
-    ? ["계약 체결 적기 (오후 14:00~17:00) — 중개사 의사결정 시간"]
-    : [];
-
-  const reWatchRanges = intent === "sell"
-    ? ["점심 시간 (12:00~13:00) — 상담 비추천", "저녁 이후 (18:00 이후) — 영업 종료"]
-    : ["계약 협상 시간 (오후 14:00~17:00)", "점심 시간 (12:00~13:00) — 상담 비추천", "저녁 이후 (18:00 이후) — 영업 종료"];
-
-  // Risk 보정
-  let reLayerRiskLevel = riskLevel;
-  if (netScore <= -3 && reLayerRiskLevel === "보통") {
-    reLayerRiskLevel = "중~높음";
-  }
-
-  // [V24.9+V25.17] URGENCY 발동 시 — 능동 실행 + 가능성 톤
-  let reCriticalRules;
-  if (isUrgent) {
-    reCriticalRules = intent === "sell"
-      ? [
-          "즉시 시세 호가로 매물 등록이 가격 협상력 보존에 도움이 될 수 있습니다",
-          "2주 반응 없을 경우 -3~5% 조정 검토가 적합한 흐름입니다",
-          "4~6주 내 결론이 안정적인 흐름 — 이후는 장기 미거래 전환 가능성"
-        ]
-      : [
-          "급매·우량 매물 즉시 탐색이 기회 포착에 도움이 될 수 있습니다",
-          "시간 지연 카드 신호 — 신중함이 기회 소멸로 전환될 가능성",
-          "융자·세금 계산 병행 진행이 적합한 흐름입니다"
-        ];
-  } else if (isSplit) {
-    // [V24.11] SPLIT 발동 시 — 선택형 행동 지침
-    reCriticalRules = intent === "sell"
-      ? [
-          `🅰 자금 일정 급함 → -3~5% 할인 + 4~8주 내 거래 (현실 타협)`,
-          `🅱 자금 여유 있음 → 가격 유지 + 수요 회복 대기 (카드 추천 — 정상가 가능)`,
-          `수요 회복 신호 모니터링: 주변 실거래 회복 / 거래량 증가 / 매물 감소`
-        ]
-      : [
-          `🅰 저점 매수 가능: 현재 약세 — 4~6주 내 급매 적극 탐색`,
-          `🅱 확신 매수 가능: 거래량 회복 후 진입 — 단 가격 상승 위험`,
-          `미래 수요 유입 신호 — 저점 매수 기회 창은 4~6주 (한정)`
-        ];
-  } else {
-    // [V25.17] 일반 흐름 — 사장님 톤 (가능성·해석)
-    reCriticalRules = intent === "sell"
-      ? [
-          "호가 집착보다 시장 반응 우선 확인이 도움이 될 수 있습니다",
-          "급매 무리한 가격 인하는 신중한 검토가 손해 최소화에 도움이 될 수 있습니다",
-          "공인중개사 의견 적극 수렴이 협상력 확보에 도움이 될 수 있습니다"
-        ]
-      : [
-          "충동적 계약은 추가 리스크로 이어질 수 있어 시세 검증이 도움이 될 수 있습니다",
-          "융자·세금 계산 사전 점검이 안정적인 흐름에 도움이 될 수 있습니다",
-          "현장 임장 최소 2회 이상이 매물 검증에 도움이 될 수 있습니다"
-        ];
-  }
-
-  const reCautions = [];
-  if (isUrgent) {
-    // [V24.9] URGENCY 발동 시 — 시간 지연 경고 우선
-    reCautions.push(`시간 지연 카드 감지 (${urgencyCardName}) — "기다림 = 손해" 구조`);
-    if (intent === "sell") {
-      reCautions.push("6주 넘기면 가격 인하 압박 강해짐 — 즉시 등록 + 단계 조정 필수");
-      reCautions.push("버티기 전략 = 장기 미거래 전환 (실거래가 하락 위험)");
-    } else {
-      reCautions.push("4주 넘기면 우량 매물 소진 가능성 — 탐색 가속 필요");
-      reCautions.push("시세 검증과 결단을 병행 — 분석 마비 경계");
-    }
-  } else if (isSplit) {
-    // [V24.11] SPLIT 발동 시 — 선택 지침
-    reCautions.push(`타이밍 분리형 — 단일 전략 부적절 (미래 ${splitFutureCardName} 수요 회복 신호)`);
-    if (intent === "sell") {
-      reCautions.push("🅰/🅱 선택 기준: 자금 일정 + 손실 감내 가능 여부");
-      reCautions.push("'지금 팔면 손해, 기다리면 정상가' — 양 옵션 모두 합리적");
-      reCautions.push("수요 회복 신호 미확인 시 가격 방어 우선 (전략 B)");
-    } else {
-      reCautions.push("저점 기회 창 4~6주 — 시장 회복 시 가격 상승 위험");
-      reCautions.push("실거래가·거래량 회복 모니터링이 매수 시점 결정에 도움이 될 수 있습니다");
-    }
-  } else {
-    if (netScore <= -3) reCautions.push("하락 압력 — 추가 조정 가능성이 있는 흐름");
-    if (netScore <= 0) reCautions.push("거래 지연 가능성 — 인내가 필요할 수 있는 흐름");
-    reCautions.push("실거래가·시세 변동 점검이 도움이 될 수 있습니다");
-    reCautions.push("규제·세금 변수 사전 확인이 도움이 될 수 있습니다");
-  }
-
-  // ══════════════════════════════════════════════════════════════
-  // [V24.0] 부동산 entryTiming — uncertainty 게이트 통합
-  //   기존: dealConfidence(base 점수) 단일로 결정
-  //   개선: uncertainty 높으면 무조건 'AVOID' (검증 후 진입)
-  // ══════════════════════════════════════════════════════════════
-  const _baseScore = calcScore(cleanCards, 'base');
-  const _entryTiming = riskGate.triggered ? 'AVOID'
-                     : _baseScore > 70 ? 'NOW'
-                     : _baseScore > 50 ? 'LATER' : 'AVOID';
-  const _reUncCaution = riskGate.triggered
-    ? `⚠️ 관망 카드 우세 (불확실성 ${uncGate.sum}점) — ${intent === 'sell' ? '매물 등록 전 시장 추가 관찰 권장' : '취득 결정 전 추가 임장·시세 검증 필수'}`
-    : null;
-
-  return {
-    queryType: "realestate",
-    executionMode: riskGate.triggered ? 'WATCH' : (netScore >= 0 ? 'ACTIVE' : 'WATCH'),
-    riskLevelScore: calcScore(cleanCards, 'risk'),
-    intent,
-    type: `realestate_${intent === "sell" ? "sell" : "buy"}`,
-    trend, action, riskLevel,
-    energyLabel,
-    finalTimingText: timingLabel,
-    timing2,
-    strategy,
-    period,
-    urgency: _reUncCaution || urgency,
-    caution: _reUncCaution || caution,
-    // [V23.4 + V24.0] 부동산 수치 메트릭 — 불확실성 반영
-    dealConfidence: _baseScore,
-    entryTiming: _entryTiming,
-    uncertaintyScore: uncGate.sum,
-    uncertaintyLevel: uncGate.level,
-    subtitle: subtitle_override || (intent === "sell" ? "매도" : "매수"),
-    // [V24.0] 시간대는 일반론으로 고정 — 카드 점수와 분리
-    dailyActionTiming,
-    totalScore, riskScore,
-    cardNarrative,
-    // [V25.14] 5차원 영성 레이더 차트 데이터 (Claude 2순위)
-    cardDimensions: buildCardDimensionsArray(cleanCards, reversedFlags),
-    finalOracle: riskGate.triggered
-      ? `${intent === "sell" ? interpretSell : interpretBuy}\n\n⚠️ [불확실성 게이트] 관망 카드 우세 — 결정 전 추가 검증을 권장합니다.`
-      : (intent === "sell" ? interpretSell : interpretBuy),
-    // [V20.0] 5계층 데이터
-    layers: {
-      decision: {
-        position: riskGate.triggered
-          ? `${reDecisionPosition} → 검증 후 진행 권장`
-          : reDecisionPosition,
-        // [V25.6+V25.7] 게이트 발동 사유 정확 표시 — 점수 → 등급 변환
-        //   사장님 진단: "110점, 200점 등 점수는 사용자가 이해 못 함.
-        //              한국 사용자는 100% 만점에 익숙해서 110점이 뭔지 모름.
-        //              위험도/변동성을 '낮음/보통/높음'으로 직관 표시 필요"
-        //   해결: 내부 점수 → 한국어 등급 변환 (level 필드 사용)
-        //          내부 메타데이터(uncertaintyScore 등)는 그대로 유지 (분석용)
-        strategy: riskGate.triggered
-          ? (() => {
-              // 등급 변환 헬퍼 — 내부 사용 (사용자 노출 메시지용)
-              const _gradeKo = (level) =>
-                level === 'EXTREME' ? '매우 높음'
-              : level === 'HIGH'    ? '높음'
-              : level === 'MEDIUM'  ? '보통'
-                                    : '낮음';
-
-              const dm = riskGate.decisionMajority;
-              // 발동 사유 우선순위: 단일 극값 > 다수결 > 변동성 > 불확실성
-              if (riskGate.volatility.hasExtremeCard) {
-                return `${reDecisionStrategy} · 변동성 극값 카드 감지 — 변동성 점검 후 진행`;
-              } else if (dm && dm.majorityCaution) {
-                // ★ V202.24: 내부 코드 (HOLD/SELL) 제거 — 사용자 친화 ★
-                return `${reDecisionStrategy} · 다수결 신중 카드 우세 (${dm.cautionCount}장) — 추가 검증 후 진행`;
-              } else if (riskGate.volatility.isHighVolatility) {
-                return `${reDecisionStrategy} · 변동성: ${_gradeKo(riskGate.volatility.level || 'HIGH')} — 추가 검증 후 진행`;
-              } else if (riskGate.uncertainty.isHighUncertainty) {
-                return `${reDecisionStrategy} · 불확실성: ${_gradeKo(riskGate.uncertainty.level || 'HIGH')} — 추가 검증 후 진행`;
-              }
-              return `${reDecisionStrategy} · 추가 검증 후 진행`;
-            })()
-          : reDecisionStrategy,
-        uncertaintyGate: riskGate.triggered ? 'TRIGGERED' : 'PASSED'
-      },
-      // [V20.10 + V23.3] 📊 Market Layer — 시장 판단 + 부동산 특화 변수
-      market: {
-        flow: netScore >= 5 ? "완만한 상승 흐름"
-            : netScore >= 2 ? "안정적 시장 — 거래 가능"
-            : netScore >= 0 ? "방향성 탐색 — 균형 시장"
-            : netScore <= -3 ? "완만한 하락 흐름"
-            : "약한 하락 압력",
-        position: netScore >= 2 ? "매도자 우위 시장"
-                : netScore >= 0 ? "균형 시장 — 양측 신중"
-                : "매수자 우위 시장",
-        delay: netScore >= 2 ? "거래 진행 가능성 높음"
-             : netScore >= 0 ? "통상적 거래 진행 예상"
-             : "거래 지연 가능성 높음",
-
-        // [V23.3] 부동산 특화 변수 (사장님 설계 확정안)
-        //   타로 에너지 기반 추정값 (실제 KB시세/호가 데이터 아님)
-        //   카드 에너지와 역방향 비율을 기반으로 계산
-
-        // liquidity: 거래 속도 (netScore 기반)
-        //   높을수록 빠른 거래 가능성 → 시장 유동성 에너지
-        liquidity: netScore >= 5 ? "높음 — 빠른 거래 가능 (4~6주)"
-                 : netScore >= 2 ? "보통 — 정상 거래 속도 (6~10주)"
-                 : netScore >= 0 ? "보통 이하 — 거래 지연 가능 (8~12주)"
-                 : netScore >= -3 ? "낮음 — 거래 어려움 (10~16주)"
-                 : "매우 낮음 — 장기 노출 예상 (16주+)",
-
-        // priceGap: 호가 갭 (역방향 카드 비율 기반)
-        //   역방향 많을수록 매도/매수 호가 간격 커짐
-        priceGap: (() => {
-          const revCount = (typeof reversedFlags !== 'undefined')
-            ? reversedFlags.filter(x => x).length : 0;
-          if (revCount >= 2) return "넓음 — 협상 여지 크고 시간 필요";
-          if (revCount === 1) return "보통 — 적정 협상 범위";
-          return "좁음 — 호가 조정 여지 제한적";
-        })(),
-
-        // dealProbability: 거래 성사 가능성 (매수자/매도자 우위 + netScore 조합)
-        dealProbability: intent === "sell"
-          ? (netScore >= 5  ? "높음 — 현재 호가 성사 가능"
-           : netScore >= 2  ? "보통 — 소폭 조정 시 성사 가능"
-           : netScore >= -3 ? "낮음 — 5~8% 조정 필요"
-           : "매우 낮음 — 다음 성수기 대기 권장")
-          : (netScore >= 5  ? "매우 좋음 — 급매 포착 시 즉시 성사"
-           : netScore >= 2  ? "좋음 — 적정가 협상 가능"
-           : netScore >= -3 ? "보통 — 저점 급매 위주 탐색"
-           : "어려움 — 시장 안정 대기 권장")
-      },
-      // [V23.7 P0-2] 미래 위험 카드 복합 조건
-      //   단일 조건(Tower만) → 과잉 반응 (Sun+World+Tower totalScore=10 케이스)
-      //   복합 조건: 미래 위험 카드 AND totalScore < 3
-      //   데이터 근거: totalScore >= 3이면 과거/현재가 충분히 긍정적
-      //               → Tower 1장이 전체 흐름 뒤집기 불가
-      ...(() => {
-        const FUTURE_DANGER_CARDS = new Set(['The Tower','Ten of Swords','Nine of Swords','The Moon']);
-        const futureCard2    = cleanCards[2] || '';
-        const isFutureDanger = FUTURE_DANGER_CARDS.has(futureCard2) && netScore < 3;
-        const actionItemsRE  = intent === "sell" ? (
-          isFutureDanger ? [
-            "희망가보다 2~3% 낮은 전략적 매도 검토",
-            "시장 상승 기대 금지 — 빠른 거래 성사 우선",
-            "장기 보유는 변동성 노출 확대 가능성이 있어 이번 시즌 내 흐름 재평가가 도움이 될 수 있습니다"
-          ] : netScore >= 2 ? [
-            "희망가 유지 + 시즌 활용",
-            "초기 반응 양호하면 호가 고수",
-            "성수기 진입 적기"
-          ] : netScore >= -3 ? [
-            "시세 대비 -3~5% 조정 시 거래 확률 상승",
-            "초기 반응 없으면 추가 조정 필요",
-            "버티기 전략 → 장기 미거래 위험"
-          ] : [
-            "시세 대비 -5~8% 적극 조정 검토",
-            "장기 미거래 위험 매우 높음",
-            "다음 성수기 대기 또는 능동적 흐름 점검이 고려될 수 있습니다"
-          ]
-        ) : (
-          // [V31 #182 사장님 결정 — Pattern C 직접 출처 차단]
-          //   결함: isFutureDanger=false + netScore <= -3 + 정체 카드(Hanged Man 등) 동시 발생 시
-          //         "신규 매수 보류" + "Urgent Search" 정반대 메시지 동시 출력 가능
-          //   해결: 정체 카드 우선 — 일관된 "신중 탐색" 톤
-          (typeof isStagnationFuture !== 'undefined' && isStagnationFuture) ? [
-            "급매·우량 매물 신중 탐색", "관점 전환 시야 확보", "성급한 결단 회피"
-          ] : isFutureDanger ? [
-            "신규 매수 대기 — 미래 충격 에너지 감지",
-            "하락 신호 확인 후 저점 급매 선별 진입",
-            "충분한 협상 여지 확보 후 결정"
-          ] : netScore >= 2 ? [
-            "급매물 적극 탐색", "시즌 진입 적기", "5~10% 추가 협상 시도"
-          ] : netScore >= -3 ? [
-            "급매 위주 탐색", "조급한 결정 회피", "다음 성수기 대기 권고"
-          ] : [
-            "신규 매수 보류", "시장 안정 신호 대기", "현금 유동성 확보 우선"
-          ]
-        );
-        return { execution: {
-          weight:   intent === "sell" ? `호가 전략: ${priceStrategy}` : `매수 전략: ${strategy}`,
-          stopLoss: caution || "현 호가 유지 가능",
-          target:   timing2 || "시즌 내 거래 가능",
-          actionItems: actionItemsRE,
-          isFutureDanger
-        }};
-      })(),
-      // [V20.10] 🎯 Contract Layer — 계약 성사 구조 (NEW)
-      contract: {
-        // [V31 #182] 정체 카드 우선 — Hanged Man 등은 12~16주 시야 (인내·관점 전환)
-        expectedWeeks: (typeof isStagnationFuture !== 'undefined' && isStagnationFuture) 
-                       ? "12~16주 (관점 전환 단계 — 인내 우선)"
-                     : netScore >= 5 ? "4~6주"
-                     : netScore >= 2 ? "6~10주"
-                     : netScore >= 0 ? "8~12주"
-                     : netScore >= -3 ? "10~16주"
-                     : "16주 이상 (장기 노출 예상)",
-        coreInsight: intent === "sell" ? (
-          netScore >= 2 ? '핵심: "가격 유지가 가능한 시장"'
-          : '핵심: 가격이 아니라 "반응 속도"가 중요'
-        ) : (
-          netScore >= 2 ? '핵심: "급매 포착이 진짜 기회"'
-          : '핵심: "신중한 탐색이 안전망"'
-        )
-      },
-      timing: {
-        entryRanges: reEntryRanges,
-        exitRanges: reExitRanges,
-        watchRanges: reWatchRanges,
-        seasonal: timingLabel  // "매도 적기: 9~10월"
-      },
-      signal: {
-        past:    cardNarrative[0] || '-',
-        current: cardNarrative[1] || '-',
-        future:  cardNarrative[2] || '-',
-        summary: energyLabel,
-        // [V22.7] 부동산 verdict — intent 의도별 차별화
-        //   사장님 진단: "하락 = 매수자 유리"인데 "행동 보류" 모순
-        //   해결: 매수 의도 시 하락 = 기회, 매도 의도 시 하락 = 신중
-        verdict: intent === "sell"
-          ? (netScore >= 5 ? "강한 상승 흐름 — 매도 적기, 호가 견고 유지" :
-             netScore >= 2 ? "완만한 상승 — 매도 시즌 활용 권장" :
-             netScore >= 0 ? "균형 흐름 — 호가 조정 + 신중 매도" :
-             netScore <= -3 ? "하락 압력 — 호가 검증 후 조정 흐름 (다음 성수기 대기 가능)" :
-             "방향성 모색 — 시장 신호 확인 후 매도 검토")
-          : (netScore >= 5 ? "강한 상승 흐름 — 매수자 신중, 정상 매물 선점 흐름" :
-             netScore >= 2 ? "완만한 상승 — 급매·조건 우위 매물 탐색 흐름" :
-             netScore >= 0 ? "균형 흐름 — 신중한 매수 탐색 흐름" :
-             netScore <= -3 ? "하락 압력 — 매수자 우호 흐름 (확인 후 저점 급매 선별 진입)" :
-             "방향성 모색 — 신호 확인 후 진입 검토")
-      },
-      risk: {
-        level: reLayerRiskLevel,
-        volatility: netScore <= -3 ? "높음" : netScore <= 0 ? "보통" : "낮음",
-        cautions: reCautions.slice(0, 3)
-      },
-      rules: reCriticalRules,
-      // [V22.0+V24.9] 🔥 Critical Interpretation — 부동산
-      //   기존: revFlags 무시 ([false, false, false]) → 역방향 의미 손실
-      //   해결: revFlags 전달 + URGENCY 발동 시 즉시 실행 메시지로 교체
-      criticalInterpretation: (() => {
-        const baseCrit = buildCriticalInterpretation(cleanCards, revFlags, "realestate", intent);
-        if (isUrgent) {
-          // URGENCY 발동 시 — 능동 실행 메시지로 교체
-          const urgencyGeneral = intent === 'sell'
-            ? `${urgencyCardName} — 시간 지연 시 조건 악화 신호. "기다리면 좋아진다" 구조 아닙니다.`
-            : `${urgencyCardName} — 시간 지연 시 기회 소멸 신호. 신중함이 망설임으로 변할 위험.`;
-          const urgencyFlavor = intent === 'sell'
-            ? `즉시 시세 호가로 등록 → 2주 반응 없으면 -3~5% 조정 → 4~6주 내 결론.`
-            : `즉시 급매·우량 매물 탐색 → 4주 내 결단 → 시간 끌기 금지.`;
-          const urgencyClosing = `버티기 금지 — 카드는 '지금'을 가리키고 있습니다.`;
-          return `${urgencyGeneral}\n${urgencyFlavor}\n${urgencyClosing}`;
-        }
-        if (isSplit) {
-          // [V24.11] SPLIT 발동 시 — 선택형 메시지
-          const splitGeneral = intent === 'sell'
-            ? `타이밍 분리형 구조 — 현재는 거래 정체, 미래(${splitFutureCardName})에 수요 회복 신호.`
-            : `타이밍 분리형 구조 — 현재 저점 매물 가능, 미래(${splitFutureCardName}) 수요 유입 시 가격 상승 위험.`;
-          const splitFlavor = intent === 'sell'
-            ? `🅰 빠른 매도(-3~5%, 4~8주) 또는 🅱 최적 매도(가격 유지, 수요 회복 대기) 선택.`
-            : `🅰 저점 매수(현재 4~6주 내) 또는 🅱 확신 매수(거래량 회복 후) 선택.`;
-          const splitClosing = intent === 'sell'
-            ? `"지금 팔면 손해, 기다리면 정상가" — 자금 일정에 따라 선택하십시오.`
-            : `"지금 사면 저점, 기다리면 안전" — 리스크 감내에 따라 선택하십시오.`;
-          return `${splitGeneral}\n${splitFlavor}\n${splitClosing}`;
-        }
-        return baseCrit;
-      })()
-    },
-    // [V27.0 Priority 3] 한방 문구 — 사장님 안전 매트릭스 (구체 가격 0)
-    //   intent: buy / sell_active / sell_passive / hold
-    //     sell_active  (능동·매도 전략): "시점 선택이 가격을 좌우합니다"
-    //     sell_passive (수동·시장 진단): "매수자 유입 시점에 따라 결과가 달라집니다"
-    //   효과: V26.13 LOVE 이중 트리거 패턴 그대로 이식
-    //   안전: 매트릭스 사전 정의 풀에서만 출력 (LLM 환각 0 / 공인중개사법 안전)
-    pivotPhrase: REALESTATE_PIVOT_PHRASE[intent] || REALESTATE_PIVOT_PHRASE.buy,
-    riskPhrase:  REALESTATE_RISK_PHRASE[intent]  || REALESTATE_RISK_PHRASE.buy
-  };
-}
 
 // ══════════════════════════════════════════════════════════════════
 // 💘 [V25.24] LOVE ORACLE — 100% JS, Layered Matrix, Gemini OFF
@@ -13925,43 +13065,10 @@ const STOCK_RISK_PHRASE = {
 };
 
 // ══════════════════════════════════════════════════════════════════
-// [V27.0 Priority 3] REALESTATE_PIVOT_PHRASE — 결단 한방 (FINAL 위)
-//   사장님 작성 안전 매트릭스 — 흐름·신호·시즌만 (구체 가격·매물 X)
-//   톤 패턴: [기회/흐름 인정] + [, but] + [선행 조건 강조]
-//   안전: AI 환각 위험 0 / 공인중개사법 안전
-//
-//   [Priority 1 연동] sell_passive vs sell_active 분리:
-//     sell_passive: '매도 흐름은 형성 중이지만, 매수자 유입 시점에 따라 결과가 달라집니다'
-//     sell_active : '매도 흐름은 열려 있지만, 시점 선택이 가격을 좌우합니다'
-// ══════════════════════════════════════════════════════════════════
-const REALESTATE_PIVOT_PHRASE = {
-  buy:          '매수 기회는 존재하지만, 입지와 조건 검증이 선행되어야 하는 단계입니다',
-  sell:         '매도 흐름은 열려 있지만, 시점 선택이 가격을 좌우합니다',
-  sell_active:  '매도 흐름은 열려 있지만, 시점 선택이 가격을 좌우합니다',
-  sell_passive: '매도 흐름은 형성 중이지만, 매수자 유입 시점에 따라 결과가 달라지는 구간입니다',
-  wait:         '시장 방향은 형성 중이지만, 성급한 결정은 부담으로 이어질 수 있는 구간입니다',
-  holding:      '보유 전략은 유효하지만, 시장 흐름에 따른 재평가가 필요한 구간입니다',
-  risk:         '리스크는 제한적이지만, 자금 계획에 따라 결과가 달라질 수 있습니다',
-  hold:         '보유 전략은 유효하지만, 시장 흐름에 따른 재평가가 필요한 구간입니다'
-};
 
-// ══════════════════════════════════════════════════════════════════
-// [V27.0 Priority 3] REALESTATE_RISK_PHRASE — 경고 한방 (리스크 박스 안)
-//   톤 패턴: [기회 인정] + [, but] + [놓치면 손해/지연]
-// ══════════════════════════════════════════════════════════════════
-const REALESTATE_RISK_PHRASE = {
-  buy:          '매수 기회는 살아있지만, 입지 검증을 미루면 협상력이 약해질 수 있습니다',
-  sell:         '매도 흐름은 형성됐지만, 호가 고집은 거래 지연으로 이어질 수 있는 구간입니다',
-  sell_active:  '매도 흐름은 형성됐지만, 호가 고집은 거래 지연으로 이어질 수 있는 구간입니다',
-  sell_passive: '시장은 살아있지만, 매물 노출 전략이 약하면 매수자 유입이 지연될 수 있습니다',
-  wait:         '관망 흐름은 안정적이지만, 시장 신호 무시는 기회 손실로 이어질 수 있습니다',
-  holding:      '보유는 유효하지만, 시장 흐름 점검을 미루면 자산 가치가 흔들릴 수 있습니다',
-  risk:         '리스크는 제한적이지만, 자금 흐름 점검이 늦어지면 부담이 누적될 수 있습니다',
-  hold:         '보유는 유효하지만, 시장 흐름 점검을 미루면 자산 가치가 흔들릴 수 있습니다'
-};
+// ★ [V202.26] REALESTATE_PIVOT_PHRASE + REALESTATE_RISK_PHRASE ★ 완전 제거 ★
 
-// ── MASTER ──
-// ══════════════════════════════════════════════════════════════════
+
 // [V26.2] LOVE_VERDICT_MATRIX — 동적 매트릭스 (27개 셋트)
 //   사장님 진단: 카드가 긍정적인데 부정적 verdict 노출 (모순)
 //   해결: 카드 점수(totalScore) 기반 3단계 매칭
@@ -18508,7 +17615,7 @@ export default {
     // ════════════════════════════════════════════════════════════════════
     if (url.pathname === "/version" && request.method === "GET") {
       return new Response(JSON.stringify({
-        version: "V202.24",      // ★ 매 배포마다 갱신 ★ — V202.24: 카드 근거 HOLD/SELL 내부 코드 제거 (V202.14/19 누락)
+        version: "V202.27",      // ★ V202.27: realestate dead 분기 추가 청소 (_validDomains/classify/extractSubject/ASSET_TAIL/isFinance) — V202.0 의도 100% 완성
         _ts: Date.now(),
         _ok: true
       }), {
@@ -19772,12 +18879,15 @@ export default {
         //   → classifyByKeywords / LLM 호출 모두 건너뜀
         //   → 자연어 분류 버그 0% (V21~V24의 5회 누적 버그 원천 차단)
         //
-        //   유효 도메인: love / stock / realestate / crypto / life
+        //   유효 도메인: love / stock / crypto / life  ★ V202.27: realestate 제거 ★
         //   클라 'general' → 서버 'life'로 매핑 (기존 호환)
         // ══════════════════════════════════════════════════════════════
-        const _validDomains = ['love', 'stock', 'realestate', 'crypto', 'life'];
-        const _mappedDomain = explicitDomain === 'general' ? 'life'
-                            : (explicitDomain || '').toLowerCase();
+        const _validDomains = ['love', 'stock', 'crypto', 'life'];
+        let _mappedDomain = explicitDomain === 'general' ? 'life'
+                          : (explicitDomain || '').toLowerCase();
+        // ★ [V202.27] realestate 안전 가드 ★ — 레거시 클라/외부 API edge case 대응
+        //   V202.0에서 realestate 카테고리 제거 → 잔존 호출은 운세로 폴백
+        if (_mappedDomain === 'realestate') _mappedDomain = 'life';
 
         let queryType;
         if (_mappedDomain && _validDomains.includes(_mappedDomain)) {
@@ -19787,34 +18897,26 @@ export default {
             // explicitDomain 없을 때만 자동 분류 폴백 (역호환)
             const queryType_raw = classifyByKeywords(prompt);
             queryType = queryType_raw.type;
+            // ★ [V202.27] classifyByKeywords가 realestate 반환 시 운세로 폴백
+            if (queryType === 'realestate') queryType = 'life';
             if (queryType_raw.confidence === 0 && env.GEMINI_API_KEY) {
                 const llmType = await classifyByLLM(prompt, env.GEMINI_API_KEY);
-                if (llmType) queryType = llmType;
+                if (llmType) {
+                    queryType = llmType;
+                    // ★ [V202.27] LLM 분류도 realestate 차단
+                    if (queryType === 'realestate') queryType = 'life';
+                }
             }
         }
         // ══════════════════════════════════════════════════════════════
         const { totalScore, riskScore, cleanCards, reversedFlags, synergies } = calcCardScores(cardNames, isReversed, queryType);
 
         let metrics;
-        if (queryType === "realestate") {
-          // [V2.5 수정] 질문 텍스트가 명시적으로 매도/매수를 말하면 버튼보다 질문 우선
-          //             유저가 "매도 분석" 버튼 눌렀어도 "삼성전자 사야할까"라고 물으면 buy로
-          //             유저가 "매수 분석" 버튼 눌렀어도 "팔까요"라고 물으면 sell로
-          const promptIntent = detectRealEstateIntent(prompt);
-          let intent;
-          if (promptIntent === "sell" || promptIntent === "buy") {
-            // 질문에 명시적 단어(매도/매수/팔아/살까) 있으면 그것 우선
-            intent = promptIntent;
-          } else if (reSubType === "sell") {
-            intent = "sell";
-          } else if (reSubType === "buy") {
-            intent = "buy";
-          } else {
-            intent = "hold";
-          }
-          metrics = buildRealEstateMetrics({ totalScore, riskScore, cleanCards, intent, prompt, reversedFlags });
-        }
-        else if (queryType === "stock" || queryType === "crypto") {
+        // ★ [V202.26 사장님 V202.0 의도 완성] realestate 카테고리 분기 ★ 완전 제거 ★
+        //   V202.0에서 부동산 카테고리는 사주로 통합 (라인 5313 라우팅)
+        //   잔존 realestate 분기는 ★ 도달 불가 dead code ★ → 제거
+        //   효과: 엔진 경량화 + 유지보수성 향상 + 위험 표면 감소
+        if (queryType === "stock" || queryType === "crypto") {
           // [V19.9] 주식/코인 매도/매수 intent 자동 감지
           // [V22.6] 사장님 안: stockSubType이 명시적으로 buy_timing/sell_timing이면 우선 적용
           //   유저가 홈뷰에서 직접 [매수 타이밍] / [매도 타이밍] 버튼 눌렀음
@@ -19977,11 +19079,21 @@ export default {
           //   사장님 안: 본문 읽기 전 '머리 정돈' TL;DR 박스
           //   효과: 5초 결제 결정의 법칙 + 정보 계층 명확화
           metrics = buildOneLineSummary(metrics);
-          // [V27.0.2] 부동산 한줄 결론 박스 — 별도 빌더 (sell_active/sell_passive 분기)
-          metrics = buildRealEstateOneLineSummary(metrics);
+          // ★ [V202.26] buildRealEstateOneLineSummary 호출 ★ 제거 ★
+          //   realestate 분기 자체가 V202.26에서 제거됨 → 호출 불필요
+
+          // ★ [V202.25 D안] TOP VERDICT 박스 데이터 생성 ★
+          //   사장님 진단: 결론 6박스 → 1박스 통합 (UX 글로벌 표준)
+          //   ★ 격리 100% ★: buildTopVerdict가 queryType 체크 → 사주/운세/연애/부동산 null
+          //   안전: 매트릭스 기정치 풀 사용 (AI 환각 0, 법무 안전, 토큰 비용 0)
+          const _topVerdict = buildTopVerdict(metrics);
+          if (_topVerdict) {
+            metrics.topVerdict = _topVerdict;
+          }
 
           // [V21.1] 종목명 주입 — Client에서 이모지 → 종목명 자동 치환에 사용
-          const _subj = (queryType === "stock" || queryType === "crypto" || queryType === "realestate")
+          // ★ [V202.27] realestate 제거 ★
+          const _subj = (queryType === "stock" || queryType === "crypto")
             ? extractSubject(prompt, queryType) : '';
           // [Fix 4] Subject 방어 — 이모지/null/빈값 차단 (사장님 확정)
           //   extractSubject가 실패하거나 이모지 반환 시 "해당 자산"으로 폴백
@@ -20160,46 +19272,6 @@ The Devil 예시:
 행동: ${metrics.action}
 타이밍: ${metrics.finalTimingText}
 리스크: ${metrics.riskLevel}
-`;
-        } else if (queryType === "realestate") {
-          // [V19.11] 부동산도 카드 의미 직접 주입 (AI 환각 방지)
-          // [V20.7] 양면성/깊은 해석 추가
-          const cardMeaningGuide = cleanCards.map((c, i) => {
-            const m = CARD_MEANING[c] || { flow: "에너지 탐색 중", signal: "방향성 주시" };
-            const role = i === 0 ? "과거" : i === 1 ? "현재" : "미래";
-            const deepLine = m.deep ? `\n   💎 깊은 의미: ${m.deep}` : '';
-            return `- ${role}(${c}): "${m.flow}" — ${m.signal}${deepLine}`;
-          }).join("\n");
-
-          // [V20.0] 단지명/지역명 안전 언급
-          const reSubjectName = extractSubject(prompt, "realestate");
-          const reSubjectDirective = reSubjectName
-            ? `\n🎯 [질문 대상 명시]\n사용자가 "${reSubjectName}"에 대해 질문하셨다.\n본문 시작에 "${reSubjectName}에 대한 신탁은~" 같이 자연스럽게 인용하라.\n본문 작성 시 "유저님" 사용 금지 — 닉네임 있으면 첫 1회만, 없으면 주어 생략.\n\n⚠️ 절대 금지:\n- "${reSubjectName} 시세 분석" (실거래가 분석 금지)\n- "${reSubjectName} 미래 가격" (가격 예측 금지)\n- "${reSubjectName} 추천/비추천" (추천 금지)\n\n✅ 허용 (주어 생략 또는 닉네임 1회):\n- "${reSubjectName}에 대한 카드 흐름은~"\n- "${reSubjectName}을 향한 매도/매수 심리~"\n`
-            : '';
-
-          financeInject = `
-[REAL ESTATE ENGINE ACTIVE]
-${reSubjectDirective}
-카드 점수 합계: ${totalScore}
-시장 흐름: ${metrics.trend}
-행동: ${metrics.action}
-타이밍: ${metrics.finalTimingText}
-전략: ${metrics.strategy}
-${reversedNote}
-${synergyNote}
-
-🃏 [각 카드의 정확한 의미 — 반드시 이 의미만 사용하라]
-${cardMeaningGuide}
-※ 위 카드 의미를 반드시 따르고, 반대로 해석하지 마라.
-※ 예: Two of Swords는 "결정 보류·교착"이지 "호가 집착"이 아님.
-※ 예: Queen of Wands는 "자신감·장악력"이지 "혼란"이 아님.
-
-⚠️ [추세-카드 일관성 규칙]
-3장 카드 중 부정 카드가 1장 이하면 절대 "하락 압력 구간" 같은 부정 결론 금지.
-3장 모두 긍정이면 "상승 흐름", 혼합이면 "전환 흐름"으로 표현.
-
-※ 본 질문은 부동산 관련이다. 주식/투자 용어(손절/익절/비중/3배 등) 사용 절대 금지.
-   부동산 전용 언어(매물/호가/임장/이사철/성수기/분양/재건축)로만 서술하라.
 `;
         } else if (queryType === "love") {
           const compatNote = (loveSubType === 'compatibility')
@@ -21170,13 +20242,7 @@ function extractSubject(prompt, queryType) {
     }
   }
 
-  // 부동산 — 단지명/지역명 추출
-  if (queryType === "realestate") {
-    const m = p.match(/^([가-힣A-Za-z0-9\-]{2,20}(?:\s*(?:아파트|지구|단지|타워|마을|리|동|역))?)\s*(?:언제|매수|매도|살|팔|적기|타이밍|재개발|분양|입주|매각)/);
-    if (m) return stripJosa(m[1].trim());
-    const first = p.split(/\s+/).slice(0, 2).join(' ');
-    if (first && first.length >= 2 && first.length <= 25) return stripJosa(first);
-  }
+  // ★ [V202.27] 부동산 단지명/지역명 추출 분기 ★ 완전 제거 ★ (V202.0 의도 완성)
 
   return null;
 }
