@@ -3233,7 +3233,7 @@
     (function() {
         'use strict';
         
-        const APP_VERSION = 'V202.32';  // ★ V202.32: 사주 2차 - 행운 가이드 10종 노출 + [4/6]-[8/8] PRO 펼침 통합 (B-1 + C-2)
+        const APP_VERSION = 'V202.33';  // ★ V202.33: 사주 차별성 - ZEUS SAJU ORACLE 일반 운세 부분 제거, [3/6] 사주 본질 흡수 (사주답게)
         window.APP_VERSION = APP_VERSION;
         
         // ★★★ [V202.17 결정적 수정] _sajuInput 복원 ★ 페이지 로드 즉시 ★ ★★★
@@ -18686,135 +18686,46 @@ function renderSajuResult(data) {
                         return meaning ? `<div style="margin-top:6px; padding:6px 10px; background:rgba(212,175,55,0.10); border-left:2px solid rgba(212,175,55,0.5); border-radius:0 4px 4px 0; font-size:0.80rem; color:#FFE08A; font-weight:700; font-style:italic;">→ 의미: ${meaning}</div>` : '';
                     })()}
                 </div>
+
+                ${(function() {
+                    // ★★★ [V202.33 사장님 통찰] 사주 핵심 풀이 ★ [3/6] 안 통합 ★★★
+                    //   사장님 진단: "ZEUS SAJU ORACLE = 사주답지 않다, 타로 앱처럼 됨"
+                    //   해결: 박스 ★ 완전 제거 ★ + 사주적 핵심만 [3/6] 사주 본질에 흡수
+                    //   
+                    //   유지: 일주 물상 / 오행 균형 / 일간 강약 (기존)
+                    //   신규: 💧 용신 + 활성 조건 / 🔥 사주 핵심 키워드 (V202.33)
+                    //   = ★ 진짜 사주답게 ★
+                    
+                    const _oracle = text.zeusSajuOracle;
+                    if (!_oracle || !_oracle.coreStructure) return '';
+                    
+                    // ★ 용신 실제 값 추출 — data.yongshin 우선 (분석 중 결함 수정) ★
+                    const _ysData = data.yongshin || data.pro?.yongshin || null;
+                    const _ysName = _ysData?.yongshin || '';
+                    const _ysReason = _ysData?.reason || '';
+                    const _ysDisplay = _ysName ? `${_ysName}(水/木/火/土/金 중)` : '분석 중';
+                    const _ysDesc = _ysReason || _oracle.coreStructure.yongshinDesc || '깊은 사고와 배움이 운을 살립니다';
+                    
+                    return `
+                    <!-- ★ V202.33 사주 핵심 풀이 (용신 + 사주 키워드) — [3/6] 안 통합 ★ -->
+                    <div style="margin-top:14px; padding-top:12px; border-top:1px dashed rgba(212,175,55,0.3);">
+                        <!-- 💧 용신 + 활성 조건 -->
+                        <div style="color:rgba(255,255,255,0.92); font-size:0.85rem; line-height:1.7; margin-bottom:10px;">
+                            <strong style="color:#FFE08A;">▸ 💧 용신:</strong> <span style="color:#7FCDFF; font-weight:700;">${_ysName || '분석 진행 중'}</span><br>
+                            <span style="color:rgba(255,255,255,0.85); font-size:0.82rem;">${_ysDesc}</span>
+                        </div>
+                        
+                        <!-- 🔥 사주 핵심 키워드 -->
+                        <div style="color:rgba(255,255,255,0.92); font-size:0.85rem; line-height:1.7;">
+                            <strong style="color:#FFE08A;">▸ 🔥 사주 핵심 키워드:</strong><br>
+                            <span style="color:#FFD970; font-size:0.92rem; font-weight:800; font-style:italic;">"${_oracle.coreStructure.keyword}"</span>
+                        </div>
+                    </div>
+                    `;
+                })()}
             </div>
 
-            ${(function() {
-                // ════════════════════════════════════════════════════════════
-                // ★★★ [V202.31 사장님 D안] ✦ ZEUS SAJU ORACLE ✦ 박스 ★★★
-                // ════════════════════════════════════════════════════════════
-                // 사장님 통찰: 투자 신탁 TOP VERDICT 박스와 동일 철학을 사주에도
-                // 스크롤 단축 + 결제 가치 강조 + 글로벌 UX 표준
-                //
-                // 보완 5종 모두 적용:
-                //   🥇 색상 신호 (🟢/🟡/🔴) — 점수 기반
-                //   🥈 ✅/❌ 시각 분리 (필요 행동 vs 피할 흐름)
-                //   🥉 6대 운세 4종만 (직업/재물/연애/건강)
-                //   🏅 4주 운성 친절 안내 (PRO 정밀 안)
-                //   🎯 헤더 (남)(여) (이미 워커 적용)
-                const _oracle = text.zeusSajuOracle;
-                if (!_oracle) return '';
-                
-                const _sigColor = _oracle._signalColor;
-                const _borderColor = _sigColor === 'positive' ? '#2ecc71' : _sigColor === 'caution' ? '#e74c3c' : '#F1C40F';
-                const _bgGradient = _sigColor === 'positive'
-                  ? 'linear-gradient(135deg, rgba(46,204,113,0.10), rgba(241,196,15,0.06))'
-                  : _sigColor === 'caution'
-                  ? 'linear-gradient(135deg, rgba(231,76,60,0.10), rgba(241,196,15,0.06))'
-                  : 'linear-gradient(135deg, rgba(241,196,15,0.10), rgba(231,76,60,0.06))';
-                
-                return `
-                <!-- ✦ ZEUS SAJU ORACLE 박스 -->
-                <div style="margin:22px 0; padding:18px 14px;
-                            background:${_bgGradient};
-                            border: 2px solid ${_borderColor}80;
-                            border-radius: 14px;
-                            box-shadow: 0 0 18px ${_borderColor}25;">
-                    
-                    <!-- 박스 헤더 -->
-                    <div style="text-align:center; padding-bottom:12px; margin-bottom:14px; border-bottom:1px solid rgba(241,196,15,0.28);">
-                        <div style="color:${_borderColor}; font-size:1.05rem; font-weight:900; letter-spacing:0.08em; margin-bottom:5px;">
-                            ✦ ZEUS SAJU ORACLE ✦
-                        </div>
-                        <div style="font-size:0.62rem; color:rgba(241,196,15,0.85); font-weight:700; letter-spacing:0.18em;">
-                            SAJU FINAL VERDICT · PRO
-                        </div>
-                    </div>
-                    
-                    <!-- 🎯 사주 결론 -->
-                    <div style="margin-bottom:14px;">
-                        <div style="color:#F1C40F; font-size:0.78rem; font-weight:900; letter-spacing:0.08em; margin-bottom:7px;">
-                            🎯 사주 결론
-                        </div>
-                        <div style="font-size:1.05rem; color:#fff; font-weight:800; line-height:1.55; margin-bottom:9px; text-align:center; padding:8px 4px;">
-                            ${_oracle.verdict.signal}
-                        </div>
-                        <div style="font-size:0.92rem; color:rgba(255,255,255,0.92); line-height:1.65; margin-bottom:10px; font-weight:500; text-align:center; padding:0 4px;">
-                            ${_oracle.verdict.summary}
-                        </div>
-                        <div style="padding:9px 11px; background:rgba(46,204,113,0.08); border-left:3px solid #2ecc71; border-radius:0 6px 6px 0; margin-bottom:7px;">
-                            <div style="color:#7AD188; font-size:0.7rem; font-weight:900; letter-spacing:0.1em; margin-bottom:4px;">⚡ 행동 트리거</div>
-                            <div style="font-size:0.88rem; color:rgba(255,255,255,0.92); font-weight:500; line-height:1.55;">${_oracle.verdict.action}</div>
-                        </div>
-                        <div style="padding:9px 11px; background:rgba(231,76,60,0.06); border-left:3px solid #e74c3c; border-radius:0 6px 6px 0;">
-                            <div style="color:#FF8870; font-size:0.7rem; font-weight:900; letter-spacing:0.1em; margin-bottom:4px;">⚠️ 주의 포인트</div>
-                            <div style="font-size:0.88rem; color:rgba(255,255,255,0.88); font-weight:500; line-height:1.55;">${_oracle.verdict.caution}</div>
-                        </div>
-                    </div>
-                    
-                    <!-- 🧭 지금의 운 흐름 (보완 2: ✅/❌ 분리) -->
-                    <div style="margin-bottom:14px; padding:12px; background:rgba(0,0,0,0.18); border-radius:8px;">
-                        <div style="color:#FFD970; font-size:0.78rem; font-weight:900; letter-spacing:0.08em; margin-bottom:9px;">
-                            🧭 지금의 운 흐름
-                        </div>
-                        <div style="margin-bottom:10px; font-size:0.84rem; color:rgba(255,255,255,0.88); line-height:1.6;">
-                            <strong style="color:#FFE08A;">현재 에너지:</strong> ${_oracle.energyFlow.current.map(e => '✔ ' + e).join(' ')}
-                        </div>
-                        <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
-                            <div style="padding:9px; background:rgba(46,204,113,0.10); border:1px solid rgba(46,204,113,0.3); border-radius:6px;">
-                                <div style="color:#7AD188; font-size:0.7rem; font-weight:900; margin-bottom:5px;">✅ 필요한 행동</div>
-                                <div style="font-size:0.78rem; color:rgba(255,255,255,0.85); line-height:1.5;">
-                                    ${_oracle.energyFlow.needAction.map(a => '• ' + a).join('<br>')}
-                                </div>
-                            </div>
-                            <div style="padding:9px; background:rgba(231,76,60,0.10); border:1px solid rgba(231,76,60,0.3); border-radius:6px;">
-                                <div style="color:#FF8870; font-size:0.7rem; font-weight:900; margin-bottom:5px;">❌ 피해야 할 흐름</div>
-                                <div style="font-size:0.78rem; color:rgba(255,255,255,0.85); line-height:1.5;">
-                                    ${_oracle.energyFlow.avoidFlow.map(a => '• ' + a).join('<br>')}
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <!-- ☯ 사주 핵심 구조 -->
-                    <div style="margin-bottom:14px; padding:11px; background:rgba(155,89,182,0.08); border:1px solid rgba(155,89,182,0.3); border-radius:8px;">
-                        <div style="color:#C39BD3; font-size:0.78rem; font-weight:900; letter-spacing:0.08em; margin-bottom:8px;">
-                            ☯ 사주 핵심 구조
-                        </div>
-                        <div style="font-size:0.83rem; color:rgba(255,255,255,0.88); line-height:1.65;">
-                            <div style="margin-bottom:5px;"><strong style="color:#C39BD3;">🪵 ${_oracle.coreStructure.dayMaster}</strong> — ${_oracle.coreStructure.dayMasterDesc}</div>
-                            <div style="margin-bottom:5px;"><strong style="color:#C39BD3;">💧 ${_oracle.coreStructure.yongshin}</strong> — ${_oracle.coreStructure.yongshinDesc}</div>
-                            <div><strong style="color:#C39BD3;">🔥 핵심 키워드</strong> — "${_oracle.coreStructure.keyword}"</div>
-                        </div>
-                    </div>
-                    
-                    <!-- ⏱ 흐름 타이밍 -->
-                    <div style="margin-bottom:14px; padding:11px; background:rgba(52,152,219,0.08); border:1px solid rgba(52,152,219,0.3); border-radius:8px;">
-                        <div style="color:#5DADE2; font-size:0.78rem; font-weight:900; letter-spacing:0.08em; margin-bottom:7px;">
-                            ⏱ 흐름 타이밍
-                        </div>
-                        <div style="font-size:0.83rem; color:rgba(255,255,255,0.88); line-height:1.7;">
-                            <div>📅 <strong style="color:#5DADE2;">오늘</strong> → ${_oracle.flowTiming.today}</div>
-                            <div>🗓 <strong style="color:#5DADE2;">이번 달</strong> → ${_oracle.flowTiming.month}</div>
-                            <div>🎯 <strong style="color:#5DADE2;">올해</strong> → ${_oracle.flowTiming.year}</div>
-                        </div>
-                    </div>
-                    
-                    <!-- ✨ 행동 오라클 -->
-                    <div style="margin-bottom:10px; padding:10px 12px; background:rgba(241,196,15,0.12); border-left:3px solid #F1C40F; border-radius:0 6px 6px 0;">
-                        <div style="color:#FFD970; font-size:0.7rem; font-weight:900; letter-spacing:0.1em; margin-bottom:5px;">✨ 행동 오라클</div>
-                        <div style="font-size:0.88rem; color:#fff; font-weight:600; line-height:1.6;">👉 ${_oracle.actionOracle}</div>
-                    </div>
-                    
-                    <!-- 📌 ZEUS 한줄 결론 -->
-                    <div style="margin-top:12px; padding:13px 12px; background:rgba(212,175,55,0.18); border:1.5px solid rgba(212,175,55,0.5); border-radius:8px; text-align:center;">
-                        <div style="color:#FFD970; font-size:0.7rem; font-weight:900; letter-spacing:0.12em; margin-bottom:7px;">📌 ZEUS 한줄 결론</div>
-                        <div style="font-size:0.95rem; color:#FFE08A; font-weight:800; line-height:1.55; font-style:italic;">
-                            "${_oracle.finalOneLine}"
-                        </div>
-                    </div>
-                </div>
-                `;
-            })()}
+            ${(function() { return ''; /* ★ [V202.33] 옛 ZEUS SAJU ORACLE 박스 완전 제거 ★ */ })()}
 
             ${(function() {
                 // ════════════════════════════════════════════════════════════
