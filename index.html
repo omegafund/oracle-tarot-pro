@@ -3233,7 +3233,7 @@
     (function() {
         'use strict';
         
-        const APP_VERSION = 'V202.27';  // ★ V202.27: V202.26 + 잔존 realestate dead 분기 정밀 청소 (_validDomains/classify/isFinance/domainEmoji)
+        const APP_VERSION = 'V202.28';  // ★ V202.28: 라이브 결함 4종 동시 수정 - 구체 수치 제거(법적), TOP VERDICT 모바일, 깊이 박스 버튼화, financeInject 강화
         window.APP_VERSION = APP_VERSION;
         
         // ★★★ [V202.17 결정적 수정] _sajuInput 복원 ★ 페이지 로드 즉시 ★ ★★★
@@ -11137,9 +11137,12 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
                      layers.decision?.blockLevel === 'BOTTOM' ? 'WATCH'   :
                      layers.decision?.blockLevel === 'MEDIUM' ? 'WATCH'   : null);
                 const isWatchMode   = _execMode === 'BLOCKED' || _execMode === 'WATCH';
-                // [V25.16] 사장님 진단: "비중 할당 금지" → 가능성·해석 톤
+                // ★ [V202.28] 사장님 라이브 결함 진단 — '0%' 수치 ★ 제거 ★
+                //   옛: '0% — 객관적 신호 확인 전까지 관망이 안정적인 흐름입니다'
+                //   = '0%' 수치 자체가 부적절 (사용자 혼란 + 의미 없음)
+                //   해결: 보편 표현만 ('객관적 신호 확인 전까지 관망 유효')
                 const displayWeight = isWatchMode
-                    ? '0% — 객관적 신호 확인 전까지 관망이 안정적인 흐름입니다'
+                    ? '객관적 신호 확인 전까지 관망이 안정적인 흐름입니다'
                     : (exec.weight || '-');
                 const displayStop   = isWatchMode ? '진입 전 단계' : (exec.stopLoss || '-');
                 const displayTarget = isWatchMode ? '진입 전 단계' : (exec.target  || '-');
@@ -12014,20 +12017,22 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
             //   구조: 🟡 신호 / ⚡ 실행 / ⚠️ 주의 / 🎴 카드 근거
             const _tv202_25 = (typeof window !== 'undefined' && window._serverMetrics && window._serverMetrics.topVerdict) || null;
             const _topVerdictHTML = _tv202_25 ? `
-                <div style="margin-bottom:18px; padding:14px 16px;
+                <div style="margin-bottom:18px; padding:16px 14px;
                             background: linear-gradient(135deg, rgba(241,196,15,0.10), rgba(231,76,60,0.06));
                             border: 2px solid rgba(241,196,15,0.5);
                             border-radius: 14px;
                             box-shadow: 0 0 16px rgba(241,196,15,0.12);">
-                    <div style="display:flex; align-items:center; gap:8px; margin-bottom:12px; padding-bottom:10px; border-bottom:1px solid rgba(241,196,15,0.25);">
-                        <div style="color:#F1C40F; font-size:0.86rem; font-weight:900; letter-spacing:0.12em;">
+                    <!-- ★ [V202.28] 모바일 한 줄 깨짐 해결 — 제목/라벨 각각 별도 줄 ★ -->
+                    <div style="text-align:center; padding-bottom:11px; margin-bottom:13px; border-bottom:1px solid rgba(241,196,15,0.28);">
+                        <div style="color:#F1C40F; font-size:1.0rem; font-weight:900; letter-spacing:0.06em; margin-bottom:6px; line-height:1.3;">
                             🎯 신탁 결론
                         </div>
-                        <div style="margin-left:auto; font-size:0.62rem; color:rgba(241,196,15,0.78); font-weight:700; letter-spacing:0.1em;">
+                        <div style="font-size:0.62rem; color:rgba(241,196,15,0.85); font-weight:700; letter-spacing:0.15em;">
                             TOP VERDICT · PRO
                         </div>
                     </div>
-                    <div style="font-size:1.0rem; color:#fff; font-weight:700; line-height:1.7; margin-bottom:12px;">
+                    <!-- 핵심 신호 — 한 줄 강조 -->
+                    <div style="font-size:1.02rem; color:#fff; font-weight:700; line-height:1.65; margin-bottom:13px; text-align:center; padding:6px 4px;">
                         👉 ${_tv202_25.signal}
                     </div>
                     <div style="padding:10px 12px; background:rgba(46,204,113,0.07); border-left:3px solid #2ecc71; border-radius:0 8px 8px 0; margin-bottom:8px;">
@@ -12057,18 +12062,42 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
                 </div>
             ` : '';
 
-            // ★ [V202.25 D-2] 5계층 박스 — 접힘 (collapsed by default) ★
-            //   사장님 D안: 결론은 TOP VERDICT 1박스, 깊이 정보는 호기심 펼침
-            //   ★ 격리 ★: TOP VERDICT 활성 시(stock/crypto)만 접힘 적용
-            //              부동산은 _renderRealEstateBlock 별도 흐름 (영향 X)
+            // ★ [V202.28 사장님 D안] 5계층 박스 → ★ 강한 버튼 ★ 형식 ★
+            //   사장님 진단: "+ 깊이 분석 (5계층 PRO)" 직관성 부족 — 유저 안 누름
+            //   해결: 명확한 버튼 디자인 + 아이콘 + 펼침 화살표 + 강조 색상
             const _layer5Wrapped = (_tv202_25 && layer5HTML)
-                ? `<details style="margin-top:8px; background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.08); border-radius:8px; padding:0;">
-                    <summary style="padding:11px 14px; cursor:pointer; color:rgba(255,255,255,0.72); font-size:0.86rem; font-weight:600; display:flex; align-items:center; user-select:none; list-style:none;">
-                        <span>＋ 깊이 분석 (5계층 PRO 콘텐츠)</span>
-                        <span style="margin-left:auto; font-size:0.68rem; color:rgba(241,196,15,0.7); letter-spacing:0.08em;">PRO · 펼치기</span>
+                ? `<details style="margin-top:12px; border-radius:12px; padding:0; overflow:hidden;
+                                   background: linear-gradient(135deg, rgba(155,89,182,0.12), rgba(52,152,219,0.08));
+                                   border: 2px solid rgba(155,89,182,0.45);
+                                   box-shadow: 0 0 14px rgba(155,89,182,0.18);"
+                            class="zeus-deep-toggle-v28">
+                    <summary style="padding:14px 16px; cursor:pointer; display:flex; align-items:center;
+                                    user-select:none; list-style:none; -webkit-tap-highlight-color:transparent;
+                                    background: rgba(155,89,182,0.10);">
+                        <span style="font-size:1.3rem; margin-right:11px; filter:drop-shadow(0 0 6px rgba(241,196,15,0.5));">🔮</span>
+                        <span style="display:flex; flex-direction:column; flex:1; min-width:0;">
+                            <span style="color:#fff; font-size:0.95rem; font-weight:800; letter-spacing:0.02em; margin-bottom:2px; line-height:1.3;">
+                                깊이 점사 보기
+                            </span>
+                            <span style="color:rgba(241,196,15,0.85); font-size:0.7rem; font-weight:700; letter-spacing:0.08em;">
+                                ✦ 5계층 PRO 콘텐츠 (눌러서 펼치기)
+                            </span>
+                        </span>
+                        <span class="zeus-deep-chev" style="color:#F1C40F; font-size:1.5rem; font-weight:900;
+                                                            transition: transform 0.3s ease;
+                                                            margin-left:6px; line-height:1;">
+                            ⌄
+                        </span>
                     </summary>
-                    <div style="padding:0 4px 4px;">${layer5HTML}</div>
-                </details>`
+                    <div style="padding:14px 8px 8px;">${layer5HTML}</div>
+                </details>
+                <style>
+                    .zeus-deep-toggle-v28[open] .zeus-deep-chev { transform: rotate(180deg); }
+                    .zeus-deep-toggle-v28 summary::-webkit-details-marker { display: none; }
+                    .zeus-deep-toggle-v28 summary::marker { content: ''; }
+                    .zeus-deep-toggle-v28 summary:hover { background: rgba(155,89,182,0.18); }
+                    .zeus-deep-toggle-v28[open] summary { background: rgba(155,89,182,0.20); border-bottom: 1px solid rgba(155,89,182,0.3); }
+                </style>`
                 : layer5HTML;
 
             return `
