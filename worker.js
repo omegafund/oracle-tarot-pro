@@ -10379,7 +10379,13 @@ function buildStockMetrics({ totalScore, riskScore, cleanCards, isLeverage, quer
         }
         if (riskGate.decisionMajority?.majorityCaution) {
           const dm = riskGate.decisionMajority;
-          return `3장 중 ${dm.cautionCount}장이 신중·관망 카드입니다 (HOLD ${dm.hold}장 + SELL ${dm.sell}장).\n점수 합산은 양호해 보여도, 카드의 본질 의미가 진입 보류를 가리키고 있습니다.`;
+          // ★★★ [V202.24 사장님 명령] 내부 코드 (HOLD/SELL) ★ 사용자 노출 금지 ★ ★★★
+          //   사장님 라이브 결함 (V202.22 검증):
+          //     매수 질문에 "HOLD 0장 + SELL 2장" 표시
+          //     = 내부 코드 + SELL 단어 노출 → 매수↔매도 혼재
+          //   V202.14/V202.19에서 다른 위치는 잡았지만 ★ 라인 10382 누락 ★
+          //   해결: HOLD/SELL 단어 ★ 완전 제거 ★, 사용자 친화 표현으로 변경
+          return `3장 중 ${dm.cautionCount}장이 신중·관망 카드입니다.\n점수 합산은 양호해 보여도, 카드의 본질 의미가 단계적 진입 준비를 가리키고 있습니다.`;
         }
         return `관망 카드의 합산 가중치가 진입 신뢰도를 흐리고 있습니다.\n점수만으로는 매수처럼 보여도, 카드의 본질 메시지는 검증 후 진입을 권합니다.`;
       })(),
@@ -11198,7 +11204,8 @@ function buildRealEstateMetrics({ totalScore, riskScore, cleanCards, intent, pro
               if (riskGate.volatility.hasExtremeCard) {
                 return `${reDecisionStrategy} · 변동성 극값 카드 감지 — 변동성 점검 후 진행`;
               } else if (dm && dm.majorityCaution) {
-                return `${reDecisionStrategy} · 다수결 신중 카드 우세 (HOLD ${dm.hold}장 + SELL ${dm.sell}장) — 추가 검증 후 진행`;
+                // ★ V202.24: 내부 코드 (HOLD/SELL) 제거 — 사용자 친화 ★
+                return `${reDecisionStrategy} · 다수결 신중 카드 우세 (${dm.cautionCount}장) — 추가 검증 후 진행`;
               } else if (riskGate.volatility.isHighVolatility) {
                 return `${reDecisionStrategy} · 변동성: ${_gradeKo(riskGate.volatility.level || 'HIGH')} — 추가 검증 후 진행`;
               } else if (riskGate.uncertainty.isHighUncertainty) {
@@ -18501,7 +18508,7 @@ export default {
     // ════════════════════════════════════════════════════════════════════
     if (url.pathname === "/version" && request.method === "GET") {
       return new Response(JSON.stringify({
-        version: "V202.22",      // ★ 매 배포마다 갱신 ★ — V202.22: 매수↔매도 시나리오 혼재 결함 100% 잡음 (stockIntent 우선)
+        version: "V202.24",      // ★ 매 배포마다 갱신 ★ — V202.24: 카드 근거 HOLD/SELL 내부 코드 제거 (V202.14/19 누락)
         _ts: Date.now(),
         _ok: true
       }), {
@@ -21059,7 +21066,9 @@ function extractSubject(prompt, queryType) {
       "한미사이언스", "한미약품", "유한양행", "녹십자홀딩스",
       "신한금융지주", "하나금융지주", "우리금융지주",
       "에코프로비엠", "에코프로", "셀트리온", "카카오", "네이버", "쿠팡",
-      "미래에셋증권", "미래에셋", "기아", "테슬라", "엔비디아", "애플"
+      "미래에셋증권", "미래에셋", "기아", "테슬라", "엔비디아", "애플",
+      // ★ V202.23 사장님 발견 종목 추가 ★
+      "티엘비"
     ];
 
     // [V22.4.1] 길이순 정렬 (긴 이름 먼저 매칭 — "SK하이닉스" > "SK")
@@ -21082,6 +21091,31 @@ function extractSubject(prompt, queryType) {
     // [V22.4+V22.6] 2순위: 한글+한글 띄어쓰기 패턴 (사전에 없는 새 종목)
     //   "대한 광통신 매수" → "대한광통신" (두 단어 합침)
     //   "동국제강 매수" → "동국제강" (두 번째가 동사면 제외)
+    
+    // ★★★ [V202.23 사장님 라이브 결함] 띄어쓰기 없는 입력 처리 ★★★
+    //   사장님 케이스:
+    //     "티엘비언제팔아야좋을까" → "티엘비"로 정확 추출
+    //   원인:
+    //     기존 정규식 욕심 매칭 → "티엘비언제팔아야"까지 캡처
+    //   해결:
+    //     ★ 비욕심(non-greedy) ★ 매칭 + ★ 종목명 2~7글자 ★ 제한
+    //     키워드: 언제/팔/사/매수/매도/익절/손절/진입/청산/타이밍
+    //     예: "티엘비언제" → "티엘비" (3글자)
+    //         "삼성전자팔아야" → "삼성전자" (4글자)
+    //         "대한항공언제" → "대한항공" (4글자)
+    //         "SK하이닉스익절" → "SK하이닉스" (6글자)
+    //   주의:
+    //     {1,5}? = 비욕심 매칭 (최소 매칭)
+    //     캡처 후 키워드 위치까지 ★ 가장 짧게 ★ 잡음
+    const noSpaceMatch = p.match(/^([가-힣A-Za-z][가-힣A-Za-z0-9\-]{1,5}?)(?=언제|팔아|팔까|팔지|살까|살지|살건|매수|매도|매입|매각|진입|청산|손절|익절|타이밍|적기|시점|좋을|어떨|어때|다음주|이번주|단타|장투|추가매수|추가매도|분할매수|분할매도|재매수|재매도)/);
+    if (noSpaceMatch) {
+      const candidate = noSpaceMatch[1].trim();
+      if (candidate.length >= 2) {
+        console.log('[V202.23] 종목명 추출 (붙여쓰기):', candidate, '← 원문:', p.substring(0, 30));
+        return candidate;
+      }
+    }
+    
     const m2 = p.match(/^([가-힣]{2,6})\s+([가-힣]{2,8})\s+(?:다음주|이번주|언제|매수|매도|매입|살|팔|사려|사고|살까|팔려|팔까|팔고|팔아|진입|타이밍|적기|시점|단타|장투|들어가|뽑|익절|손절|청산|어떨|어때|좋을)/);
     if (m2) {
       // [V22.6 + V28.A] 두 번째 단어가 매매 동사/명사면 종목명에서 제외
@@ -21097,7 +21131,9 @@ function extractSubject(prompt, queryType) {
         '추가','추가매수','추가매도','분할','분할매수','분할매도',
         '재진입','재매수','재매도','리진입',
         '신규','신규매수','신규진입',
-        '전량','일부','반등','반락'
+        '전량','일부','반등','반락',
+        // ★ V202.23: 시간 부사·질문어 추가 (사장님 결함) ★
+        '언제','어떨','어때','좋을'
       ];
       if (VERBS_OR_KEYWORDS.includes(m2[2])) {
         // "동국제강 매수" → "동국제강"
