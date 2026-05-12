@@ -3233,7 +3233,7 @@
     (function() {
         'use strict';
         
-        const APP_VERSION = 'V202.33';  // ★ V202.33: 사주 차별성 - ZEUS SAJU ORACLE 일반 운세 부분 제거, [3/6] 사주 본질 흡수 (사주답게)
+        const APP_VERSION = 'V202.34';  // ★ V202.34: 용신+희신 한 줄, 행운 가이드 헤더 용신 명시, 🔥 사주 키워드 (용신 기반) 박스 마지막
         window.APP_VERSION = APP_VERSION;
         
         // ★★★ [V202.17 결정적 수정] _sajuInput 복원 ★ 페이지 로드 즉시 ★ ★★★
@@ -18692,33 +18692,40 @@ function renderSajuResult(data) {
                     //   사장님 진단: "ZEUS SAJU ORACLE = 사주답지 않다, 타로 앱처럼 됨"
                     //   해결: 박스 ★ 완전 제거 ★ + 사주적 핵심만 [3/6] 사주 본질에 흡수
                     //   
-                    //   유지: 일주 물상 / 오행 균형 / 일간 강약 (기존)
-                    //   신규: 💧 용신 + 활성 조건 / 🔥 사주 핵심 키워드 (V202.33)
-                    //   = ★ 진짜 사주답게 ★
+                    //   ★ V202.34 사장님 명령 ★
+                    //   • 💧 용신: "분석 진행 중" 단어 ★ 삭제 ★ → 한 줄 명료
+                    //   • ✨ 희신 ★ 추가 ★ (용신을 생하는 보조 오행)
+                    //   • 🔥 사주 핵심 키워드 → [3/6]에서 제거 → 🌟 행운 가이드 박스 마지막으로 이동
                     
                     const _oracle = text.zeusSajuOracle;
                     if (!_oracle || !_oracle.coreStructure) return '';
                     
-                    // ★ 용신 실제 값 추출 — data.yongshin 우선 (분석 중 결함 수정) ★
+                    // ★ 용신 실제 값 추출 ★
                     const _ysData = data.yongshin || data.pro?.yongshin || null;
                     const _ysName = _ysData?.yongshin || '';
-                    const _ysReason = _ysData?.reason || '';
-                    const _ysDisplay = _ysName ? `${_ysName}(水/木/火/土/金 중)` : '분석 중';
-                    const _ysDesc = _ysReason || _oracle.coreStructure.yongshinDesc || '깊은 사고와 배움이 운을 살립니다';
+                    
+                    // ★ V202.34 희신 자동 계산 (오행 상생: 용신을 생하는 오행) ★
+                    const _huishinMap = {
+                        '목': { name: '수', hanja: '水' },  // 수생목
+                        '화': { name: '목', hanja: '木' },  // 목생화
+                        '토': { name: '화', hanja: '火' },  // 화생토
+                        '금': { name: '토', hanja: '土' },  // 토생금
+                        '수': { name: '금', hanja: '金' }   // 금생수
+                    };
+                    const _ysHanjaMap = { '목':'木', '화':'火', '토':'土', '금':'金', '수':'水' };
+                    const _ysHanja = _ysHanjaMap[_ysName] || '';
+                    const _hs = _huishinMap[_ysName] || null;
                     
                     return `
-                    <!-- ★ V202.33 사주 핵심 풀이 (용신 + 사주 키워드) — [3/6] 안 통합 ★ -->
+                    <!-- ★ V202.34 [3/6] 안 — 💧 용신 + ✨ 희신 한 줄 ★ -->
                     <div style="margin-top:14px; padding-top:12px; border-top:1px dashed rgba(212,175,55,0.3);">
-                        <!-- 💧 용신 + 활성 조건 -->
-                        <div style="color:rgba(255,255,255,0.92); font-size:0.85rem; line-height:1.7; margin-bottom:10px;">
-                            <strong style="color:#FFE08A;">▸ 💧 용신:</strong> <span style="color:#7FCDFF; font-weight:700;">${_ysName || '분석 진행 중'}</span><br>
-                            <span style="color:rgba(255,255,255,0.85); font-size:0.82rem;">${_ysDesc}</span>
-                        </div>
-                        
-                        <!-- 🔥 사주 핵심 키워드 -->
-                        <div style="color:rgba(255,255,255,0.92); font-size:0.85rem; line-height:1.7;">
-                            <strong style="color:#FFE08A;">▸ 🔥 사주 핵심 키워드:</strong><br>
-                            <span style="color:#FFD970; font-size:0.92rem; font-weight:800; font-style:italic;">"${_oracle.coreStructure.keyword}"</span>
+                        <!-- 💧 용신 · ✨ 희신 — 한 줄 명료 (★ V202.34 사장님 명령 ★) -->
+                        <div style="color:rgba(255,255,255,0.92); font-size:0.88rem; line-height:1.7;">
+                            <strong style="color:#FFE08A;">▸ 💧 용신:</strong> 
+                            <span style="color:#7FCDFF; font-weight:800; font-size:0.95rem;">${_ysName ? _ysName + '(' + _ysHanja + ')' : '-'}</span>
+                            ${_hs ? `<span style="color:rgba(255,255,255,0.45); margin:0 6px;">·</span>
+                                    <strong style="color:#FFE08A;">✨ 희신:</strong>
+                                    <span style="color:#C39BD3; font-weight:800; font-size:0.95rem;">${_hs.name}(${_hs.hanja})</span>` : ''}
                         </div>
                     </div>
                     `;
@@ -18756,13 +18763,13 @@ function renderSajuResult(data) {
                             border-radius: 14px;
                             box-shadow: 0 0 16px rgba(155,89,182,0.18);">
                     
-                    <!-- 박스 헤더 -->
+                    <!-- 박스 헤더 — ★ V202.34 용신 명시 ★ -->
                     <div style="text-align:center; padding-bottom:11px; margin-bottom:14px; border-bottom:1px solid rgba(155,89,182,0.3);">
                         <div style="color:#C39BD3; font-size:1.0rem; font-weight:900; letter-spacing:0.06em; margin-bottom:5px;">
-                            🌟 오늘의 행운 가이드
+                            🌟 용신 ${(function(){ const _h = {'목':'木','화':'火','토':'土','금':'金','수':'水'}; return _ysName + '(' + (_h[_ysName] || '') + ')'; })()}에 따른 행운 가이드
                         </div>
                         <div style="font-size:0.62rem; color:rgba(195,155,211,0.85); font-weight:700; letter-spacing:0.15em;">
-                            LUCKY GUIDE · ${_ysName}(水/木/火/土/金)
+                            LUCKY GUIDE · 사주 명식 기반 맞춤 가이드
                         </div>
                     </div>
                     
@@ -18849,13 +18856,24 @@ function renderSajuResult(data) {
                     
                     ${_rec.avoidColors || _rec.avoidDirections ? `
                     <!-- ⛔ 멀리할 것 (V202.32 신규 — 균형) -->
-                    <div style="padding:10px 12px; background:rgba(231,76,60,0.08); border:1px solid rgba(231,76,60,0.3); border-radius:8px;">
+                    <div style="padding:10px 12px; background:rgba(231,76,60,0.08); border:1px solid rgba(231,76,60,0.3); border-radius:8px; margin-bottom:12px;">
                         <div style="color:#FF8870; font-size:0.7rem; font-weight:900; letter-spacing:0.1em; margin-bottom:6px;">
                             ⛔ 멀리할 것 (균형)
                         </div>
                         <div style="font-size:0.78rem; color:rgba(255,255,255,0.85); line-height:1.7;">
                             ${_rec.avoidColors ? `<div>• <strong style="color:#FF9F8A;">색상</strong>: ${_rec.avoidColors.join(', ')}</div>` : ''}
                             ${_rec.avoidDirections ? `<div>• <strong style="color:#FF9F8A;">방위</strong>: ${_rec.avoidDirections.join(', ')}</div>` : ''}
+                        </div>
+                    </div>` : ''}
+                    
+                    ${_rec.sajuKeyword ? `
+                    <!-- ★ V202.34 사장님 명령 ★ 🔥 사주 핵심 키워드 — 용신 기반 (점수 X) -->
+                    <div style="padding:12px 14px; background:rgba(241,196,15,0.12); border:1.5px solid rgba(241,196,15,0.45); border-radius:8px; text-align:center;">
+                        <div style="color:#FFD970; font-size:0.72rem; font-weight:900; letter-spacing:0.12em; margin-bottom:7px;">
+                            🔥 사주 핵심 키워드
+                        </div>
+                        <div style="font-size:0.98rem; color:#FFE08A; font-weight:800; line-height:1.55; font-style:italic;">
+                            "${_rec.sajuKeyword}"
                         </div>
                     </div>` : ''}
                 </div>
