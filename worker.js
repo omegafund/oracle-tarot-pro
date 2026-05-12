@@ -16919,7 +16919,9 @@ const YONGSHIN_RECOMMENDATIONS = {
     // V202.32 균형 (멀리할 것) — 신뢰도 ↑
     avoidColors:['진한 회색','은색'], avoidDirections:['서쪽'],
     // V202.32 오늘의 키워드 (강조)
-    keyword:'성장 · 시작 · 새 출발'
+    keyword:'성장 · 시작 · 새 출발',
+    // ★ V202.34 사주 핵심 키워드 (용신 기반 사주적 본질) ★
+    sajuKeyword:'성장·시작·새 출발의 본질 흐름'
   },
   '화': {
     colors:['빨강','주황'], directions:['남쪽'],   numbers:[2,7],
@@ -16927,7 +16929,8 @@ const YONGSHIN_RECOMMENDATIONS = {
     timeRange:'오전 11시~오후 1시', luckyDay:'화요일·일요일', season:'여름',
     scent:'시나몬·로즈마리·자스민', music:'재즈·라틴·살사',
     avoidColors:['검정','진한 파랑'], avoidDirections:['북쪽'],
-    keyword:'열정 · 표현 · 활동'
+    keyword:'열정 · 표현 · 활동',
+    sajuKeyword:'열정·표현·활동의 본질 흐름'
   },
   '토': {
     colors:['노랑','갈색'], directions:['중앙·남서'], numbers:[5,10],
@@ -16935,7 +16938,8 @@ const YONGSHIN_RECOMMENDATIONS = {
     timeRange:'오후 1~3시', luckyDay:'토요일·일요일', season:'환절기',
     scent:'샌달우드·바닐라·머스크', music:'클래식·앰비언트',
     avoidColors:['초록','연두'], avoidDirections:['동쪽'],
-    keyword:'안정 · 신뢰 · 기반'
+    keyword:'안정 · 신뢰 · 기반',
+    sajuKeyword:'안정·신뢰·기반의 본질 흐름'
   },
   '금': {
     colors:['흰색','회색','금색'], directions:['서쪽'],   numbers:[4,9],
@@ -16943,7 +16947,8 @@ const YONGSHIN_RECOMMENDATIONS = {
     timeRange:'오후 3~7시', luckyDay:'금요일·토요일', season:'가을',
     scent:'프랑킨센스·시더우드·라벤더', music:'클래식·재즈',
     avoidColors:['빨강','진한 주황'], avoidDirections:['남쪽'],
-    keyword:'결단 · 정리 · 완성'
+    keyword:'결단 · 정리 · 완성',
+    sajuKeyword:'결단·정리·완성의 본질 흐름'
   },
   '수': {
     colors:['검정','파랑'], directions:['북쪽'],   numbers:[1,6],
@@ -16951,7 +16956,8 @@ const YONGSHIN_RECOMMENDATIONS = {
     timeRange:'밤 9시~새벽 1시', luckyDay:'수요일·금요일', season:'겨울·초봄',
     scent:'유칼립투스·페퍼민트·바다 향', music:'잔잔한 피아노·자연 음악',
     avoidColors:['진한 노랑','갈색'], avoidDirections:['중앙·남서'],
-    keyword:'지혜 · 통찰 · 깊이'
+    keyword:'지혜 · 통찰 · 깊이',
+    sajuKeyword:'지혜·통찰·깊이의 본질 흐름'
   }
 };
 
@@ -18011,7 +18017,7 @@ export default {
     // ════════════════════════════════════════════════════════════════════
     if (url.pathname === "/version" && request.method === "GET") {
       return new Response(JSON.stringify({
-        version: "V202.33",      // ★ V202.33: 사장님 사주 차별성 명령 - ZEUS SAJU ORACLE 박스 일반 운세 부분 완전 제거, [3/6] 사주 본질에 용신+키워드 흡수
+        version: "V202.34",      // ★ V202.34: 사장님 정밀 명령 - [3/6] 용신+희신 한 줄, 행운 가이드 헤더 용신 명시, 🔥 사주 키워드 박스 마지막 (용신 기반)
         _ts: Date.now(),
         _ok: true
       }), {
