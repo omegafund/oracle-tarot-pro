@@ -7526,124 +7526,51 @@ function v31GenerateText(sajuData, judgeResult) {
 }
 
 // ══════════════════════════════════════════════════════════════════
-// ★ [V202.31 사장님 D안] buildZeusSajuOracleBox — 사주 결론 박스
+// ★ [V202.33 사장님 사주 차별성 명령] buildZeusSajuOracleBox 단순화 ★
 // ══════════════════════════════════════════════════════════════════
-// 사장님 통찰: 투자 신탁 D안 (결론 박스 단일화)과 동일 철학을 사주에도
-// 보완 5종 모두 적용:
-//   🥇 색상 신호 (점수 기반 🟢/🟡/🔴)
-//   🥈 ✅/❌ 시각 분리
-//   🥉 6대 운세 4종만 (학업/가족은 PRO)
-//   🏅 4주 운성 친절 안내 (보완 함수 buildFriendlyLuckPhase)
-//   🎯 헤더 (남)(여)
+// 사장님 진단: "ZEUS SAJU ORACLE = 사주답지 않다, 타로 앱처럼 됨"
+//             "사주인지 타로인지 애매한 포지션, 차별성 없음"
 //
-// 안전: 사주만 (queryType 분기 없음 — 사주 결과 함수 안에서만 호출)
-// 격리: 투자/연애/운세 영향 0 (사주 페이로드 안에만 존재)
+// 옛 (V202.31): verdict / energyFlow / flowTiming / actionOracle / finalOneLine
+//   = ★ 일반 운세 톤 ★ (타로/일반 운세 앱과 동일)
+//   = 사주 차별성 0
+//
+// 새 (V202.33): coreStructure만 반환
+//   = ★ 사주 본질만 ★ (일간 / 용신 / 핵심 키워드)
+//   = [3/6] 사주 본질 박스 안에 ★ 흡수 ★ 됨
+//   = 일반 운세 톤 ★ 완전 제거 ★
+//
+// 격리: 사주만 (queryType 분기 없음 - 사주 결과 함수 안에서만 호출)
 // ══════════════════════════════════════════════════════════════════
 function buildZeusSajuOracleBox(ctx) {
-  const { score, meta, strength, yongshin, dayPillar, timePhase } = ctx;
+  const { score, meta, yongshin, dayPillar } = ctx;
 
-  // ── 색상 신호 (보완 1) — 점수 기반 ──
-  //   75+: 🟢 상승 안정 / 50~74: 🟡 안정 검토 / 50 미만: 🔴 정비 필요
-  let signalIcon, signalText, signalColor;
-  if (score >= 75) {
-    signalIcon = '🟢'; signalText = '상승 안정 흐름'; signalColor = 'positive';
-  } else if (score >= 50) {
-    signalIcon = '🟡'; signalText = '안정 검토 흐름'; signalColor = 'neutral';
-  } else {
-    signalIcon = '🔴'; signalText = '정비·재정렬 흐름'; signalColor = 'caution';
-  }
-
-  // ── 🎯 사주 결론 ──
-  const verdict = {
-    signal:  `${signalIcon} ${signalText}`,
-    summary: score >= 75
-      ? '지금은 망설임보다 실행이 결과를 만드는 시기입니다.'
-      : score >= 50
-      ? '지금은 단계적 점검 후 행동이 결과를 만드는 시기입니다.'
-      : '지금은 정비와 재정렬이 흐름을 회복시키는 시기입니다.',
-    action:  score >= 75
-      ? '3일 내 작은 실행 시작 시 운의 흐름이 강화됩니다.'
-      : score >= 50
-      ? '3일 내 작은 점검·정리가 흐름의 안정에 도움이 됩니다.'
-      : '3일 내 우선순위 재정렬이 흐름 회복에 효과적입니다.',
-    caution: score >= 75
-      ? '생각만 반복하면 흐름이 정체될 수 있습니다.'
-      : score >= 50
-      ? '과한 욕심·서두름은 흐름을 흐트러뜨릴 수 있습니다.'
-      : '큰 결정·새 도전은 보류가 안정적인 흐름입니다.'
-  };
-
-  // ── 🧭 지금의 운 흐름 (보완 2: ✅/❌ 분리) ──
-  const energyFlow = {
-    current: score >= 75
-      ? ['안정 상승', '관계 흐름 회복', '실행력 강화 단계']
-      : score >= 50
-      ? ['안정 검토', '신호 정렬 단계', '준비·점검 흐름']
-      : ['정비 우선', '내면 점검 단계', '재정렬 흐름'],
-    needAction: score >= 75
-      ? ['미뤄둔 일 재시작', '인간관계 정리', '생활 리듬 회복']
-      : score >= 50
-      ? ['우선순위 정리', '약속·일정 점검', '체력 관리']
-      : ['내면 회복 시간', '관계·소비 정리', '학습·휴식'],
-    avoidFlow: score >= 75
-      ? ['과도한 고민', '즉흥 소비', '감정적 결정']
-      : score >= 50
-      ? ['새 도전 즉행', '큰 지출 결정', '과도한 약속']
-      : ['새 시작 무리', '관계 갈등 확대', '큰 결단']
-  };
-
-  // ── ☯ 사주 핵심 구조 ──
+  // ── ☯ 사주 핵심 구조 (★ V202.33: 이것만 유지 ★) ──
+  //   일주 물상은 [3/6] 사주 본질 박스에 이미 있음 → 중복 회피
+  //   여기서는 ★ 용신 + 사주 키워드 ★ 만
   const coreStructure = {
     dayMaster: `${meta.dayMaster}(${meta.dayMasterElement}) 일간`,
     dayMasterDesc: V31_DAY_MASTER_ESSENCE[dayPillar] || `${meta.dayMasterElement} 일간의 본질 흐름`,
     yongshin: yongshin && yongshin.element
-      ? `용신: ${yongshin.element}(${yongshin.elementChar || ''})`
-      : '용신: 분석 중',
-    yongshinDesc: yongshin && yongshin.description
-      ? yongshin.description
+      ? `${yongshin.element}`
+      : '분석 진행 중',
+    yongshinDesc: yongshin && yongshin.reason
+      ? yongshin.reason
       : '깊은 사고와 배움이 운을 살립니다',
+    // ★ V202.33 사주 핵심 키워드 (사주적 표현) ★
+    //   사주는 점수보다 ★ 명식 자체의 본질 ★ 이 중요
+    //   "점검 + 안정 정렬" 같은 일반 표현 → 사주적 본질 표현으로
     keyword: score >= 75
-      ? '실행 가속 + 흐름 확장'
+      ? '활성·확장의 본질 흐름'
       : score >= 50
-      ? '점검 + 안정 정렬'
-      : '정비 + 흐름 재구성'
+      ? '점검·정렬의 본질 흐름'
+      : '재정비·회복의 본질 흐름'
   };
-
-  // ── 📊 6대 운세 요약 (보완 3: 4종만 노출) ──
-  //   직업/재물/연애/건강 만 박스에 표시
-  //   학업/가족은 PRO 정밀 안으로 (스크롤 단축)
-
-  // ── ⏱ 흐름 타이밍 ──
-  const flowTiming = {
-    today:  score >= 75 ? '시작 에너지 활성' : score >= 50 ? '점검 에너지 활성' : '회복 에너지 우선',
-    month:  score >= 75 ? '방향 유지가 결과를 키웁니다' : score >= 50 ? '검증 후 확장이 효과적입니다' : '재정렬이 회복에 도움 됩니다',
-    year:   score >= 75 ? '행동량이 결과 격차를 만듭니다' : score >= 50 ? '단계적 진행이 안정적입니다' : '내면 정비가 다음 사이클 기반입니다'
-  };
-
-  // ── ✨ 행동 오라클 ──
-  const actionOracle = score >= 75
-    ? '오늘 단 5분이라도 미뤄둔 일을 실행하면 정체 흐름이 완화됩니다.'
-    : score >= 50
-    ? '오늘 단 5분이라도 우선순위 정리가 흐름의 안정에 도움이 됩니다.'
-    : '오늘 단 5분이라도 내면 회복 시간이 흐름의 정비에 효과적입니다.';
-
-  // ── 📌 ZEUS 한줄 결론 ──
-  const finalOneLine = score >= 75
-    ? '지금 운은 기다림보다 움직임에 반응합니다.'
-    : score >= 50
-    ? '지금 운은 점검과 균형에 응답합니다.'
-    : '지금 운은 정비와 회복에 응답합니다.';
 
   return {
-    verdict,
-    energyFlow,
     coreStructure,
-    flowTiming,
-    actionOracle,
-    finalOneLine,
-    _signalColor: signalColor,
     _score: score,
-    _v: 'V202.31'
+    _v: 'V202.33'
   };
 }
 
@@ -18084,7 +18011,7 @@ export default {
     // ════════════════════════════════════════════════════════════════════
     if (url.pathname === "/version" && request.method === "GET") {
       return new Response(JSON.stringify({
-        version: "V202.32",      // ★ V202.32: 사주 결과창 2차 - 행운 가이드 10종 확장 + [4/6]~[8/8] PRO 펼침 통합 (B-1 + C-2)
+        version: "V202.33",      // ★ V202.33: 사장님 사주 차별성 명령 - ZEUS SAJU ORACLE 박스 일반 운세 부분 완전 제거, [3/6] 사주 본질에 용신+키워드 흡수
         _ts: Date.now(),
         _ok: true
       }), {
