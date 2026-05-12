@@ -3233,7 +3233,7 @@
     (function() {
         'use strict';
         
-        const APP_VERSION = 'V202.28';  // ★ V202.28: 라이브 결함 4종 동시 수정 - 구체 수치 제거(법적), TOP VERDICT 모바일, 깊이 박스 버튼화, financeInject 강화
+        const APP_VERSION = 'V202.30';  // ★ V202.30: 사장님 글로벌 표준 — 타이밍 시그널 3단(상태/조건/행동), 환경 감지 톤, 예언 톤 제거
         window.APP_VERSION = APP_VERSION;
         
         // ★★★ [V202.17 결정적 수정] _sajuInput 복원 ★ 페이지 로드 즉시 ★ ★★★
@@ -12031,10 +12031,30 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
                             TOP VERDICT · PRO
                         </div>
                     </div>
-                    <!-- 핵심 신호 — 한 줄 강조 -->
+                    <!-- 핵심 신호 — 중앙 강조 -->
                     <div style="font-size:1.02rem; color:#fff; font-weight:700; line-height:1.65; margin-bottom:13px; text-align:center; padding:6px 4px;">
                         👉 ${_tv202_25.signal}
                     </div>
+                    ${_tv202_25.decisiveTiming ? `
+                    <!-- ★ [V202.30 사장님 글로벌 표준] 타이밍 시그널 — 상태/조건/행동 3단 ★ -->
+                    <div style="padding:13px; background:rgba(155,89,182,0.10); border:1.5px solid rgba(155,89,182,0.45); border-radius:10px; margin-bottom:10px;">
+                        <div style="color:#C39BD3; font-size:0.72rem; font-weight:900; letter-spacing:0.1em; margin-bottom:8px; text-align:center;">
+                            🔮 타이밍 시그널 (카드 수비학)
+                        </div>
+                        <div style="font-size:0.95rem; color:#fff; font-weight:700; line-height:1.55; margin-bottom:9px; text-align:center; padding-bottom:8px; border-bottom:1px solid rgba(155,89,182,0.28);">
+                            ${_tv202_25.decisiveTiming.signal}
+                        </div>
+                        <div style="font-size:0.86rem; color:rgba(255,255,255,0.92); font-weight:500; line-height:1.65; margin-bottom:6px;">
+                            ${_tv202_25.decisiveTiming.statement}
+                        </div>
+                        <div style="font-size:0.86rem; color:rgba(255,255,255,0.85); font-weight:400; line-height:1.65; margin-bottom:8px;">
+                            ${_tv202_25.decisiveTiming.condition}
+                        </div>
+                        <div style="font-size:0.88rem; color:#FFD970; font-weight:600; line-height:1.6; padding-top:6px; border-top:1px dashed rgba(155,89,182,0.28);">
+                            👉 ${_tv202_25.decisiveTiming.guidance}
+                        </div>
+                    </div>
+                    ` : ''}
                     <div style="padding:10px 12px; background:rgba(46,204,113,0.07); border-left:3px solid #2ecc71; border-radius:0 8px 8px 0; margin-bottom:8px;">
                         <div style="color:#7AD188; font-size:0.72rem; font-weight:900; letter-spacing:0.1em; margin-bottom:5px;">
                             ⚡ 실행
