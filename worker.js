@@ -3206,6 +3206,193 @@ function buildTopVerdict(metrics) {
   };
 }
 
+// ══════════════════════════════════════════════════════════════════
+// ★ [V202.30 사장님 결정타 통찰] DECISIVE_TIMING_MATRIX ★ 진화 ★
+// ══════════════════════════════════════════════════════════════════
+// 사장님 진단 (★ 글로벌 표준 ★):
+//   ❌ "5월 17일 반등" (예언적 — 위험)
+//   ❌ "단기 흐름·중기 흐름·장기 흐름" (시간 단위 — V202.29 결함)
+//   ✅ "단기 조정 이후 재확인 구간 진입 가능성" (★ 안전 + 정확 ★)
+//
+// 사장님 통찰 핵심:
+//   • 사용자는 "정확한 날짜"보다 "지금 들어가도 되나?"를 더 궁금해함
+//   • 진정한 가치 = ★ 진입 환경 변화 감지 ★ (예언 X)
+//   • 글로벌 투자 UX 표준 어휘:
+//     - "강세 전환" "관망 유지" "확인 필요" "추세 강화" "변동성 경계"
+//
+// 새 3단 구조 (사장님 예시 모델):
+//   ① signal    : 색상 + 한 줄 상태 ("🟡 방향성 검증 단계")
+//   ② statement : 현재 상태 ("현재는 방향성 검증 단계입니다.")
+//   ③ condition : 변화 조건 ("거래량 증가와 함께 추세가 유지될 경우 ~ 가능성")
+//   ④ guidance  : 행동 지침 ("성급한 추격보다 신호 확인 후 접근이 유리")
+//
+// 안전 (법무):
+//   ✅ 구체 날짜·시간·% ★ 0개 ★
+//   ✅ 가능성 어미 ("가능성이 있습니다", "유리한 흐름입니다")
+//   ✅ 환경 감지 톤 (예언 톤 0%)
+//
+// 격리: stock/crypto만 (사주/연애/운세 null)
+// ══════════════════════════════════════════════════════════════════
+const DECISIVE_TIMING_MATRIX = {
+  // ── 매수 (BUY) 9개 수비학 단계 ──
+  buy: {
+    1: { // 시작 — 진입 환경 초기
+      signal:    '🟢 진입 환경 형성 초기',
+      statement: '현재는 진입 환경이 형성되기 시작한 흐름입니다.',
+      condition: '추세 정렬 신호가 확정될 경우 진입 환경이 강화될 가능성이 있습니다.',
+      guidance:  '성급한 추격보다 신호 확인 후 접근이 유리한 흐름입니다.'
+    },
+    2: { // 균형 — 검증 단계
+      signal:    '🟡 방향성 검증 단계',
+      statement: '현재는 방향성 검증이 필요한 흐름입니다.',
+      condition: '거래량 증가와 함께 추세가 유지될 경우 진입 환경이 열릴 가능성이 있습니다.',
+      guidance:  '확인 없는 진입보다 분할 접근이 유리한 흐름입니다.'
+    },
+    3: { // 창조 — 추세 강화
+      signal:    '🟢 추세 강화 신호 형성',
+      statement: '현재는 추세 강화 신호가 감지되는 흐름입니다.',
+      condition: '추세 동조 신호가 명확해질 경우 단계적 진입 환경이 강화될 가능성이 있습니다.',
+      guidance:  '일괄 매수보다 단계적 보강이 안정적인 흐름입니다.'
+    },
+    4: { // 안정 — 진입 환경 안정
+      signal:    '🟢 진입 환경 안정 구간',
+      statement: '현재는 진입 환경이 안정 구간에 진입한 흐름입니다.',
+      condition: '추세 안정성이 확인될 경우 분할 진입 적기로 전환될 가능성이 있습니다.',
+      guidance:  '기반 다지는 단계 후 분할 접근이 유리한 흐름입니다.'
+    },
+    5: { // 변화 — 변동성 경계
+      signal:    '🟡 변동성 경계 구간',
+      statement: '현재는 변동성 경계 구간입니다.',
+      condition: '변동성이 흡수되고 추세가 정렬될 경우 진입 환경이 회복될 가능성이 있습니다.',
+      guidance:  '본격 진입보다 변동성 흡수 후 분할 접근이 유리한 흐름입니다.'
+    },
+    6: { // 조화 — 조건 정렬
+      signal:    '🟢 진입 조건 정렬 흐름',
+      statement: '현재는 진입 조건이 정렬되는 흐름입니다.',
+      condition: '단계별 조건이 충족될 경우 진입 환경이 명확해질 가능성이 있습니다.',
+      guidance:  '단계적 보강이 안정적인 흐름입니다.'
+    },
+    7: { // 내면 — 검증 필요
+      signal:    '🟡 신호 검증 필요 구간',
+      statement: '현재는 신호 검증이 필요한 흐름입니다.',
+      condition: '추세 정렬 신호가 검증될 경우 진입 환경이 강화될 가능성이 있습니다.',
+      guidance:  '검증 후 분할 접근이 유리한 흐름입니다.'
+    },
+    8: { // 완성 — 신호 명확화
+      signal:    '🟢 진입 신호 명확화',
+      statement: '현재는 진입 신호가 명확해지는 흐름입니다.',
+      condition: '추세 동조 확인 시 단계적 진입 환경이 열릴 가능성이 있습니다.',
+      guidance:  '신호 동조 시 단계적 1차 진입이 유리한 흐름입니다.'
+    },
+    9: { // 전환 — 사이클 마무리
+      signal:    '🔴 사이클 마무리 — 관망 유지',
+      statement: '현재는 사이클이 마무리되는 흐름입니다.',
+      condition: '다음 사이클 신호가 형성될 경우 새 진입 환경이 열릴 가능성이 있습니다.',
+      guidance:  '신규 진입보다 다음 환경 형성 대기가 유리한 흐름입니다.'
+    }
+  },
+  // ── 매도 (SELL) 9개 수비학 단계 ──
+  sell: {
+    1: { // 시작 — 청산 초기 신호
+      signal:    '🟡 청산 환경 초기 신호',
+      statement: '현재는 청산 환경이 형성되기 시작한 흐름입니다.',
+      condition: '추세 둔화 신호가 확정될 경우 단계적 청산 환경이 강화될 가능성이 있습니다.',
+      guidance:  '일괄 청산보다 분할 정리 1차 단계가 유리한 흐름입니다.'
+    },
+    2: { // 균형 — 익절 점검
+      signal:    '🔴 익절 구간 점검 단계',
+      statement: '현재는 익절 구간 점검 단계입니다.',
+      condition: '수익 보호 신호가 정렬될 경우 단계적 청산 환경이 효과적으로 전환될 가능성이 있습니다.',
+      guidance:  '단계적 정리가 안정적인 흐름입니다.'
+    },
+    3: { // 창조 — 청산 흐름 형성
+      signal:    '🟡 청산 흐름 형성 단계',
+      statement: '현재는 청산 흐름이 형성되는 단계입니다.',
+      condition: '확장 둔화 신호 시 분할 청산 적기로 전환될 가능성이 있습니다.',
+      guidance:  '확장 둔화 신호 확인 후 분할 청산이 유리한 흐름입니다.'
+    },
+    4: { // 안정 — 단계적 정리
+      signal:    '🔴 단계적 정리 구간',
+      statement: '현재는 단계적 정리가 효과적인 흐름입니다.',
+      condition: '추세 안정성 약화 시 청산 환경이 명확해질 가능성이 있습니다.',
+      guidance:  '단계별 정리가 효과적인 흐름입니다.'
+    },
+    5: { // 변화 — 변동성 확대 경계
+      signal:    '🔴 변동성 확대 경계',
+      statement: '현재는 변동성 확대 경계 구간입니다.',
+      condition: '변동성 확대 신호 시 분할 정리 환경이 효과적으로 전환될 가능성이 있습니다.',
+      guidance:  '변동성 확대 전 1차 정리가 유리한 흐름입니다.'
+    },
+    6: { // 조화 — 청산 신호 정렬
+      signal:    '🟡 청산 신호 정렬 흐름',
+      statement: '현재는 청산 신호가 정렬되는 흐름입니다.',
+      condition: '단계별 청산 조건이 충족될 경우 잔여 관찰 단계로 전환될 가능성이 있습니다.',
+      guidance:  '단계적 정리 후 잔여 관찰이 안정적인 흐름입니다.'
+    },
+    7: { // 내면 — 청산 검토
+      signal:    '🟡 청산 검토 단계',
+      statement: '현재는 청산 검토 단계입니다.',
+      condition: '신호 검토가 마무리될 경우 분할 청산 환경이 명확해질 가능성이 있습니다.',
+      guidance:  '검토 후 분할 청산이 유리한 흐름입니다.'
+    },
+    8: { // 완성 — 청산 신호 명확화
+      signal:    '🔴 청산 신호 명확화',
+      statement: '현재는 청산 신호가 명확해지는 흐름입니다.',
+      condition: '단계적 분할 청산 환경이 활성화된 흐름입니다.',
+      guidance:  '단계적 분할 청산이 유리한 흐름입니다.'
+    },
+    9: { // 전환 — 사이클 종료
+      signal:    '🔴 사이클 종료 흐름',
+      statement: '현재는 사이클 종료 흐름입니다.',
+      condition: '사이클 마무리 신호가 활성화된 상태입니다.',
+      guidance:  '단계적 청산이 유리한 흐름입니다.'
+    }
+  }
+};
+
+// ★ V202.30 ★ buildDecisiveTiming — 카드 수비학 기반 ★ 타이밍 시그널 ★ 도출
+//
+// 사장님 진화: V202.29 (단기/중기/장기) → V202.30 (상태·조건·행동 3단)
+//
+// 입력: metrics (queryType, stockIntent, cleanCards, reversedFlags)
+// 출력: { signal, statement, condition, guidance, numerology } 또는 null
+//
+// 격리 보장: stock/crypto 외 모두 null (사주/연애/운세 영향 0)
+function buildDecisiveTiming(metrics) {
+  if (!metrics || typeof metrics !== 'object') return null;
+  const qType  = metrics.queryType;
+  if (qType !== 'stock' && qType !== 'crypto') return null;
+
+  const intent = metrics.stockIntent || 'buy';
+  const cards  = Array.isArray(metrics.cleanCards) ? metrics.cleanCards : [];
+  const revs   = Array.isArray(metrics.reversedFlags) ? metrics.reversedFlags : [false, false, false];
+
+  // 카드 점수 합 — 정역방향 반영 (영성 시드 V27.0.5 동일 공식)
+  let cardScoreSum = 0;
+  for (let i = 0; i < cards.length; i++) {
+    const score = (typeof CARD_SCORE !== 'undefined' && CARD_SCORE[cards[i]] !== undefined)
+      ? CARD_SCORE[cards[i]] : 0;
+    cardScoreSum += revs[i] ? -score : score;
+  }
+
+  // 수비학 1~9 (영성 시드 V27.0.5 동일 공식)
+  const numerology = ((cardScoreSum + 90) % 9) + 1;
+
+  // intent별 분기
+  const tableKey = (intent === 'sell') ? 'sell' : 'buy';
+  const verdict  = DECISIVE_TIMING_MATRIX[tableKey][numerology] || DECISIVE_TIMING_MATRIX[tableKey][8];
+
+  return {
+    signal:     verdict.signal,     // 색상 + 한 줄 상태
+    statement:  verdict.statement,  // 현재 단계 (사장님 글로벌 표준 톤)
+    condition:  verdict.condition,  // 변화 조건
+    guidance:   verdict.guidance,   // 행동 지침 (👉)
+    numerology: numerology,
+    cardSum:    cardScoreSum,
+    _v: 'V202.30'
+  };
+}
+
 const STOCK_BLOCK_MATRIX = {
   // ── BUY 시나리오 5종 (wait_buy/verified/limited/active/split) — 🟢 / 🟡 ──
   
@@ -8309,7 +8496,10 @@ const V31_LUCK_PHASE_12 = {
     meaning: '새로운 시작과 활기 — 봄의 새싹처럼 가능성이 깨어나는 시기',
     strength: 'high',
     advice: '새 도전을 시작하기 좋은 흐름 — 적극 행동',
-    period: '청년기 (20-30대) 흐름과 같음'
+    // ★ [V202.29 사장님 진단] 12운성 period 라벨 ★ 비유 ★ 형식으로 수정 ★
+    //   결함: "20대 초반 흐름" → 52세 여성에게 "내 나이 50대인데?" 혼란
+    //   해결: 12운성은 ★ 인생 단계 비유 ★ — 실제 나이 아님을 명확히
+    period: '인생의 봄 단계 — 새 출발·기운 회복 (실제 나이 무관, 12운성 비유)'
   },
   목욕: {
     name: '목욕(沐浴)',
@@ -8319,7 +8509,7 @@ const V31_LUCK_PHASE_12 = {
     meaning: '꾸미고 단장하는 흐름 — 변화와 멋, 그리고 도화살이 함께',
     strength: 'medium',
     advice: '유혹과 변덕 주의 — 감정 조절 필요',
-    period: '20대 초반 흐름'
+    period: '새 환경 적응 단계 — 변동·정리·재단장 (실제 나이 무관, 12운성 비유)'
   },
   관대: {
     name: '관대(冠帶)',
@@ -8329,7 +8519,7 @@ const V31_LUCK_PHASE_12 = {
     meaning: '관모를 쓴 청년의 흐름 — 사회 진출 + 책임 시작',
     strength: 'high',
     advice: '새 역할에 적응하며 정체성 확립',
-    period: '20대 후반 - 30대 초'
+    period: '책임·정체성 형성 단계 — 새 역할 적응 (실제 나이 무관, 12운성 비유)'
   },
   임관: {
     name: '임관(臨官)',
@@ -8339,7 +8529,7 @@ const V31_LUCK_PHASE_12 = {
     meaning: '관직에 임하는 흐름 — 큰 책임을 맡고 적극 활동',
     strength: 'very_high',
     advice: '리더십 발휘 + 큰 일 진행',
-    period: '30대 흐름'
+    period: '리더십·적극 활동 단계 — 큰 책임 수행기 (실제 나이 무관, 12운성 비유)'
   },
   제왕: {
     name: '제왕(帝旺)',
@@ -8349,7 +8539,7 @@ const V31_LUCK_PHASE_12 = {
     meaning: '왕좌의 절정 — 인생 최고점 + 권력 + 명예',
     strength: 'peak',
     advice: '교만 주의 — 절정 후 쇠퇴 시작 유념',
-    period: '40대 흐름'
+    period: '에너지 절정 단계 — 최고점·균형 관리 필요 (실제 나이 무관, 12운성 비유)'
   },
   쇠: {
     name: '쇠(衰)',
@@ -8359,7 +8549,7 @@ const V31_LUCK_PHASE_12 = {
     meaning: '절정 후 자연스러운 쇠퇴 — 안정 + 성숙한 판단',
     strength: 'medium',
     advice: '경험 활용 + 후배 양성',
-    period: '50대 흐름'
+    period: '안정·성숙 단계 — 경험 활용기 (실제 나이 무관, 12운성 비유)'
   },
   병: {
     name: '병(病)',
@@ -8369,7 +8559,7 @@ const V31_LUCK_PHASE_12 = {
     meaning: '심신이 약해지는 흐름 — 휴식과 회복이 필요',
     strength: 'low',
     advice: '건강 + 신체 관리 우선',
-    period: '60대 흐름'
+    period: '재정비·회복 단계 — 휴식·관리기 (실제 나이 무관, 12운성 비유)'
   },
   사: {
     name: '사(死)',
@@ -8379,7 +8569,7 @@ const V31_LUCK_PHASE_12 = {
     meaning: '활동 정지 + 정신적 깊이 — 죽음이 아닌 마무리 시기',
     strength: 'very_low',
     advice: '내면 성찰 + 학문/예술 깊이',
-    period: '70대 흐름'
+    period: '내면 정리·깊이 단계 — 성찰·학문 시기 (실제 나이 무관, 12운성 비유)'
   },
   묘: {
     name: '묘(墓)',
@@ -8389,7 +8579,7 @@ const V31_LUCK_PHASE_12 = {
     meaning: '저장과 보관의 시기 — 재물 비축 + 학문 정리',
     strength: 'low',
     advice: '저축 + 자료 정리 + 가족 보호',
-    period: '말년 흐름'
+    period: '저장·보관 단계 — 비축·정리기 (실제 나이 무관, 12운성 비유)'
   },
   절: {
     name: '절(絶)',
@@ -8399,7 +8589,7 @@ const V31_LUCK_PHASE_12 = {
     meaning: '단절 후 새로운 시작 — 무의식적 전환',
     strength: 'transition',
     advice: '큰 변화 시기 — 유연성 발휘',
-    period: '전환기 흐름'
+    period: '단절·전환 단계 — 새 구조 형성기 (실제 나이 무관, 12운성 비유)'
   },
   태: {
     name: '태(胎)',
@@ -8409,7 +8599,7 @@ const V31_LUCK_PHASE_12 = {
     meaning: '새 생명의 잉태 — 미래의 가능성',
     strength: 'low',
     advice: '준비 + 기다림 + 학습',
-    period: '준비기 흐름'
+    period: '잠재력 축적 단계 — 준비·학습기 (실제 나이 무관, 12운성 비유)'
   },
   양: {
     name: '양(養)',
@@ -8419,7 +8609,7 @@ const V31_LUCK_PHASE_12 = {
     meaning: '양육과 성장 — 보호 받으며 자라는 흐름',
     strength: 'medium',
     advice: '학습 + 멘토 활용 + 안정',
-    period: '유년기 흐름'
+    period: '성장·보호 단계 — 멘토 활용기 (실제 나이 무관, 12운성 비유)'
   }
 };
 
@@ -17620,7 +17810,7 @@ export default {
     // ════════════════════════════════════════════════════════════════════
     if (url.pathname === "/version" && request.method === "GET") {
       return new Response(JSON.stringify({
-        version: "V202.28",      // ★ V202.28: 사장님 라이브 결함 진단 - 구체 수치 완전 제거(법적 안전) + TOP VERDICT 모바일 UX + 깊이 박스 강한 버튼 + financeInject D-3 강화
+        version: "V202.30",      // ★ V202.30: 사장님 글로벌 표준 통찰 — 타이밍 시그널 진화 (시간 단위 X, 환경 감지 3단 상태/조건/행동)
         _ts: Date.now(),
         _ok: true
       }), {
@@ -19093,6 +19283,14 @@ export default {
           //   안전: 매트릭스 기정치 풀 사용 (AI 환각 0, 법무 안전, 토큰 비용 0)
           const _topVerdict = buildTopVerdict(metrics);
           if (_topVerdict) {
+            // ★ [V202.29 사장님 결정적 한방 명령] 카드 수비학 시기 통합 ★
+            //   사장님 진단: "그래서 언제 팔아야 하는데? 결정적 한방이 없다"
+            //   해결: 카드 점수 합 + 정역방향 → 수비학 1~9 → 시기 단계 매핑
+            //   격리: stock/crypto 외 null (사주/연애/운세 영향 0)
+            const _decisiveTiming = buildDecisiveTiming(metrics);
+            if (_decisiveTiming) {
+              _topVerdict.decisiveTiming = _decisiveTiming;
+            }
             metrics.topVerdict = _topVerdict;
           }
 
