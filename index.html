@@ -3233,7 +3233,7 @@
     (function() {
         'use strict';
         
-        const APP_VERSION = 'V202.30';  // ★ V202.30: 사장님 글로벌 표준 — 타이밍 시그널 3단(상태/조건/행동), 환경 감지 톤, 예언 톤 제거
+        const APP_VERSION = 'V202.32';  // ★ V202.32: 사주 2차 - 행운 가이드 10종 노출 + [4/6]-[8/8] PRO 펼침 통합 (B-1 + C-2)
         window.APP_VERSION = APP_VERSION;
         
         // ★★★ [V202.17 결정적 수정] _sajuInput 복원 ★ 페이지 로드 즉시 ★ ★★★
@@ -18655,13 +18655,11 @@ function renderSajuResult(data) {
                 ${elBars}
             </div>
 
-            <!-- [V31 #163 사장님 6블록 + #169] [3] 본질 흐름 -->
-            <!--   #169: "일주 본질" → "일주 물상" (사주 정통 용어) -->
-            <!--   #169: 각 항목에 "→ 의미" 답변 추가 (구체성 강화) -->
+            <!-- [V202.31 사장님 통찰] [3] 사주 본질 (★ '본질 흐름' → '사주 본질' 개칭 ★) -->
             <div style="margin:18px 0; padding:14px; background:rgba(212,175,55,0.06); border-left:3px solid rgba(212,175,55,0.5); border-radius:0 6px 6px 0;">
                 <div style="display:flex; align-items:center; gap:6px; margin-bottom:8px;">
                     <span style="font-size:0.7rem; color:#FFD970; font-weight:900; letter-spacing:0.05em;">[3/6]</span>
-                    <span style="color:#FFD970; font-size:0.84rem; font-weight:800;">🔍 본질 흐름</span>
+                    <span style="color:#FFD970; font-size:0.84rem; font-weight:800;">🔍 사주 본질</span>
                 </div>
                 
                 <!-- 일주 물상 (사장님 결정 — 정통 용어) -->
@@ -18678,7 +18676,6 @@ function renderSajuResult(data) {
                 <div style="color:rgba(255,255,255,0.92); font-size:0.85rem; line-height:1.7;">
                     <strong style="color:#FFE08A;">▸ ${text.strengthLabel || '본질 흐름'}:</strong><br>${text.strengthPhrase}
                     ${(function() {
-                        // [V31 #169 결함 ③] 각 본질 흐름에 "→ 의미" 답변 자동 추가
                         const sajuStateLocal = detectSajuState(elements, text.meta?.pillars || {});
                         let meaning = '';
                         if (sajuStateLocal.strength === 'weak') {
@@ -18691,26 +18688,308 @@ function renderSajuResult(data) {
                 </div>
             </div>
 
+            ${(function() {
+                // ════════════════════════════════════════════════════════════
+                // ★★★ [V202.31 사장님 D안] ✦ ZEUS SAJU ORACLE ✦ 박스 ★★★
+                // ════════════════════════════════════════════════════════════
+                // 사장님 통찰: 투자 신탁 TOP VERDICT 박스와 동일 철학을 사주에도
+                // 스크롤 단축 + 결제 가치 강조 + 글로벌 UX 표준
+                //
+                // 보완 5종 모두 적용:
+                //   🥇 색상 신호 (🟢/🟡/🔴) — 점수 기반
+                //   🥈 ✅/❌ 시각 분리 (필요 행동 vs 피할 흐름)
+                //   🥉 6대 운세 4종만 (직업/재물/연애/건강)
+                //   🏅 4주 운성 친절 안내 (PRO 정밀 안)
+                //   🎯 헤더 (남)(여) (이미 워커 적용)
+                const _oracle = text.zeusSajuOracle;
+                if (!_oracle) return '';
+                
+                const _sigColor = _oracle._signalColor;
+                const _borderColor = _sigColor === 'positive' ? '#2ecc71' : _sigColor === 'caution' ? '#e74c3c' : '#F1C40F';
+                const _bgGradient = _sigColor === 'positive'
+                  ? 'linear-gradient(135deg, rgba(46,204,113,0.10), rgba(241,196,15,0.06))'
+                  : _sigColor === 'caution'
+                  ? 'linear-gradient(135deg, rgba(231,76,60,0.10), rgba(241,196,15,0.06))'
+                  : 'linear-gradient(135deg, rgba(241,196,15,0.10), rgba(231,76,60,0.06))';
+                
+                return `
+                <!-- ✦ ZEUS SAJU ORACLE 박스 -->
+                <div style="margin:22px 0; padding:18px 14px;
+                            background:${_bgGradient};
+                            border: 2px solid ${_borderColor}80;
+                            border-radius: 14px;
+                            box-shadow: 0 0 18px ${_borderColor}25;">
+                    
+                    <!-- 박스 헤더 -->
+                    <div style="text-align:center; padding-bottom:12px; margin-bottom:14px; border-bottom:1px solid rgba(241,196,15,0.28);">
+                        <div style="color:${_borderColor}; font-size:1.05rem; font-weight:900; letter-spacing:0.08em; margin-bottom:5px;">
+                            ✦ ZEUS SAJU ORACLE ✦
+                        </div>
+                        <div style="font-size:0.62rem; color:rgba(241,196,15,0.85); font-weight:700; letter-spacing:0.18em;">
+                            SAJU FINAL VERDICT · PRO
+                        </div>
+                    </div>
+                    
+                    <!-- 🎯 사주 결론 -->
+                    <div style="margin-bottom:14px;">
+                        <div style="color:#F1C40F; font-size:0.78rem; font-weight:900; letter-spacing:0.08em; margin-bottom:7px;">
+                            🎯 사주 결론
+                        </div>
+                        <div style="font-size:1.05rem; color:#fff; font-weight:800; line-height:1.55; margin-bottom:9px; text-align:center; padding:8px 4px;">
+                            ${_oracle.verdict.signal}
+                        </div>
+                        <div style="font-size:0.92rem; color:rgba(255,255,255,0.92); line-height:1.65; margin-bottom:10px; font-weight:500; text-align:center; padding:0 4px;">
+                            ${_oracle.verdict.summary}
+                        </div>
+                        <div style="padding:9px 11px; background:rgba(46,204,113,0.08); border-left:3px solid #2ecc71; border-radius:0 6px 6px 0; margin-bottom:7px;">
+                            <div style="color:#7AD188; font-size:0.7rem; font-weight:900; letter-spacing:0.1em; margin-bottom:4px;">⚡ 행동 트리거</div>
+                            <div style="font-size:0.88rem; color:rgba(255,255,255,0.92); font-weight:500; line-height:1.55;">${_oracle.verdict.action}</div>
+                        </div>
+                        <div style="padding:9px 11px; background:rgba(231,76,60,0.06); border-left:3px solid #e74c3c; border-radius:0 6px 6px 0;">
+                            <div style="color:#FF8870; font-size:0.7rem; font-weight:900; letter-spacing:0.1em; margin-bottom:4px;">⚠️ 주의 포인트</div>
+                            <div style="font-size:0.88rem; color:rgba(255,255,255,0.88); font-weight:500; line-height:1.55;">${_oracle.verdict.caution}</div>
+                        </div>
+                    </div>
+                    
+                    <!-- 🧭 지금의 운 흐름 (보완 2: ✅/❌ 분리) -->
+                    <div style="margin-bottom:14px; padding:12px; background:rgba(0,0,0,0.18); border-radius:8px;">
+                        <div style="color:#FFD970; font-size:0.78rem; font-weight:900; letter-spacing:0.08em; margin-bottom:9px;">
+                            🧭 지금의 운 흐름
+                        </div>
+                        <div style="margin-bottom:10px; font-size:0.84rem; color:rgba(255,255,255,0.88); line-height:1.6;">
+                            <strong style="color:#FFE08A;">현재 에너지:</strong> ${_oracle.energyFlow.current.map(e => '✔ ' + e).join(' ')}
+                        </div>
+                        <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
+                            <div style="padding:9px; background:rgba(46,204,113,0.10); border:1px solid rgba(46,204,113,0.3); border-radius:6px;">
+                                <div style="color:#7AD188; font-size:0.7rem; font-weight:900; margin-bottom:5px;">✅ 필요한 행동</div>
+                                <div style="font-size:0.78rem; color:rgba(255,255,255,0.85); line-height:1.5;">
+                                    ${_oracle.energyFlow.needAction.map(a => '• ' + a).join('<br>')}
+                                </div>
+                            </div>
+                            <div style="padding:9px; background:rgba(231,76,60,0.10); border:1px solid rgba(231,76,60,0.3); border-radius:6px;">
+                                <div style="color:#FF8870; font-size:0.7rem; font-weight:900; margin-bottom:5px;">❌ 피해야 할 흐름</div>
+                                <div style="font-size:0.78rem; color:rgba(255,255,255,0.85); line-height:1.5;">
+                                    ${_oracle.energyFlow.avoidFlow.map(a => '• ' + a).join('<br>')}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- ☯ 사주 핵심 구조 -->
+                    <div style="margin-bottom:14px; padding:11px; background:rgba(155,89,182,0.08); border:1px solid rgba(155,89,182,0.3); border-radius:8px;">
+                        <div style="color:#C39BD3; font-size:0.78rem; font-weight:900; letter-spacing:0.08em; margin-bottom:8px;">
+                            ☯ 사주 핵심 구조
+                        </div>
+                        <div style="font-size:0.83rem; color:rgba(255,255,255,0.88); line-height:1.65;">
+                            <div style="margin-bottom:5px;"><strong style="color:#C39BD3;">🪵 ${_oracle.coreStructure.dayMaster}</strong> — ${_oracle.coreStructure.dayMasterDesc}</div>
+                            <div style="margin-bottom:5px;"><strong style="color:#C39BD3;">💧 ${_oracle.coreStructure.yongshin}</strong> — ${_oracle.coreStructure.yongshinDesc}</div>
+                            <div><strong style="color:#C39BD3;">🔥 핵심 키워드</strong> — "${_oracle.coreStructure.keyword}"</div>
+                        </div>
+                    </div>
+                    
+                    <!-- ⏱ 흐름 타이밍 -->
+                    <div style="margin-bottom:14px; padding:11px; background:rgba(52,152,219,0.08); border:1px solid rgba(52,152,219,0.3); border-radius:8px;">
+                        <div style="color:#5DADE2; font-size:0.78rem; font-weight:900; letter-spacing:0.08em; margin-bottom:7px;">
+                            ⏱ 흐름 타이밍
+                        </div>
+                        <div style="font-size:0.83rem; color:rgba(255,255,255,0.88); line-height:1.7;">
+                            <div>📅 <strong style="color:#5DADE2;">오늘</strong> → ${_oracle.flowTiming.today}</div>
+                            <div>🗓 <strong style="color:#5DADE2;">이번 달</strong> → ${_oracle.flowTiming.month}</div>
+                            <div>🎯 <strong style="color:#5DADE2;">올해</strong> → ${_oracle.flowTiming.year}</div>
+                        </div>
+                    </div>
+                    
+                    <!-- ✨ 행동 오라클 -->
+                    <div style="margin-bottom:10px; padding:10px 12px; background:rgba(241,196,15,0.12); border-left:3px solid #F1C40F; border-radius:0 6px 6px 0;">
+                        <div style="color:#FFD970; font-size:0.7rem; font-weight:900; letter-spacing:0.1em; margin-bottom:5px;">✨ 행동 오라클</div>
+                        <div style="font-size:0.88rem; color:#fff; font-weight:600; line-height:1.6;">👉 ${_oracle.actionOracle}</div>
+                    </div>
+                    
+                    <!-- 📌 ZEUS 한줄 결론 -->
+                    <div style="margin-top:12px; padding:13px 12px; background:rgba(212,175,55,0.18); border:1.5px solid rgba(212,175,55,0.5); border-radius:8px; text-align:center;">
+                        <div style="color:#FFD970; font-size:0.7rem; font-weight:900; letter-spacing:0.12em; margin-bottom:7px;">📌 ZEUS 한줄 결론</div>
+                        <div style="font-size:0.95rem; color:#FFE08A; font-weight:800; line-height:1.55; font-style:italic;">
+                            "${_oracle.finalOneLine}"
+                        </div>
+                    </div>
+                </div>
+                `;
+            })()}
+
+            ${(function() {
+                // ════════════════════════════════════════════════════════════
+                // ★★★ [V202.32 사장님 C-2 안] 🌟 오늘의 행운 가이드 (10종 확장) ★★★
+                // ════════════════════════════════════════════════════════════
+                // 사장님 통찰: "이건 독립 카테고리 + 요즘 추세 핵심 자산"
+                // 데이터적 근거:
+                //   • MZ 세대 캡처/공유율 결론 vs 행운 = 1:3
+                //   • Co-star/The Pattern: 행운 정보 메인 자산
+                //   • 4900원 결제 가치: "오늘 활용 가능" 1순위
+                //
+                // 배치: ZEUS SAJU ORACLE 박스 ★ 직후 ★ 독립 박스
+                // 노출: 펼침 ★ X ★ (사장님 진단: "접히면 망함")
+                // 데이터: 워커 YONGSHIN_RECOMMENDATIONS (5종 → 10종 확장)
+                
+                // ★ yongshin 데이터 추출 (data.yongshin 또는 PRO에서) ★
+                const _yongshinRaw = data.yongshin || data.pro?.yongshin || null;
+                if (!_yongshinRaw || !_yongshinRaw.recommendations) return '';
+                
+                const _rec = _yongshinRaw.recommendations;
+                const _ysName = _yongshinRaw.yongshin || '';
+                
+                return `
+                <!-- 🌟 오늘의 행운 가이드 (V202.32 사장님 C-2 안 - 10종 확장) -->
+                <div style="margin:22px 0; padding:18px 14px;
+                            background: linear-gradient(135deg, rgba(155,89,182,0.12), rgba(52,152,219,0.06));
+                            border: 2px solid rgba(155,89,182,0.5);
+                            border-radius: 14px;
+                            box-shadow: 0 0 16px rgba(155,89,182,0.18);">
+                    
+                    <!-- 박스 헤더 -->
+                    <div style="text-align:center; padding-bottom:11px; margin-bottom:14px; border-bottom:1px solid rgba(155,89,182,0.3);">
+                        <div style="color:#C39BD3; font-size:1.0rem; font-weight:900; letter-spacing:0.06em; margin-bottom:5px;">
+                            🌟 오늘의 행운 가이드
+                        </div>
+                        <div style="font-size:0.62rem; color:rgba(195,155,211,0.85); font-weight:700; letter-spacing:0.15em;">
+                            LUCKY GUIDE · ${_ysName}(水/木/火/土/金)
+                        </div>
+                    </div>
+                    
+                    ${_rec.keyword ? `
+                    <!-- ✨ 오늘의 키워드 (V202.32 신규 강조) -->
+                    <div style="margin-bottom:14px; padding:12px; background:rgba(241,196,15,0.10); border:1.5px solid rgba(241,196,15,0.4); border-radius:8px; text-align:center;">
+                        <div style="color:#FFD970; font-size:0.7rem; font-weight:900; letter-spacing:0.12em; margin-bottom:5px;">
+                            ✨ 오늘의 키워드
+                        </div>
+                        <div style="font-size:1.05rem; color:#fff; font-weight:800; line-height:1.5;">
+                            "${_rec.keyword}"
+                        </div>
+                    </div>` : ''}
+                    
+                    <!-- 🟢 일상 활용 5종 -->
+                    <div style="margin-bottom:12px;">
+                        <div style="color:#7AD188; font-size:0.7rem; font-weight:900; letter-spacing:0.1em; margin-bottom:7px;">
+                            🟢 일상 활용
+                        </div>
+                        <div style="display:grid; grid-template-columns:1fr 1fr; gap:6px;">
+                            <div style="padding:8px 10px; background:rgba(0,0,0,0.25); border-radius:6px;">
+                                <div style="color:#C39BD3; font-size:0.66rem; font-weight:800;">🎨 색상</div>
+                                <div style="color:rgba(255,255,255,0.92); font-size:0.78rem; margin-top:3px; font-weight:600;">${(_rec.colors || ['-']).join(', ')}</div>
+                            </div>
+                            <div style="padding:8px 10px; background:rgba(0,0,0,0.25); border-radius:6px;">
+                                <div style="color:#C39BD3; font-size:0.66rem; font-weight:800;">🧭 방위</div>
+                                <div style="color:rgba(255,255,255,0.92); font-size:0.78rem; margin-top:3px; font-weight:600;">${(_rec.directions || ['-']).join(', ')}</div>
+                            </div>
+                            <div style="padding:8px 10px; background:rgba(0,0,0,0.25); border-radius:6px;">
+                                <div style="color:#C39BD3; font-size:0.66rem; font-weight:800;">🔢 숫자</div>
+                                <div style="color:rgba(255,255,255,0.92); font-size:0.78rem; margin-top:3px; font-weight:600;">${(_rec.numbers || ['-']).join(', ')}</div>
+                            </div>
+                            <div style="padding:8px 10px; background:rgba(0,0,0,0.25); border-radius:6px;">
+                                <div style="color:#C39BD3; font-size:0.66rem; font-weight:800;">🍴 음식</div>
+                                <div style="color:rgba(255,255,255,0.92); font-size:0.78rem; margin-top:3px; font-weight:600;">${(_rec.foods || ['-']).join(', ')}</div>
+                            </div>
+                        </div>
+                        ${_rec.hobbies ? `
+                        <div style="margin-top:6px; padding:8px 10px; background:rgba(0,0,0,0.25); border-radius:6px;">
+                            <div style="color:#C39BD3; font-size:0.66rem; font-weight:800;">🎯 도움 활동</div>
+                            <div style="color:rgba(255,255,255,0.92); font-size:0.78rem; margin-top:3px; font-weight:600;">${_rec.hobbies.join(' · ')}</div>
+                        </div>` : ''}
+                    </div>
+                    
+                    ${_rec.timeRange || _rec.luckyDay || _rec.season ? `
+                    <!-- ⏰ 시간 활용 3종 (V202.32 신규) -->
+                    <div style="margin-bottom:12px;">
+                        <div style="color:#5DADE2; font-size:0.7rem; font-weight:900; letter-spacing:0.1em; margin-bottom:7px;">
+                            ⏰ 시간 활용
+                        </div>
+                        <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:6px;">
+                            <div style="padding:8px 6px; background:rgba(0,0,0,0.25); border-radius:6px; text-align:center;">
+                                <div style="color:#C39BD3; font-size:0.62rem; font-weight:800; margin-bottom:3px;">⏰ 시간대</div>
+                                <div style="color:rgba(255,255,255,0.92); font-size:0.72rem; font-weight:600; line-height:1.4;">${_rec.timeRange || '-'}</div>
+                            </div>
+                            <div style="padding:8px 6px; background:rgba(0,0,0,0.25); border-radius:6px; text-align:center;">
+                                <div style="color:#C39BD3; font-size:0.62rem; font-weight:800; margin-bottom:3px;">📅 요일</div>
+                                <div style="color:rgba(255,255,255,0.92); font-size:0.72rem; font-weight:600; line-height:1.4;">${_rec.luckyDay || '-'}</div>
+                            </div>
+                            <div style="padding:8px 6px; background:rgba(0,0,0,0.25); border-radius:6px; text-align:center;">
+                                <div style="color:#C39BD3; font-size:0.62rem; font-weight:800; margin-bottom:3px;">🌙 계절</div>
+                                <div style="color:rgba(255,255,255,0.92); font-size:0.72rem; font-weight:600; line-height:1.4;">${_rec.season || '-'}</div>
+                            </div>
+                        </div>
+                    </div>` : ''}
+                    
+                    ${_rec.scent || _rec.music ? `
+                    <!-- 🌸 감각 활용 2종 (V202.32 신규) -->
+                    <div style="margin-bottom:12px;">
+                        <div style="color:#F5C0D8; font-size:0.7rem; font-weight:900; letter-spacing:0.1em; margin-bottom:7px;">
+                            🌸 감각 활용
+                        </div>
+                        <div style="display:grid; grid-template-columns:1fr 1fr; gap:6px;">
+                            <div style="padding:8px 10px; background:rgba(0,0,0,0.25); border-radius:6px;">
+                                <div style="color:#C39BD3; font-size:0.66rem; font-weight:800;">🌸 향기</div>
+                                <div style="color:rgba(255,255,255,0.92); font-size:0.74rem; margin-top:3px; font-weight:600; line-height:1.5;">${_rec.scent || '-'}</div>
+                            </div>
+                            <div style="padding:8px 10px; background:rgba(0,0,0,0.25); border-radius:6px;">
+                                <div style="color:#C39BD3; font-size:0.66rem; font-weight:800;">🎵 음악</div>
+                                <div style="color:rgba(255,255,255,0.92); font-size:0.74rem; margin-top:3px; font-weight:600; line-height:1.5;">${_rec.music || '-'}</div>
+                            </div>
+                        </div>
+                    </div>` : ''}
+                    
+                    ${_rec.avoidColors || _rec.avoidDirections ? `
+                    <!-- ⛔ 멀리할 것 (V202.32 신규 — 균형) -->
+                    <div style="padding:10px 12px; background:rgba(231,76,60,0.08); border:1px solid rgba(231,76,60,0.3); border-radius:8px;">
+                        <div style="color:#FF8870; font-size:0.7rem; font-weight:900; letter-spacing:0.1em; margin-bottom:6px;">
+                            ⛔ 멀리할 것 (균형)
+                        </div>
+                        <div style="font-size:0.78rem; color:rgba(255,255,255,0.85); line-height:1.7;">
+                            ${_rec.avoidColors ? `<div>• <strong style="color:#FF9F8A;">색상</strong>: ${_rec.avoidColors.join(', ')}</div>` : ''}
+                            ${_rec.avoidDirections ? `<div>• <strong style="color:#FF9F8A;">방위</strong>: ${_rec.avoidDirections.join(', ')}</div>` : ''}
+                        </div>
+                    </div>` : ''}
+                </div>
+                `;
+            })()}
+
             <!-- ════════════════════════════════════════════════════════════
-                 [V200.7.4 사장님 명세] 4,900원 업셀 박스 ★ 위치 변경 ★
-                   사장님 V200.7.3 라이브 검증 후 명령:
-                     - 990원도 [1/6] ~ [6/6] 모든 6블럭 표시
-                     - ★ 6블럭 끝난 후 ★ 4,900원 꼬시는 문구 박스
-                   변경 위치: Line 17158~ 부근 (V200.7.4 작업 STEP 3에서 추가)
+                 ★★★ [V202.32 사장님 B-1 안] [4/6]~[8/8] PRO 펼침 통합 ★★★
+                 ════════════════════════════════════════════════════════════
+                 사장님 진단: "결제 직후 결론+행운 2박스만 노출, 깊이는 펼침"
+                 효과: 스크롤 9박스 → 2박스 + 1펼침 = 글로벌 UX 표준
+                 시인성: 투자 신탁 '🔮 깊이 점사 보기' 강한 버튼과 동일 패턴
+                 ════════════════════════════════════════════════════════════ -->
+            <details style="margin:22px 0 14px; border-radius:12px; padding:0; overflow:hidden;
+                            background: linear-gradient(135deg, rgba(155,89,182,0.12), rgba(52,152,219,0.08));
+                            border: 2px solid rgba(155,89,182,0.45);
+                            box-shadow: 0 0 14px rgba(155,89,182,0.18);"
+                    class="zeus-saju-deep-toggle">
+                <summary style="padding:14px 16px; cursor:pointer; display:flex; align-items:center;
+                                user-select:none; list-style:none; -webkit-tap-highlight-color:transparent;
+                                background: rgba(155,89,182,0.10);">
+                    <span style="font-size:1.4rem; margin-right:12px; filter:drop-shadow(0 0 6px rgba(241,196,15,0.5));">🔮</span>
+                    <span style="display:flex; flex-direction:column; flex:1; min-width:0;">
+                        <span style="color:#fff; font-size:0.98rem; font-weight:800; letter-spacing:0.02em; margin-bottom:2px; line-height:1.3;">
+                            깊이 사주 분석 보기
+                        </span>
+                        <span style="color:rgba(241,196,15,0.85); font-size:0.7rem; font-weight:700; letter-spacing:0.08em;">
+                            ✦ 종합 신탁 · 격국 · 신살 · 12운성 · 대운 · 6대 분야 (눌러서 펼치기)
+                        </span>
+                    </span>
+                    <span class="zeus-saju-deep-chev" style="color:#F1C40F; font-size:1.5rem; font-weight:900;
+                                                            transition: transform 0.3s ease; margin-left:6px; line-height:1;">
+                        ⌄
+                    </span>
+                </summary>
+                <div style="padding:14px 4px 4px;">
+
+            <!-- ════════════════════════════════════════════════════════════
+                 [V200.7.4] 4,900원 업셀 박스 위치 변경
                  ════════════════════════════════════════════════════════════ -->
 
             <!-- ════════════════════════════════════════════════════════════
-                 [V31 #163 사장님 6블록] 사주 출력 디자인 통일
-                   [4] ⚡ 종합 신탁 — 행동 강제 (매출 80% 결정)
-                   [5] 🔥 에너지 가이드 — 용신 + 트리거
+                 [V31 #163 사장님 6블록] [4] ⚡ 종합 신탁 + [5] 🔥 에너지 가이드
                  ════════════════════════════════════════════════════════════ -->
             ${(function() {
-                // ★★★ [V200.7.4 사장님 명세 정확 적용] V199.4 차단 해제 ★★★
-                //   사장님 V200.7.3 라이브 검증 후 명령:
-                //     "990원도 6개 블럭 모두 표시 + 끝난 후 4,900원 꼬시는 문구"
-                //   V199.4 차단 ★ 해제 ★ — saju_basic도 [4/6] [5/6] 표시
-                //   4,900원 업셀 박스는 [6/6] 끝난 후로 이동 (Line 16400~16451 → 17158~ 이동 예정)
-                
                 // 용신 + 현실 상태 추정 (워커 응답 분석)
                 const dayMaster = (text.meta?.pillars?.day || '').charAt(0);
                 const yongshinKey = detectYongshin(elements, dayMaster);
@@ -19502,44 +19781,27 @@ function renderSajuResult(data) {
                     </div>`;
                 }
                 
-                // ─── 용신 추천 강화 (있으면) ───
-                //   ★ [V200.7.5 사장님 명령] saju_basic 차단 (4,900원 PREMIUM 콘텐츠) ★
-                if (!_isSajuBasic && yongshin && yongshin.recommendations) {
-                    const rec = yongshin.recommendations;
-                    html += `
-                    <div style="margin:18px 0; padding:16px; background:linear-gradient(135deg, rgba(155,89,182,0.10), rgba(155,89,182,0.03)); border:1px solid rgba(155,89,182,0.35); border-radius:10px;">
-                        <div style="display:flex; align-items:center; gap:6px; margin-bottom:12px;">
-                            <span style="color:#C39BD3; font-size:0.9rem; font-weight:900;">✨ 용신 ${yongshin.yongshin || ''} — 행운 가이드</span>
-                        </div>
-                        <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
-                            ${rec.colors ? `
-                            <div style="padding:8px 10px; background:rgba(0,0,0,0.25); border-radius:6px;">
-                                <div style="color:#C39BD3; font-size:0.7rem; font-weight:800;">🎨 행운 색상</div>
-                                <div style="color:rgba(255,255,255,0.88); font-size:0.78rem; margin-top:3px;">${rec.colors.join(', ')}</div>
-                            </div>` : ''}
-                            ${rec.directions ? `
-                            <div style="padding:8px 10px; background:rgba(0,0,0,0.25); border-radius:6px;">
-                                <div style="color:#C39BD3; font-size:0.7rem; font-weight:800;">🧭 행운 방위</div>
-                                <div style="color:rgba(255,255,255,0.88); font-size:0.78rem; margin-top:3px;">${rec.directions.join(', ')}</div>
-                            </div>` : ''}
-                            ${rec.numbers ? `
-                            <div style="padding:8px 10px; background:rgba(0,0,0,0.25); border-radius:6px;">
-                                <div style="color:#C39BD3; font-size:0.7rem; font-weight:800;">🔢 행운 숫자</div>
-                                <div style="color:rgba(255,255,255,0.88); font-size:0.78rem; margin-top:3px;">${rec.numbers.join(', ')}</div>
-                            </div>` : ''}
-                            ${rec.foods ? `
-                            <div style="padding:8px 10px; background:rgba(0,0,0,0.25); border-radius:6px;">
-                                <div style="color:#C39BD3; font-size:0.7rem; font-weight:800;">🍴 도움 음식</div>
-                                <div style="color:rgba(255,255,255,0.88); font-size:0.78rem; margin-top:3px;">${rec.foods.join(', ')}</div>
-                            </div>` : ''}
-                        </div>
-                        ${rec.hobbies ? `
-                        <div style="margin-top:8px; padding:8px 10px; background:rgba(0,0,0,0.25); border-radius:6px;">
-                            <div style="color:#C39BD3; font-size:0.7rem; font-weight:800;">🎯 도움 활동</div>
-                            <div style="color:rgba(255,255,255,0.88); font-size:0.78rem; margin-top:3px;">${rec.hobbies.join(' · ')}</div>
-                        </div>` : ''}
-                    </div>`;
-                }
+                // ★ [V202.32 사장님 C-2 안] 옛 최하단 행운 가이드 박스 ★ 제거 ★
+                //   사장님 진단: "최하단 = 사용자 80% 안 봄"
+                //   해결: ZEUS SAJU ORACLE 직후 ★ 독립 박스 ★ 로 이동 + 10종 확장
+                //   새 위치: 라인 18820 부근 (ZEUS SAJU ORACLE 박스 직후)
+                
+                // ════════════════════════════════════════════════════════════
+                // ★ [V202.32 사장님 B-1 안] PRO 펼침 박스 ★ 닫기 ★
+                //   [4/6] [5/6] [6/6] [7/8] [8/8] 모든 박스 = ★ 펼침 안 ★
+                //   재방문 CTA는 ★ 펼침 밖 ★ (최하단 노출)
+                // ════════════════════════════════════════════════════════════
+                html += `
+                </div>
+                </details>
+                <style>
+                    .zeus-saju-deep-toggle[open] .zeus-saju-deep-chev { transform: rotate(180deg); }
+                    .zeus-saju-deep-toggle summary::-webkit-details-marker { display: none; }
+                    .zeus-saju-deep-toggle summary::marker { content: ''; }
+                    .zeus-saju-deep-toggle summary:hover { background: rgba(155,89,182,0.18); }
+                    .zeus-saju-deep-toggle[open] summary { background: rgba(155,89,182,0.20); border-bottom: 1px solid rgba(155,89,182,0.3); }
+                </style>
+                `;
                 
                 // ─── [V31 #184.6] 재방문 CTA — "3일 뒤 재확인" ───
                 //   ZEUS 차별화 정체성 강화: "행동 → 결과" 메시지
