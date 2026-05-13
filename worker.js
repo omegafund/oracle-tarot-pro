@@ -18053,7 +18053,7 @@ export default {
     // ════════════════════════════════════════════════════════════════════
     if (url.pathname === "/version" && request.method === "GET") {
       return new Response(JSON.stringify({
-        version: "V202.38",      // ★ V202.38: 사장님 2종 라이브 결함 - ① 사주 십성 풀이 조사 결함 (겁재이란? → 겁재란?) ② 투자 깊이점사창 시인성 진화 (🎯 ZEUS 매매 결정서 / FULL DECISION ORACLE + 에메랄드)
+        version: "V202.40",      // ★ V202.40: 사장님 핫픽스 - 연애 결과창 외곽/안쪽 padding 축소 (V202.39 투자와 동일 패턴 적용, 카테고리 시각 일관성)
         _ts: Date.now(),
         _ok: true
       }), {
