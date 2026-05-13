@@ -3303,7 +3303,7 @@
     (function() {
         'use strict';
         
-        const APP_VERSION = 'V202.38';  // ★ V202.38: 사주 십성 조사 결함 (겁재이란?→겁재란?) + 투자 깊이점사창 시인성 진화 (ZEUS 매매 결정서)
+        const APP_VERSION = 'V202.40';  // ★ V202.40: 연애 결과창 padding 축소 (V202.39 투자와 동일 패턴, 시각 일관성)
         window.APP_VERSION = APP_VERSION;
         
         // ★★★ [V202.17 결정적 수정] _sajuInput 복원 ★ 페이지 로드 즉시 ★ ★★★
@@ -11493,7 +11493,7 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
                             box-shadow: 0 0 14px rgba(231,76,60,0.18);">
                     👉 지금 흐름은 "${d.pivotPhrase}"
                 </div>` : ''}
-                <div style="margin-top:14px; margin-bottom:14px; padding:16px 18px;
+                <div style="margin-top:12px; margin-bottom:12px; padding:12px 10px;
                             background: linear-gradient(135deg, rgba(255,107,107,0.15), rgba(255,107,107,0.06));
                             border: 2px solid rgba(255,107,107,0.45);
                             border-radius: 12px;
@@ -12087,7 +12087,9 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
             //   구조: 🟡 신호 / ⚡ 실행 / ⚠️ 주의 / 🎴 카드 근거
             const _tv202_25 = (typeof window !== 'undefined' && window._serverMetrics && window._serverMetrics.topVerdict) || null;
             const _topVerdictHTML = _tv202_25 ? `
-                <div style="margin-bottom:18px; padding:16px 14px;
+                <!-- ★ V202.39 #2 사장님 명령: TOP VERDICT 박스 padding 좌우 축소 ★ -->
+                <!--   16px 14px → 13px 10px (★ 8px 추가 회수 ★) -->
+                <div style="margin-bottom:14px; padding:13px 10px;
                             background: linear-gradient(135deg, rgba(241,196,15,0.10), rgba(231,76,60,0.06));
                             border: 2px solid rgba(241,196,15,0.5);
                             border-radius: 14px;
@@ -12107,7 +12109,8 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
                     </div>
                     ${_tv202_25.decisiveTiming ? `
                     <!-- ★ [V202.30 사장님 글로벌 표준] 타이밍 시그널 — 상태/조건/행동 3단 ★ -->
-                    <div style="padding:13px; background:rgba(155,89,182,0.10); border:1.5px solid rgba(155,89,182,0.45); border-radius:10px; margin-bottom:10px;">
+                    <!-- ★ V202.39 #2: padding 13px → 10px 8px ★ -->
+                    <div style="padding:10px 8px; background:rgba(155,89,182,0.10); border:1.5px solid rgba(155,89,182,0.45); border-radius:10px; margin-bottom:10px;">
                         <div style="color:#C39BD3; font-size:0.72rem; font-weight:900; letter-spacing:0.1em; margin-bottom:8px; text-align:center;">
                             🔮 타이밍 시그널 (카드 수비학)
                         </div>
@@ -12125,7 +12128,7 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
                         </div>
                     </div>
                     ` : ''}
-                    <div style="padding:10px 12px; background:rgba(46,204,113,0.07); border-left:3px solid #2ecc71; border-radius:0 8px 8px 0; margin-bottom:8px;">
+                    <div style="padding:9px 10px; background:rgba(46,204,113,0.07); border-left:3px solid #2ecc71; border-radius:0 8px 8px 0; margin-bottom:8px;">
                         <div style="color:#7AD188; font-size:0.72rem; font-weight:900; letter-spacing:0.1em; margin-bottom:5px;">
                             ⚡ 실행
                         </div>
@@ -12133,7 +12136,7 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
                             ${_tv202_25.action}
                         </div>
                     </div>
-                    <div style="padding:10px 12px; background:rgba(231,76,60,0.06); border-left:3px solid #E74C3C; border-radius:0 8px 8px 0; margin-bottom:8px;">
+                    <div style="padding:9px 10px; background:rgba(231,76,60,0.06); border-left:3px solid #E74C3C; border-radius:0 8px 8px 0; margin-bottom:8px;">
                         <div style="color:#FF8E72; font-size:0.72rem; font-weight:900; letter-spacing:0.1em; margin-bottom:5px;">
                             ⚠️ 주의
                         </div>
@@ -12141,7 +12144,7 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
                             ${_tv202_25.caution}
                         </div>
                     </div>
-                    <div style="padding:10px 12px; background:rgba(212,175,55,0.08); border-left:3px solid #D4AF37; border-radius:0 8px 8px 0;">
+                    <div style="padding:9px 10px; background:rgba(212,175,55,0.08); border-left:3px solid #D4AF37; border-radius:0 8px 8px 0;">
                         <div style="color:#FFD970; font-size:0.72rem; font-weight:900; letter-spacing:0.1em; margin-bottom:5px;">
                             🎴 카드 근거
                         </div>
@@ -12175,9 +12178,15 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
                                     background: rgba(122,209,136,0.10);">
                         <span style="font-size:1.6rem; margin-right:12px; filter:drop-shadow(0 0 8px rgba(93,214,138,0.6));">🎯</span>
                         <span style="display:flex; flex-direction:column; flex:1; min-width:0;">
+                            <!-- ★★★ [V202.39 #1 사장님 명령] 두 줄 분리 ★★★ -->
+                            <!--   결함: "ZEUS 매매 결정서" 한 줄 → 모바일 좁은 폭에서 영문(ZEUS)에 한글이 붙어나옴 -->
+                            <!--   해결: "ZEUS" 한 줄 + "매매 결정서" 한 줄 + NEW 뱃지는 매매 결정서 옆 -->
+                            <span style="color:#FFE08A; font-size:1.0rem; font-weight:900; letter-spacing:0.04em; line-height:1.25; margin-bottom:1px;">
+                                ZEUS
+                            </span>
                             <div style="display:flex; align-items:center; gap:6px; margin-bottom:3px;">
-                                <span style="color:#FFE08A; font-size:1.02rem; font-weight:900; letter-spacing:0.02em; line-height:1.3;">
-                                    ZEUS 매매 결정서
+                                <span style="color:#FFE08A; font-size:1.05rem; font-weight:900; letter-spacing:0.02em; line-height:1.25;">
+                                    매매 결정서
                                 </span>
                                 <span style="padding:1px 6px; background:linear-gradient(135deg, #5DD68A, #7AD188);
                                              color:#0a1a0e; font-size:0.55rem; font-weight:900;
@@ -12199,7 +12208,7 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
                             ⌄
                         </span>
                     </summary>
-                    <div style="padding:14px 8px 8px;">${layer5HTML}</div>
+                    <div style="padding:10px 4px 4px;">${layer5HTML}</div>
                 </details>
                 <style>
                     @keyframes _v38_pulseGlowInv {
@@ -12228,8 +12237,13 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
             <!--   V202.14에서 h3 border-bottom만 잡고 ★ div 외곽 border 누락 ★   -->
             <!--   해결: border:1px solid var(--gold) ★ 제거 ★ (배경만 유지)      -->
             <!--   효과: 모바일에서 텍스트 공간 확보 + 시인성 ↑                   -->
-            <div class="final-oracle final-oracle-stock" style="padding:20px; background:rgba(212,175,55,0.08); border-radius:12px; margin-top:25px;">
-                <h3 style="color:var(--gold); text-align:center; margin:0 0 15px 0; font-size:1.1rem; padding-bottom:10px;">
+            <!-- ★★★ [V202.39 #2 사장님 명령] 외곽 padding 축소 ★★★              -->
+            <!--   결함: padding:20px → 모바일 360px 화면에서 좌우 40px 빼앗김    -->
+            <!--         + 안쪽 박스 padding 14-16px 또 빼앗김 = 텍스트 공간 290px -->
+            <!--   해결: padding:12px 8px → 좌우 16px만 (★ 24px 회수 ★)          -->
+            <!--   효과: 텍스트 공간 290px → 314px (★ +8% ★)                     -->
+            <div class="final-oracle final-oracle-stock" style="padding:14px 8px; background:rgba(212,175,55,0.08); border-radius:12px; margin-top:20px;">
+                <h3 style="color:var(--gold); text-align:center; margin:0 0 13px 0; font-size:1.1rem; padding-bottom:8px;">
                     ${title}
                 </h3>
                 ${_topVerdictHTML}
@@ -12242,8 +12256,9 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
                 `)}
 
                 <!-- [V19.3] 리스크 전용 경고 박스 — 5계층에 없는 d.risk 한줄 (백업) -->
+                <!-- ★ V202.39 #2: padding 12px 14px → 10px 10px ★ -->
                 ${!layer5HTML ? `
-                <div style="margin-bottom:14px; padding:12px 14px;
+                <div style="margin-bottom:14px; padding:10px 10px;
                             background: linear-gradient(135deg, rgba(255,82,82,0.12), rgba(255,165,0,0.06));
                             border: 1px solid rgba(255,82,82,0.45);
                             border-left: 4px solid #FF5252;
@@ -12339,7 +12354,7 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
             //   범위: 9개 서브타입별 verdict/action/risk (사장님 직접 작성)
             const tv = (window._serverMetrics && window._serverMetrics.layers && window._serverMetrics.layers.topVerdict) || null;
             const topVerdictBox = tv ? `
-                <div style="margin-bottom:18px; padding:16px 18px;
+                <div style="margin-bottom:14px; padding:13px 10px;
                             background: linear-gradient(135deg, rgba(231,76,60,0.10), rgba(212,175,55,0.06));
                             border: 2px solid rgba(231,76,60,0.5);
                             border-radius: 14px;
@@ -12558,7 +12573,7 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
             const proBox = '';
 
             return `
-            <div class="final-oracle final-oracle-love" style="padding:18px; background:rgba(46,204,113,0.04); border:1px solid rgba(46,204,113,0.45); border-radius:12px; margin-top:25px;">
+            <div class="final-oracle final-oracle-love" style="padding:14px 8px; background:rgba(46,204,113,0.04); border:1px solid rgba(46,204,113,0.45); border-radius:12px; margin-top:20px;">
                 <h3 style="color:#2ecc71; text-align:center; margin:0 0 18px 0; font-size:1.15rem; border-bottom:1px solid rgba(46,204,113,0.35); padding-bottom:10px;">
                     💘 연애 흐름 신탁
                     <span style="display:block; font-size:0.7rem; color:rgba(212,175,55,0.85); letter-spacing:0.18em; margin-top:4px;">ZEUS LOVE ORACLE · V25.24</span>
@@ -12610,7 +12625,7 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
             
             // ─── 박스 1: 핵심 흐름 해석 ───
             const box1HTML = `
-            <div style="margin-top:16px; padding:18px 20px;
+            <div style="margin-top:14px; padding:13px 12px;
                         background: linear-gradient(135deg, rgba(212,175,55,0.10), rgba(0,0,0,0.4));
                         border: 1px solid rgba(212,175,55,0.35);
                         border-radius: 12px;">
@@ -12636,7 +12651,7 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
             
             // ─── 박스 2: 흐름 본질 진단 ───
             const box2HTML = `
-            <div style="margin-top:14px; padding:16px 18px;
+            <div style="margin-top:12px; padding:12px 10px;
                         background: rgba(212,175,55,0.06);
                         border: 1px solid rgba(212,175,55,0.22);
                         border-radius: 10px;">
@@ -12665,7 +12680,7 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
             
             // ─── 박스 3: 행동 가이드 ───
             const box3HTML = `
-            <div style="margin-top:14px; padding:16px 18px;
+            <div style="margin-top:12px; padding:12px 10px;
                         background: rgba(46,204,113,0.05);
                         border: 1px solid rgba(46,204,113,0.25);
                         border-radius: 10px;">
@@ -12683,14 +12698,14 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
                     <div style="padding-left:12px; margin-bottom:4px;">→ ${ag.avoidAction}</div>
                     <div style="padding-left:24px; font-size:0.82rem; color:rgba(255,140,100,0.85);">⤷ 흐름을 ${ag.riskEffect}${_josa(ag.riskEffect, 'ro')} 밀어버립니다</div>
                 </div>
-                <div style="margin-top:10px; padding:10px 12px; background:rgba(46,204,113,0.08); border-left:3px solid #2ecc71; border-radius:0 8px 8px 0; font-size:0.88rem; color:rgba(255,255,255,0.95); font-weight:600;">
+                <div style="margin-top:10px; padding:9px 10px; background:rgba(46,204,113,0.08); border-left:3px solid #2ecc71; border-radius:0 8px 8px 0; font-size:0.88rem; color:rgba(255,255,255,0.95); font-weight:600;">
                     ↳ 행동 키: "${ag.coreKey}"
                 </div>
             </div>`;
             
             // ─── 박스 4: 타이밍 흐름 ───
             const box4HTML = `
-            <div style="margin-top:14px; padding:16px 18px;
+            <div style="margin-top:12px; padding:12px 10px;
                         background: rgba(93,173,226,0.05);
                         border: 1px solid rgba(93,173,226,0.25);
                         border-radius: 10px;">
@@ -12722,7 +12737,7 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
             
             // ─── 박스 5: 주의 포인트 ───
             const box5HTML = `
-            <div style="margin-top:14px; padding:16px 18px;
+            <div style="margin-top:12px; padding:12px 10px;
                         background: rgba(243,156,18,0.05);
                         border: 1px solid rgba(243,156,18,0.28);
                         border-radius: 10px;">
@@ -12746,7 +12761,7 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
             
             // ─── 박스 6: 최종 결론 ───
             const box6HTML = `
-            <div style="margin-top:14px; padding:18px 20px;
+            <div style="margin-top:12px; padding:13px 12px;
                         background: linear-gradient(135deg, rgba(212,175,55,0.12), rgba(0,0,0,0.45));
                         border: 1px solid rgba(212,175,55,0.45);
                         border-radius: 12px;
@@ -12926,7 +12941,7 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
                 </div>` : '';
 
             return `
-            <div class="final-oracle final-oracle-love" style="padding:20px; background:rgba(46,204,113,0.06); border:1px solid rgba(46,204,113,0.5); border-radius:12px; margin-top:25px;">
+            <div class="final-oracle final-oracle-love" style="padding:14px 8px; background:rgba(46,204,113,0.06); border:1px solid rgba(46,204,113,0.5); border-radius:12px; margin-top:20px;">
                 <h3 style="color:#2ecc71; text-align:center; margin:0 0 15px 0; font-size:1.1rem; border-bottom:1px solid rgba(46,204,113,0.35); padding-bottom:10px;">
                     💘 연애 흐름 신탁
                 </h3>
