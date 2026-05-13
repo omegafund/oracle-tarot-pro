@@ -379,6 +379,76 @@
             display: none !important;
         }
         
+        /* ════════════════════════════════════════════════════════════════════
+           ★★★ [V202.36 #4 사장님 명령] 사주 결과창 폭/반응형 강화 ★★★
+           ════════════════════════════════════════════════════════════════════
+           결함: 휴대폰 화면에서 텍스트 들쑥날쑥, 붙어 나와야 할 글자가 한 줄 아래로
+           원인 진단:
+             • word-break / overflow-wrap 사용 = 0건 (전체 코드)
+             • 사주 결과 박스 max-width 룰 0건
+             • inline 스타일에만 의존 → 모바일 폭 제어 X
+           해결:
+             ① word-break: keep-all (한글 어절 단위 줄바꿈 — 표준)
+             ② overflow-wrap: break-word (긴 URL/단어 안전망)
+             ③ box-sizing: border-box (패딩 포함 폭 계산)
+             ④ 모바일(<480px) max-width 78% → 92% 확장
+             ⑤ 사주 PRO 펼침 박스 패딩 모바일 미세 조정
+           영향:
+             ✅ 사주 결과창만 (saju-chat-, zeus-saju- 클래스)
+             ✅ 투자/연애/운세 결과창 무영향
+        ════════════════════════════════════════════════════════════════════ */
+        .saju-chat-bubble,
+        .saju-chat-bubble *,
+        .zeus-saju-deep-toggle,
+        .zeus-saju-deep-toggle * {
+            word-break: keep-all;
+            overflow-wrap: break-word;
+            box-sizing: border-box;
+        }
+        /* 사주 페이월 모달 자체 — 폭 안전 (이중 안전망) */
+        .pay-modal,
+        .pay-modal * {
+            box-sizing: border-box;
+        }
+        /* 사주 챗 버블 안 grid/flex 박스 — overflow 차단 */
+        .saju-chat-bubble > div,
+        .saju-chat-bubble [style*="grid"],
+        .saju-chat-bubble [style*="flex"] {
+            min-width: 0;  /* grid/flex 자식 최소 폭 0 — 텍스트 overflow 방지 */
+            max-width: 100%;
+        }
+        /* zeus-saju PRO 펼침 안 inline grid/flex 박스도 동일 */
+        .zeus-saju-deep-toggle > div,
+        .zeus-saju-deep-toggle [style*="grid"],
+        .zeus-saju-deep-toggle [style*="flex"] {
+            min-width: 0;
+            max-width: 100%;
+        }
+        
+        @media (max-width: 480px) {
+            /* 사주 챗 버블 — 모바일 좁은 폭에서 86%로 확장 (옛 78%는 모바일에서 너무 좁음) */
+            .saju-chat-bubble {
+                max-width: 86% !important;
+                padding: 10px 12px !important;
+                font-size: 0.83rem !important;
+            }
+            .saju-chat-bubble-title {
+                font-size: 0.92rem !important;
+            }
+            /* 사주 PRO 펼침 박스 — 모바일 패딩 미세 조정 (좁은 화면 가독성) */
+            .zeus-saju-deep-toggle {
+                padding-left: 8px !important;
+                padding-right: 8px !important;
+            }
+            /* ★ 사주 입력 모달 ★ 한정 — 다른 결제 모달 영향 0 (격리 안전) */
+            #sajuInputModal .pay-modal {
+                padding: 16px 14px;
+            }
+        }
+        /* ════════════════════════════════════════════════════════════════════
+           V202.36 #4 사장님 명령 — 사주 결과창 폭/반응형 강화 끝
+        ════════════════════════════════════════════════════════════════════ */
+        
         /* 잠긴 메시지 — 4,900원 CTA */
         .saju-chat-locked {
             margin: 14px 0;
@@ -3233,7 +3303,7 @@
     (function() {
         'use strict';
         
-        const APP_VERSION = 'V202.35';  // ★ V202.35: 라이브 결함 - yongshin 경로 (v184_5) + PRO 펼침 닫기 위치 이동
+        const APP_VERSION = 'V202.36';  // ★ V202.36: 입력모달 버튼통합(A+X) + 일간 10종 진화 + 용신 아이콘 오행분기 + 점사창 폭/반응형 강화
         window.APP_VERSION = APP_VERSION;
         
         // ★★★ [V202.17 결정적 수정] _sajuInput 복원 ★ 페이지 로드 즉시 ★ ★★★
@@ -15007,7 +15077,27 @@ function showSajuInputModal() {
     modal.id = 'sajuInputModal';
     modal.className = 'pay-modal-overlay';
     modal.innerHTML = `
-        <div class="pay-modal" style="max-width:380px;">
+        <div class="pay-modal" style="max-width:380px; position:relative;">
+            <!-- ★★★ [V202.36 사장님 #1 명령] X 닫기 아이콘 — 우측 상단 ★★★ -->
+            <!--   결함: 하단 [취소][사주 신탁 받기] 2버튼 = ★ 헷갈림 ★ (사장님 진단) -->
+            <!--   해결: A안(큰 카드형 통합 버튼) + X안(우측 상단 X 아이콘) -->
+            <button type="button" onclick="closeSajuInputModal()"
+                    aria-label="취소·돌아가기"
+                    title="취소·돌아가기"
+                    style="position:absolute; top:10px; right:10px;
+                           width:32px; height:32px; padding:0;
+                           background:rgba(255,255,255,0.10);
+                           border:1px solid rgba(255,255,255,0.18);
+                           border-radius:50%;
+                           color:rgba(255,255,255,0.85);
+                           font-size:1.05rem; font-weight:700; line-height:1;
+                           cursor:pointer; z-index:5;
+                           display:flex; align-items:center; justify-content:center;
+                           transition: all 0.18s ease;"
+                    onmouseover="this.style.background='rgba(255,255,255,0.18)'; this.style.color='#fff';"
+                    onmouseout="this.style.background='rgba(255,255,255,0.10)'; this.style.color='rgba(255,255,255,0.85)';">
+                ✕
+            </button>
             <div style="text-align:center; margin-bottom:18px;">
                 <div style="font-size:2.4rem; margin-bottom:6px;">☯</div>
                 <h2 style="color:#FFD970; font-size:1.2rem; margin:4px 0;">사주 신탁</h2>
@@ -15108,30 +15198,44 @@ function showSajuInputModal() {
             <!--   근거: ① 사주 서브카테고리 PRO 콘텐츠 미생성 (워커 부담 0) -->
             <!--         ② "돈받음 안된다" 정책 일관 -->
             <!--         ③ 사주 = 종합 분석 (UX 명확) -->
-            <div style="margin-bottom:18px;">
+            <!-- ★★★ [V202.36 사장님 #1 명령] 큰 카드형 통합 버튼 (A안) ★★★ -->
+            <!--   결함: 라벨 박스(터치 X) + [취소][사주 신탁 받기] 2버튼 = 헷갈림 -->
+            <!--   해결: 라벨 박스 자체를 ★ 클릭 가능한 큰 버튼 ★ 으로 통합 -->
+            <!--         + 하단 [사주 신탁 받기] 버튼 ★ 삭제 ★ -->
+            <!--         + 취소는 우측 상단 X (위 헤더 영역) -->
+            <div style="margin-bottom:6px;">
                 <label style="display:block; color:#FFE08A; font-size:0.82rem; font-weight:700; margin-bottom:6px;">
                     🎯 점사 영역
                 </label>
-                <!-- 고정 표시 (선택 불가) — 사주 본질 전체 보기 -->
-                <div style="width:100%; padding:13px 14px; background:rgba(212,175,55,0.10); border:2px solid rgba(212,175,55,0.65); border-radius:8px; color:#FFE08A; font-size:0.92rem; font-weight:800; box-shadow:0 0 0 1px rgba(212,175,55,0.1) inset; text-align:center; letter-spacing:0.02em;">
-                    ☯ 사주 본질 (전체 종합 분석)
-                </div>
                 <!-- 숨겨진 카테고리 입력 (코드 호환) -->
                 <input type="hidden" id="sajuCategory" value="saju">
-                <div style="margin-top:6px; color:rgba(255,255,255,0.55); font-size:0.74rem; text-align:center; line-height:1.5;">
-                    십성 · 격국 · 용신 · 신살 · 대운 · 운세 흐름 종합
-                </div>
-            </div>
-
-            <!-- 버튼 -->
-            <div style="display:flex; gap:8px;">
-                <button type="button" onclick="closeSajuInputModal()"
-                        style="flex:1; padding:12px; background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.15); border-radius:6px; color:#fff; font-size:0.88rem; font-weight:700; cursor:pointer;">
-                    취소
-                </button>
+                <!-- ★ 통합 버튼 = 클릭 시 runSajuOracle 실행 ★ -->
                 <button type="button" onclick="runSajuOracle()"
-                        style="flex:2; padding:12px; background:linear-gradient(135deg, #D4AF37, #FFD970); border:none; border-radius:6px; color:#000; font-size:0.92rem; font-weight:900; cursor:pointer;">
-                    ☯ 사주 신탁 받기
+                        style="width:100%; padding:18px 14px;
+                               background: linear-gradient(135deg, rgba(212,175,55,0.20), rgba(255,217,112,0.10));
+                               border: 2px solid rgba(212,175,55,0.75);
+                               border-radius: 12px;
+                               color: #FFE08A;
+                               cursor: pointer;
+                               box-shadow: 0 0 0 1px rgba(212,175,55,0.12) inset, 0 4px 14px rgba(212,175,55,0.18);
+                               text-align: center;
+                               line-height: 1.55;
+                               transition: all 0.2s ease;
+                               word-break: keep-all; overflow-wrap: break-word;"
+                        onmouseover="this.style.background='linear-gradient(135deg, rgba(212,175,55,0.30), rgba(255,217,112,0.18))'; this.style.boxShadow='0 0 0 1px rgba(212,175,55,0.20) inset, 0 6px 18px rgba(212,175,55,0.28)';"
+                        onmouseout="this.style.background='linear-gradient(135deg, rgba(212,175,55,0.20), rgba(255,217,112,0.10))'; this.style.boxShadow='0 0 0 1px rgba(212,175,55,0.12) inset, 0 4px 14px rgba(212,175,55,0.18)';">
+                    <!-- 1행: 제목 -->
+                    <div style="font-size:1.0rem; font-weight:900; letter-spacing:0.02em; color:#FFE08A; margin-bottom:6px;">
+                        ☯ 사주 본질 (전체 종합 분석)
+                    </div>
+                    <!-- 2행: 설명 -->
+                    <div style="font-size:0.74rem; color:rgba(255,255,255,0.65); font-weight:600; margin-bottom:10px; letter-spacing:0.01em;">
+                        십성 · 격국 · 용신 · 신살 · 대운 종합 분석
+                    </div>
+                    <!-- 3행: CTA — 강조 -->
+                    <div style="font-size:0.95rem; font-weight:900; color:#FFD970; letter-spacing:0.03em;">
+                        ✨ 터치하여 신탁 시작 ▶
+                    </div>
                 </button>
             </div>
         </div>
@@ -16217,25 +16321,45 @@ function buildSajuChatSequenceV185(data) {
         '결정된_dayElement': dayElement || '(없음)'
     });
     
-    const physiog = ({
-        목: '🌳 큰 나무 본성',
-        화: '🔥 빛나는 불꽃',
-        토: '⛰️ 큰 산 본성',
-        금: '⚙️ 단단한 금속',
-        수: '💧 깊은 물'
-    })[dayElement];
-    const physiogSub = ({
-        목: '곧고 밀어붙이는 구조',
-        화: '뜨겁게 추진하는 구조',
-        토: '안정과 신뢰의 구조',
-        금: '결단과 정의의 구조',
-        수: '깊이와 통찰의 구조'
-    })[dayElement];
+    // ★★★ [V202.36 사장님 #2 명령] 일간별 10종 진화 + 3줄 구조 ★★★
+    //   결함: 오행 5종 분기 + 1줄 sub → 모든 목 일간이 "큰 나무 본성 / 곧고 밀어붙이는" 동일
+    //         사장님 진단: "어떤 사주든 큰 나무 본성 기정치 — 사주를 모르는 사람은 외국어"
+    //   해결: dayMaster (천간 10종) 기반 분기 + 3줄 친절 구조
+    //         "[일간 물상]의 기운이 중심이 되는 구조입니다.
+    //          타고난 [핵심 성향]이 강하게 작동하며,
+    //          삶의 흐름에서 [행동 패턴]이 반복되기 쉽습니다."
+    //   사장님 매핑 (10종): 갑/을/병/정/무/기/경/신/임/계
+    //   ★ josa 필드 ★ — 받침 유무에 따른 조사 (이/가) 정확 분기
+    const _v36_dayMasterMap = {
+        '갑': { icon: '🌳', title: '큰 나무 본성',  essence: '큰 나무',       traits: '추진력과 성장성',         josa: '이', pattern: '곧게 밀어붙이는 패턴' },
+        '을': { icon: '🌸', title: '꽃·덩굴 본성',  essence: '꽃과 덩굴',     traits: '유연성과 적응력',         josa: '이', pattern: '부드럽게 휘감으며 자라는 패턴' },
+        '병': { icon: '☀️', title: '태양 본성',     essence: '태양',          traits: '존재감과 확산력',         josa: '이', pattern: '주변을 환하게 비추며 나아가는 패턴' },
+        '정': { icon: '🕯️', title: '촛불 본성',     essence: '촛불',          traits: '감성과 섬세함',           josa: '이', pattern: '깊이 있게 사람을 비추는 패턴' },
+        '무': { icon: '⛰️', title: '큰 산 본성',    essence: '큰 산',         traits: '중심과 안정감',           josa: '이', pattern: '흔들림 없이 자리를 지키는 패턴' },
+        '기': { icon: '🌾', title: '논밭 본성',     essence: '비옥한 논밭',   traits: '현실 감각과 조율 능력',   josa: '이', pattern: '주변을 품어 균형을 맞추는 패턴' },
+        '경': { icon: '⚔️', title: '강철 본성',     essence: '단단한 강철',   traits: '결단력과 직선성',         josa: '이', pattern: '명확하게 잘라내며 나아가는 패턴' },
+        '신': { icon: '💎', title: '보석 본성',     essence: '정교한 보석',   traits: '섬세한 감각과 정교함',    josa: '이', pattern: '본질만 골라내는 패턴' },
+        '임': { icon: '🌊', title: '바다 본성',     essence: '깊은 바다',     traits: '유연한 흐름과 넓은 사고', josa: '가', pattern: '상황을 흡수하며 움직이는 패턴' },
+        '계': { icon: '🌧️', title: '비·안개 본성',  essence: '비와 안개',     traits: '지혜와 통찰력',           josa: '이', pattern: '조용히 스며들어 변화시키는 패턴' }
+    };
+    const _v36_dmEntry = _v36_dayMasterMap[dayMaster] || null;
+    
+    // 폴백 — dayMaster 추출 실패 시 옛 오행 5종 매핑 사용 (안전망)
+    const physiog = _v36_dmEntry
+        ? `${_v36_dmEntry.icon} ${_v36_dmEntry.title}`
+        : ({목:'🌳 큰 나무 본성',화:'🔥 빛나는 불꽃',토:'⛰️ 큰 산 본성',금:'⚙️ 단단한 금속',수:'💧 깊은 물'})[dayElement];
+    
+    // ★ V202.36 3줄 친절 구조 (사장님 명세) ★ — josa로 조사 정확 분기
+    const physiogText = _v36_dmEntry
+        ? `${_v36_dmEntry.essence}의 기운이 중심이 되는 구조입니다.<br>`
+          + `타고난 ${_v36_dmEntry.traits}${_v36_dmEntry.josa} 강하게 작동하며,<br>`
+          + `삶의 흐름에서 ${_v36_dmEntry.pattern}이 반복되기 쉽습니다.`
+        : (({목:'곧고 밀어붙이는 구조',화:'뜨겁게 추진하는 구조',토:'안정과 신뢰의 구조',금:'결단과 정의의 구조',수:'깊이와 통찰의 구조'})[dayElement] || '사주 정밀 분석 결과 표시 중');
     
     messages.push({
         type: 'highlight',
         title: physiog || '☯ 사주 분석',
-        text: physiogSub ? `→ ${physiogSub}` : '→ 사주 정밀 분석 결과 표시 중',
+        text: physiogText,
         time: timeStr,
         delay: 100
     });
@@ -17187,11 +17311,15 @@ window.handleSajuQuickReply = function(type) {
     
     if (type === 'boost') {
         const rec = ys.recommendations || {};
+        // ★ V202.36 #3 사장님 명령: 용신 아이콘 오행별 동적 분기 ★
+        //   결함: 💧 고정 (목/화/토/금 사주여도 물방울 표시)
+        //   해결: ys.yongshin 오행 기반 아이콘 매핑
+        const _v36_ysIcon = ({'목':'🌳','화':'🔥','토':'⛰️','금':'⚙️','수':'💧'})[ys.yongshin] || '☯';
         html = `
         <div class="saju-chat-msg" style="animation-delay:0ms;">
             <div class="saju-chat-avatar">☯️</div>
             <div class="saju-chat-bubble highlight">
-                <div class="saju-chat-bubble-title">💧 ${ys.yongshin || '용신'} 보강 가이드</div>
+                <div class="saju-chat-bubble-title">${_v36_ysIcon} ${ys.yongshin || '용신'} 보강 가이드</div>
                 <div>
                     🎨 색상: ${(rec.colors || []).join(', ')}<br>
                     🧭 방위: ${(rec.directions || []).join(', ')}<br>
@@ -18719,15 +18847,22 @@ function renderSajuResult(data) {
                     const _ysHanja = _ysHanjaMap[_ysName] || '';
                     const _hs = _huishinMap[_ysName] || null;
                     
+                    // ★ V202.36 #3 사장님 명령: 용신/희신 아이콘 오행별 동적 분기 ★
+                    //   결함: ▸ 💧 용신: 목(木) 처럼 용신이 목인데 💧 표시 (오행 불일치)
+                    //   해결: 오행별 아이콘 매핑 — 목🌳·화🔥·토⛰️·금⚙️·수💧
+                    const _v36_iconMap = { '목':'🌳', '화':'🔥', '토':'⛰️', '금':'⚙️', '수':'💧' };
+                    const _v36_ysIcon = _v36_iconMap[_ysName] || '☯';
+                    const _v36_hsIcon = _hs ? (_v36_iconMap[_hs.name] || '✨') : '✨';
+                    
                     return `
-                    <!-- ★ V202.34 [3/6] 안 — 💧 용신 + ✨ 희신 한 줄 ★ -->
+                    <!-- ★ V202.34 [3/6] 안 — 용신 + 희신 한 줄 (★ V202.36 아이콘 오행 분기 ★) -->
                     <div style="margin-top:14px; padding-top:12px; border-top:1px dashed rgba(212,175,55,0.3);">
-                        <!-- 💧 용신 · ✨ 희신 — 한 줄 명료 (★ V202.34 사장님 명령 ★) -->
-                        <div style="color:rgba(255,255,255,0.92); font-size:0.88rem; line-height:1.7;">
-                            <strong style="color:#FFE08A;">▸ 💧 용신:</strong> 
+                        <!-- 용신 · 희신 — 한 줄 명료 (★ V202.34 명령 + V202.36 아이콘 ★) -->
+                        <div style="color:rgba(255,255,255,0.92); font-size:0.88rem; line-height:1.7; word-break:keep-all; overflow-wrap:break-word;">
+                            <strong style="color:#FFE08A;">▸ ${_v36_ysIcon} 용신:</strong> 
                             <span style="color:#7FCDFF; font-weight:800; font-size:0.95rem;">${_ysName ? _ysName + '(' + _ysHanja + ')' : '-'}</span>
                             ${_hs ? `<span style="color:rgba(255,255,255,0.45); margin:0 6px;">·</span>
-                                    <strong style="color:#FFE08A;">✨ 희신:</strong>
+                                    <strong style="color:#FFE08A;">${_v36_hsIcon} 희신:</strong>
                                     <span style="color:#C39BD3; font-weight:800; font-size:0.95rem;">${_hs.name}(${_hs.hanja})</span>` : ''}
                         </div>
                     </div>
