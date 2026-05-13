@@ -2445,21 +2445,31 @@ function applyCryptoVocabulary(metrics, stockSubType, stockIntent) {
 // ══════════════════════════════════════════════════════════════════
 function _josa(word, withBatchim, withoutBatchim) {
   if (!word || typeof word !== 'string') return withBatchim;  // 안전 기본값
-  const lastChar = word.charAt(word.length - 1);
+  // ★ V202.37 #6 사장님 명령: 한자 괄호 처리 ★
+  //   결함: '겁재(劫財)' 같은 입력에서 마지막 글자가 ')' → withBatchim 폴백 → 결함
+  //         라이브: "겁재(劫財)이 가장 강한 흐름입니다" (★ 가 ★ 가 정답)
+  //   해결: 괄호 안 한자/영문 제거 후 한국어 부분으로 받침 검사
+  const cleanWord = String(word).replace(/\([^)]*\)/g, '').trim();
+  if (!cleanWord) return withBatchim;
+  const lastChar = cleanWord.charAt(cleanWord.length - 1);
   const code = lastChar.charCodeAt(0);
   // 한글 음절 범위 (가~힣)
   if (code >= 0xAC00 && code <= 0xD7A3) {
     const batchim = (code - 0xAC00) % 28;
+    // ★ V202.37 #6 ㄹ 받침 예외 (로/으로) ★
+    //   '술/물/달' 같은 ㄹ받침은 '으로'가 아닌 '로' 사용
+    //   '로/으로' 패턴 전용 — withBatchim='으로', withoutBatchim='로' 일 때만
+    if (withBatchim === '으로' && withoutBatchim === '로' && batchim === 8) {
+      return withoutBatchim;  // ㄹ 받침이면 '로' 반환
+    }
     return batchim ? withBatchim : withoutBatchim;
   }
   // 영문/숫자 — 발음 끝소리 휴리스틱
   if (/[A-Za-z]/.test(lastChar)) {
-    // L, M, N, R 같은 비음·유음 → 받침처럼 처리
-    return /[lmnrLMNR]$/.test(word) ? withBatchim : withoutBatchim;
+    return /[lmnrLMNR]$/.test(cleanWord) ? withBatchim : withoutBatchim;
   }
   if (/[0-9]/.test(lastChar)) {
-    // 숫자 끝소리 — 0(영), 1(일), 3(삼), 6(육), 7(칠), 8(팔) → 받침
-    return /[01368]$/.test(word) ? withBatchim : withoutBatchim;
+    return /[01368]$/.test(cleanWord) ? withBatchim : withoutBatchim;
   }
   return withBatchim;  // 알 수 없으면 안전 기본값
 }
@@ -7686,7 +7696,8 @@ function v31GeneratePro(sajuData, judgeResult, tier = 'free') {
       if (dominantTie.length > 1) {
         const tieNames = dominantTie.map(s => V31_TEN_STARS_MATRIX[s].name).join(' + ');
         tenStarsTitle = `⭐ 십성 정밀 분석 — ${tieNames} 양강세`;
-        tenStarsContent = `당신의 사주는 ${tieNames}이 함께 강한 양강세 흐름입니다 (${domCount}점 동률)\n\n`;
+        // ★ V202.37 #6 사장님 명령: 조사 자동 분기 (한자 괄호 처리 포함) ★
+        tenStarsContent = `당신의 사주는 ${tieNames}${_i(tieNames)} 함께 강한 양강세 흐름입니다 (${domCount}점 동률)\n\n`;
         // 두 십성의 본질을 모두 설명
         for (const tieKey of dominantTie) {
           const tInfo = V31_TEN_STARS_MATRIX[tieKey];
@@ -7697,7 +7708,8 @@ function v31GeneratePro(sajuData, judgeResult, tier = 'free') {
         tenStarsContent += `▸ 적합 직업: ${domInfo.job}\n`;
       } else {
         tenStarsTitle = `⭐ 십성 정밀 분석 — ${dominantSipsung}`;
-        tenStarsContent = `당신의 사주는 ${domInfo.name}이 가장 강한 흐름입니다 (${domCount}점)\n\n`;
+        // ★ V202.37 #6 사장님 명령: 조사 자동 분기 — '겁재(劫財)이' → '겁재(劫財)가' ★
+        tenStarsContent = `당신의 사주는 ${domInfo.name}${_i(domInfo.name)} 가장 강한 흐름입니다 (${domCount}점)\n\n`;
         tenStarsContent += `▸ 본질: ${domInfo.meaning}\n`;
         tenStarsContent += `▸ 강한 점: ${domInfo.strong}\n`;
         tenStarsContent += `▸ 주의 점: ${domInfo.weak}\n`;
@@ -8025,17 +8037,22 @@ function v31GeneratePro(sajuData, judgeResult, tier = 'free') {
     if (luckPhase.dayPhase) {
       const phaseInfo = V31_LUCK_PHASE_12[luckPhase.dayPhase];
       
+      // ★ V202.37 #6 사장님 명령: 12운성 로/으로 자동 분기 ★
+      //   결함: '목욕로/건록로/제왕로/병로/양로' 받침 있는 단어에 '로' 결합 = 어법 결함
+      //   해결: _ro 헬퍼로 받침 검사 (ㄹ 받침은 '로', 기타 받침은 '으로')
+      const _phaseJosa = _ro(phaseInfo.short);  // 으로/로 자동 분기
+      
       // 강도별 타이밍 조언
       if (phaseInfo.strength === 'peak' || phaseInfo.strength === 'very_high') {
-        timingContent = `현재 일주 운성이 ${phaseInfo.short}로 절정 흐름입니다.\n\n▸ 즉시 행동 권장 — 이 시기를 활용하지 않으면 손실\n▸ 큰 결단 + 적극 진행 + 도전 적합`;
+        timingContent = `현재 일주 운성이 ${phaseInfo.short}${_phaseJosa} 절정 흐름입니다.\n\n▸ 즉시 행동 권장 — 이 시기를 활용하지 않으면 손실\n▸ 큰 결단 + 적극 진행 + 도전 적합`;
       } else if (phaseInfo.strength === 'high') {
-        timingContent = `현재 일주 운성이 ${phaseInfo.short}로 상승 흐름입니다.\n\n▸ 적극 진행 권장\n▸ 새 도전/큰 결정에 좋은 시기`;
+        timingContent = `현재 일주 운성이 ${phaseInfo.short}${_phaseJosa} 상승 흐름입니다.\n\n▸ 적극 진행 권장\n▸ 새 도전/큰 결정에 좋은 시기`;
       } else if (phaseInfo.strength === 'medium') {
-        timingContent = `현재 일주 운성이 ${phaseInfo.short}로 안정 흐름입니다.\n\n▸ 단계적 진행 + 검증 후 확대\n▸ 큰 변화보다는 꾸준한 진행 효과적`;
+        timingContent = `현재 일주 운성이 ${phaseInfo.short}${_phaseJosa} 안정 흐름입니다.\n\n▸ 단계적 진행 + 검증 후 확대\n▸ 큰 변화보다는 꾸준한 진행 효과적`;
       } else if (phaseInfo.strength === 'low' || phaseInfo.strength === 'very_low') {
-        timingContent = `현재 일주 운성이 ${phaseInfo.short}로 약한 흐름입니다.\n\n▸ 큰 결정 미루고 준비/학습 흐름 추천\n▸ 휴식 + 내면 성찰 시기 활용`;
+        timingContent = `현재 일주 운성이 ${phaseInfo.short}${_phaseJosa} 약한 흐름입니다.\n\n▸ 큰 결정 미루고 준비/학습 흐름 추천\n▸ 휴식 + 내면 성찰 시기 활용`;
       } else {
-        timingContent = `현재 일주 운성이 ${phaseInfo.short}로 전환 흐름입니다.\n\n▸ 유연성 발휘 + 변화 받아들임\n▸ 새 가능성 탐색 시기`;
+        timingContent = `현재 일주 운성이 ${phaseInfo.short}${_phaseJosa} 전환 흐름입니다.\n\n▸ 유연성 발휘 + 변화 받아들임\n▸ 새 가능성 탐색 시기`;
       }
     } else {
       timingContent = '타이밍 흐름은 외부 신호와 정렬되는 시점에서 명확해집니다.';
@@ -9089,10 +9106,10 @@ function v31CalcTenStars(sajuData) {
     if (dominantTie.length > 1) {
       // ★ [V31 #138] 양강세 표기 (정재+정관 1.7 동점 등)
       const tieNames = dominantTie.map(s => V31_TEN_STARS_MATRIX[s].name).join(' + ');
-      analysis = `당신의 사주는 ${tieNames}이 함께 강한 양강세 흐름입니다`;
+      analysis = `당신의 사주는 ${tieNames}${_i(tieNames)} 함께 강한 양강세 흐름입니다`;
     } else {
       const domInfo = V31_TEN_STARS_MATRIX[dominant];
-      analysis = `당신의 사주는 ${domInfo.name}이 가장 강한 흐름입니다 — ${domInfo.meaning}`;
+      analysis = `당신의 사주는 ${domInfo.name}${_i(domInfo.name)} 가장 강한 흐름입니다 — ${domInfo.meaning}`;
     }
     if (sub.length > 0) {
       analysis += `. 보조 흐름은 ${sub.map(s => V31_TEN_STARS_MATRIX[s].short).join(', ')} 입니다.`;
@@ -17580,9 +17597,28 @@ function getDaewoonKeywordV186(score, tenStar) {
     '정인': '인성과 안정'
   };
   
+  // ★★★ [V202.37 #5 사장님 명령 — 대운 8단계 풀이 진화 ★★★ ★★★
+  //   결함: 짧은 키워드 4-5자 ("독립과 추진", "학습과 성찰") → 한자 용어 친화 X
+  //         사장님 진단: "20-30대 유저들이 알 수 있는 용어로 풀이"
+  //   해결: 사장님 11안 + 클로드 컨버전 → 시나리오 중심 친화 풀이 10종
+  //         '흐름' 반복 단조로움 차단 → 일부 '시기/국면/구간' 변형 (사장님 의도 무손상)
+  const TONE_EXPLAIN_V37 = {
+    '비견': '스스로 밀어붙이는 힘이 강해지는 흐름. 독립·창업·자기 결정이 많아지고, 누가 시키지 않아도 움직이게 됩니다.',
+    '겁재': '주변 사람·돈의 변동이 커지는 국면. 협력과 충돌이 동시에 들어오고, 누구와 함께 가느냐가 결과를 가릅니다.',
+    '식신': '삶의 여유와 자기 표현이 살아나는 흐름. 콘텐츠·말·취미·먹고사는 안정 — 좋아하는 일에서 결과가 나오는 시기입니다.',
+    '상관': '틀을 깨고 새로 만들고 싶어지는 시기. 창의력은 최고치지만, 직설적 말투나 반항심이 충돌을 만들 수도 있습니다.',
+    '편재': '활동량이 늘고 돈의 흐름이 커지는 국면. 사업·영업·투자·대외활동 운이 강해지지만, 지출 기복도 함께 큽니다.',
+    '정재': '안정적으로 자산을 쌓아가는 구간. 무리한 승부보다 저축·부동산·생활 안정 — 꾸준함이 무기인 시기입니다.',
+    '편관': '강한 압박과 도전이 들어오는 흐름. 큰 책임·권력·변혁이 함께 오며, 견디면 큰 성장이 따르는 시기입니다.',
+    '정관': '명예와 책임이 따라오는 흐름. 조직·자격·평판 — 사회적 위치가 분명해지고, 규율 안에서 인정받는 시기입니다.',
+    '편인': '혼자 깊게 파고드는 시기. 사람보다 공부·정보·분석에 집중하기 쉽고, 새로운 통찰이 만들어집니다.',
+    '정인': '보호받는 안정 흐름. 가족·직장·기반이 견고해지고, 마음의 균형을 회복하는 시기입니다.'
+  };
+  
   return {
     level,
     tone: TONE_MAP[tenStar] || '균형',
+    explain: TONE_EXPLAIN_V37[tenStar] || '',  // ★ V202.37 #5 신규 — 클라이언트가 풀이 표시
     summary: `${level} — ${TONE_MAP[tenStar] || '균형'}`
   };
 }
@@ -18017,7 +18053,7 @@ export default {
     // ════════════════════════════════════════════════════════════════════
     if (url.pathname === "/version" && request.method === "GET") {
       return new Response(JSON.stringify({
-        version: "V202.36",      // ★ V202.36: 사장님 4종 통합 명령 - ① 입력모달 버튼통합(A+X) ② 일간 10종 진화(5→10) ③ 용신 아이콘 오행분기(💧고정 해제) ④ 점사창 폭/반응형 강화(word-break)
+        version: "V202.37",      // ★ V202.37: 사장님 6종 통합 - ① 좌측정렬 결함 ② 용어풀이(용신/희신/십성) ③ 펼침창 시인성 ④ PRO헤더 변경 ⑤ 대운8단계 풀이 진화 ⑥ 조사 어법 자동분기(jo헬퍼)
         _ts: Date.now(),
         _ok: true
       }), {
