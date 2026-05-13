@@ -18053,7 +18053,7 @@ export default {
     // ════════════════════════════════════════════════════════════════════
     if (url.pathname === "/version" && request.method === "GET") {
       return new Response(JSON.stringify({
-        version: "V202.41",      // ★ V202.41: 사장님 핫픽스 2종 - ① 황금/초록 테두리 ↔ 다음 선 빈 공간 30% 추가 축소 (투자+연애 공통) ② "미래 신탁 잠금 해제" 버튼 한 줄 (padding 35px → 18px)
+        version: "V202.42",      // ★ V202.42: 사장님 #3 본격 재설계 - 투자(주식/코인) 깊이 점사창 안 8박스 → 4박스 통합 (50% 단축, 중복 4박스 제거, 글로벌 표준 Bloomberg/Toss증권 패턴)
         _ts: Date.now(),
         _ok: true
       }), {
