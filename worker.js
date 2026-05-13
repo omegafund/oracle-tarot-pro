@@ -18017,7 +18017,7 @@ export default {
     // ════════════════════════════════════════════════════════════════════
     if (url.pathname === "/version" && request.method === "GET") {
       return new Response(JSON.stringify({
-        version: "V202.35",      // ★ V202.35: 라이브 결함 2종 수정 - yongshin 데이터 경로 (v184_5.yongshin) + PRO 펼침 박스 닫기 이동 (변수 scope 불일치 해결)
+        version: "V202.36",      // ★ V202.36: 사장님 4종 통합 명령 - ① 입력모달 버튼통합(A+X) ② 일간 10종 진화(5→10) ③ 용신 아이콘 오행분기(💧고정 해제) ④ 점사창 폭/반응형 강화(word-break)
         _ts: Date.now(),
         _ok: true
       }), {
