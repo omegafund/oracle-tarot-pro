@@ -18053,7 +18053,7 @@ export default {
     // ════════════════════════════════════════════════════════════════════
     if (url.pathname === "/version" && request.method === "GET") {
       return new Response(JSON.stringify({
-        version: "V202.37",      // ★ V202.37: 사장님 6종 통합 - ① 좌측정렬 결함 ② 용어풀이(용신/희신/십성) ③ 펼침창 시인성 ④ PRO헤더 변경 ⑤ 대운8단계 풀이 진화 ⑥ 조사 어법 자동분기(jo헬퍼)
+        version: "V202.38",      // ★ V202.38: 사장님 2종 라이브 결함 - ① 사주 십성 풀이 조사 결함 (겁재이란? → 겁재란?) ② 투자 깊이점사창 시인성 진화 (🎯 ZEUS 매매 결정서 / FULL DECISION ORACLE + 에메랄드)
         _ts: Date.now(),
         _ok: true
       }), {
