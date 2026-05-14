@@ -3316,7 +3316,7 @@
     (function() {
         'use strict';
         
-        const APP_VERSION = 'V202.48';  // ★ V202.48: ZEUS LOVE ORACLE v2.0 - 연애 15→7박스 + 카드 2-4문장 + 색상 + 점수바 + 체크리스트
+        const APP_VERSION = 'V202.48.1';  // ★ V202.48.1: 핫픽스 결함 수정 - 토글 조건 (v25_24HTML && layer5HTML → v25_24HTML만) + V25.24 데이터로 펼침 4박스 직접 생성
         window.APP_VERSION = APP_VERSION;
         
         // ★★★ [V202.17 결정적 수정] _sajuInput 복원 ★ 페이지 로드 즉시 ★ ★★★
@@ -12377,6 +12377,72 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
 
         // 매개변수: serverOracle만 실질 사용 (cards/qRaw/loveSubType는
         //          향후 확장 위해 시그니처 보존 — eslint 회피용 _접두사)
+        // ════════════════════════════════════════════════════════════
+        // ★★★ [V202.48.1 사장님 명령 — 펼침 박스 V25.24 데이터 활용] ★★★
+        //   결함 진단: _v48_loveDeepToggle 옛 조건 (v25_24HTML && layer5HTML)
+        //              → layer5HTML 항상 null (love 분기 X)
+        //              → 토글 자체 안 그려짐
+        //   해결: V25.24 Oracle 데이터로 펼침 박스 ★ 직접 ★ 생성
+        //         _renderLoveBlockV25_24 메인에서 ★ 제거 ★ 된 box3/box4/box5 + 카드 흐름
+        //         펼침 박스 4개 = 행동(box3) + 타이밍(box4) + 주의(box5) + 카드 시그널
+        //   격리: 메인 _renderLoveBlockV25_24 무영향, 펼침 박스만 신규 생성
+        // ════════════════════════════════════════════════════════════
+        function _v48BuildLoveDeepBoxes(serverOracle) {
+            if (!serverOracle || !serverOracle.boxes) return '';
+            const b = serverOracle.boxes;
+            
+            // 박스 스타일 — 사장님 매니페스토 색조 차별화
+            const boxBase = `padding:14px 16px; border-radius:10px; margin-bottom:14px; line-height:1.85;`;
+            const labelBase = `font-size:0.84rem; font-weight:900; letter-spacing:0.10em; margin-bottom:8px;`;
+            const bodyBase = `font-size:0.88rem; color:rgba(255,255,255,0.92); line-height:1.85;`;
+            
+            // [4] ⏱ 타이밍 신호 — 🟡 황금톤 (시간 차원)
+            const _v48_timingBox = (b.timing) ? `
+            <div style="${boxBase} background:rgba(241,196,15,0.06); border:1px solid rgba(241,196,15,0.35); border-left:3px solid #F1C40F;">
+                <div style="${labelBase} color:#F1C40F;">⏱ 타이밍 신호</div>
+                <div style="${bodyBase}">
+                    ${b.timing.timingNow ? `<div style="margin-bottom:6px;">👉 ${b.timing.timingNow}</div>` : ''}
+                    ${b.timing.timingNext ? `<div style="margin-bottom:6px;">👉 ${b.timing.timingNext}</div>` : ''}
+                    ${b.timing.criticalTiming ? `<div style="margin-top:8px; padding:8px 10px; background:rgba(241,196,15,0.10); border-radius:6px; font-size:0.84rem;">⚡ 전환 시점: <b style="color:#FFD970;">${b.timing.criticalTiming}</b></div>` : ''}
+                </div>
+            </div>` : '';
+            
+            // [5] 💭 상대 마음 — 💜 보라톤 (감정 차원)
+            const _v48_mindBox = (b.essence) ? `
+            <div style="${boxBase} background:rgba(155,89,182,0.06); border:1px solid rgba(155,89,182,0.35); border-left:3px solid #9B59B6;">
+                <div style="${labelBase} color:#C39BD3;">💭 상대 마음 흐름</div>
+                <div style="${bodyBase}">
+                    ${b.essence.flowBlock && b.essence.flowBlock.visible ? `<div style="margin-bottom:6px;">▸ 겉으로: ${b.essence.flowBlock.visible}</div>` : ''}
+                    ${b.essence.flowBlock && b.essence.flowBlock.real ? `<div style="margin-bottom:6px;">▸ 실제로: ${b.essence.flowBlock.real}</div>` : ''}
+                    ${b.essence.dynamic ? `<div style="margin-top:8px; padding:8px 10px; background:rgba(155,89,182,0.08); border-radius:6px; font-size:0.84rem;">두 흐름의 구조: <b style="color:#C39BD3;">${b.essence.dynamic}</b></div>` : ''}
+                </div>
+            </div>` : '';
+            
+            // [6] ⚠️ 관계 리스크 — 🟠 주황톤 (위험 차원)
+            const _v48_riskBox = (b.caution) ? `
+            <div style="${boxBase} background:rgba(243,156,18,0.06); border:1px solid rgba(243,156,18,0.35); border-left:3px solid #F39C12;">
+                <div style="${labelBase} color:#F39C12;">⚠️ 관계 리스크</div>
+                <div style="${bodyBase}">
+                    ${b.caution.caution1 ? `<div style="margin-bottom:6px;">👉 ${b.caution.caution1}</div>` : ''}
+                    ${b.caution.caution2 ? `<div style="margin-bottom:6px;">👉 ${b.caution.caution2}</div>` : ''}
+                    ${b.caution.cautionProgression ? `<div style="margin-top:8px; padding:8px 10px; background:rgba(243,156,18,0.10); border-radius:6px; font-size:0.84rem;"><b style="color:#F39C12;">⚠️ 진행 시나리오</b><br>→ ${b.caution.cautionProgression}</div>` : ''}
+                </div>
+            </div>` : '';
+            
+            // [7] 🛡 다음 행동 — 🟢 녹색톤 (액션 차원) — 체크리스트 형태
+            const _v48_actionBox = (b.actionGuide) ? `
+            <div style="${boxBase} background:rgba(46,204,113,0.06); border:1px solid rgba(46,204,113,0.35); border-left:3px solid #2ecc71;">
+                <div style="${labelBase} color:#2ecc71;">🛡 다음 행동</div>
+                <div style="${bodyBase}">
+                    ${b.actionGuide.action1 ? `<div style="margin-bottom:6px;"><b style="color:#2ecc71;">✔ 해야 할 행동</b></div><div style="padding-left:14px; margin-bottom:4px;">→ ${b.actionGuide.action1}</div>${b.actionGuide.actionResult1 ? `<div style="padding-left:28px; margin-bottom:10px; font-size:0.82rem; color:rgba(255,255,255,0.75);">⤷ ${b.actionGuide.actionResult1}</div>` : ''}` : ''}
+                    ${b.actionGuide.action2 ? `<div style="padding-left:14px; margin-bottom:4px;">→ ${b.actionGuide.action2}</div>${b.actionGuide.actionResult2 ? `<div style="padding-left:28px; margin-bottom:10px; font-size:0.82rem; color:rgba(255,255,255,0.75);">⤷ ${b.actionGuide.actionResult2}</div>` : ''}` : ''}
+                    ${b.actionGuide.avoid ? `<div style="margin-bottom:6px; margin-top:8px;"><b style="color:#FF8080;">✘ 절대 피할 것</b></div><div style="padding-left:14px;">→ ${b.actionGuide.avoid}</div>` : ''}
+                </div>
+            </div>` : '';
+            
+            return _v48_timingBox + _v48_mindBox + _v48_riskBox + _v48_actionBox;
+        }
+
         function _renderLoveBlockV25_24(_cards, _qRaw, _loveSubType, serverOracle, _fi) {
             // serverOracle = window._serverMetrics.oracleV25_24 (Worker가 생성)
             const o = serverOracle;
@@ -13568,16 +13634,31 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
 
                 // 무료 영역 — V25.24 (최우선) → 5계층 결과 → 기존 _renderLoveBlock
                 // ════════════════════════════════════════════════════════════
-                // ★★★ [V202.48 핫픽스 — 사장님 진단 결함 차단] ★★★
-                //   결함: v25_24Oracle 있으면 layer5HTML(펼침 4박스) ★ 사용 안 됨 ★
-                //   → V202.48 매니페스토 "메인 3 + 펼침 4 = 7박스" 차질
-                //   → 사장님 진단 "구현 안 됨" 정확
-                //   해결: v25_24HTML 있어도 layer5HTML을 ★ "✨ 심층 흐름 해석" ★
-                //         펼침 토글로 ★ 추가 노출 ★
-                //   효과: 메인 3박스 + 펼침 4박스 = ★ 7박스 ★ 완성
-                //   격리: v25_24Oracle 없는 케이스는 옛 흐름 그대로
+                // ★★★ [V202.48.1 사장님 진단 — 핫픽스 결함 수정] ★★★
+                //   사장님 라이브 검증: "✨ 심층 흐름 해석 토글 안 보임"
+                //   진짜 원인:
+                //     _v48_loveDeepToggle 조건이 (v25_24HTML && layer5HTML)
+                //     → layer5HTML 항상 null (★ _mapServerMetricsToInvestData에 love 분기 X ★)
+                //     → 토글 자체 안 그려짐
+                //   해결:
+                //     ① 조건 변경 — v25_24HTML만 있어도 토글 노출
+                //     ② 펼침 박스 내용 — V25.24 데이터로 직접 구성
+                //         (메인에서 제거된 box3/box4/box5 + 펼침 헤더 카드)
+                //   격리: v25_24Oracle 없는 케이스 옛 흐름 그대로
                 // ════════════════════════════════════════════════════════════
-                const _v48_loveDeepToggle = (v25_24HTML && layer5HTML) ? `
+                let _v48_loveDeepBoxes = '';
+                if (v25_24Oracle && typeof _v48BuildLoveDeepBoxes === 'function') {
+                    try {
+                        _v48_loveDeepBoxes = _v48BuildLoveDeepBoxes(v25_24Oracle);
+                    } catch (e) {
+                        // 안전: 실패 시 layer5HTML로 폴백
+                        _v48_loveDeepBoxes = layer5HTML || '';
+                    }
+                } else if (layer5HTML) {
+                    _v48_loveDeepBoxes = layer5HTML;
+                }
+                
+                const _v48_loveDeepToggle = (v25_24HTML && _v48_loveDeepBoxes) ? `
                 <details class="zeus-love-deep-toggle" style="margin-top:18px; cursor:pointer;
                             background:linear-gradient(135deg, rgba(255,123,172,0.10), rgba(212,175,55,0.06));
                             border:1.5px solid rgba(255,123,172,0.35); border-radius:14px;
@@ -13592,7 +13673,7 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
                         </span>
                     </summary>
                     <div style="padding:4px 14px 14px 14px; border-top:1px solid rgba(255,123,172,0.18);">
-                        ${layer5HTML}
+                        ${_v48_loveDeepBoxes}
                     </div>
                 </details>
                 <style>
@@ -13608,7 +13689,7 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
                 </style>` : '';
                 
                 const freeContent = v25_24HTML
-                    ? v25_24HTML + _v48_loveDeepToggle   // ★ V202.48 핫픽스: 메인 3박스 + 펼침 4박스 ★
+                    ? v25_24HTML + _v48_loveDeepToggle   // ★ V202.48.1: 메인 + 펼침 토글 ★
                     : (layer5HTML
                         ? `<div style="padding:18px; background:rgba(212,175,55,0.06); border:1px solid rgba(212,175,55,0.4); border-radius:12px; margin-top:18px;">
                             <h3 style="color:#FF7BAC; text-align:center; margin:0 0 15px 0; font-size:1.1rem; border-bottom:1px solid rgba(255,123,172,0.35); padding-bottom:10px;">
