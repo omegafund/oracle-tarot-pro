@@ -2990,14 +2990,18 @@ function buildPhraseFromBlocks(blocks, seed, fallback) {
     // 짧은 형: RISK만 (5초 결제 결정용)
     phrase = `${risk}`;
   } else if (rhythm === 'long') {
-    // 긴 형: CORE + 추가 단서 + TURN + RISK (풍부 표현)
-    phrase = `${core}, ${turn} ${risk}`;
+    // ★★★ [V202.44 사장님 명령 - 한 줄 결론 결함 근본 수정] ★★★
+    //   결함 (라이브): "🔴 익절 시점 명확화 — 분할 청산, 핵심: 청산 타이밍 = 수익 결정"
+    //                  ↑ CORE와 TURN/RISK가 쉼표로 한 줄 결합 → 가독성 ↓
+    //   해결: 쉼표 → 줄바꿈(\n) → 클라이언트가 <br>로 변환 → 두 줄로 명확 분리
+    //   효과: 5초 결제 결정 + 시각 위계 강화
+    phrase = `${core}\n${turn} ${risk}`;
   } else if (rhythm === 'question') {
     // 질문형: 도발 + RISK
     phrase = `${core}? ${risk}`;
   } else {
-    // mid (default): CORE + TURN + RISK
-    phrase = `${core}, ${turn} ${risk}`;
+    // mid (default): CORE + TURN + RISK (★ V202.44 줄바꿈 적용 ★)
+    phrase = `${core}\n${turn} ${risk}`;
   }
   
   // [안전 가드] 길이 검증 (사장님 가독성 보호)
@@ -18053,7 +18057,7 @@ export default {
     // ════════════════════════════════════════════════════════════════════
     if (url.pathname === "/version" && request.method === "GET") {
       return new Response(JSON.stringify({
-        version: "V202.43",      // ★ V202.43: 사장님 라이브 ★ 치명 결함 ★ - 매도 점사인데 본문 "매수에 대한 과거 진입 에너지" 출력 (Gemini 프롬프트 subjectDirective의 "좋은 예"가 매수 고정 텍스트라 매도 톤 무시됨, 매수/매도 의도별 분기)
+        version: "V202.44",      // ★ V202.44: 한 줄 결론 박스 결함 수정 - buildPhraseFromBlocks의 CORE/TURN/RISK 결합을 쉼표(,) → 줄바꿈(\n) 변환 (가독성 ↑ 5초 결제 결정 강화)
         _ts: Date.now(),
         _ok: true
       }), {
