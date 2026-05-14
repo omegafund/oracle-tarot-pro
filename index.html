@@ -3316,7 +3316,7 @@
     (function() {
         'use strict';
         
-        const APP_VERSION = 'V202.48.5';  // ★ V202.48.5: 사장님 라이브 명령 — (1) V202.48.3 디버그 패널 ★ 제거 ★ (검증 완료) (2) 토글 디자인 강화: 황금 글로우 border 2.5px + 다층 box-shadow + 펄스 애니메이션 + 3줄 텍스트(✨심층 흐름 해석/더 깊은 분석 4가지/👆 탭하여 펼치기 ▼) + CTA 둥근 버튼 + [open] 상태 CTA 자동 전환 (3) 매니페스토 #2 영어 부제 통일: box1 CORE INSIGHT(PRO 분기 제거)/box2 RELATION ESSENCE(추가)/box6 FINAL VERDICT(기존)
+        const APP_VERSION = 'V202.48.6';  // ★ V202.48.6: 사장님 라이브 명령 — 모바일 헤더 짤림 해결. (1) box1 한글 "🧠 핵심 흐름 해석" 위 / 영문 "CORE INSIGHT" 아래 2줄 분리 (가로 flex 제거) (2) box2 한글 "💘 관계 본질" 위 / 영문 "RELATION ESSENCE" 아래 2줄 분리 (3) box6 한글 "✨ 최종 신탁" ★ 신규 추가 ★ 위 / 영문 "FINAL VERDICT" 아래 2줄 (TOP VERDICT="최종 결론"과 차별화 + ZEUS 브랜드 톤). 토글은 V202.48.5 유지 (사장님 "토글창 너무 잘되었다" 확인).
         window.APP_VERSION = APP_VERSION;
         
         // ★★★ [V202.17 결정적 수정] _sajuInput 복원 ★ 페이지 로드 즉시 ★ ★★★
@@ -12579,9 +12579,9 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
 
             const box1 = `
                 <div style="${boxBase} ${goldBorder}">
-                    <div style="display:flex; align-items:center; gap:6px; margin-bottom:10px;">
+                    <div style="margin-bottom:12px;">
                         <div style="${labelGold}">🧠 핵심 흐름 해석</div>
-                        <div style="margin-left:auto; font-size: 0.72rem; color:rgba(212,175,55,0.85); font-weight:700; letter-spacing:0.12em;">CORE INSIGHT</div>
+                        <div style="font-size:0.7rem; color:rgba(212,175,55,0.75); font-weight:700; letter-spacing:0.18em; margin-top:3px;">CORE INSIGHT</div>
                     </div>
                     <div style="font-size:0.9rem; color:rgba(255,255,255,0.92);">
                         <div>${b.coreInsight.line1}</div>
@@ -12600,9 +12600,9 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
             const re = b.relationEssence;
             const box2 = `
                 <div style="${boxBase} ${greenBorder}">
-                    <div style="display:flex; align-items:center; gap:6px; margin-bottom:10px;">
+                    <div style="margin-bottom:12px;">
                         <div style="${labelStyle}">💘 관계 본질</div>
-                        <div style="margin-left:auto; font-size: 0.72rem; color:rgba(46,204,113,0.85); font-weight:700; letter-spacing:0.12em;">RELATION ESSENCE</div>
+                        <div style="font-size:0.7rem; color:rgba(46,204,113,0.75); font-weight:700; letter-spacing:0.18em; margin-top:3px;">RELATION ESSENCE</div>
                     </div>
                     <div style="font-size:0.88rem; color:rgba(255,255,255,0.92);">
                         <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:10px;">
@@ -12724,8 +12724,9 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
             const fn = b.final;
             const box6 = `
                 <div style="${boxBase} ${finalBox} margin-top:18px; padding:18px 18px;">
-                    <div style="text-align:center; margin-bottom:12px;">
-                        <div style="color:#FFD970; font-size:0.74rem; font-weight:900; letter-spacing:0.18em;">FINAL VERDICT</div>
+                    <div style="text-align:center; margin-bottom:14px;">
+                        <div style="color:#FFD970; font-size:0.96rem; font-weight:900; letter-spacing:0.05em; text-shadow:0 0 12px rgba(255,217,112,0.45);">✨ 최종 신탁</div>
+                        <div style="color:rgba(255,217,112,0.7); font-size:0.72rem; font-weight:700; letter-spacing:0.20em; margin-top:4px;">FINAL VERDICT</div>
                     </div>
                     ${fn.pivot ? `
                     <div style="margin-bottom:14px; padding:13px 15px;
