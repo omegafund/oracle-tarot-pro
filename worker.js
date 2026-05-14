@@ -18053,7 +18053,7 @@ export default {
     // ════════════════════════════════════════════════════════════════════
     if (url.pathname === "/version" && request.method === "GET") {
       return new Response(JSON.stringify({
-        version: "V202.42",      // ★ V202.42: 사장님 #3 본격 재설계 - 투자(주식/코인) 깊이 점사창 안 8박스 → 4박스 통합 (50% 단축, 중복 4박스 제거, 글로벌 표준 Bloomberg/Toss증권 패턴)
+        version: "V202.43",      // ★ V202.43: 사장님 라이브 ★ 치명 결함 ★ - 매도 점사인데 본문 "매수에 대한 과거 진입 에너지" 출력 (Gemini 프롬프트 subjectDirective의 "좋은 예"가 매수 고정 텍스트라 매도 톤 무시됨, 매수/매도 의도별 분기)
         _ts: Date.now(),
         _ok: true
       }), {
@@ -19455,16 +19455,32 @@ export default {
 
           // 모드 자동 교정: 버튼(loveSubType) vs 질문 의도 충돌 해결
           let finalLoveSubType = loveSubType;
+          // ★★★ [V202.43 #2 사장님 도돌이 결함 근본 수정] ★★★
+          //   사장님 진단: "결혼 점사 물었는데 궁합 본문 섞여 나옴"
+          //   ★ 도돌이 ★: 옛 작업에서 버튼 분기 완료 보고했으나 ★ 안전망이 변환 강제 ★
+          //   근본 원인 (라인 19458, 19467):
+          //     안전망 1: 'compatibility' 버튼 + 대상 없음 → 일반 연애운으로 강제 변환
+          //     안전망 2: 빈 loveSubType + 대상 패턴 → compatibility로 강제 변환
+          //     ★ 결함 시나리오 ★: 'marriage' 버튼 누르고 "배우자와 결혼 어때?" 입력
+          //                       → 옛 안전망에서 compatibility로 변환 ★ 없음 ★ (이건 OK)
+          //                       → 단 다른 경로에서 의도 손실 가능
+          //   해결:
+          //     ① 명시 loveSubType ('marriage', 'breakup', 'reunion', 'crush' 등) → ★ 절대 보존 ★
+          //     ② 'compatibility' 버튼만 대상 검증 (옛 결함 유지하되 안전 강화)
+          //     ③ 빈 loveSubType일 때만 compatibility 자동 추정 (옛 결함 유지)
+          //     ④ 명시 'marriage' 버튼 → 절대 변환 X (사장님 의도 100% 보존)
+          //   안전 강화: 'marriage'/'breakup'/'reunion'/'crush'/'thumb'/'mindread'/'contact' 등 명시 의도는 변환 차단
+          const _v43_explicitLoveSubTypes = ['marriage', 'breakup', 'reunion', 'crush', 'thumb', 'mindread', 'contact'];
+          const _v43_isExplicitLoveIntent = _v43_explicitLoveSubTypes.includes(loveSubType);
+          
           if (loveSubType === 'compatibility' && !hasTargetPerson(prompt)) {
             // 궁합 버튼 눌렀지만 질문에 대상이 없음 → 개인 연애운으로 교정
             finalLoveSubType = '';  // 일반 연애운 처리
           }
 
           // [V26.1 결함 1-B] 안전망 — 카드 미선택 + 두 사람 패턴 → compatibility 추정
-          //   사장님 진단: 사용자가 카드 직접 선택 안 한 케이스
-          //   해결: loveSubType 빈 + 두 사람 패턴 감지 → compatibility 자동 매칭
-          //   효과: 'general'(혼자 연애운) 잘못 매칭 → 'compatibility'(두 사람) 정확
-          if (!finalLoveSubType && hasTargetPerson(prompt)) {
+          //   ★ V202.43 #2 강화 ★: 명시 의도(결혼/이별/재회 등)가 있으면 ★ 절대 변환 금지 ★
+          if (!finalLoveSubType && !_v43_isExplicitLoveIntent && hasTargetPerson(prompt)) {
             finalLoveSubType = 'compatibility';
           }
 
@@ -19650,8 +19666,27 @@ export default {
             ? `\n⚠️ [휴장일 인지 — 매우 중요]\n지정하신 ${userDate.rawDate}은 "${userDate.holidayName}"으로 한국 주식시장 휴장일입니다.\n해당 일자에는 매수/매도가 불가능합니다.\n\n본문에 반드시 다음을 포함하라:\n1. ${userDate.rawDate}이 ${userDate.holidayName}로 휴장임을 알린다\n2. 직전 영업일(또는 직후 영업일) 진입을 권하라\n3. "휴장일 직전·직후 영업일이 카드 에너지 발현 시점"으로 해석하라\n\n예시 표현 (주어 생략):\n  - "${userDate.rawDate}은 ${userDate.holidayName} 휴장일로 거래가 불가합니다. 카드 에너지는 직전 영업일에 집중됩니다."\n  - "지정하신 ${userDate.rawDate}은 시장이 잠드는 휴장일이므로, 우주적 타이밍은 그 전후로 분산됩니다."\n`
             : '';
 
+          // ★★★ [V202.43 #1 사장님 도돌이 결함 근본 수정] ★★★
+          //   사장님 진단: "매도 점사인데 본문에 '매수에 대한 과거 진입 에너지' 출력"
+          //   ★ 도돌이 ★: 4월 30일 V19.10에서 클라이언트 isSell 정규식 + Worker action 라벨 분기 완료
+          //     했으나 ★ Gemini 프롬프트의 "좋은 예"가 매수 고정 ★ — 표면 패치만 한 결과
+          //   근본 원인:
+          //     subjectDirective의 "좋은 예: ${subjectName} 매수에 대한 과거 진입 에너지는~"
+          //     → Gemini는 이 예시를 따라 본문 생성 → 매도 점사도 "매수" 톤 출력
+          //   해결: metrics.stockIntent로 의도별 "좋은 예" 동적 분기
+          //     • sell → "매도/보유 흐름" 예시
+          //     • buy  → "매수/진입" 예시
+          //     • love/fortune (stockIntent 없음) → 중립 예시
+          const _v43_isSellIntent = (metrics && metrics.stockIntent === 'sell');
+          const _v43_isBuyIntent  = (metrics && metrics.stockIntent === 'buy');
+          const _v43_subjectExample = _v43_isSellIntent
+            ? `좋은 예: "${subjectName} 매도에 대한 과거 보유 흐름은~"\n     좋은 예: "${subjectName}을 향한 과거 흐름은 [카드 의미]를 보여줍니다"\n     ⚠️ 매도 점사 — "매수/진입/신규 진입" 표현 절대 금지 (사용자는 이미 보유 중)`
+            : _v43_isBuyIntent
+            ? `좋은 예: "${subjectName} 매수에 대한 과거 진입 에너지는~"\n     좋은 예: "${subjectName}을 향한 과거 흐름은 [카드 의미]를 보여줍니다"\n     ⚠️ 매수 점사 — "매도/익절/청산" 표현 절대 금지 (사용자는 신규 진입 검토 중)`
+            : `좋은 예: "${subjectName}에 대한 과거 흐름은 [카드 의미]를 보여줍니다"\n     좋은 예: "${subjectName}을 향한 과거 에너지는~"`;
+          
           const subjectDirective = subjectName
-            ? `\n🚨 [최우선 규칙 — 이 규칙을 어기면 출력 전체가 무효입니다]\n종목명: "${subjectName}"\n\n✅ 반드시 지켜야 할 규칙:\n  1. "과거" 단락 첫 문장에 반드시 "${subjectName}"을 직접 명시\n     좋은 예: "${subjectName} 매수에 대한 과거 진입 에너지는~"\n     좋은 예: "${subjectName}을 향한 과거 흐름은 [카드 의미]를 보여줍니다"\n  2. "현재" 단락에도 "${subjectName}" 한 번 이상 언급\n  3. "미래" 단락에도 "${subjectName}" 한 번 이상 언급\n  4. 제우스 신탁 박스 첫 문장에도 "${subjectName}" 포함\n\n🚨 절대 금지 (위반 시 무효):\n  - "📈에 대한~" ← 이모지로 종목명 대체 절대 금지!\n  - "🏠에 대한~" ← 이모지로 대체 절대 금지!\n  - 종목명 없이 "진입 에너지~" 만 쓰는 것 절대 금지!\n  - 첫 단락에 인사말 또는 도입부 절대 금지 (바로 "과거"부터)\n  - "유저님" 사용 절대 금지 (V25.22 규칙)\n\n⚠️ 법적 준수:\n  - "${subjectName}이 오른다/좋은 회사다" (가치 평가) ❌\n  - "${subjectName}의 실적/재무 분석" ❌\n  - "${subjectName}에 대한 심리/내면 분석" ✅ OK\n${holidayDirective}`
+            ? `\n🚨 [최우선 규칙 — 이 규칙을 어기면 출력 전체가 무효입니다]\n종목명: "${subjectName}"\n\n✅ 반드시 지켜야 할 규칙:\n  1. "과거" 단락 첫 문장에 반드시 "${subjectName}"을 직접 명시\n     ${_v43_subjectExample}\n  2. "현재" 단락에도 "${subjectName}" 한 번 이상 언급\n  3. "미래" 단락에도 "${subjectName}" 한 번 이상 언급\n  4. 제우스 신탁 박스 첫 문장에도 "${subjectName}" 포함\n\n🚨 절대 금지 (위반 시 무효):\n  - "📈에 대한~" ← 이모지로 종목명 대체 절대 금지!\n  - "🏠에 대한~" ← 이모지로 대체 절대 금지!\n  - 종목명 없이 "진입 에너지~" 만 쓰는 것 절대 금지!\n  - 첫 단락에 인사말 또는 도입부 절대 금지 (바로 "과거"부터)\n  - "유저님" 사용 절대 금지 (V25.22 규칙)\n\n⚠️ 법적 준수:\n  - "${subjectName}이 오른다/좋은 회사다" (가치 평가) ❌\n  - "${subjectName}의 실적/재무 분석" ❌\n  - "${subjectName}에 대한 심리/내면 분석" ✅ OK\n${holidayDirective}`
             : holidayDirective;
 
           financeInject = `
@@ -19745,12 +19780,24 @@ The Devil 예시:
 리스크: ${metrics.riskLevel}
 `;
         } else if (queryType === "love") {
-          const compatNote = (loveSubType === 'compatibility')
-            ? `[궁합 모드] 본 질문은 두 사람의 "궁합" 분석이다. 아래 3가지를 반드시 포함하라:
-   1) 두 사람의 에너지 성향 (끌림 요소)
-   2) 갈등 포인트 (차이점에서 오는 긴장)
-   3) 관계 발전 방향 (맞춰 나가야 할 지점)`
-            : '';
+          // ★★★ [V202.43 #2 사장님 도돌이 결함 - Gemini 보강] ★★★
+          //   결함: 결혼/이별/재회 등 명시 의도가 Gemini에 전달 안 됨 (compatibility만 있었음)
+          //   결과: Gemini가 모든 연애를 동일 톤으로 생성 → 결혼 점사도 일반/궁합 톤
+          //   해결: 7종 명시 의도별 directive 추가
+          //         marriage / breakup / reunion / crush / thumb / mindread / contact / compatibility
+          //   효과: 사용자가 누른 버튼대로 ★ 정확한 톤 ★ 본문 생성
+          const _v43_finalLoveType = (typeof finalLoveSubType !== 'undefined') ? finalLoveSubType : loveSubType;
+          const _v43_loveDirectiveMap = {
+            'marriage':      `[결혼 모드] 본 질문은 ★ 결혼/약속 ★ 관련이다. 다음을 반드시 포함하라:\n   1) 결혼 결정의 본질적 합의 필요성 (형식보다 본질)\n   2) 두 사람의 가치관·미래관 일치 정도\n   3) 신중한 대화로 의구심 직면\n   ⚠️ "궁합" 표현보다 "결혼 결정/본질 합의" 어휘 우선. 단순 끌림 분석 금지.`,
+            'breakup':       `[이별 모드] 본 질문은 ★ 이별·정리 ★ 관련이다. 다음을 반드시 포함하라:\n   1) 관계 정리 흐름의 자연스러움 / 강제성\n   2) 감정 정리 후 회복 가능성\n   3) 이별 결단의 명확성 필요\n   ⚠️ "새 인연" 예언 금지. 정리 과정 자체에 집중.`,
+            'reunion':       `[재회 모드] 본 질문은 ★ 재회 가능성 ★ 관련이다. 다음을 반드시 포함하라:\n   1) 옛 관계의 에너지 잔재 (긍정/부정)\n   2) 재회 시 변화 필요 요소\n   3) 시간이 만든 거리감 / 성숙도\n   ⚠️ "곧 만난다" 예언 금지. 재회 조건 분석에 집중.`,
+            'crush':         `[짝사랑 모드] 본 질문은 ★ 짝사랑/일방 감정 ★ 관련이다. 다음을 반드시 포함하라:\n   1) 상대의 인지 정도와 마음 흐름\n   2) 고백 타이밍 vs 관찰 흐름\n   3) 일방 감정의 균형 회복 방향\n   ⚠️ "확실한 답" 금지. 상대 마음 추정에 신중.`,
+            'thumb':         `[썸 모드] 본 질문은 ★ 썸타기/모호한 단계 ★ 관련이다. 다음을 반드시 포함하라:\n   1) 두 사람의 거리감 흐름 (좁혀짐/벌어짐)\n   2) 다음 단계 진전을 위한 신호\n   3) 모호함을 명확히 만드는 행동\n   ⚠️ "확정 관계" 표현 금지. 흐름 변화 중심.`,
+            'mindread':      `[속마음 모드] 본 질문은 ★ 상대 속마음 ★ 관련이다. 다음을 반드시 포함하라:\n   1) 상대의 현재 감정 흐름 (드러난/숨긴)\n   2) 표현되지 않는 진심의 방향\n   3) 소통으로 확인 가능한 지점\n   ⚠️ "이 사람은 이렇다" 단정 금지. 흐름 해석으로.`,
+            'contact':       `[연락 모드] 본 질문은 ★ 연락 빈도/단절 ★ 관련이다. 다음을 반드시 포함하라:\n   1) 연락 흐름의 자연스러움\n   2) 먼저 다가갈 타이밍 vs 기다림\n   3) 연락 방식의 변화 필요\n   ⚠️ "오늘 연락 온다" 시점 예언 금지.`,
+            'compatibility': `[궁합 모드] 본 질문은 두 사람의 "궁합" 분석이다. 아래 3가지를 반드시 포함하라:\n   1) 두 사람의 에너지 성향 (끌림 요소)\n   2) 갈등 포인트 (차이점에서 오는 긴장)\n   3) 관계 발전 방향 (맞춰 나가야 할 지점)`
+          };
+          const compatNote = _v43_loveDirectiveMap[_v43_finalLoveType] || '';
           financeInject = `
 [LOVE ENGINE ACTIVE]
 관계 흐름: ${metrics.trend}
