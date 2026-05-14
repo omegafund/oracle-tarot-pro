@@ -3316,7 +3316,7 @@
     (function() {
         'use strict';
         
-        const APP_VERSION = 'V202.45';  // ★ V202.45: 사주 명리 정확성 - 신약 분기 + 동적 avoidColors (임수 신약→금 도움 색)
+        const APP_VERSION = 'V202.46';  // ★ V202.46: 사주 성향 신호 시스템 (명리 12종 신호 — 사장님 5케이스 검증)
         window.APP_VERSION = APP_VERSION;
         
         // ★★★ [V202.17 결정적 수정] _sajuInput 복원 ★ 페이지 로드 즉시 ★ ★★★
@@ -18973,6 +18973,57 @@ function renderSajuResult(data) {
                                 <span style="color:#C39BD3; font-weight:800;">* 희신이란?</span> 
                                 용신을 돕는 보조 기운 — 함께 챙기면 효과가 배가됩니다
                             </div>` : ''}
+                        </div>
+                    </div>
+                    `;
+                })()}
+                
+                ${(function() {
+                    // ════════════════════════════════════════════════════════════
+                    // ★★★ [V202.46 사장님 명령 — 사주 성향 신호 박스] ★★★
+                    // ════════════════════════════════════════════════════════════
+                    //   사장님 5케이스 검증 기반 (히키코모리 3 + 고위공직자 2)
+                    //   원칙:
+                    //     ✅ 진단 X (우울/자살/장애 단어 금지)
+                    //     ✅ 신호·경향·가능성 표현만
+                    //     ✅ 면책 문구 노출
+                    //     ✅ 사주 검출된 신호만 (3-5개 제한)
+                    //   격리: 사주 [3/6] 박스 안 (다른 카테고리 무영향)
+                    // ════════════════════════════════════════════════════════════
+                    const _v46_signals = (data && data.v184_5 && data.v184_5.sajuSignals)
+                                       || (data && data.sajuSignals)
+                                       || null;
+                    if (!_v46_signals || !_v46_signals.signals || _v46_signals.signals.length === 0) {
+                        return '';  // 검출된 신호 없으면 박스 노출 X
+                    }
+                    return `
+                    <div style="margin-top:14px; padding:12px 12px; 
+                                background:rgba(155,89,182,0.06); 
+                                border-left:2px solid rgba(155,89,182,0.45); 
+                                border-radius:0 8px 8px 0;
+                                word-break:keep-all; overflow-wrap:break-word;">
+                        <div style="display:flex; align-items:center; gap:6px; margin-bottom:8px;">
+                            <span style="color:#C39BD3; font-weight:900; font-size:0.84rem;">🌟 성향 신호</span>
+                            <span style="color:rgba(195,155,211,0.55); font-size:0.66rem; font-weight:700; letter-spacing:0.06em;">
+                                NATAL TENDENCY · 명식 기반
+                            </span>
+                        </div>
+                        ${_v46_signals.signals.map(sig => {
+                            const isRisk = sig.type === 'risk';
+                            const color = isRisk ? '#FFB084' : '#7AD188';
+                            const dot = isRisk ? '▸' : '•';
+                            return `
+                            <div style="margin-bottom:5px; padding:4px 0; color:rgba(255,255,255,0.85); 
+                                        font-size:0.78rem; line-height:1.55;">
+                                <span style="color:${color}; font-weight:900; margin-right:6px;">${dot}</span>
+                                <span style="font-weight:700;">${sig.label}</span>
+                                ${sig.reason ? `<span style="color:rgba(255,255,255,0.50); font-size:0.7rem; margin-left:6px;">(${sig.reason})</span>` : ''}
+                            </div>`;
+                        }).join('')}
+                        <div style="margin-top:8px; padding-top:8px; border-top:1px dashed rgba(255,255,255,0.10);
+                                    font-size:0.66rem; color:rgba(255,255,255,0.50); line-height:1.5; font-style:italic;">
+                            ※ 명식 기반 ★ 성향 흐름 ★ 표시입니다. 진단·예측·판단이 아닙니다.<br>
+                            마음 건강이 어려우시면 ★ 전문 상담 ★ 을 권장합니다.
                         </div>
                     </div>
                     `;
