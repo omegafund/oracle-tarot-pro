@@ -18370,7 +18370,7 @@ export default {
     // ════════════════════════════════════════════════════════════════════
     if (url.pathname === "/version" && request.method === "GET") {
       return new Response(JSON.stringify({
-        version: "V202.47",      // ★ V202.47: 사주 결제 민원 핫픽스 - 990원(saju_basic) 결제 사용자에게 4900원(saju_premium) 결제 옵션 자체 차단 (이중 청구 결함 → 법적 안전 + 매출 보호 + 사용자 신뢰)
+        version: "V202.48",      // ★ V202.48: ZEUS LOVE ORACLE v2.0 - 연애 15박스→7박스 완전 재설계 (왕 6명 결함 해결), 카드 텍스트 2-4문장, 색상 시스템, RELATION ESSENCE 점수바, ACTION 체크리스트, Phrase Diversity Engine
         _ts: Date.now(),
         _ok: true
       }), {
