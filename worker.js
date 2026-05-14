@@ -16982,15 +16982,134 @@ const YONGSHIN_RECOMMENDATIONS = {
   }
 };
 
-function inferYongShinV184_5(dayMaster, ohaengPercent) {
-  // 단순 룰: 가장 부족한 오행이 용신 (실제 명리는 더 복잡하나 기본)
-  const sorted = Object.entries(ohaengPercent || {}).sort((a,b) => a[1] - b[1]);
-  const weakest = sorted[0]?.[0] || '수';
+// ★★★ [V202.45 사장님 명령 — 사주 명리 정확성 강화] ★★★
+//   사장님 진단 (라이브):
+//     "여 1966.10.20 축시 (임수 일간, 무술월) — 신약 사주
+//      금의 생조(은색·백색) 받아야 하는데 시스템이 '은색 삼가하라' 출력 = 결함"
+//   
+//   결함 원인 (옛 V184_5):
+//     "단순 룰: 가장 부족한 오행이 용신" → 신약·신강 미고려
+//     예: 임수 신약 + 목 가장 부족 → 시스템 용신 = 목
+//         → avoidColors = 은색·회색 (금극목)  ← ★ 명리 정반대 ★
+//     실제 명리: 임수 신약 → 용신 = 금 (수 생조) → 은색 = 도움 색
+//   
+//   해결 (3단):
+//     ① 일간 강약 판정 (월령 + 통근 기반)
+//     ② 신약일 때: 용신 = 일간 인성(생조 오행) 우선
+//     ③ 신강일 때: 옛 로직 (가장 부족한 오행)
+//   
+//   ★ 명리 정통 매핑 ★:
+//     인성 (생조): 목→수 / 화→목 / 토→화 / 금→토 / 수→금
+//     상극 (피함):  목→금 / 화→수 / 토→목 / 금→화 / 수→토
+//   
+//   격리: YONGSHIN_RECOMMENDATIONS 매트릭스 보존 (avoidColors는 옛 매핑)
+//         단 신약 케이스에서는 ★ 동적 ★ avoidColors 적용
+//
+// 일간 인성(생조 오행) 매핑 — 명리 표준
+const _v45_dayMasterInsung = {
+  '목': '수',  // 수생목
+  '화': '목',  // 목생화
+  '토': '화',  // 화생토
+  '금': '토',  // 토생금
+  '수': '금'   // 금생수
+};
+
+// 일간 상극(피해야 할 오행) 매핑 — 명리 표준
+const _v45_dayMasterAvoid = {
+  '목': '금',  // 금극목 (도끼가 나무 벤다)
+  '화': '수',  // 수극화
+  '토': '목',  // 목극토
+  '금': '화',  // 화극금
+  '수': '토'   // 토극수
+};
+
+// 오행 → 색상/방향 매핑 (avoidColors 동적 생성용)
+const _v45_ohaengToColors = {
+  '목': ['초록','연두'],
+  '화': ['빨강','진한 주황'],
+  '토': ['진한 노랑','갈색'],
+  '금': ['진한 회색','은색'],
+  '수': ['검정','진한 파랑']
+};
+const _v45_ohaengToDirection = {
+  '목': '동쪽', '화': '남쪽', '토': '중앙·남서', '금': '서쪽', '수': '북쪽'
+};
+
+// ★ V202.45 지지 → 오행 매핑 (월령 가중치용) ★
+const _v45_zhiToOhaeng = {
+  '자': '수', '축': '토', '인': '목', '묘': '목',
+  '진': '토', '사': '화', '오': '화', '미': '토',
+  '신': '금', '유': '금', '술': '토', '해': '수'
+};
+
+// ★ V202.45 신강/신약 판정 함수 ★
+//   기준: 월령 + 통근 + 비겁/인성 비율
+//   결과: 'strong' | 'weak' | 'balanced'
+function _v45_judgeDayMasterStrength(dayMaster, ohaengPercent, monthGanji) {
+  if (!dayMaster || !ohaengPercent) return 'balanced';
+  const dmOhaeng = STEM_TO_OHAENG[dayMaster];
+  if (!dmOhaeng) return 'balanced';
+  
+  const insung = _v45_dayMasterInsung[dmOhaeng];  // 일간 인성 오행
+  const dmPercent = ohaengPercent[dmOhaeng] || 0;
+  const insungPercent = ohaengPercent[insung] || 0;
+  
+  // 일간 + 인성 합 = 일간 강도 (명리 표준)
+  let totalDmPower = dmPercent + insungPercent;
+  
+  // ★ V202.45 월령 가중치 ★ — 월지가 일간을 극하면 -10 추가 감점
+  //   예: 임수 + 술월(토) → 토극수 → 임수 큰 감점
+  //   사장님 임수 1966.10.20 = 무술월 = 임수 신약 보강
+  if (monthGanji && monthGanji.length >= 2) {
+    const monthZhi = monthGanji.charAt(1);  // 술/자/축 등
+    const monthZhiOhaeng = _v45_zhiToOhaeng[monthZhi] || null;
+    if (monthZhiOhaeng) {
+      const isMonthKeoking = _v45_dayMasterAvoid[dmOhaeng] === monthZhiOhaeng;
+      const isMonthSupport = _v45_dayMasterInsung[dmOhaeng] === monthZhiOhaeng;
+      if (isMonthKeoking) totalDmPower -= 10;  // 월령 극 = 감점
+      if (isMonthSupport) totalDmPower += 10;  // 월령 생 = 가점
+    }
+  }
+  
+  // ★ V202.45 임계값 조정 ★ — 한국 명리 표준
+  //   강 ≥ 50% : 일간 충분 → 부족 오행 보강 용신
+  //   약 ≤ 35% : 일간 약 → 인성 생조 용신
+  //   균형: 35~50%
+  //   사장님 임수 1966 케이스: 40% - 월령극(-10) = 30% → 신약 ✅
+  if (totalDmPower >= 50) return 'strong';
+  if (totalDmPower <= 35) return 'weak';
+  return 'balanced';
+}
+
+function inferYongShinV184_5(dayMaster, ohaengPercent, monthGanji) {
+  // ★ V202.45 신강/신약 분기 ★
+  const strength = _v45_judgeDayMasterStrength(dayMaster, ohaengPercent, monthGanji);
   const dayMasterOhaeng = STEM_TO_OHAENG[dayMaster] || '목';
   
-  // 일간 본질 + 부족 오행 종합 판단
-  const reason = `일간 ${dayMaster}(${dayMasterOhaeng})의 균형을 위해 ${weakest} 보강이 도움이 됩니다`;
-  return { element: weakest, reason };
+  // 신약일 때: 용신 = 일간 인성 (생조 오행)
+  //   사장님 명리 원리: 신약은 일간을 도와줘야 → 인성(나를 낳는 것)
+  if (strength === 'weak') {
+    const insung = _v45_dayMasterInsung[dayMasterOhaeng] || '금';
+    return {
+      element: insung,
+      reason: `일간 ${dayMaster}(${dayMasterOhaeng}) 신약 — ${insung} 생조가 도움이 됩니다`,
+      strength: 'weak',
+      avoidElement: _v45_dayMasterAvoid[insung] || null  // 용신을 극하는 오행
+    };
+  }
+  
+  // 신강·균형일 때: 옛 로직 (가장 부족한 오행)
+  //   사장님 명리 원리: 신강은 기운이 충분 → 부족한 곳 보충 = 균형
+  const sorted = Object.entries(ohaengPercent || {}).sort((a,b) => a[1] - b[1]);
+  const weakest = sorted[0]?.[0] || '수';
+  return {
+    element: weakest,
+    reason: strength === 'strong'
+      ? `일간 ${dayMaster}(${dayMasterOhaeng}) 신강 — ${weakest} 보강이 균형을 만듭니다`
+      : `일간 ${dayMaster}(${dayMasterOhaeng})의 균형을 위해 ${weakest} 보강이 도움이 됩니다`,
+    strength: strength,
+    avoidElement: null  // 신강·균형은 옛 매트릭스 그대로 사용
+  };
 }
 
 // ─── [Sec 9] Tier 1 — 오행 분석 ───
@@ -17010,11 +17129,32 @@ function buildOhaengAnalysisV184_5(core) {
 
 // ─── [Sec 10] Tier 1 — 용신 ───
 function buildYongShinV184_5(core) {
-  const y = inferYongShinV184_5(core.meta?.dayMaster, core.ohaengPercent);
+  // ★ V202.45 월령 가중치용 — core.meta.monthPillar 추출 ★
+  const monthGanji = core.meta?.monthPillar || core.meta?.month || '';
+  const y = inferYongShinV184_5(core.meta?.dayMaster, core.ohaengPercent, monthGanji);
+  const baseRec = YONGSHIN_RECOMMENDATIONS[y.element] || YONGSHIN_RECOMMENDATIONS['수'];
+  
+  // ★★★ [V202.45 사장님 명령 — 동적 avoidColors] ★★★
+  //   신약 케이스: 용신을 극하는 오행 색을 피해야 함
+  //   예: 임수 신약 → 용신 = 금 → 피할 색 = 빨강·주황 (화극금)
+  //       (옛 시스템: 은색이 avoidColors였음 — ★ 정반대 ★)
+  //   해결: y.avoidElement (용신 상극 오행)로 색상/방향 동적 매핑
+  let finalRec = baseRec;
+  if (y.strength === 'weak' && y.avoidElement) {
+    // 신약 시 용신을 극하는 오행의 색·방향을 avoidColors로 적용
+    const avoidColors = _v45_ohaengToColors[y.avoidElement] || baseRec.avoidColors;
+    const avoidDirections = [_v45_ohaengToDirection[y.avoidElement] || baseRec.avoidDirections[0]];
+    finalRec = Object.assign({}, baseRec, {
+      avoidColors: avoidColors,
+      avoidDirections: avoidDirections
+    });
+  }
+  
   return {
     yongshin: y.element,
     reason: y.reason,
-    recommendations: YONGSHIN_RECOMMENDATIONS[y.element] || YONGSHIN_RECOMMENDATIONS['수']
+    strength: y.strength || 'balanced',  // ★ V202.45 신강/신약 노출 ★
+    recommendations: finalRec
   };
 }
 
@@ -18057,7 +18197,7 @@ export default {
     // ════════════════════════════════════════════════════════════════════
     if (url.pathname === "/version" && request.method === "GET") {
       return new Response(JSON.stringify({
-        version: "V202.44",      // ★ V202.44: 한 줄 결론 박스 결함 수정 - buildPhraseFromBlocks의 CORE/TURN/RISK 결합을 쉼표(,) → 줄바꿈(\n) 변환 (가독성 ↑ 5초 결제 결정 강화)
+        version: "V202.45",      // ★ V202.45: 사주 명리 정확성 강화 - 사장님 임수1966 케이스 (신약→금 도움 색인데 시스템이 은색 삼가하라 출력 결함) - inferYongShinV184_5에 신강/신약 분기 추가 + YONGSHIN_RECOMMENDATIONS 동적 avoidColors (신약 시 금 도움 색 반전)
         _ts: Date.now(),
         _ok: true
       }), {
