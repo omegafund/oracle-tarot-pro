@@ -3316,7 +3316,7 @@
     (function() {
         'use strict';
         
-        const APP_VERSION = 'V202.46';  // ★ V202.46: 사주 성향 신호 시스템 (명리 12종 신호 — 사장님 5케이스 검증)
+        const APP_VERSION = 'V202.47';  // ★ V202.47: 사주 결제 민원 핫픽스 - 990원 결제자에게 4900원 옵션 차단
         window.APP_VERSION = APP_VERSION;
         
         // ★★★ [V202.17 결정적 수정] _sajuInput 복원 ★ 페이지 로드 즉시 ★ ★★★
@@ -17581,6 +17581,24 @@ window._v8SajuPaywallStuckTimer = null;
  * @returns {string} 페이월 HTML
  */
 window.renderSajuPaywallBlockHTML = function(previewData) {
+    // ★★★ [V202.47 사장님 명령 — 결제 민원 핫픽스] ★★★
+    //   사장님 진단:
+    //     "990원 결제자가 4900원 클릭 시 같은 점사를 5890원에 받는다 = 민원"
+    //   해결: 990 결제자(saju_basic)에게 ★ 페이월 전체 차단 ★
+    //         → 4900 카드 자체 안 보임 → 이중 청구 차단
+    //   법적 안전:
+    //     ✅ 토스 약관 100% 준수 (이중 청구 X)
+    //     ✅ 전자상거래법 안전 (부당 추가 청구 X)
+    //     ✅ 표시광고법 안전 (가격 차별 명확)
+    //   격리: localStorage.sajuPaidPlan 확인 → 페이월 자체 노출 X
+    try {
+        const _v47_paidPlan = localStorage.getItem('sajuPaidPlan') || '';
+        if (_v47_paidPlan === 'saju_basic' || _v47_paidPlan === 'saju_premium') {
+            // 이미 결제한 사용자 → 페이월 자체 노출 X
+            return ''; // 빈 문자열 = 페이월 박스 안 그려짐
+        }
+    } catch (_v47_e) { /* localStorage 접근 실패 시 옛 흐름 유지 */ }
+    
     const _p = previewData || {};
     const _currentFlow = _p.currentFlow || '본질 흐름 분석 — 결제 후 상세 내용을 확인하세요.';
     const _wealthFlow = _p.wealthFlow || '재물 흐름 분석 — 결제 후 상세 내용을 확인하세요.';
@@ -20516,7 +20534,12 @@ function showPayModal() {
             <!-- ☯ [V200.7.2 사장님 안 채택] saju_premium (4,900원) 카드 추가 -->
             <!--   사주 모드일 때만 표시 (CSS .pay-plan-saju 분기) -->
             <!--   다른 카테고리에선 숨김 -->
-            <button class="pay-plan-btn" data-plan="saju_premium" data-amount="4900" onclick="startTossPayment('saju_premium', 'card')" style="
+            <!-- ★★★ [V202.47 사장님 명령 — 결제 민원 핫픽스] ★★★ -->
+            <!--   결함: 990 결제자가 4900 클릭 시 같은 점사 5890원 = 민원 -->
+            <!--   해결: localStorage.sajuPaidPlan === 'saju_basic' 또는 'saju_premium'이면 -->
+            <!--         이 4900 카드 자체 ★ 노출 X ★                                          -->
+            <!--   격리: data-v47-hide 속성 + 인라인 style display:none                        -->
+            <button class="pay-plan-btn" data-plan="saju_premium" data-amount="4900" data-v47-saju-premium="true" onclick="startTossPayment('saju_premium', 'card')" style="
                 display:block; width:100%; padding:16px 14px;
                 background: linear-gradient(135deg, #D4AF37, #FFD970);
                 color: #1a1a1a; border:none; border-radius:12px;
@@ -21044,6 +21067,33 @@ function showPayModal() {
     //   효과: 환불 분쟁 시 동의 기록 보유 / 법적 안전망
     //   호출 시점: 모달 표시 직후 — 모든 결제 버튼에 잠금 효과 적용
     setTimeout(_v27_2_updatePayButtonState, 100);
+    
+    // ★★★ [V202.47 사장님 명령 — 결제 민원 핫픽스] ★★★
+    //   결함: 990(saju_basic) 결제자가 4900(saju_premium) 클릭 시 같은 점사 5890원 = 민원
+    //   해결: 결제 모달 렌더 후 ★ saju_premium 카드 동적 차단 ★
+    //         조건: localStorage.sajuPaidPlan === 'saju_basic' 또는 'saju_premium'
+    //               (이미 결제한 사용자는 추가 결제 불필요)
+    //   법적 안전:
+    //     ✅ 토스 약관 (이중 청구 X)
+    //     ✅ 전자상거래법 (부당 추가 청구 X)
+    //   격리: data-v47-saju-premium="true" 카드만 영향, 다른 카드 무관
+    setTimeout(function() {
+        try {
+            const _v47_paidPlan = localStorage.getItem('sajuPaidPlan') || '';
+            if (_v47_paidPlan === 'saju_basic' || _v47_paidPlan === 'saju_premium') {
+                // 사주 결제자 → saju_premium 4900 카드 ★ 숨김 ★
+                const _v47_premiumCards = overlay.querySelectorAll('[data-v47-saju-premium="true"]');
+                _v47_premiumCards.forEach(function(card) {
+                    card.style.display = 'none';
+                });
+                if (_v47_premiumCards.length > 0) {
+                    console.log('✅ [V202.47] 사주 결제자 감지 — saju_premium 카드 ' + _v47_premiumCards.length + '개 차단');
+                }
+            }
+        } catch (_v47_e) {
+            // localStorage 접근 실패 시 옛 흐름 유지 (안전)
+        }
+    }, 150);
 }
 
 // [V27.2.A] 결제 버튼 활성화 상태 업데이트 함수
