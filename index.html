@@ -3316,7 +3316,7 @@
     (function() {
         'use strict';
         
-        const APP_VERSION = 'V202.51.0';  // ★ V202.51.0: 사장님 안 — coreInsight 핵심 구조문 + 흐름 키 9개 서브타입별 풀 분기 (대공사 매트릭스 대비 효율 ★ 매우 큼 ★, 유지보수 단순). (#1 worker) LOVE_RELATIONSHIP_TYPE_POOL + LOVE_FLOW_KEY_POOL 정의 (9개 서브타입 × ~10개 = 180개 텍스트). (#2 worker) buildLoveCoreInsight 시그니처에 loveSubType 추가 + 풀 시드 기반 선택 + content.* fallback 안전. (#3 worker) line3에서 _relationshipType 변수 사용 (content.relationship_type 직접 참조 대체). (#4 worker) coreKey에서 _flowKey 변수 사용 (content.core_decision 직접 참조 대체). (#5 worker) 호출부에서 subtype 전달. 매트릭스 8개 무손상 + Gemini 프롬프트 무손상 + 다른 박스 영향 0.
+        const APP_VERSION = 'V202.51.1';  // ★ V202.51.1: 사장님 라이브 결함 — 결제 완료 후 #paidEarlyOverlay subtitle "프리미엄 점사가 펼쳐집니다" 좌측 상단 깜빡임 차단. 원인: <style> 적용 전 paint 1프레임에 자식 텍스트가 inline style 없이 부모 div 시작점(좌측 상단)에 노출. 해결: (1) CSS에 #paidEarlyOverlay > * { visibility: hidden; } + .ready 클래스 visible 전환 룰 추가 (2) document.write 끝 <script>에서 requestAnimationFrame으로 즉시 .ready 추가 + 50ms setTimeout 폴백 (RAF 실패 시 영구 hidden 방지) (3) 중앙 정렬 + 1초 노출 동작 보존, 깜빡임만 차단. V31 #151 visibility 정지 우려와 무관 (자식 요소에만 적용, overlay 본체는 영향 0).
         window.APP_VERSION = APP_VERSION;
         
         // ★★★ [V202.17 결정적 수정] _sajuInput 복원 ★ 페이지 로드 즉시 ★ ★★★
@@ -3860,6 +3860,11 @@
                 '    display: flex; align-items: center; justify-content: center;',
                 '    flex-direction: column; gap: 18px;',
                 '  }',
+                '  /* ★ V202.51.1 사장님 라이브 결함 ★ subtitle "프리미엄 점사가 펼쳐집니다" 좌측 상단 깜빡임 차단 */',
+                '  /* 원인: <style> 적용 전 paint 1프레임에 자식 텍스트가 inline style 없이 좌측 상단(부모 div 시작점)에 노출 */',
+                '  /* 해결: 모든 자식 초기 visibility:hidden → JS requestAnimationFrame으로 .ready 클래스 추가 후 visible 전환 */',
+                '  #paidEarlyOverlay > * { visibility: hidden; }',
+                '  #paidEarlyOverlay.ready > * { visibility: visible; }',
                 '  #paidEarlyOverlay .saju-symbol {',
                 '    font-size: 4rem; color: #FFD970;',
                 '    animation: paidSpin 2.5s linear infinite;',
@@ -3910,6 +3915,16 @@
                 '  })()">⟲ 화면 멈춤 시 여기를 탭하세요</div>',
                 '</div>',
                 '<script>',
+                // ★ V202.51.1 사장님 라이브 결함 ★ 자식 visibility 적용 — 좌측 상단 FOUC 차단
+                'requestAnimationFrame(function(){',
+                '  var ov=document.getElementById("paidEarlyOverlay");',
+                '  if(ov)ov.classList.add("ready");',
+                '});',
+                // 폴백 — RAF 실패 시 50ms 후 강제 적용 (사용자 영구 hidden 상태 방지)
+                'setTimeout(function(){',
+                '  var ov=document.getElementById("paidEarlyOverlay");',
+                '  if(ov && !ov.classList.contains("ready"))ov.classList.add("ready");',
+                '},50);',
                 // ★ V200.8.7 P5 ★ 2초 후 자가 복구 버튼 표시 (사용자 인지)
                 'setTimeout(function(){',
                 '  var btn=document.getElementById("v87RecoveryBtn");',
