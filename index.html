@@ -3316,7 +3316,7 @@
     (function() {
         'use strict';
         
-        const APP_VERSION = 'V202.48.4';  // ★ V202.48.4: 7회 핫픽스 무효의 진짜 원인 수정 - _renderLoveBlockV25_24 첫 번째 return문에서 ${box3}/${box4}/${box5} 3줄 제거 (V202.48 매니페스토 #1 메인 6박스→3박스 ★ 진짜 ★ 적용). 그동안 box*HTML(_renderLoveBlock 함수 안 변수)과 box*(_renderLoveBlockV25_24 함수 안 변수)를 혼동하여 매번 잘못된 영역 검증.
+        const APP_VERSION = 'V202.48.5';  // ★ V202.48.5: 사장님 라이브 명령 — (1) V202.48.3 디버그 패널 ★ 제거 ★ (검증 완료) (2) 토글 디자인 강화: 황금 글로우 border 2.5px + 다층 box-shadow + 펄스 애니메이션 + 3줄 텍스트(✨심층 흐름 해석/더 깊은 분석 4가지/👆 탭하여 펼치기 ▼) + CTA 둥근 버튼 + [open] 상태 CTA 자동 전환 (3) 매니페스토 #2 영어 부제 통일: box1 CORE INSIGHT(PRO 분기 제거)/box2 RELATION ESSENCE(추가)/box6 FINAL VERDICT(기존)
         window.APP_VERSION = APP_VERSION;
         
         // ★★★ [V202.17 결정적 수정] _sajuInput 복원 ★ 페이지 로드 즉시 ★ ★★★
@@ -12581,7 +12581,7 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
                 <div style="${boxBase} ${goldBorder}">
                     <div style="display:flex; align-items:center; gap:6px; margin-bottom:10px;">
                         <div style="${labelGold}">🧠 핵심 흐름 해석</div>
-                        ${(typeof isPaidUser === 'undefined' || !isPaidUser) ? `<div style="margin-left:auto; font-size: 0.74rem; color:rgba(212,175,55,0.85); font-weight:700; letter-spacing:0.1em;">CORE INSIGHT · PRO</div>` : ''}
+                        <div style="margin-left:auto; font-size: 0.72rem; color:rgba(212,175,55,0.85); font-weight:700; letter-spacing:0.12em;">CORE INSIGHT</div>
                     </div>
                     <div style="font-size:0.9rem; color:rgba(255,255,255,0.92);">
                         <div>${b.coreInsight.line1}</div>
@@ -12600,7 +12600,10 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
             const re = b.relationEssence;
             const box2 = `
                 <div style="${boxBase} ${greenBorder}">
-                    <div style="${labelStyle}">💘 관계 본질</div>
+                    <div style="display:flex; align-items:center; gap:6px; margin-bottom:10px;">
+                        <div style="${labelStyle}">💘 관계 본질</div>
+                        <div style="margin-left:auto; font-size: 0.72rem; color:rgba(46,204,113,0.85); font-weight:700; letter-spacing:0.12em;">RELATION ESSENCE</div>
+                    </div>
                     <div style="font-size:0.88rem; color:rgba(255,255,255,0.92);">
                         <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:10px;">
                             <div style="padding:8px 10px; background:rgba(46,204,113,0.08); border-radius:6px;">
@@ -13717,103 +13720,111 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
                 //   격리: v25_24Oracle 없는 케이스 옛 흐름 그대로
                 // ════════════════════════════════════════════════════════════
                 let _v48_loveDeepBoxes = '';
-                let _v48_debugReason = '';
-                let _v48_debugError = '';
                 if (v25_24Oracle && typeof _v48BuildLoveDeepBoxes === 'function') {
                     try {
                         _v48_loveDeepBoxes = _v48BuildLoveDeepBoxes(v25_24Oracle);
-                        _v48_debugReason = 'v48_builder_called';
                     } catch (e) {
                         // 안전: 실패 시 layer5HTML로 폴백
                         _v48_loveDeepBoxes = layer5HTML || '';
-                        _v48_debugReason = 'v48_builder_threw';
-                        _v48_debugError = String(e && e.message || e).slice(0, 200);
                     }
                 } else if (layer5HTML) {
                     _v48_loveDeepBoxes = layer5HTML;
-                    _v48_debugReason = 'layer5_fallback';
-                } else {
-                    _v48_debugReason = !v25_24Oracle ? 'no_oracle_v25_24'
-                                     : (typeof _v48BuildLoveDeepBoxes !== 'function') ? 'builder_not_function'
-                                     : 'unknown';
                 }
                 
                 // ════════════════════════════════════════════════════════════
-                // ★★★ [V202.48.3 라이브 진단 패널] ★★★
-                //   사장님 라이브 (모바일): 6번 핫픽스 후에도 토글 안 보임
-                //   목적: 콘솔이 아닌 ★ 화면 직접 ★ 노출 — 모바일에서 즉시 진단
-                //   포함: UA / oracle 존재 / boxes 키 목록 / 각 변수 길이 / 토글 조건
-                //   제거 시점: 사장님 토글 노출 확인 후 V202.48.4에서 차단
+                // ★★★ [V202.48.5 사장님 라이브 명령] 토글 디자인 강화 ★★★
+                //   사장님 진단 (V202.48.4 라이브 검증 후):
+                //     "탭하지 지금은 못한다 유저들이" — 시각 위계 약함
+                //     "터치하세요 클릭하세요 넣는게 좋을것 같다" — CTA 부재
+                //   해결:
+                //     ① 황금 글로우 효과 — border 2.5px + 다층 box-shadow + 펄스 애니메이션
+                //     ② 3줄 텍스트 배치 — flex-direction: column + 중앙 정렬
+                //         1줄: ✨ 심층 흐름 해석 (큰 폰트 1.05rem, 황금 글로우)
+                //         2줄: 더 깊은 분석 4가지 (부제)
+                //         3줄: 👆 탭하여 펼치기 ▼ (CTA 둥근 버튼, hover 효과)
+                //     ③ [open] 상태 CTA 변경 — "탭하여 접기 ▲"로 자연 전환
+                //     ④ V202.48.3 디버그 패널 ★ 제거 ★ — 검증 완료 (사장님 명령)
                 // ════════════════════════════════════════════════════════════
-                const _v48_dbg_ua = (typeof navigator !== 'undefined' && navigator.userAgent) ? navigator.userAgent : 'unknown';
-                const _v48_dbg_isMobile = /Mobi|Android|iPhone|iPad|iPod/i.test(_v48_dbg_ua);
-                const _v48_dbg_vw = (typeof window !== 'undefined' && window.innerWidth) || 0;
-                const _v48_dbg_hasSm = !!(typeof window !== 'undefined' && window._serverMetrics);
-                const _v48_dbg_hasOracle = !!(_v48_dbg_hasSm && window._serverMetrics.oracleV25_24);
-                const _v48_dbg_hasBoxes = !!(_v48_dbg_hasOracle && window._serverMetrics.oracleV25_24.boxes);
-                const _v48_dbg_boxKeys = _v48_dbg_hasBoxes
-                    ? Object.keys(window._serverMetrics.oracleV25_24.boxes).join(',')
-                    : '(no boxes)';
-                const _v48_dbg_v25HtmlLen = (typeof v25_24HTML === 'string') ? v25_24HTML.length : 0;
-                const _v48_dbg_deepLen = (typeof _v48_loveDeepBoxes === 'string') ? _v48_loveDeepBoxes.length : 0;
-                const _v48_dbg_toggleGate = !!(v25_24HTML && _v48_loveDeepBoxes);
-                
-                const _v48_loveDebugPanel = `
-                <div id="zeus-v48-debug" style="margin:14px 0; padding:12px 14px;
-                            background:rgba(0,0,0,0.78); color:#FFE08A;
-                            border:2px dashed #FFD970; border-radius:10px;
-                            font-family:monospace,Courier; font-size:0.74rem;
-                            line-height:1.65; word-break:break-all;">
-                    <div style="font-weight:900; color:#FF7BAC; margin-bottom:6px; font-size:0.82rem;">
-                        🔬 V202.48.3 LIVE DEBUG (검증 후 제거 예정)
-                    </div>
-                    <div>device: <b style="color:#7AD188">${_v48_dbg_isMobile ? 'MOBILE' : 'PC/DESKTOP'}</b> · viewport: ${_v48_dbg_vw}px</div>
-                    <div>UA: <span style="color:rgba(255,255,255,0.7);">${_v48_dbg_ua.slice(0, 90)}</span></div>
-                    <div>window._serverMetrics: <b style="color:${_v48_dbg_hasSm?'#7AD188':'#FF8E72'};">${_v48_dbg_hasSm ? 'YES' : 'NO'}</b></div>
-                    <div>oracleV25_24 존재: <b style="color:${_v48_dbg_hasOracle?'#7AD188':'#FF8E72'};">${_v48_dbg_hasOracle ? 'YES' : 'NO'}</b></div>
-                    <div>oracleV25_24.boxes 존재: <b style="color:${_v48_dbg_hasBoxes?'#7AD188':'#FF8E72'};">${_v48_dbg_hasBoxes ? 'YES' : 'NO'}</b></div>
-                    <div>boxes 키: <span style="color:#C39BD3;">${_v48_dbg_boxKeys}</span></div>
-                    <div>v25_24HTML 길이: <b>${_v48_dbg_v25HtmlLen}</b></div>
-                    <div>_v48_loveDeepBoxes 길이: <b style="color:${_v48_dbg_deepLen>0?'#7AD188':'#FF8E72'};">${_v48_dbg_deepLen}</b> · reason: <i>${_v48_debugReason}</i>${_v48_debugError ? ' · err: <span style="color:#FF8E72;">'+_v48_debugError+'</span>' : ''}</div>
-                    <div>토글 게이트 통과: <b style="color:${_v48_dbg_toggleGate?'#7AD188':'#FF8E72'}; font-size:0.86rem;">${_v48_dbg_toggleGate ? '✅ YES — 토글 HTML 삽입됨' : '❌ NO — 토글 SKIP'}</b></div>
-                    <div style="margin-top:6px; padding-top:6px; border-top:1px dashed rgba(255,224,138,0.25); color:rgba(255,255,255,0.55); font-size:0.68rem;">
-                        ↳ 이 박스가 보이는데 아래 토글이 안 보이면 → 토글은 DOM에는 들어갔으나 다른 원인(브라우저 details 미지원/CSS 차단/모바일 webview 결함 등)<br>
-                        ↳ 이 박스 자체가 안 보이면 → renderText의 isLoveQuery 분기 자체 미진입 (도메인 라우팅 결함)
-                    </div>
-                </div>`;
-                
                 const _v48_loveDeepToggle = (v25_24HTML && _v48_loveDeepBoxes) ? `
-                <details class="zeus-love-deep-toggle" style="margin-top:18px; cursor:pointer;
-                            background:linear-gradient(135deg, rgba(255,123,172,0.10), rgba(212,175,55,0.06));
-                            border:1.5px solid rgba(255,123,172,0.35); border-radius:14px;
-                            box-shadow:0 4px 16px rgba(255,123,172,0.12); overflow:hidden;">
-                    <summary style="padding:16px 18px; list-style:none; display:flex;
-                                    align-items:center; justify-content:space-between;
-                                    color:#FFD970; font-weight:900; font-size:0.96rem;
-                                    letter-spacing:0.02em; user-select:none;">
-                        <span>✨ 심층 흐름 해석</span>
-                        <span style="color:rgba(255,217,112,0.7); font-size:0.78rem; font-weight:700;">
-                            더 깊은 분석 4가지 ▼
+                <details class="zeus-love-deep-toggle" style="margin-top:22px; cursor:pointer;
+                            background:linear-gradient(135deg, rgba(255,217,112,0.16), rgba(212,175,55,0.10));
+                            border:2.5px solid rgba(255,217,112,0.65); border-radius:16px;
+                            box-shadow:0 0 28px rgba(255,217,112,0.35),
+                                       0 4px 18px rgba(212,175,55,0.28),
+                                       inset 0 1px 0 rgba(255,255,255,0.18);
+                            overflow:hidden;
+                            animation: zeus-toggle-pulse 2.4s ease-in-out infinite;">
+                    <summary style="padding:18px 20px; list-style:none; display:flex;
+                                    flex-direction:column; align-items:center; gap:8px;
+                                    text-align:center; user-select:none;">
+                        <span style="color:#FFD970; font-weight:900; font-size:1.05rem;
+                                     letter-spacing:0.05em;
+                                     text-shadow:0 0 12px rgba(255,217,112,0.55);">
+                            ✨ 심층 흐름 해석
+                        </span>
+                        <span style="color:rgba(255,217,112,0.82); font-size:0.82rem;
+                                     font-weight:700; letter-spacing:0.04em;">
+                            더 깊은 분석 4가지
+                        </span>
+                        <span class="toggle-cta-closed" style="margin-top:4px; padding:7px 18px;
+                                     background:linear-gradient(135deg, rgba(255,217,112,0.25), rgba(212,175,55,0.15));
+                                     border:1.5px solid rgba(255,217,112,0.55);
+                                     border-radius:22px;
+                                     color:#FFE08A; font-weight:800; font-size:0.80rem;
+                                     letter-spacing:0.06em;
+                                     box-shadow:0 2px 10px rgba(255,217,112,0.22);">
+                            👆 탭하여 펼치기 ▼
+                        </span>
+                        <span class="toggle-cta-open" style="margin-top:4px; padding:7px 18px;
+                                     background:rgba(255,217,112,0.10);
+                                     border:1.5px solid rgba(255,217,112,0.35);
+                                     border-radius:22px;
+                                     color:rgba(255,224,138,0.85); font-weight:700; font-size:0.80rem;
+                                     letter-spacing:0.06em;">
+                            👆 탭하여 접기 ▲
                         </span>
                     </summary>
-                    <div style="padding:4px 14px 14px 14px; border-top:1px solid rgba(255,123,172,0.18);">
+                    <div style="padding:6px 14px 14px 14px; border-top:1px solid rgba(255,217,112,0.28);">
                         ${_v48_loveDeepBoxes}
                     </div>
                 </details>
                 <style>
-                    .zeus-love-deep-toggle[open] summary {
-                        background:rgba(255,123,172,0.12);
-                        border-bottom:1px solid rgba(255,123,172,0.25);
+                    @keyframes zeus-toggle-pulse {
+                        0%, 100% {
+                            box-shadow: 0 0 28px rgba(255,217,112,0.35),
+                                        0 4px 18px rgba(212,175,55,0.28),
+                                        inset 0 1px 0 rgba(255,255,255,0.18);
+                        }
+                        50% {
+                            box-shadow: 0 0 40px rgba(255,217,112,0.55),
+                                        0 6px 24px rgba(212,175,55,0.40),
+                                        inset 0 1px 0 rgba(255,255,255,0.22);
+                        }
                     }
                     .zeus-love-deep-toggle summary::-webkit-details-marker { display: none; }
                     .zeus-love-deep-toggle summary::marker { content: ''; }
-                    .zeus-love-deep-toggle summary:hover {
-                        background:rgba(255,123,172,0.08);
+                    .zeus-love-deep-toggle .toggle-cta-closed {
+                        display: inline-block;
+                        transition: transform 0.18s ease, background 0.18s ease, box-shadow 0.18s ease;
                     }
+                    .zeus-love-deep-toggle .toggle-cta-open { display: none; }
+                    .zeus-love-deep-toggle summary:hover .toggle-cta-closed {
+                        background: linear-gradient(135deg, rgba(255,217,112,0.40), rgba(212,175,55,0.25));
+                        transform: translateY(-1px);
+                        box-shadow: 0 4px 14px rgba(255,217,112,0.35);
+                    }
+                    .zeus-love-deep-toggle[open] {
+                        animation: none;
+                        box-shadow: 0 0 18px rgba(255,217,112,0.25),
+                                    0 4px 14px rgba(212,175,55,0.20),
+                                    inset 0 1px 0 rgba(255,255,255,0.15);
+                    }
+                    .zeus-love-deep-toggle[open] .toggle-cta-closed { display: none; }
+                    .zeus-love-deep-toggle[open] .toggle-cta-open { display: inline-block; }
                 </style>` : '';
                 
                 const freeContent = v25_24HTML
-                    ? v25_24HTML + _v48_loveDebugPanel + _v48_loveDeepToggle   // ★ V202.48.3: 메인 + 디버그 패널 + 펼침 토글 ★
+                    ? v25_24HTML + _v48_loveDeepToggle   // ★ V202.48.5: 메인 3박스 + 강화 토글 (디버그 제거, CTA 추가) ★
                     : (layer5HTML
                         ? `<div style="padding:18px; background:rgba(212,175,55,0.06); border:1px solid rgba(212,175,55,0.4); border-radius:12px; margin-top:18px;">
                             <h3 style="color:#FF7BAC; text-align:center; margin:0 0 15px 0; font-size:1.1rem; border-bottom:1px solid rgba(255,123,172,0.35); padding-bottom:10px;">
