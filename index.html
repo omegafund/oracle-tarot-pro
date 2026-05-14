@@ -3316,7 +3316,7 @@
     (function() {
         'use strict';
         
-        const APP_VERSION = 'V202.51.1';  // ★ V202.51.1: 사장님 라이브 결함 — 결제 완료 후 #paidEarlyOverlay subtitle "프리미엄 점사가 펼쳐집니다" 좌측 상단 깜빡임 차단. 원인: <style> 적용 전 paint 1프레임에 자식 텍스트가 inline style 없이 부모 div 시작점(좌측 상단)에 노출. 해결: (1) CSS에 #paidEarlyOverlay > * { visibility: hidden; } + .ready 클래스 visible 전환 룰 추가 (2) document.write 끝 <script>에서 requestAnimationFrame으로 즉시 .ready 추가 + 50ms setTimeout 폴백 (RAF 실패 시 영구 hidden 방지) (3) 중앙 정렬 + 1초 노출 동작 보존, 깜빡임만 차단. V31 #151 visibility 정지 우려와 무관 (자식 요소에만 적용, overlay 본체는 영향 0).
+        const APP_VERSION = 'V202.51.2';  // ★ V202.51.2: V202.51.1 부분 효과 후 잔존 결함 — "번쩍하고 좌측 여백에 뭔가 보였다 사라진다". V202.51.1로 자식 텍스트 깜빡임은 차단했으나 <div> 자체의 CSS 적용 1프레임 동안 페이지 콘텐츠 잔재가 좌측 여백에 노출됨. 해결: <div id="paidEarlyOverlay"> 태그에 inline style로 CSS와 동일한 풀스크린(position:fixed; top:0; left:0; 100vw×100vh) + 그라데이션 배경 + flex 가운데 정렬 + z-index:9999999 즉시 적용. paint 1프레임부터 풀스크린 검정 박스가 페이지 잔재 완전 가림.
         window.APP_VERSION = APP_VERSION;
         
         // ★★★ [V202.17 결정적 수정] _sajuInput 복원 ★ 페이지 로드 즉시 ★ ★★★
@@ -3901,7 +3901,11 @@
                 '    opacity: 1;',
                 '  }',
                 '</style>',
-                '<div id="paidEarlyOverlay">',
+                // ★ V202.51.2 사장님 라이브 결함 ★ "번쩍하고 좌측 여백에 뭔가 보였다 사라진다"
+                //   원인: V202.51.1로 자식 텍스트는 차단했으나, <div> 자체의 CSS 적용 1프레임 동안
+                //         ★ 페이지 콘텐츠 잔재(이전 결제창 등) ★가 좌측 여백에 잠시 노출됨
+                //   해결: inline style로 CSS와 동일한 풀스크린+배경+flex 즉시 적용 → paint 1프레임부터 완전 가림
+                '<div id="paidEarlyOverlay" style="position:fixed;top:0;left:0;width:100vw;height:100vh;background:linear-gradient(135deg,#0a0612 0%,#1a0a2e 100%);z-index:9999999;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:18px;">',
                 '  <div class="saju-symbol">' + icon + '</div>',
                 '  <div class="title">' + title + '</div>',
                 '  <div class="subtitle">' + subtitle + '</div>',
