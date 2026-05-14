@@ -3316,7 +3316,7 @@
     (function() {
         'use strict';
         
-        const APP_VERSION = 'V202.48.3';  // ★ V202.48.3: (A) 진짜 워커 키 매칭 - relationEssence.partnerBlock + risk.{risk1/risk2/riskProgression/collapseType/coreKey} (V202.48.2의 flowBlock/pivot/badPath/goodPath/finalKey는 워커 b.final 키였음 - 혼동) (B) 라이브 진단 패널 - 모바일 토글 미노출 6번 핫픽스 무효의 진짜 원인 추적용 화면 노출 (UA/oracle존재/boxes키/토글게이트)
+        const APP_VERSION = 'V202.48.4';  // ★ V202.48.4: 7회 핫픽스 무효의 진짜 원인 수정 - _renderLoveBlockV25_24 첫 번째 return문에서 ${box3}/${box4}/${box5} 3줄 제거 (V202.48 매니페스토 #1 메인 6박스→3박스 ★ 진짜 ★ 적용). 그동안 box*HTML(_renderLoveBlock 함수 안 변수)과 box*(_renderLoveBlockV25_24 함수 안 변수)를 혼동하여 매번 잘못된 영역 검증.
         window.APP_VERSION = APP_VERSION;
         
         // ★★★ [V202.17 결정적 수정] _sajuInput 복원 ★ 페이지 로드 즉시 ★ ★★★
@@ -12770,9 +12770,14 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
                 ${topVerdictBox}
                 ${box1}
                 ${box2}
-                ${box3}
-                ${box4}
-                ${box5}
+                ${/* ★★★ [V202.48.4 진짜 매니페스토 #1 적용] ★★★
+                     V202.48~V202.48.3까지 7회 핫픽스 무효였던 진짜 원인:
+                       이 return문이 box3/box4/box5도 출력 중이었음 (6박스)
+                       박스 HTML이 같은 변수명을 가진 다른 함수(_renderLoveBlock)의
+                       box1HTML/box2HTML/box6HTML과 혼동되어 매번 "3박스 적용 OK" 오진
+                     해결: box3/box4/box5 출력 제거 → 진짜 3박스 (box1/box2/box6) 출력
+                     효과: 메인 3박스 + 펼침 토글 4박스 = 사장님 매니페스토 본질 완성
+                     ★★★ 이 줄 제거 = V202.48 → V202.48.4 진짜 본질 ★★★ */''}
                 ${box6}
                 ${proBox}
             </div>`;
