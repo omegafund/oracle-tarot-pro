@@ -3316,7 +3316,7 @@
     (function() {
         'use strict';
         
-        const APP_VERSION = 'V202.48.7';  // ★ V202.48.7: 매니페스토 #6 RELATION ESSENCE 점수 바 — box2 헤더 직후에 관계 진척도 시각화 추가. (1) 워커 데이터 활용: o.score (-10~+10) + o.scoreCategory (advance/maintain/realign/close) (2) 정규화: (score + 10) × 5 → 0~100% 진척도 (3) 4단계 색상 분기: advance(녹색)/maintain(황금)/realign(주황)/close(분홍) (4) 카테고리 라벨 + 점수 숫자 + 진척도 막대 + 한줄 설명 일관 구조. 모바일 flex-wrap 적용으로 짤림 차단.
+        const APP_VERSION = 'V202.48.8';  // ★ V202.48.8: 사장님 라이브 명령 — 워커 버전 숫자 사용자 노출 차단 (V200.7.5 원칙 일관 적용). 8개 도메인 일괄 정리: (1) LOVE: "ZEUS LOVE ORACLE · V25.24" → "ZEUS LOVE ORACLE" (2) FORTUNE 7종: wealth/health/career/today/newyear/general/etc 모두 · V25.32 또는 · V25.33 부분 제거. 워커 메타 버전은 개발용 console.log만 유지, 사용자 화면 노출 0.
         window.APP_VERSION = APP_VERSION;
         
         // ★★★ [V202.17 결정적 수정] _sajuInput 복원 ★ 페이지 로드 즉시 ★ ★★★
@@ -12817,7 +12817,7 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
             <div class="final-oracle final-oracle-love" style="padding:10px 6px; background:rgba(46,204,113,0.04); border:1px solid rgba(46,204,113,0.45); border-radius:12px; margin-top:18px;">
                 <h3 style="color:#2ecc71; text-align:center; margin:0 0 18px 0; font-size:1.15rem; border-bottom:1px solid rgba(46,204,113,0.35); padding-bottom:10px;">
                     💘 연애 흐름 신탁
-                    <span style="display:block; font-size:0.7rem; color:rgba(212,175,55,0.85); letter-spacing:0.18em; margin-top:4px;">ZEUS LOVE ORACLE · V25.24</span>
+                    <span style="display:block; font-size:0.7rem; color:rgba(212,175,55,0.85); letter-spacing:0.18em; margin-top:4px;">ZEUS LOVE ORACLE</span>
                 </h3>
                 ${topVerdictBox}
                 ${box1}
@@ -12860,14 +12860,14 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
                               : subtype === 'general' ? '✨ 전반 운세 신탁'
                               : subtype === 'etc'     ? '🔮 기타 신탁'
                               : '✨ 운세 흐름 신탁';
-            const domainSub   = subtype === 'wealth'  ? 'ZEUS WEALTH ORACLE · V25.32'
-                              : subtype === 'health'  ? 'ZEUS HEALTH ORACLE · V25.32'
-                              : subtype === 'career'  ? 'ZEUS CAREER ORACLE · V25.32'
-                              : subtype === 'today'   ? 'ZEUS TODAY ORACLE · V25.33'
-                              : subtype === 'newyear' ? 'ZEUS NEWYEAR ORACLE · V25.33'
-                              : subtype === 'general' ? 'ZEUS GENERAL ORACLE · V25.33'
-                              : subtype === 'etc'     ? 'ZEUS FORTUNE ORACLE · V25.33'
-                              : 'ZEUS FORTUNE ORACLE · V25.33';
+            const domainSub   = subtype === 'wealth'  ? 'ZEUS WEALTH ORACLE'
+                              : subtype === 'health'  ? 'ZEUS HEALTH ORACLE'
+                              : subtype === 'career'  ? 'ZEUS CAREER ORACLE'
+                              : subtype === 'today'   ? 'ZEUS TODAY ORACLE'
+                              : subtype === 'newyear' ? 'ZEUS NEWYEAR ORACLE'
+                              : subtype === 'general' ? 'ZEUS GENERAL ORACLE'
+                              : subtype === 'etc'     ? 'ZEUS FORTUNE ORACLE'
+                              : 'ZEUS FORTUNE ORACLE';
             
             // ─── 박스 1: 핵심 흐름 해석 ───
             const box1HTML = `
