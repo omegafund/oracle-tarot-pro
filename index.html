@@ -128,6 +128,19 @@
             background: radial-gradient(ellipse at center, #14141F 0%, #0A0A0F 70%, #000 100%);
             color: var(--text);
             font-family: var(--font-body), var(--font-ko);
+            /* ★★★ [V202.43 #3 STEP 1 사장님 명령 — 폰트 글로벌 확대] ★★★
+               사장님 진단 (테스터): "결과창 글자가 너무 작다 1-2pt 키우자"
+               결함 분석:
+                 • body font-size 명시 X → 브라우저 기본 16px (1rem)
+                 • 본문 0.78rem = 12.5px (Apple HIG 본문 권장 14px 미달)
+                 • 0.6x rem = 10px대 (Apple HIG 최소 권장 11px 미달)
+               해결: body font-size 17px → 모든 rem 6.25% 자동 확대
+                 0.78rem: 12.5px → 13.3px (★ +1pt ★)
+                 0.82rem: 13.1px → 13.9px
+                 0.88rem: 14.1px → 14.9px
+               안전: 모든 rem 비례 확대 → 박스/padding/margin 깨짐 위험 0
+               영향: 모든 rem 단위 폰트 + 일부 rem 기반 박스 (균등 확대 = 비율 유지) */
+            font-size: 17px;
             min-height: 100vh;
             overflow-x: hidden;
             letter-spacing: 0.01em;
@@ -1184,7 +1197,7 @@
 
         .badge-new-text {
             color: #CD2E3A;
-            font-size: 0.66rem;
+            font-size: 0.74rem;
             font-weight: 900;
             letter-spacing: 0.05em;
         }
@@ -1193,7 +1206,7 @@
             padding: 3px 8px;
             background: linear-gradient(135deg, #D4AF37, #FFD970);
             color: #000;
-            font-size: 0.62rem;
+            font-size: 0.74rem;
             font-weight: 900;
             border-radius: 4px;
             letter-spacing: 0.05em;
@@ -1260,7 +1273,7 @@
         }
 
         .saju-hero-features {
-            font-size: 0.66rem;
+            font-size: 0.74rem;
             /* ★ 특징 색상 약간 강화: 0.65 → 0.78 */
             color: rgba(232,232,238,0.78);
             letter-spacing: 0.04em;
@@ -1393,13 +1406,13 @@
         }
 
         .saju-aux-sub {
-            font-size: 0.68rem;                  /* [#139] 0.72 → 0.68 */
+            font-size: 0.74rem;                  /* [#139] 0.72 → 0.68 */
             color: rgba(232,232,238,0.7);
             line-height: 1.35;
         }
 
         .saju-aux-features {
-            font-size: 0.62rem;                  /* [#139] 0.66 → 0.62 */
+            font-size: 0.74rem;                  /* [#139] 0.66 → 0.62 */
             color: rgba(212,175,55,0.85);
             font-weight: 600;
             margin-top: 1px;
@@ -1445,13 +1458,13 @@
                 font-size: 0.82rem;
             }
             .saju-aux-sub {
-                font-size: 0.62rem;
+                font-size: 0.74rem;
             }
             .saju-aux-features {
                 font-size: 0.56rem;
             }
             .saju-aux-cta {
-                font-size: 0.64rem;
+                font-size: 0.74rem;
                 padding: 4px 9px;
             }
         }
@@ -1546,7 +1559,7 @@
             font-size: 0.78rem;
         }
         .category-grid.category-grid-3col .cat-card .cat-sub {
-            font-size: 0.62rem;
+            font-size: 0.74rem;
         }
 
         .cat-card {
@@ -1601,7 +1614,7 @@
         }
 
         .cat-card .cat-sub {
-            font-size: 0.66rem;
+            font-size: 0.74rem;
             color: rgba(232,232,238,0.6);
             line-height: 1.4;
         }
@@ -1714,7 +1727,7 @@
             letter-spacing: 0.04em;
         }
         .cat-sub {
-            font-size: 0.66rem;
+            font-size: 0.74rem;
             color: rgba(255,255,255,0.55);
             font-weight: 500;
             line-height: 1.4;
@@ -1826,7 +1839,7 @@
             display: inline-block;
             margin-left: 6px;
             padding: 2px 7px;
-            font-size: 0.62rem;
+            font-size: 0.74rem;
             font-weight: 900;
             letter-spacing: 0.06em;
             border-radius: 8px;
@@ -1862,7 +1875,7 @@
             .cat-card { min-height: 100px; padding: 12px 8px; }
             .cat-icon { font-size: 1.65rem; }
             .cat-title { font-size: 0.88rem; }
-            .cat-sub { font-size: 0.62rem; }
+            .cat-sub { font-size: 0.74rem; }
             .sub-btn { padding: 8px 12px; font-size: 0.8rem; }
             .sub-badge { font-size: 0.55rem; padding: 1px 5px; }
         }
@@ -1945,7 +1958,7 @@
             letter-spacing: 0.04em;
         }
         .cat-sub {
-            font-size: 0.66rem;
+            font-size: 0.74rem;
             color: rgba(255,255,255,0.55);
             font-weight: 500;
             line-height: 1.4;
@@ -2055,7 +2068,7 @@
             .cat-card { min-height: 100px; padding: 12px 8px; }
             .cat-icon { font-size: 1.65rem; }
             .cat-title { font-size: 0.88rem; }
-            .cat-sub { font-size: 0.62rem; }
+            .cat-sub { font-size: 0.74rem; }
             .sub-btn { padding: 8px 12px; font-size: 0.8rem; }
         }
 
@@ -2188,7 +2201,7 @@
         }
         .result-position-label {
             color: rgba(212,175,55,0.7);
-            font-size: 0.65rem;
+            font-size: 0.74rem;
             text-align: center;
             margin-top: 4px;
             letter-spacing: 0.1em;
@@ -2956,7 +2969,7 @@
             right: 14px;
             background: #ff6b6b;
             color: #fff;
-            font-size: 0.62rem;
+            font-size: 0.74rem;
             font-weight: 900;
             padding: 3px 9px;
             border-radius: 10px;
@@ -3109,7 +3122,7 @@
             padding: 3px 10px;
             background: #ff6b6b;
             color: #fff;
-            font-size: 0.66rem;
+            font-size: 0.74rem;
             font-weight: 900;
             letter-spacing: 0.04em;
             border-radius: 10px;
@@ -3303,7 +3316,7 @@
     (function() {
         'use strict';
         
-        const APP_VERSION = 'V202.42';  // ★ V202.42: 투자 깊이 점사창 8박스 → 4박스 통합 (중복 제거, 글로벌 표준)
+        const APP_VERSION = 'V202.43';  // ★ V202.43: 도돌이 결함 근본 수정 - ① 매도점사 "매수" 본문 (Gemini subjectDirective 좋은예 매수고정 → 의도별 분기) ② 결혼점사 "궁합" 본문 (안전망이 결혼+대상→궁합 강제 변환 결함, 명시 loveSubType 보존)
         window.APP_VERSION = APP_VERSION;
         
         // ★★★ [V202.17 결정적 수정] _sajuInput 복원 ★ 페이지 로드 즉시 ★ ★★★
@@ -4058,7 +4071,7 @@
         border: 1px solid rgba(212, 175, 55, 0.45);
         border-radius: 6px;
         color: rgba(212, 175, 55, 0.85);
-        font-size: 0.62rem;
+        font-size: 0.74rem;
         font-weight: 600;
         cursor: pointer;
         backdrop-filter: blur(3px);
@@ -4257,7 +4270,7 @@
                     <div id="daily-card-name" style="font-size:0.85rem; color:#fff; font-weight:800; line-height:1.2;">-</div>
                 </div>
                 <!-- 메시지 (중앙 정렬) -->
-                <div id="daily-card-message" style="font-size:0.68rem; color:rgba(255,255,255,0.7); line-height:1.4; font-style:italic; margin-top:2px; max-width:340px; text-align:center;">-</div>
+                <div id="daily-card-message" style="font-size: 0.74rem; color:rgba(255,255,255,0.7); line-height:1.4; font-style:italic; margin-top:2px; max-width:340px; text-align:center;">-</div>
             </div>
         </div>
 
@@ -4464,7 +4477,7 @@
         <!-- [V31 #123] 면책 절제 — 사장님 명령: "흔한 문구 = 브랜드 약화"
              기존: 메인 화면에 "✦ For reflection & entertainment only ✦"
              변경: 작게 단일 라인 + 영문 포함 (브랜드 톤 유지) -->
-        <div class="disclaimer-text" style="font-size:0.62rem; line-height:1.5; padding:6px 16px; opacity:0.55; text-align:center;">
+        <div class="disclaimer-text" style="font-size: 0.74rem; line-height:1.5; padding:6px 16px; opacity:0.55; text-align:center;">
             For reflection &amp; entertainment only · Not financial / legal / medical advice
         </div>
 
@@ -10608,7 +10621,7 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
                 <div style="color: #FFD970; font-size: 0.84rem; font-weight: 900; letter-spacing: 0.08em; margin-bottom: 12px; display: flex; align-items: center; gap: 8px;">
                     <span style="font-size: 1.05rem;">🧠</span>
                     <span>핵심 흐름 해석</span>
-                    <span style="margin-left: auto; font-size: 0.62rem; color: rgba(212,175,55,0.7); font-weight: 700; letter-spacing: 0.1em;">CORE INSIGHT · PRO</span>
+                    <span style="margin-left: auto; font-size: 0.74rem; color: rgba(212,175,55,0.7); font-weight: 700; letter-spacing: 0.1em;">CORE INSIGHT · PRO</span>
                 </div>
                 <div style="font-size: 0.94rem; color: rgba(255,255,255,0.95); line-height: 1.95; font-weight: 500; white-space: pre-line;">${_cleanedCore.replace(/\n/g, '<br>')}</div>
             </div>`;
@@ -11059,7 +11072,7 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
                                 background: rgba(255,236,159,0.10);
                                 border-left: 3px solid #FFEC9F;
                                 border-radius: 0 6px 6px 0;">
-                        <div style="font-size:0.68rem; color:#FFEC9F; font-weight:800; letter-spacing:0.1em; margin-bottom:5px; text-transform:uppercase;">
+                        <div style="font-size: 0.74rem; color:#FFEC9F; font-weight:800; letter-spacing:0.1em; margin-bottom:5px; text-transform:uppercase;">
                             🔍 흐름 진단
                         </div>
                         <div style="font-size:0.92rem; color:#fff; font-weight:600; line-height:1.55;">
@@ -11073,7 +11086,7 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
                                 background: rgba(155,89,182,0.10);
                                 border-left: 3px solid ${colors.signal};
                                 border-radius: 0 6px 6px 0;">
-                        <div style="font-size:0.68rem; color:#C39BD3; font-weight:800; letter-spacing:0.1em; margin-bottom:5px; text-transform:uppercase;">
+                        <div style="font-size: 0.74rem; color:#C39BD3; font-weight:800; letter-spacing:0.1em; margin-bottom:5px; text-transform:uppercase;">
                             🎴 카드 근거
                         </div>
                         <div style="font-size:0.86rem; color:rgba(255,255,255,0.92); font-weight:500; line-height:1.65; white-space:pre-line;">
@@ -11087,7 +11100,7 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
                                 background: rgba(46,204,113,0.10);
                                 border-left: 3px solid ${colors.execution};
                                 border-radius: 0 6px 6px 0;">
-                        <div style="font-size:0.68rem; color:#7AD188; font-weight:800; letter-spacing:0.1em; margin-bottom:5px; text-transform:uppercase;">
+                        <div style="font-size: 0.74rem; color:#7AD188; font-weight:800; letter-spacing:0.1em; margin-bottom:5px; text-transform:uppercase;">
                             💡 행동 시 결과
                         </div>
                         <div style="font-size:0.86rem; color:rgba(255,255,255,0.92); font-weight:500; line-height:1.65; white-space:pre-line;">
@@ -11101,7 +11114,7 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
                                 background: rgba(52,152,219,0.10);
                                 border-left: 3px solid ${colors.timing};
                                 border-radius: 0 6px 6px 0;">
-                        <div style="font-size:0.68rem; color:#5DADE2; font-weight:800; letter-spacing:0.1em; margin-bottom:6px; text-transform:uppercase;">
+                        <div style="font-size: 0.74rem; color:#5DADE2; font-weight:800; letter-spacing:0.1em; margin-bottom:6px; text-transform:uppercase;">
                             ⏱ 실행 트리거
                         </div>
                         ${layers.decision.entryTriggers.map(t => `
@@ -12129,7 +12142,7 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
                         <div style="color:#F1C40F; font-size:1.0rem; font-weight:900; letter-spacing:0.06em; margin-bottom:6px; line-height:1.3;">
                             🎯 신탁 결론
                         </div>
-                        <div style="font-size:0.62rem; color:rgba(241,196,15,0.85); font-weight:700; letter-spacing:0.15em;">
+                        <div style="font-size: 0.74rem; color:rgba(241,196,15,0.85); font-weight:700; letter-spacing:0.15em;">
                             TOP VERDICT · PRO
                         </div>
                     </div>
@@ -12223,7 +12236,7 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
                                              border-radius:7px; letter-spacing:0.04em;
                                              box-shadow:0 0 8px rgba(93,214,138,0.55);">NEW</span>
                             </div>
-                            <span style="color:#5DD68A; font-size:0.68rem; font-weight:900; letter-spacing:0.14em; margin-bottom:5px;">
+                            <span style="color:#5DD68A; font-size: 0.74rem; font-weight:900; letter-spacing:0.14em; margin-bottom:5px;">
                                 FULL DECISION ORACLE
                             </span>
                             <span style="color:rgba(255,255,255,0.78); font-size:0.72rem; font-weight:700; letter-spacing:0.02em; line-height:1.5;
@@ -12393,7 +12406,7 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
                         <div style="color:#FF8E72; font-size:0.86rem; font-weight:900; letter-spacing:0.12em;">
                             🔥 최종 결론
                         </div>
-                        <div style="margin-left:auto; font-size:0.62rem; color:rgba(255,142,114,0.75); font-weight:700; letter-spacing:0.1em;">
+                        <div style="margin-left:auto; font-size: 0.74rem; color:rgba(255,142,114,0.75); font-weight:700; letter-spacing:0.1em;">
                             TOP VERDICT
                         </div>
                     </div>
@@ -12422,7 +12435,7 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
                 <div style="${boxBase} ${goldBorder}">
                     <div style="display:flex; align-items:center; gap:6px; margin-bottom:10px;">
                         <div style="${labelGold}">🧠 핵심 흐름 해석</div>
-                        ${(typeof isPaidUser === 'undefined' || !isPaidUser) ? `<div style="margin-left:auto; font-size:0.62rem; color:rgba(212,175,55,0.85); font-weight:700; letter-spacing:0.1em;">CORE INSIGHT · PRO</div>` : ''}
+                        ${(typeof isPaidUser === 'undefined' || !isPaidUser) ? `<div style="margin-left:auto; font-size: 0.74rem; color:rgba(212,175,55,0.85); font-weight:700; letter-spacing:0.1em;">CORE INSIGHT · PRO</div>` : ''}
                     </div>
                     <div style="font-size:0.9rem; color:rgba(255,255,255,0.92);">
                         <div>${b.coreInsight.line1}</div>
@@ -12662,7 +12675,7 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
                 <div style="color: #FFD970; font-size: 0.84rem; font-weight: 900; letter-spacing: 0.08em; margin-bottom: 12px; display:flex; align-items:center; gap:8px;">
                     <span style="font-size: 1.05rem;">🔮</span>
                     <span>핵심 흐름 해석</span>
-                    <span style="margin-left:auto; font-size: 0.62rem; color: rgba(212,175,55,0.7); font-weight: 700; letter-spacing:0.1em;">CORE INSIGHT · PRO</span>
+                    <span style="margin-left:auto; font-size: 0.74rem; color: rgba(212,175,55,0.7); font-weight: 700; letter-spacing:0.1em;">CORE INSIGHT · PRO</span>
                 </div>
                 <div style="font-size: 0.94rem; color: rgba(255,255,255,0.95); line-height: 1.95; font-weight: 500;">
                     ${ci.line1}<br>
@@ -13373,7 +13386,7 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
                         letter-spacing: 0.02em;">
                         구독 옵션 살펴보기
                     </button>
-                    <div style="margin-top:10px; font-size:0.68rem; color:rgba(255,255,255,0.5); font-style:italic;">
+                    <div style="margin-top:10px; font-size: 0.74rem; color:rgba(255,255,255,0.5); font-style:italic;">
                         ※ 본 점사 결과는 모두 공개되었습니다 — 추가 콘텐츠 없음
                     </div>
                 </div>`;
@@ -13794,7 +13807,7 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
                             font-size: 0.88rem; line-height: 1.85;">
                     <div style="color: #FFD970; font-size: 0.78rem; font-weight: 900; letter-spacing: 0.1em; margin-bottom: 10px; display: flex; align-items: center; gap: 6px;">
                         <span>🎯 실행 가이드</span>
-                        <span style="margin-left: auto; font-size: 0.62rem; color: rgba(212,175,55,0.7); letter-spacing: 0.1em;">PRO</span>
+                        <span style="margin-left: auto; font-size: 0.74rem; color: rgba(212,175,55,0.7); letter-spacing: 0.1em;">PRO</span>
                     </div>
                     <div style="display: flex; gap: 8px; margin-bottom: 6px;">
                         <span style="color: #2ecc71; font-weight: 800; min-width: 90px; font-size: 0.82rem;">✔ 해야 할 행동</span>
@@ -13953,7 +13966,7 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
                         font-size: 0.88rem; line-height: 1.85;">
                 <div style="color: ${_colorX}; font-size: 0.78rem; font-weight: 900; letter-spacing: 0.1em; margin-bottom: 10px; display: flex; align-items: center; gap: 6px;">
                     <span>🎯 실행 가이드</span>
-                    <span style="margin-left: auto; font-size: 0.62rem; color: rgba(212,175,55,0.7); letter-spacing: 0.1em;">PRO</span>
+                    <span style="margin-left: auto; font-size: 0.74rem; color: rgba(212,175,55,0.7); letter-spacing: 0.1em;">PRO</span>
                 </div>
                 <div style="display: flex; gap: 8px; margin-bottom: 6px;">
                     <span style="color: #2ecc71; font-weight: 800; min-width: 90px; font-size: 0.82rem;">✔ 해야 할 행동</span>
@@ -14313,7 +14326,7 @@ async function _captureResultAsBlob() {
         font-family: serif;`;
     watermark.innerHTML = `
         ✦ 제우스 오라클 타로 ✦<br>
-        <span style="color:rgba(255,255,255,0.45); font-size:0.68rem;">
+        <span style="color:rgba(255,255,255,0.45); font-size: 0.74rem;">
             omegafund.github.io/oracle-tarot-pro
         </span>`;
     target.appendChild(watermark);
@@ -14600,7 +14613,7 @@ function renderDailyAndHistory() {
                         ${emoji} ${qShort}${qShort.length>=24?'…':''}
                     </div>
                     <div class="zeus-history-veil"
-                         style="color:rgba(212,175,55,0.7); font-size:0.65rem;
+                         style="color:rgba(212,175,55,0.7); font-size: 0.74rem;
                                 font-weight:800; letter-spacing:0.04em;
                                 white-space:nowrap; flex-shrink:0;">
                         ✦
@@ -15205,7 +15218,7 @@ function showSajuInputModal() {
                     <input type="hidden" name="sajuCalendar" value="solar">
                     <strong style="color:#2ecc71;">📅 양력 입력</strong>
                     <div style="font-size:0.7rem; color:#2ecc71; margin-top:3px;">절기 + 간지 100% 정확 ★</div>
-                    <div style="font-size:0.66rem; color:rgba(255,255,255,0.6); margin-top:6px; line-height:1.55;">
+                    <div style="font-size: 0.74rem; color:rgba(255,255,255,0.6); margin-top:6px; line-height:1.55;">
                         ※ 음력 생일은 <a href="https://search.naver.com/search.naver?query=만세력" target="_blank" style="color:#FFD970; text-decoration:underline;">만세력 사이트</a>에서 양력 변환 후 입력하세요.<br>
                         결과 화면에 ★ 음력 날짜도 자동 표시 ★ 됩니다.
                     </div>
@@ -15440,7 +15453,7 @@ function showSajuPlanGate(sajuInput) {
                 </div>
                 <div style="
                     color: rgba(255,255,255,0.42);
-                    font-size: 0.66rem;
+                    font-size: 0.74rem;
                     margin-top: 4px;
                     letter-spacing: 0.02em;
                 ">
@@ -15556,7 +15569,7 @@ function showSajuPlanGate(sajuInput) {
                 <div style="
                    position: absolute; top: -10px; right: 14px;
                    background: linear-gradient(135deg, #FFD700, #FFEC9F);
-                   color: #000; font-size: 0.66rem; font-weight: 900;
+                   color: #000; font-size: 0.74rem; font-weight: 900;
                    padding: 4px 10px; border-radius: 12px;
                    box-shadow: 0 2px 8px rgba(212,175,55,0.5);
                 ">🔥 가장 많이 선택</div>
@@ -15598,7 +15611,7 @@ function showSajuPlanGate(sajuInput) {
                     <button type="button"
                             onclick="document.getElementById('sajuPlanGate').remove(); document.body.style.overflow=''; try{localStorage.removeItem('sajuPendingResult'); sessionStorage.removeItem('sajuPendingResult');}catch(_){} if(typeof showSajuInputModal==='function'){showSajuInputModal();}"
                             style="background:transparent; color:rgba(255,255,255,0.28); 
-                                   border:none; font-size:0.66rem; cursor:pointer; 
+                                   border:none; font-size: 0.74rem; cursor:pointer; 
                                    padding:4px 10px; font-family:inherit; text-decoration:underline; text-underline-offset:2px;">
                         사주 정보 수정
                     </button>
@@ -15608,7 +15621,7 @@ function showSajuPlanGate(sajuInput) {
             <!-- 보안 안내 -->
             <div style="text-align:center; margin-top:8px; padding-top:10px; 
                         border-top:1px dashed rgba(255,255,255,0.08);
-                        font-size:0.62rem; color:#666;">
+                        font-size: 0.74rem; color:#666;">
                 🔒 SSL 보안결제 · 💳 토스페이먼츠 · 🛡 결제정보 무저장
             </div>
         </div>
@@ -16630,9 +16643,9 @@ function renderSajuChatMessageV185(msg, index) {
         const cells = labels.map((label, i) => {
             const v = p[keys[i]];
             const { stem, branch } = extractStemBranch(v);
-            if (!stem && !branch) return `<div style="text-align:center; padding:8px 4px; background:rgba(255,255,255,0.04); border-radius:4px; color:rgba(255,255,255,0.3); font-size:0.65rem;">${label}<br><br>—<br>—</div>`;
+            if (!stem && !branch) return `<div style="text-align:center; padding:8px 4px; background:rgba(255,255,255,0.04); border-radius:4px; color:rgba(255,255,255,0.3); font-size: 0.74rem;">${label}<br><br>—<br>—</div>`;
             return `<div style="text-align:center; padding:8px 4px; background:rgba(212,175,55,0.10); border:1px solid rgba(212,175,55,0.30); border-radius:6px;">
-                <div style="color:rgba(255,255,255,0.55); font-size:0.62rem; margin-bottom:3px;">${label}</div>
+                <div style="color:rgba(255,255,255,0.55); font-size: 0.74rem; margin-bottom:3px;">${label}</div>
                 <div style="color:#FFD970; font-size:1.35rem; font-weight:900; line-height:1;">${stem}</div>
                 <div style="color:#FFE08A; font-size:1.12rem; font-weight:700; margin-top:3px;">${branch}</div>
             </div>`;
@@ -16981,8 +16994,8 @@ function renderSajuKakaoChatV185(data) {
                     <span style="width:38px; text-align:right; font-size:0.72rem; font-weight:900; color:${color};">
                         ${pct}%
                     </span>
-                    ${isStrong ? '<span style="font-size:0.62rem; color:#5DD68A; font-weight:900;">강점</span>' : ''}
-                    ${isWeak ? '<span style="font-size:0.62rem; color:#F39C12; font-weight:900;">약점</span>' : ''}
+                    ${isStrong ? '<span style="font-size: 0.74rem; color:#5DD68A; font-weight:900;">강점</span>' : ''}
+                    ${isWeak ? '<span style="font-size: 0.74rem; color:#F39C12; font-weight:900;">약점</span>' : ''}
                 </div>`;
             });
             
@@ -17034,7 +17047,7 @@ function renderSajuKakaoChatV185(data) {
                     <div style="background:rgba(255,255,255,0.05); height:6px; border-radius:3px; overflow:hidden; margin-bottom:2px;">
                         <div style="width:${barWidth}%; height:100%; background:${color}; border-radius:3px;"></div>
                     </div>
-                    <div style="font-size:0.66rem; color:rgba(255,255,255,0.55); line-height:1.4; text-align:left;">
+                    <div style="font-size: 0.74rem; color:rgba(255,255,255,0.55); line-height:1.4; text-align:left;">
                         ${d.tenStar} · ${d.luckPhase} · ${d.keyword.tone}
                     </div>
                 </div>`;
@@ -17094,9 +17107,9 @@ function renderSajuKakaoChatV185(data) {
             <span class="saju-chat-header-icon">☯️</span>
             <div class="saju-chat-header-title">ZEUS 신탁사주${
                 isPaid ? (isBasicOnly 
-                    ? ' <span style="font-size:0.66rem; color:#7AD188; margin-left:4px;">★ BASIC</span>' 
-                    : ' <span style="font-size:0.66rem; color:#FFD970; margin-left:4px;">★ PREMIUM</span>') 
-                       : ' <span style="font-size:0.62rem; color:rgba(255,255,255,0.5); margin-left:4px;">FREE</span>'
+                    ? ' <span style="font-size: 0.74rem; color:#7AD188; margin-left:4px;">★ BASIC</span>' 
+                    : ' <span style="font-size: 0.74rem; color:#FFD970; margin-left:4px;">★ PREMIUM</span>') 
+                       : ' <span style="font-size: 0.74rem; color:rgba(255,255,255,0.5); margin-left:4px;">FREE</span>'
             }</div>
             <div class="saju-chat-header-status">
                 <span style="font-size:0.7rem; color:#7AD188;">✓ 분석 완료</span>
@@ -17133,7 +17146,7 @@ function renderSajuKakaoChatV185(data) {
                        right: 14px;
                        background: linear-gradient(135deg, #FFD700, #FFEC9F);
                        color: #000;
-                       font-size: 0.66rem;
+                       font-size: 0.74rem;
                        font-weight: 900;
                        padding: 4px 10px;
                        border-radius: 12px;
@@ -17290,7 +17303,7 @@ function renderSajuKakaoChatV185(data) {
                            padding: 3px 10px;
                            background: #ff6b6b;
                            color: #fff;
-                           font-size: 0.66rem;
+                           font-size: 0.74rem;
                            font-weight: 900;
                            letter-spacing: 0.04em;
                            border-radius: 10px;
@@ -17341,7 +17354,7 @@ function renderSajuKakaoChatV185(data) {
             </button>
             
             <!-- 면책 -->
-            <div style="margin-top:14px; padding:8px 10px; background:rgba(255,255,255,0.04); border-radius:4px; font-size:0.62rem; color:rgba(255,255,255,0.4); line-height:1.5; text-align:center;">
+            <div style="margin-top:14px; padding:8px 10px; background:rgba(255,255,255,0.04); border-radius:4px; font-size: 0.74rem; color:rgba(255,255,255,0.4); line-height:1.5; text-align:center;">
                 ※ 사주명리 엔터테인먼트 콘텐츠 · 본인 판단 우선
             </div>
         </div>
@@ -18753,7 +18766,7 @@ function renderSajuResult(data) {
                 const branch = p.charAt(1);
                 return `
                 <div style="text-align:center; padding:10px 6px; background:rgba(212,175,55,0.08); border:1px solid rgba(212,175,55,0.25); border-radius:6px;">
-                    <div style="color:rgba(255,255,255,0.5); font-size:0.66rem; margin-bottom:4px;">${label}</div>
+                    <div style="color:rgba(255,255,255,0.5); font-size: 0.74rem; margin-bottom:4px;">${label}</div>
                     <div style="color:#FFD970; font-size:1.5rem; font-weight:900; line-height:1;">${stem}</div>
                     <div style="color:#FFE08A; font-size:1.2rem; font-weight:700; margin-top:4px;">${branch}</div>
                 </div>`;
@@ -18798,7 +18811,7 @@ function renderSajuResult(data) {
             <!--   안전망:                                                                -->
             <!--     입력값 없으면 → 기존 accuracy.note 표시 (폴백)                       -->
             <div style="text-align:center; margin-bottom:14px;">
-                <div style="display:inline-block; padding:3px 10px; background:rgba(212,175,55,0.15); border-radius:12px; font-size:0.66rem; color:#FFD970; font-weight:900; letter-spacing:0.05em; margin-bottom:8px;">
+                <div style="display:inline-block; padding:3px 10px; background:rgba(212,175,55,0.15); border-radius:12px; font-size: 0.74rem; color:#FFD970; font-weight:900; letter-spacing:0.05em; margin-bottom:8px;">
                     [1/6] 핵심 요약
                 </div>
                 <div style="font-size:2.4rem;">☯</div>
@@ -18843,7 +18856,7 @@ function renderSajuResult(data) {
                         }
                     } catch(e) {}
                     // 폴백: 기존 accuracy.note
-                    return data.accuracy ? `<div style="color:rgba(255,255,255,0.5); font-size:0.66rem; margin-top:4px;">${data.accuracy.note}</div>` : '';
+                    return data.accuracy ? `<div style="color:rgba(255,255,255,0.5); font-size: 0.74rem; margin-top:4px;">${data.accuracy.note}</div>` : '';
                 })()}
             </div>
 
@@ -19006,7 +19019,7 @@ function renderSajuResult(data) {
                         <div style="color:#C39BD3; font-size:1.0rem; font-weight:900; letter-spacing:0.06em; margin-bottom:5px;">
                             🌟 용신 ${(function(){ const _h = {'목':'木','화':'火','토':'土','금':'金','수':'水'}; return _ysName + '(' + (_h[_ysName] || '') + ')'; })()}에 따른 행운 가이드
                         </div>
-                        <div style="font-size:0.62rem; color:rgba(195,155,211,0.85); font-weight:700; letter-spacing:0.15em;">
+                        <div style="font-size: 0.74rem; color:rgba(195,155,211,0.85); font-weight:700; letter-spacing:0.15em;">
                             LUCKY GUIDE · 사주 명식 기반 맞춤 가이드
                         </div>
                     </div>
@@ -19029,25 +19042,25 @@ function renderSajuResult(data) {
                         </div>
                         <div style="display:grid; grid-template-columns:1fr 1fr; gap:6px;">
                             <div style="padding:8px 10px; background:rgba(0,0,0,0.25); border-radius:6px;">
-                                <div style="color:#C39BD3; font-size:0.66rem; font-weight:800;">🎨 색상</div>
+                                <div style="color:#C39BD3; font-size: 0.74rem; font-weight:800;">🎨 색상</div>
                                 <div style="color:rgba(255,255,255,0.92); font-size:0.78rem; margin-top:3px; font-weight:600;">${(_rec.colors || ['-']).join(', ')}</div>
                             </div>
                             <div style="padding:8px 10px; background:rgba(0,0,0,0.25); border-radius:6px;">
-                                <div style="color:#C39BD3; font-size:0.66rem; font-weight:800;">🧭 방위</div>
+                                <div style="color:#C39BD3; font-size: 0.74rem; font-weight:800;">🧭 방위</div>
                                 <div style="color:rgba(255,255,255,0.92); font-size:0.78rem; margin-top:3px; font-weight:600;">${(_rec.directions || ['-']).join(', ')}</div>
                             </div>
                             <div style="padding:8px 10px; background:rgba(0,0,0,0.25); border-radius:6px;">
-                                <div style="color:#C39BD3; font-size:0.66rem; font-weight:800;">🔢 숫자</div>
+                                <div style="color:#C39BD3; font-size: 0.74rem; font-weight:800;">🔢 숫자</div>
                                 <div style="color:rgba(255,255,255,0.92); font-size:0.78rem; margin-top:3px; font-weight:600;">${(_rec.numbers || ['-']).join(', ')}</div>
                             </div>
                             <div style="padding:8px 10px; background:rgba(0,0,0,0.25); border-radius:6px;">
-                                <div style="color:#C39BD3; font-size:0.66rem; font-weight:800;">🍴 음식</div>
+                                <div style="color:#C39BD3; font-size: 0.74rem; font-weight:800;">🍴 음식</div>
                                 <div style="color:rgba(255,255,255,0.92); font-size:0.78rem; margin-top:3px; font-weight:600;">${(_rec.foods || ['-']).join(', ')}</div>
                             </div>
                         </div>
                         ${_rec.hobbies ? `
                         <div style="margin-top:6px; padding:8px 10px; background:rgba(0,0,0,0.25); border-radius:6px;">
-                            <div style="color:#C39BD3; font-size:0.66rem; font-weight:800;">🎯 도움 활동</div>
+                            <div style="color:#C39BD3; font-size: 0.74rem; font-weight:800;">🎯 도움 활동</div>
                             <div style="color:rgba(255,255,255,0.92); font-size:0.78rem; margin-top:3px; font-weight:600;">${_rec.hobbies.join(' · ')}</div>
                         </div>` : ''}
                     </div>
@@ -19060,15 +19073,15 @@ function renderSajuResult(data) {
                         </div>
                         <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:6px;">
                             <div style="padding:8px 6px; background:rgba(0,0,0,0.25); border-radius:6px; text-align:center;">
-                                <div style="color:#C39BD3; font-size:0.62rem; font-weight:800; margin-bottom:3px;">⏰ 시간대</div>
+                                <div style="color:#C39BD3; font-size: 0.74rem; font-weight:800; margin-bottom:3px;">⏰ 시간대</div>
                                 <div style="color:rgba(255,255,255,0.92); font-size:0.72rem; font-weight:600; line-height:1.4;">${_rec.timeRange || '-'}</div>
                             </div>
                             <div style="padding:8px 6px; background:rgba(0,0,0,0.25); border-radius:6px; text-align:center;">
-                                <div style="color:#C39BD3; font-size:0.62rem; font-weight:800; margin-bottom:3px;">📅 요일</div>
+                                <div style="color:#C39BD3; font-size: 0.74rem; font-weight:800; margin-bottom:3px;">📅 요일</div>
                                 <div style="color:rgba(255,255,255,0.92); font-size:0.72rem; font-weight:600; line-height:1.4;">${_rec.luckyDay || '-'}</div>
                             </div>
                             <div style="padding:8px 6px; background:rgba(0,0,0,0.25); border-radius:6px; text-align:center;">
-                                <div style="color:#C39BD3; font-size:0.62rem; font-weight:800; margin-bottom:3px;">🌙 계절</div>
+                                <div style="color:#C39BD3; font-size: 0.74rem; font-weight:800; margin-bottom:3px;">🌙 계절</div>
                                 <div style="color:rgba(255,255,255,0.92); font-size:0.72rem; font-weight:600; line-height:1.4;">${_rec.season || '-'}</div>
                             </div>
                         </div>
@@ -19082,11 +19095,11 @@ function renderSajuResult(data) {
                         </div>
                         <div style="display:grid; grid-template-columns:1fr 1fr; gap:6px;">
                             <div style="padding:8px 10px; background:rgba(0,0,0,0.25); border-radius:6px;">
-                                <div style="color:#C39BD3; font-size:0.66rem; font-weight:800;">🌸 향기</div>
+                                <div style="color:#C39BD3; font-size: 0.74rem; font-weight:800;">🌸 향기</div>
                                 <div style="color:rgba(255,255,255,0.92); font-size:0.74rem; margin-top:3px; font-weight:600; line-height:1.5;">${_rec.scent || '-'}</div>
                             </div>
                             <div style="padding:8px 10px; background:rgba(0,0,0,0.25); border-radius:6px;">
-                                <div style="color:#C39BD3; font-size:0.66rem; font-weight:800;">🎵 음악</div>
+                                <div style="color:#C39BD3; font-size: 0.74rem; font-weight:800;">🎵 음악</div>
                                 <div style="color:rgba(255,255,255,0.92); font-size:0.74rem; margin-top:3px; font-weight:600; line-height:1.5;">${_rec.music || '-'}</div>
                             </div>
                         </div>
@@ -19160,7 +19173,7 @@ function renderSajuResult(data) {
                                          border-radius:7px; letter-spacing:0.04em;
                                          box-shadow:0 0 8px rgba(93,214,138,0.55);">NEW</span>
                         </div>
-                        <span style="color:#5DD68A; font-size:0.68rem; font-weight:900; letter-spacing:0.14em; margin-bottom:5px;">
+                        <span style="color:#5DD68A; font-size: 0.74rem; font-weight:900; letter-spacing:0.14em; margin-bottom:5px;">
                             LUCKY GUIDE
                         </span>
                         <span style="color:rgba(255,255,255,0.78); font-size:0.72rem; font-weight:700; letter-spacing:0.02em; line-height:1.5;
@@ -19965,7 +19978,7 @@ ${cleanContent}
                             <div style="background:rgba(255,255,255,0.06); height:6px; border-radius:3px; overflow:hidden; margin-bottom:4px;">
                                 <div style="width:${barWidth}%; height:100%; background:${color}; border-radius:3px;"></div>
                             </div>
-                            <div style="font-size:0.68rem; color:rgba(255,255,255,0.6); line-height:1.4;">
+                            <div style="font-size: 0.74rem; color:rgba(255,255,255,0.6); line-height:1.4;">
                                 ${d.tenStar} · ${d.luckPhase} · ${d.keyword.tone}
                             </div>
                             ${d.keyword.explain ? `
@@ -20069,7 +20082,7 @@ ${cleanContent}
                            onmouseout="this.style.transform='translateY(0)'">
                             🎯 3일 뒤 재확인 알림 설정
                         </button>
-                        <div style="margin-top:8px; text-align:center; color:rgba(255,255,255,0.45); font-size:0.66rem;">
+                        <div style="margin-top:8px; text-align:center; color:rgba(255,255,255,0.45); font-size: 0.74rem;">
                             * 같은 사주를 다시 점사 시 행동 변화가 반영됩니다
                         </div>
                     </div>
@@ -20176,7 +20189,7 @@ ${cleanContent}
             })()}
 
             <!-- 면책 -->
-            <div style="margin-top:14px; padding:8px 10px; background:rgba(255,255,255,0.04); border-radius:4px; font-size:0.66rem; color:rgba(255,255,255,0.45); line-height:1.5;">
+            <div style="margin-top:14px; padding:8px 10px; background:rgba(255,255,255,0.04); border-radius:4px; font-size: 0.74rem; color:rgba(255,255,255,0.45); line-height:1.5;">
                 ※ 본 서비스는 사주명리를 활용한 엔터테인먼트 콘텐츠입니다.
                 실제 인생의 결정은 본인의 판단에 따라 신중히 내리시기 바랍니다.
             </div>
@@ -20532,7 +20545,7 @@ function showPayModal() {
                 <div style="position:absolute; top:-8px; right:12px;
                             background: #FF3D5C; color:#fff;
                             padding: 3px 9px; border-radius: 12px;
-                            font-size: 0.65rem; font-weight: 900; letter-spacing: 0.05em;
+                            font-size: 0.74rem; font-weight: 900; letter-spacing: 0.05em;
                             box-shadow: 0 2px 6px rgba(255,61,92,0.4);">
                     🔥 BEST VALUE
                 </div>
@@ -20893,7 +20906,7 @@ function showPayModal() {
                                 <span style="font-size:1rem;">👤</span>
                                 <span>입금자 이름을 입력하세요</span>
                             </div>
-                            <div style="font-size:0.62rem; color:rgba(255,224,102,0.85); text-align:center;
+                            <div style="font-size: 0.74rem; color:rgba(255,224,102,0.85); text-align:center;
                                         margin-bottom:6px; font-style:italic;">
                                 (송금 시 본인 실명과 정확히 일치)
                             </div>
@@ -21742,7 +21755,7 @@ function showPaymentMethodModal(planKey) {
                 <!-- 구분선 -->
                 <div style="display:flex; align-items:center; gap:10px; margin: 6px 0;">
                     <div style="flex:1; height:1px; background:rgba(255,255,255,0.15);"></div>
-                    <div style="font-size:0.68rem; color:rgba(255,255,255,0.5); letter-spacing:0.1em;">또는</div>
+                    <div style="font-size: 0.74rem; color:rgba(255,255,255,0.5); letter-spacing:0.1em;">또는</div>
                     <div style="flex:1; height:1px; background:rgba(255,255,255,0.15);"></div>
                 </div>
 
@@ -22399,7 +22412,7 @@ function renderMetrics(metrics) {
                     border-radius: 7px;">
             <span style="font-size:1rem;">${it.icon}</span>
             <div>
-                <div style="font-size:0.62rem; color:rgba(255,215,112,0.75);
+                <div style="font-size: 0.74rem; color:rgba(255,215,112,0.75);
                             letter-spacing:0.08em; font-weight:700;">${it.label}</div>
                 <div style="font-size:0.88rem; color:${it.color || '#fff'}; font-weight:800;">${it.value}</div>
             </div>
@@ -23439,7 +23452,7 @@ function cancelShuffle() {
         </div>
         
         <!-- 사업자 정보 (전자상거래법 제13조 의무) — 절제된 톤 -->
-        <div style="text-align:center; margin-bottom:12px; font-size:0.68rem; color:#999;">
+        <div style="text-align:center; margin-bottom:12px; font-size: 0.74rem; color:#999;">
             <p style="margin:2px 0;"><strong style="color:#FFD970; font-size:0.74rem;">제우스 타로 (ZEUS TAROT)</strong></p>
             <p style="margin:2px 0;">대표자: 음광태 | 사업자등록번호: 375-44-01339 
                 <a href="https://www.ftc.go.kr/bizCommPop.do?wrkr_no=3754401339" target="_blank" rel="noopener" style="color:#5dade2; text-decoration:none;">[정보확인]</a>
@@ -23450,17 +23463,17 @@ function cancelShuffle() {
         </div>
         
         <!-- 결제/보안 표시 (1줄로 압축) -->
-        <div style="text-align:center; margin-bottom:10px; padding:6px 8px; background:rgba(212,175,55,0.04); border-radius:4px; font-size:0.62rem; color:#999;">
+        <div style="text-align:center; margin-bottom:10px; padding:6px 8px; background:rgba(212,175,55,0.04); border-radius:4px; font-size: 0.74rem; color:#999;">
             🔒 SSL 보안결제 · 💳 토스페이먼츠 · 🛡 결제정보 무저장
         </div>
         
         <!-- 면책 (절제된 톤) -->
-        <div style="padding:8px 10px; background:rgba(255,165,80,0.04); border-left:2px solid rgba(255,165,80,0.3); border-radius:0 4px 4px 0; margin-bottom:10px; font-size:0.62rem; color:#888; line-height:1.55;">
+        <div style="padding:8px 10px; background:rgba(255,165,80,0.04); border-left:2px solid rgba(255,165,80,0.3); border-radius:0 4px 4px 0; margin-bottom:10px; font-size: 0.74rem; color:#888; line-height:1.55;">
             <strong style="color:#FFB870;">⚠ 안내</strong> 본 서비스는 타로 카드를 활용한 <strong style="color:#FFD970;">엔터테인먼트 콘텐츠</strong>입니다. 투자자문업·금융상품판매업·공인중개사업 등록 서비스가 아니며, 콘텐츠를 참고한 모든 결정의 결과는 사용자 본인에게 귀속됩니다.
         </div>
         
         <!-- 저작권 -->
-        <div style="text-align:center; color:#666; font-size:0.62rem;">
+        <div style="text-align:center; color:#666; font-size: 0.74rem;">
             © 2026 ZEUS TAROT
         </div>
         
@@ -23470,7 +23483,7 @@ function cancelShuffle() {
             <button type="button" 
                     onclick="if(confirm('결제 잔재를 정리하고 새로고침합니다.\\n결제 후 60분 안 결제는 다시 결제해야 할 수 있습니다.\\n\\n계속하시겠습니까?')) window.zeusForceClear();"
                     style="background:rgba(255,123,123,0.08); color:#999; border:1px solid rgba(255,123,123,0.2); 
-                           padding:6px 14px; border-radius:6px; font-size:0.66rem; cursor:pointer; font-family:inherit;
+                           padding:6px 14px; border-radius:6px; font-size: 0.74rem; cursor:pointer; font-family:inherit;
                            transition:all 0.2s ease;"
                     onmouseover="this.style.background='rgba(255,123,123,0.15)'; this.style.color='#ccc'"
                     onmouseout="this.style.background='rgba(255,123,123,0.08)'; this.style.color='#999'">
