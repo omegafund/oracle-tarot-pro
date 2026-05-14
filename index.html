@@ -3316,7 +3316,7 @@
     (function() {
         'use strict';
         
-        const APP_VERSION = 'V202.51.2';  // ★ V202.51.2: V202.51.1 부분 효과 후 잔존 결함 — "번쩍하고 좌측 여백에 뭔가 보였다 사라진다". V202.51.1로 자식 텍스트 깜빡임은 차단했으나 <div> 자체의 CSS 적용 1프레임 동안 페이지 콘텐츠 잔재가 좌측 여백에 노출됨. 해결: <div id="paidEarlyOverlay"> 태그에 inline style로 CSS와 동일한 풀스크린(position:fixed; top:0; left:0; 100vw×100vh) + 그라데이션 배경 + flex 가운데 정렬 + z-index:9999999 즉시 적용. paint 1프레임부터 풀스크린 검정 박스가 페이지 잔재 완전 가림.
+        const APP_VERSION = 'V202.52.0';  // ★ V202.52.0: V202.51.0 풀 시스템 자연 확장 — coreInsight 박스 4영역 추가 풀 분기 (line4 dominant + line5 surface + line5 hidden + line3 structure). LOVE_DOMINANT_SIDE_POOL / LOVE_SURFACE_STATE_POOL / LOVE_HIDDEN_FLOW_POOL / LOVE_STRUCTURE_SENTENCE_POOL 신규 4개 (각 9 서브타입 × 8개 = 288개 신규 텍스트). buildLoveCoreInsight 시드 선택 4개 추가 + content.* fallback 안전. line3/line4/line5 모두 풀 변수 사용. 매트릭스 8개 무손상 + Gemini 프롬프트 무손상 + 다른 박스 영향 0. 1단계 V202.51.0 + V202.52.0 = coreInsight 박스 완전 다양화 달성.
         window.APP_VERSION = APP_VERSION;
         
         // ★★★ [V202.17 결정적 수정] _sajuInput 복원 ★ 페이지 로드 즉시 ★ ★★★
