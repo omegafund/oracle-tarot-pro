@@ -3316,7 +3316,7 @@
     (function() {
         'use strict';
         
-        const APP_VERSION = 'V202.49.1';  // ★ V202.49.1: 사장님 통찰 — 자문 톤 일관성. (1) ACTION GUIDE 박스 "☒ 절대 피할 것" → "⚠ 주의가 필요한 행동" (자문 톤, 사용자 자율성 보호, 법적 안전망 강화) (2) "위험 ·" → "유의점 ·" 라벨 일관성 (3) 잔재 정리 2건: index.html box3 옛 영역의 동일 표현 (12730, 12977) 일괄 통일 (4) 라인 9720 사용자 직접 노출 "충동적 재연락 절대 금지" → "충동적 재연락은 권하지 않습니다" 권유형 변경. 점사의 본질(가능성 제시 + 사용자 자기 결정) + 엔터테인먼트 콘텐츠 면책 정합성 강화.
+        const APP_VERSION = 'V202.50.0';  // ★ V202.50.0: 사장님 라이브 검증 결함 5건 일괄 해결 (워커 변경 0, 모든 작업 index.html만). (1) 점수 척도 0~100 통일: -10~+10 → 0~100 변환 + 진척도 바와 1:1 매칭, 높이 13px, 글로우 4px로 축소, 50점 점선 마커 추가, 0/50/100 라벨 (2) "✘ 나쁜 길" → "△ 권하지 않는 길" 2곳 자문 톤 (3) 관계 리스크 박스 자문 톤: 위험1/2 → 유의점1/2, 진행 → 흐름 전개, 붕괴 유형 → 정체 유형, 핵심 → 주의점 (4) 마음 흐름 박스 데이터 차원 변경 (결함 B): partnerBlock 제거 (메인과 중복) + counterDynamic + negativeResult 새 추가 + 관계 동역학/반대 흐름 라벨 (5) 마음 흐름 박스 coreKey 제거 (결함 A: 메인 본질 키와 100% 동일 텍스트 차단). 사장님 통찰: "두 척도 혼재 + 박스 중복" 모두 해소.
         window.APP_VERSION = APP_VERSION;
         
         // ★★★ [V202.17 결정적 수정] _sajuInput 복원 ★ 페이지 로드 즉시 ★ ★★★
@@ -12459,15 +12459,29 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
             //     partnerBlock.{visible,real}     ← ★ 진짜 키 ★
             //     dynamic, counterDynamic, positiveResult, negativeResult, coreKey
             // ════════════════════════════════════════════════════════════
+            // ════════════════════════════════════════════════════════════
+            // ★★★ [V202.50.0 결함 A+B] 마음 흐름 박스 데이터 차원 변경 ★★★
+            //   사장님 진단 (V202.49.1 라이브 결함 분석):
+            //     ① 결함 A: "본질 키" 메인 box2 vs 토글 마음 흐름 ★ 100% 동일 텍스트 ★
+            //        → 같은 b.relationEssence.coreKey 양쪽 박스 동시 사용 결함
+            //     ② 결함 B: "상대 상태" partnerBlock.visible/real 양쪽 박스 동시 사용
+            //        → 사용자: "박스 분리한 의미 없다"
+            //   해결:
+            //     ① partnerBlock 제거 (메인 box2에서 [상대 상태]로 이미 노출)
+            //     ② coreKey 제거 (메인 box2의 본질 키와 100% 동일 데이터)
+            //     ③ counterDynamic 새 차원 추가 (메인에 없는 정보)
+            //     ④ negativeResult 추가 (관계 동역학의 양쪽 시나리오 보강)
+            //     ⑤ 라벨 변경: "두 흐름의 구조" → "관계 동역학" (의미 차별)
+            //   안전: 워커 데이터(b.relationEssence.*) 무손상, 클라이언트만 변경
+            // ════════════════════════════════════════════════════════════
             const _v48_mindBox = (b.relationEssence) ? `
             <div style="${boxBase} background:rgba(155,89,182,0.06); border:1px solid rgba(155,89,182,0.35); border-left:3px solid #9B59B6;">
                 <div style="${labelBase} color:#C39BD3;">💭 상대 마음 흐름</div>
                 <div style="${bodyBase}">
-                    ${b.relationEssence.partnerBlock && b.relationEssence.partnerBlock.visible ? `<div style="margin-bottom:6px;">▸ 겉으로: ${b.relationEssence.partnerBlock.visible}</div>` : ''}
-                    ${b.relationEssence.partnerBlock && b.relationEssence.partnerBlock.real ? `<div style="margin-bottom:6px;">▸ 실제로: ${b.relationEssence.partnerBlock.real}</div>` : ''}
-                    ${b.relationEssence.dynamic ? `<div style="margin-top:8px; padding:8px 10px; background:rgba(155,89,182,0.08); border-radius:6px; font-size:0.84rem;">두 흐름의 구조: <b style="color:#C39BD3;">${b.relationEssence.dynamic}</b></div>` : ''}
-                    ${b.relationEssence.positiveResult ? `<div style="margin-top:6px; padding-left:8px; font-size:0.84rem; color:rgba(255,255,255,0.85);">→ ${b.relationEssence.positiveResult}</div>` : ''}
-                    ${b.relationEssence.coreKey ? `<div style="margin-top:8px; padding:6px 10px; background:rgba(212,175,55,0.08); border-left:2px solid #D4AF37; border-radius:0 6px 6px 0; font-size:0.82rem; color:#FFE08A;">↳ 본질 키: "${b.relationEssence.coreKey}"</div>` : ''}
+                    ${b.relationEssence.dynamic ? `<div style="margin-bottom:8px; padding:8px 10px; background:rgba(155,89,182,0.08); border-radius:6px; font-size:0.86rem;"><span style="color:#C39BD3; font-weight:800;">▸ 관계 동역학:</span> ${b.relationEssence.dynamic}</div>` : ''}
+                    ${b.relationEssence.counterDynamic ? `<div style="margin-bottom:8px; padding:8px 10px; background:rgba(155,89,182,0.05); border-radius:6px; font-size:0.86rem; border-left:2px solid rgba(155,89,182,0.4);"><span style="color:#C39BD3; font-weight:800;">▸ 반대 흐름:</span> ${b.relationEssence.counterDynamic}</div>` : ''}
+                    ${b.relationEssence.positiveResult ? `<div style="margin-top:8px; padding-left:8px; font-size:0.84rem; color:rgba(122,209,136,0.85);">→ 정렬될 경우: ${b.relationEssence.positiveResult}</div>` : ''}
+                    ${b.relationEssence.negativeResult ? `<div style="margin-top:4px; padding-left:8px; font-size:0.84rem; color:rgba(243,156,18,0.85);">↻ 어긋날 경우: ${b.relationEssence.negativeResult}</div>` : ''}
                 </div>
             </div>` : '';
             
@@ -12482,15 +12496,22 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
             //     coreKey                       ← ★ 리스크 요약 ★
             //     riskPhrase                    ← 리스크 문구
             // ════════════════════════════════════════════════════════════
+            // ★★★ [V202.50.0 결함 C] 자문 톤 일관성 ★★★
+            //   변경: "위험 1/2" → "유의점 1/2" (ACTION GUIDE와 통일)
+            //         "📈 진행:" → "📈 흐름 전개:"
+            //         "🔻 붕괴 유형:" → "🔻 정체 유형:" (극단 어휘 제거)
+            //         "⚠️ 핵심:" → "⚠ 주의점:" (자문 톤)
+            //   안전: 라벨만 변경, 워커 데이터(b.risk.*) 무손상
+            // ════════════════════════════════════════════════════════════
             const _v48_riskBox = (b.risk) ? `
             <div style="${boxBase} background:rgba(243,156,18,0.06); border:1px solid rgba(243,156,18,0.35); border-left:3px solid #F39C12;">
                 <div style="${labelBase} color:#F39C12;">⚠️ 관계 리스크</div>
                 <div style="${bodyBase}">
-                    ${b.risk.risk1 ? `<div style="margin-bottom:6px;">▸ 위험 1: ${b.risk.risk1}</div>` : ''}
-                    ${b.risk.risk2 ? `<div style="margin-bottom:6px;">▸ 위험 2: ${b.risk.risk2}</div>` : ''}
-                    ${b.risk.riskProgression ? `<div style="margin-top:8px; margin-bottom:6px; padding-left:8px; font-size:0.84rem; color:rgba(255,255,255,0.85);">📈 진행: ${b.risk.riskProgression}</div>` : ''}
-                    ${b.risk.collapseType ? `<div style="margin-bottom:6px; padding-left:8px; font-size:0.84rem; color:rgba(255,255,255,0.85);">🔻 붕괴 유형: ${b.risk.collapseType}</div>` : ''}
-                    ${b.risk.coreKey ? `<div style="margin-top:8px; padding:8px 10px; background:rgba(243,156,18,0.10); border-radius:6px; font-size:0.84rem;"><b style="color:#F39C12;">⚠️ 핵심:</b> ${b.risk.coreKey}</div>` : ''}
+                    ${b.risk.risk1 ? `<div style="margin-bottom:6px;">▸ 유의점 1: ${b.risk.risk1}</div>` : ''}
+                    ${b.risk.risk2 ? `<div style="margin-bottom:6px;">▸ 유의점 2: ${b.risk.risk2}</div>` : ''}
+                    ${b.risk.riskProgression ? `<div style="margin-top:8px; margin-bottom:6px; padding-left:8px; font-size:0.84rem; color:rgba(255,255,255,0.85);">📈 흐름 전개: ${b.risk.riskProgression}</div>` : ''}
+                    ${b.risk.collapseType ? `<div style="margin-bottom:6px; padding-left:8px; font-size:0.84rem; color:rgba(255,255,255,0.85);">🔻 정체 유형: ${b.risk.collapseType}</div>` : ''}
+                    ${b.risk.coreKey ? `<div style="margin-top:8px; padding:8px 10px; background:rgba(243,156,18,0.10); border-radius:6px; font-size:0.84rem;"><b style="color:#F39C12;">⚠ 주의점:</b> ${b.risk.coreKey}</div>` : ''}
                 </div>
             </div>` : '';
             
@@ -12634,16 +12655,19 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
             const re = b.relationEssence;
             
             // ════════════════════════════════════════════════════════════
-            // ★★★ [V202.48.7 매니페스토 #6] RELATION ESSENCE 점수 바 ★★★
-            //   목적: 관계 진척도를 카드별 점수 + 카테고리로 즉시 시각화
-            //   데이터: o.score (-10~+10) + o.scoreCategory (advance/maintain/realign/close)
-            //   정규화: (score + 10) × 5 → 0~100% 진척도
-            //   색상 분기: 4단계 (녹색→황금→주황→분홍)
-            //   위치: box2 헤더 직후, 유저/상대 그리드 직전 (시각 위계 정점)
+            // ★★★ [V202.50.0 사장님 통찰] 점수 척도 통일 + 시각 개선 ★★★
+            //   사장님 진단: "그래프 70점 정도인데 점수 +0이 모순"
+            //   원인: 점수(-10~+10) + 진척도(0~100%) 두 척도 혼재 → 사용자 인지 충돌
+            //   해결:
+            //     ① 점수도 0~100 스케일로 변환 표시 (진척도 바와 1:1 매칭)
+            //     ② 진척도 바 높이 10px → 13px (시각 인식 강화)
+            //     ③ 글로우 8px → 4px (실제 너비 정확 인지)
+            //     ④ 50점 점선 마커 추가 (중립선 명확화)
             // ════════════════════════════════════════════════════════════
-            const _re_scoreNum = (typeof o.score === 'number') ? o.score : 0;
+            const _re_scoreRaw = (typeof o.score === 'number') ? o.score : 0;
             const _re_scoreCat = o.scoreCategory || 'maintain';
-            const _re_scorePct = Math.max(4, Math.min(100, (_re_scoreNum + 10) * 5));
+            const _re_scoreNum = Math.max(0, Math.min(100, Math.round((_re_scoreRaw + 10) * 5)));  // 0~100 변환
+            const _re_scorePct = Math.max(4, _re_scoreNum);  // 진척도 바 (최소 4% — 빈 바 회피)
             const _re_scoreVis = ({
                 advance:  { color:'#2ecc71', label:'발전 흐름',   note:'안정적 결합으로 가는 단계',       arrow:'↗' },
                 maintain: { color:'#FFD970', label:'유지 흐름',   note:'균형 검증이 결과를 가르는 단계',   arrow:'→' },
@@ -12661,16 +12685,23 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
                             ${_re_scoreVis.arrow} 관계 진척도 · ${_re_scoreVis.label}
                         </div>
                         <div style="font-size:0.72rem; color:rgba(255,255,255,0.75);">
-                            점수 <b style="color:${_re_scoreVis.color}; font-size:0.86rem;">${_re_scoreNum >= 0 ? '+' : ''}${_re_scoreNum}</b>
+                            <b style="color:${_re_scoreVis.color}; font-size:0.92rem;">${_re_scoreNum}</b><span style="opacity:0.6;">/100</span>
                         </div>
                     </div>
-                    <div style="height:10px; background:rgba(0,0,0,0.42);
-                                border:1px solid rgba(255,255,255,0.12); border-radius:5px;
+                    <div style="position:relative; height:13px; background:rgba(0,0,0,0.42);
+                                border:1px solid rgba(255,255,255,0.12); border-radius:7px;
                                 overflow:hidden; box-shadow:inset 0 1px 2px rgba(0,0,0,0.35);">
                         <div style="height:100%; width:${_re_scorePct}%;
                                     background:linear-gradient(90deg, ${_re_scoreVis.color}99, ${_re_scoreVis.color});
-                                    border-radius:4px; transition:width 0.8s ease;
-                                    box-shadow:0 0 8px ${_re_scoreVis.color}66;"></div>
+                                    border-radius:5px; transition:width 0.8s ease;
+                                    box-shadow:0 0 4px ${_re_scoreVis.color}55;"></div>
+                        <div style="position:absolute; left:50%; top:-2px; bottom:-2px; width:0;
+                                    border-left:1px dashed rgba(255,255,255,0.32);"
+                             aria-label="50점 중립선"></div>
+                    </div>
+                    <div style="display:flex; justify-content:space-between; margin-top:3px;
+                                font-size:0.62rem; color:rgba(255,255,255,0.42); letter-spacing:0.04em;">
+                        <span>0</span><span>50</span><span>100</span>
                     </div>
                     <div style="margin-top:8px; font-size:0.74rem;
                                 color:rgba(255,255,255,0.78); text-align:center;
@@ -12829,7 +12860,7 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
                     <div style="padding:10px 12px; background:rgba(0,0,0,0.25); border-radius:8px; font-size:0.84rem;">
                         <div style="color:#2ecc71; margin-bottom:6px;">✔ 좋은 길</div>
                         <div style="margin-bottom:10px; padding-left:10px;">→ ${fn.goodPath}</div>
-                        <div style="color:#E74C3C; margin-bottom:6px;">✘ 나쁜 길</div>
+                        <div style="color:#E74C3C; margin-bottom:6px;">△ 권하지 않는 길</div>
                         <div style="padding-left:10px;">→ ${fn.badPath}</div>
                     </div>
                     <div style="margin-top:12px; text-align:center; padding:10px; background:rgba(212,175,55,0.15); border-radius:8px;">
@@ -13061,7 +13092,7 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
                         → ${fn.goodPath}
                     </div>
                     <div style="flex:1; padding:10px; background:rgba(255,128,128,0.08); border-radius:8px; font-size:0.82rem;">
-                        <div style="color:#FF8080; font-weight:800; margin-bottom:4px;">✘ 나쁜 길</div>
+                        <div style="color:#FF8080; font-weight:800; margin-bottom:4px;">△ 권하지 않는 길</div>
                         → ${fn.badPath}
                     </div>
                 </div>
