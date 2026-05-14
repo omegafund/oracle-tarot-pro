@@ -3316,7 +3316,7 @@
     (function() {
         'use strict';
         
-        const APP_VERSION = 'V202.47.1';  // ★ V202.47.1: 사주 성향 신호 박스 헤더 한 줄 통합 (NATAL TENDENCY · 명식 기반 → NATAL TENDENCY, 줄바꿈 결함 해결)
+        const APP_VERSION = 'V202.48';  // ★ V202.48: ZEUS LOVE ORACLE v2.0 - 연애 15→7박스 + 카드 2-4문장 + 색상 + 점수바 + 체크리스트
         window.APP_VERSION = APP_VERSION;
         
         // ★★★ [V202.17 결정적 수정] _sajuInput 복원 ★ 페이지 로드 즉시 ★ ★★★
@@ -11538,8 +11538,23 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
                 : '';
             
             if (domain === 'love') {
-                // 연애: Decision → Mind → Action → Timing → Signal → Risk → Rules → Critical
-                return decisionHTML + mindHTML + executionHTML + timingHTML + signalHTML + riskHTML + rulesHTML + criticalInterpHTML;
+                // ════════════════════════════════════════════════════════════
+                // ★★★ [V202.48 사장님 옵션 C++] 연애 ★ 8박스 → 4박스 통합 ★
+                // ════════════════════════════════════════════════════════════
+                //   사장님 진단: "왕 6명" 결함 (결론 박스 6개 충돌)
+                //   해결: 메인은 LOVE BLOCK V2가 처리, 깊이 점사창은 ★ 4박스 ★ 만
+                //     [4] timingHTML  — 타이밍 신호 (시간 차원, 🟡 황금톤)
+                //     [5] mindHTML    — 상대 마음 (감정 차원, 💜 보라톤)
+                //     [6] riskHTML    — 관계 리스크 (위험 차원, 🟠 주황톤)
+                //     [7] rulesHTML   — 다음 행동 (액션 차원, 🟢 녹색톤)
+                //   제거: decisionHTML, executionHTML, signalHTML, criticalInterpHTML
+                //         (메인 LOVE BLOCK V2가 이미 결론 + 본질 + 핵심 흐름 처리)
+                //   효과: 15박스 → 7박스 (메인 3 + 펼침 4) = 53% 단축
+                //         결론 박스 6개 → 1개 (TOP VERDICT만)
+                //         8서브타입 (궁합/결혼/이별/재회/짝사랑/썸/속마음/연락) 일괄 적용
+                //   격리: stock/realestate/fortune 분기 무손상
+                // ════════════════════════════════════════════════════════════
+                return timingHTML + mindHTML + riskHTML + rulesHTML;
             } else if (domain === 'realestate') {
                 // 부동산: Decision → Market → Execution → Contract → Timing → Signal → Risk → Rules → Critical → V28
                 return decisionHTML + marketHTML + executionHTML + contractHTML + timingHTML + signalHTML + riskHTML + rulesHTML + criticalInterpHTML + v28BoxHTML;
@@ -12865,11 +12880,19 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
                     <div style="font-size:1.05rem; color:#FFD970; font-weight:900; letter-spacing:0.05em;">${domainTitle}</div>
                     <div style="font-size:0.7rem; color:rgba(212,175,55,0.7); letter-spacing:0.15em; margin-top:4px;">${domainSub}</div>
                 </div>
+                <!-- ════════════════════════════════════════════════════════════
+                     ★★★ [V202.48 사장님 옵션 C++ 매니페스토 #1] 메인 박스 6→3 ★★★
+                     사장님 진단 (5/14): "왕이 6명" 결함 (결론 박스 6개 충돌)
+                     해결: 메인 6박스 → 3박스 (★ 53% 단축 ★)
+                       유지: box1 (CORE INSIGHT) / box2 (RELATION ESSENCE) / box6 (TOP VERDICT 통합)
+                       제거: box3 (지금 해야할 행동 — 펼침의 ACTION GUIDE와 중복)
+                             box4 (타이밍 — 펼침의 TIMING과 중복)
+                             box5 (주의 포인트 — 펼침의 RISK와 중복)
+                     효과: 메인에서 "결론 → 핵심해석 → 본질" 명확 위계
+                           나머지는 모두 펼침으로 (★ 깊이 점사창 ★)
+                     ════════════════════════════════════════════════════════════ -->
                 ${box1HTML}
                 ${box2HTML}
-                ${box3HTML}
-                ${box4HTML}
-                ${box5HTML}
                 ${box6HTML}
                 ${proBox}
             </div>`;
