@@ -11850,6 +11850,202 @@ const LOVE_FLOW_KEY_POOL = {
   ]
 };
 
+// ════════════════════════════════════════════════════════════
+// ★★★ [V202.52.0 사장님 안 확장] coreInsight 추가 4개 풀 분기 ★★★
+//   목적: V202.51.0(line3 + 흐름 키)에 이어 ★ line4 + line5 + line3 structure ★ 풀 분기
+//   사장님 통찰: V202.51.0 성공 후 같은 시스템 자연 확장 (대공사 아님, 단순 배열 추가)
+//   효과: coreInsight 박스 ★ 완전 단조로움 차단 ★ (사용자 정독 영역 전체 다양화)
+//   풀: 9 서브타입 × 8개 = 72개씩 × 4풀 = 288개 신규 텍스트
+//   안전: V202.51.0 동일 패턴, content.* fallback 보존
+// ════════════════════════════════════════════════════════════
+
+// line4: ${content.dominant_side} 쪽으로 기울어져 있습니다 — 감정/관계 무게의 방향
+const LOVE_DOMINANT_SIDE_POOL = {
+  compatibility: [
+    '양방향 균형 잡힌 흐름', '본질 호환 가능성이 형성된 균형', '조화 가능성이 진행되는 균형',
+    '결의 정합이 진행되는 균형', '본질 결합 잠재성 균형', '두 에너지 정합성',
+    '본질 매칭 진행 균형', '결의 자연 일치 흐름'
+  ],
+  marriage: [
+    '결혼 의지 정렬 흐름', '가치관 일치 가능성', '장기 결합 정합 흐름',
+    '본질 합의 진행 균형', '결혼 결단 진행 흐름', '삶의 결 융합 균형',
+    '장기 합의 가능성', '결혼 진입 흐름 정렬'
+  ],
+  breakup: [
+    '감정 정리가 우세한 흐름', '자기 회복 우선 균형', '거리 두기 진행 흐름',
+    '감정 분리 가능성', '관계 종결 자연 흐름', '회복 진입 진행 균형',
+    '정리 흐름 자연 정렬', '관계 종결 결단 흐름'
+  ],
+  reunion: [
+    '거리감 회복 진행 흐름', '감정 재해석 진행 균형', '신뢰 재건 흐름 형성',
+    '재회 조건 정렬 가능성', '잔존 감정 재해석 흐름', '관계 결 재정립 진행',
+    '재진입 가능성 흐름', '감정 재해석 시간 균형'
+  ],
+  crush: [
+    '감정 표현 망설임 균형', '내면 정리 진행 흐름', '상대 인지 가능성',
+    '고백 시점 검증 흐름', '감정 균형 회복 진행', '관찰 우세 진행 흐름',
+    '내면 정돈 가능성', '일방 감정 균형 흐름'
+  ],
+  thumb: [
+    '양쪽 모두 신호를 망설이는 균형', '신호 강도 검증 흐름', '호감 페이스 조율 균형',
+    '접근 흐름 결정 진행', '신호 정렬 가능성', '감정 표현 시점 균형',
+    '거리 좁힘 진행 흐름', '관계 정의 진행 균형'
+  ],
+  contact: [
+    '연락 흐름 자연화 진행', '신호 빈도 조율 균형', '접점 형성 가능성',
+    '다가가는 타이밍 검증', '연락 방식 재정렬 흐름', '거리 조율 진행 균형',
+    '신호 강도 점검 흐름', '접근 흐름 결정 가능성'
+  ],
+  mindread: [
+    '감정 표면 vs 내면 균형', '진심 해석 진행 흐름', '표현되지 않은 결 추정',
+    '내면 흐름 추정 균형', '감정 깊이 검증 가능성', '숨겨진 신호 해석 진행',
+    '내면 진심 흐름 균형', '표현 vs 본심 분기 흐름'
+  ],
+  general: [
+    '관계 흐름 관찰 균형', '전반 흐름 정렬 진행', '관계 기준 정리 흐름',
+    '흐름 점검 가능성', '관계 방향 검증 균형', '전반 결 정돈 흐름',
+    '흐름 안정화 진행', '관계 결 점검 가능성'
+  ]
+};
+
+// line5 앞: 겉으로는 ${content.surface_state}처럼 보이지만 — 표면 상태
+const LOVE_SURFACE_STATE_POOL = {
+  compatibility: [
+    '표면적 호의', '조심스러운 호감', '정중한 거리감', '표면적 안정',
+    '정적인 우호', '차분한 관망', '표면적 협조', '균형 잡힌 분위기'
+  ],
+  marriage: [
+    '차분한 진행', '신중한 검토 자세', '조심스러운 합의 단계', '표면적 합의',
+    '예의 있는 진행', '정돈된 진행', '표면적 동의', '정중한 합의'
+  ],
+  breakup: [
+    '차분한 거리', '정돈된 정리 자세', '표면적 평정', '조용한 진행',
+    '절제된 흐름', '표면적 안정', '정중한 거리감', '차분한 마무리'
+  ],
+  reunion: [
+    '조심스러운 접근', '신중한 거리', '표면적 호의', '조용한 관심',
+    '정중한 망설임', '차분한 관망', '절제된 접근', '표면적 우호'
+  ],
+  crush: [
+    '조심스러운 호기심', '정중한 관심', '조용한 관망', '차분한 거리',
+    '절제된 표현', '표면적 친절', '신중한 호감', '정돈된 관심'
+  ],
+  thumb: [
+    '표면적 평온', '조심스러운 호감', '정중한 친밀', '차분한 호기심',
+    '절제된 관심', '표면적 친밀함', '조용한 우호', '신중한 호감'
+  ],
+  contact: [
+    '조심스러운 연락', '정중한 응답', '차분한 교류', '절제된 연락',
+    '표면적 친밀', '조용한 교류', '신중한 접근', '정돈된 연락 흐름'
+  ],
+  mindread: [
+    '표면적 평온', '차분한 호의', '조용한 관심', '정중한 친절',
+    '절제된 표현', '표면적 친밀', '신중한 호감', '조심스러운 우호'
+  ],
+  general: [
+    '차분한 흐름', '안정된 분위기', '정돈된 일상', '조용한 평온',
+    '표면적 안정', '절제된 흐름', '균형 잡힌 일상', '정중한 분위기'
+  ]
+};
+
+// line5 뒤: 실제 흐름은 ${content.hidden_flow} (조사 자동) 작동하는 단계입니다 — 내부 실제 흐름
+const LOVE_HIDDEN_FLOW_POOL = {
+  compatibility: [
+    '본질 정합이 진행되는 흐름', '결의 매칭이 점진 형성되는 흐름', '본질 호환이 자라는 흐름',
+    '조화 가능성이 누적되는 흐름', '본질 결합이 검증되는 흐름', '결의 일치가 진행되는 흐름',
+    '두 에너지가 정합되는 흐름', '본질 매칭이 형성되는 흐름'
+  ],
+  marriage: [
+    '결혼 결단이 형성되는 흐름', '본질 합의가 진행되는 흐름', '장기 결합이 정렬되는 흐름',
+    '삶의 결이 융합되는 흐름', '결혼 의지가 점검되는 흐름', '가치관이 일치되는 흐름',
+    '장기 합의가 누적되는 흐름', '결혼 진입이 검증되는 흐름'
+  ],
+  breakup: [
+    '감정이 분리되는 흐름', '자기 회복이 진행되는 흐름', '거리 두기가 자연화되는 흐름',
+    '관계가 종결되는 흐름', '감정 잔재가 정리되는 흐름', '정리 흐름이 형성되는 흐름',
+    '자기 중심이 회복되는 흐름', '관계 결이 정돈되는 흐름'
+  ],
+  reunion: [
+    '거리감이 회복되는 흐름', '감정이 재해석되는 흐름', '신뢰가 재건되는 흐름',
+    '재회 조건이 점검되는 흐름', '잔존 감정이 정리되는 흐름', '관계 결이 재정립되는 흐름',
+    '재진입 가능성이 검증되는 흐름', '감정 재해석 시간이 누적되는 흐름'
+  ],
+  crush: [
+    '감정 표현 타이밍이 검증되는 흐름', '내면 정리가 진행되는 흐름', '상대 인지가 점검되는 흐름',
+    '고백 시점이 자연 형성되는 흐름', '감정 균형이 회복되는 흐름', '관찰 vs 진전이 분기되는 흐름',
+    '감정 정리가 누적되는 흐름', '내면 흐름이 정돈되는 흐름'
+  ],
+  thumb: [
+    '감정은 있지만 신호가 보류된 흐름', '타이밍이 검증되는 흐름', '신호 강도가 조율되는 흐름',
+    '호감 페이스가 형성되는 흐름', '접근 흐름이 결정되는 흐름', '신호 정렬이 진행되는 흐름',
+    '거리 좁힘이 자연 형성되는 흐름', '관계 정의가 검증되는 흐름'
+  ],
+  contact: [
+    '연락 흐름이 자연화되는 흐름', '신호 빈도가 조율되는 흐름', '접점이 형성되는 흐름',
+    '다가가는 타이밍이 검증되는 흐름', '연락 방식이 재정렬되는 흐름', '거리가 조율되는 흐름',
+    '신호 강도가 점검되는 흐름', '접근 흐름이 결정되는 흐름'
+  ],
+  mindread: [
+    '감정 표면 vs 내면이 분기되는 흐름', '진심이 해석되는 흐름', '표현되지 않은 결이 추정되는 흐름',
+    '내면 흐름이 추정되는 흐름', '감정 깊이가 검증되는 흐름', '숨겨진 신호가 해석되는 흐름',
+    '내면 진심이 추정되는 흐름', '표현 vs 본심이 분기되는 흐름'
+  ],
+  general: [
+    '관계 흐름이 관찰되는 흐름', '전반 흐름이 정렬되는 흐름', '관계 기준이 정리되는 흐름',
+    '흐름이 점검되는 흐름', '관계 방향이 검증되는 흐름', '전반 결이 정돈되는 흐름',
+    '흐름이 안정화되는 흐름', '관계 결이 점검되는 흐름'
+  ]
+};
+
+// line3 후반: ...${content.structure_sentence}. — 구조 보강 문장 (서술어로 끝)
+const LOVE_STRUCTURE_SENTENCE_POOL = {
+  compatibility: [
+    '본질의 일치가 결과를 결정하는 구간입니다', '결의 매칭이 점진 형성되는 단계입니다', '조화 가능성이 진단되는 결정 단계입니다',
+    '본질 호환이 검증되는 구간입니다', '에너지 결의 정합이 핵심인 단계입니다', '결의 일치 가능성이 검증되는 구간입니다',
+    '두 에너지의 정합성이 결정되는 단계입니다', '핵심 결의 매칭이 진행되는 구간입니다'
+  ],
+  marriage: [
+    '본질 합의가 결혼을 결정하는 구간입니다', '감정이 아니라 본질의 합의가 결과를 가르는 단계입니다', '가치관 정렬이 핵심인 결정 구간입니다',
+    '삶의 결 융합이 결정되는 단계입니다', '장기 결합의 의지가 검증되는 구간입니다', '결혼 결단의 명확성이 핵심인 단계입니다',
+    '본질보다 형식에 매이지 않아야 하는 구간입니다', '결혼 진입의 조건이 점검되는 단계입니다'
+  ],
+  breakup: [
+    '감정 정리가 회복을 결정하는 구간입니다', '관계의 자연 종결이 진행되는 단계입니다', '자기 회복이 우선되는 결정 구간입니다',
+    '감정 잔재의 신중한 처리가 핵심인 단계입니다', '거리 두기가 우선되는 구간입니다', '정리 과정의 자연 흐름이 결정되는 단계입니다',
+    '자기 중심 회복이 우선되는 구간입니다', '관계 종결의 솔직한 인정이 핵심인 단계입니다'
+  ],
+  reunion: [
+    '거리감 회복이 재회를 결정하는 구간입니다', '감정 재해석의 시간이 핵심인 단계입니다', '신뢰 재건의 신중한 진행이 결정되는 구간입니다',
+    '재회 조건의 본질 점검이 핵심인 단계입니다', '잔존 감정의 솔직한 정리가 우선되는 구간입니다', '관계 결 재정립의 자연 흐름이 결정되는 단계입니다',
+    '재진입의 단계적 검증이 진행되는 구간입니다', '거리 회복이 결과를 가르는 단계입니다'
+  ],
+  crush: [
+    '감정 표현 타이밍이 결과를 결정하는 구간입니다', '내면 정리가 우선되는 단계입니다', '상대 인지의 신중한 검증이 핵심인 구간입니다',
+    '고백 시점의 자연 흐름이 결정되는 단계입니다', '감정 균형의 회복이 우선되는 구간입니다', '관찰 vs 진전의 신중한 판단이 결정되는 단계입니다',
+    '감정 정리의 단계적 진행이 핵심인 구간입니다', '내면 흐름의 자연 정돈이 우선되는 단계입니다'
+  ],
+  thumb: [
+    '감정의 크기가 아니라 소통 방식이 관계를 결정하는 구간입니다', '타이밍이 호감을 결정하는 단계입니다', '신호 강도가 분기점이 되는 구간입니다',
+    '접근 페이스가 핵심인 결정 단계입니다', '감정 표현 시점이 결과를 가르는 구간입니다', '거리 좁힘의 자연 흐름이 결정되는 단계입니다',
+    '신호 정렬의 단계적 진행이 핵심인 구간입니다', '관계 정의의 시점 조율이 우선되는 단계입니다'
+  ],
+  contact: [
+    '연락 흐름의 자연화가 결과를 결정하는 구간입니다', '신호 빈도의 신중한 조율이 핵심인 단계입니다', '접점 형성의 단계적 진행이 결정되는 구간입니다',
+    '다가가는 타이밍이 결과를 가르는 단계입니다', '연락 방식의 자연 재정렬이 핵심인 구간입니다', '거리 조율의 본질 점검이 우선되는 단계입니다',
+    '신호 강도의 자연 검증이 결정되는 구간입니다', '접근 흐름의 신중한 결정이 핵심인 단계입니다'
+  ],
+  mindread: [
+    '감정 표면 vs 내면의 해석이 핵심인 구간입니다', '진심 추정의 신중한 자세가 결정되는 단계입니다', '표현되지 않은 결의 점검이 우선되는 구간입니다',
+    '내면 흐름의 자연 해석이 핵심인 단계입니다', '감정 깊이의 단계적 검증이 결정되는 구간입니다', '숨겨진 신호의 신중한 읽기가 우선되는 단계입니다',
+    '내면 진심의 흐름 추정이 핵심인 구간입니다', '표현 vs 본심의 분기 해석이 결정되는 단계입니다'
+  ],
+  general: [
+    '관계 흐름 관찰이 우선되는 구간입니다', '전반 흐름의 자연 정렬이 핵심인 단계입니다', '관계 기준의 단계적 정리가 결정되는 구간입니다',
+    '흐름 점검이 분기점이 되는 단계입니다', '관계 방향의 신중한 검증이 핵심인 구간입니다', '전반 결의 자연 정돈이 우선되는 단계입니다',
+    '흐름 안정화가 결과를 결정하는 구간입니다', '관계 결의 신중한 점검이 핵심인 단계입니다'
+  ]
+};
+
 // ── 6 박스 빌더 ──
 function buildLoveCoreInsight(content, flowArrow, metaPattern, cards, revFlags, loveSubType) {
   // [V25.27] 카드 인식형 서술 + 한글 조사 자동 처리
@@ -11878,6 +12074,41 @@ function buildLoveCoreInsight(content, flowArrow, metaPattern, cards, revFlags, 
   if (_flowKeyPool && _flowKeyPool.length > 0) {
     const _fkSeed = (_presLen * 11 + _futLen * 5 + (_pastLen || 1)) % _flowKeyPool.length;
     _flowKey = _flowKeyPool[_fkSeed];
+  }
+  
+  // ════════════════════════════════════════════════════════════
+  // ★★★ [V202.52.0 사장님 안 확장] 4개 추가 풀 시드 선택 ★★★
+  //   _dominantSide:    line4 — content.dominant_side fallback
+  //   _surfaceState:    line5 앞 — content.surface_state fallback
+  //   _hiddenFlow:      line5 뒤 — content.hidden_flow fallback
+  //   _structureSentence: line3 후반 — content.structure_sentence fallback
+  // ════════════════════════════════════════════════════════════
+  const _domPool = LOVE_DOMINANT_SIDE_POOL[_subKey];
+  let _dominantSide = content.dominant_side;  // fallback
+  if (_domPool && _domPool.length > 0) {
+    const _domSeed = (_pastLen * 17 + _presLen * 5 + _futLen * 11) % _domPool.length;
+    _dominantSide = _domPool[_domSeed];
+  }
+  
+  const _surfPool = LOVE_SURFACE_STATE_POOL[_subKey];
+  let _surfaceState = content.surface_state;  // fallback
+  if (_surfPool && _surfPool.length > 0) {
+    const _surfSeed = (_pastLen * 7 + _presLen * 19 + _futLen * 3) % _surfPool.length;
+    _surfaceState = _surfPool[_surfSeed];
+  }
+  
+  const _hidPool = LOVE_HIDDEN_FLOW_POOL[_subKey];
+  let _hiddenFlow = content.hidden_flow;  // fallback
+  if (_hidPool && _hidPool.length > 0) {
+    const _hidSeed = (_pastLen * 23 + _presLen * 13 + _futLen * 5) % _hidPool.length;
+    _hiddenFlow = _hidPool[_hidSeed];
+  }
+  
+  const _structPool = LOVE_STRUCTURE_SENTENCE_POOL[_subKey];
+  let _structureSentence = content.structure_sentence;  // fallback
+  if (_structPool && _structPool.length > 0) {
+    const _structSeed = (_pastLen * 3 + _presLen * 29 + _futLen * 17) % _structPool.length;
+    _structureSentence = _structPool[_structSeed];
   }
   const past    = cards && cards[0];
   const present = cards && cards[1];
@@ -11931,7 +12162,7 @@ function buildLoveCoreInsight(content, flowArrow, metaPattern, cards, revFlags, 
     '두 분 관계의 중심 흐름은'
   ];
   const _coreSeed = (pastName.length * 13 + presentName.length * 7 + futureName.length * 3) % _line3Starters.length;
-  const line3 = `${_line3Starters[_coreSeed]} ${_relationshipType}${_line3Suffix}, ${content.structure_sentence}.`;
+  const line3 = `${_line3Starters[_coreSeed]} ${_relationshipType}${_line3Suffix}, ${_structureSentence}.`;
   
   // line4: 중심축
   // [V202.49.0] line4 시작 표현 다양화 (5종)
@@ -11946,10 +12177,11 @@ function buildLoveCoreInsight(content, flowArrow, metaPattern, cards, revFlags, 
     '이미 두 사람 관계의 정서적 축은'
   ];
   const _line4Seed = (presentName.length * 11 + futureName.length * 5 + (pastName.length || 1)) % _line4Starters.length;
-  const line4 = `${_line4Starters[_line4Seed]} ${content.dominant_side} 쪽으로 기울어져 있습니다.`;
+  const line4 = `${_line4Starters[_line4Seed]} ${_dominantSide} 쪽으로 기울어져 있습니다.`;
   
   // line5 (★ V25.27 변경): 표면 vs 실제 — 본질 진단으로 가치 강화
-  const line5 = `겉으로는 ${content.surface_state}처럼 보이지만, 실제 흐름은 ${content.hidden_flow}${josa(content.hidden_flow,'i')} 작동하는 단계입니다.`;
+  // [V202.52.0] _surfaceState + _hiddenFlow 풀 사용 (content.* fallback)
+  const line5 = `겉으로는 ${_surfaceState}처럼 보이지만, 실제 흐름은 ${_hiddenFlow}${josa(_hiddenFlow,'i')} 작동하는 단계입니다.`;
   
   return {
     line1,
