@@ -7779,6 +7779,129 @@ const V54_SIPSUNG_EXPLAIN = {
 };
 
 // ════════════════════════════════════════════════════════════════════
+// ★★★ [V202.54.0 Step 6] V54_ORACLE_NARRATIVE — [4/6] 종합 신탁 ★★★
+//   사장님 분석: V31 종합 신탁은 시스템 메시지 + 강제 트리거 = 이질감
+//   해결: 3블록 (위험/안정/조언) × trait 기반 동적 매핑
+//   사장님 7원칙 ④⑤: 시스템 → 통찰 / 명령 → 권유
+// ════════════════════════════════════════════════════════════════════
+
+const V54_ORACLE_NARRATIVE = {
+  // ⚠ 현재 흐름에서 흔들리기 쉬운 부분
+  risk: {
+    overthinking: "생각이 많아질수록\n오히려 결정 시점을 놓치기 쉬운 흐름입니다.\n완벽한 답을 찾으려 하기보다,\n지금 내 상태를 먼저 정리하는 과정이 중요합니다.",
+    overworking: "한 번 몰입하면 쉬는 신호를 놓치기 쉬운 흐름입니다.\n결과를 향한 가속이 강할수록\n자기 회복이 뒤로 미뤄지기 쉬운 시기로,\n속도보다 호흡을 먼저 살피는 게 중요합니다.",
+    self_depleting: "목표를 향한 추구가 자기를 마르게 하기 쉬운 흐름입니다.\n앞으로 나아가는 동력은 강하지만,\n그 동력이 자기 회복을 가리는 양면이 있어\n결과 가속을 한 박자 늦추는 게 핵심입니다.",
+    avoidance: "결정을 미루는 패턴이 길어지면\n흐름이 흐려질 수 있는 시기입니다.\n작은 결정 하나라도 끝까지 마무리할 때\n자기 페이스가 다시 살아납니다.",
+    boundary_loss: "외부 요구에 끌려가기 쉬운 흐름입니다.\n자기 기준을 분명히 두지 않으면\n에너지가 빠르게 소진될 수 있는 시기로,\n작은 거절 하나가 흐름을 지켜줍니다.",
+    isolation: "혼자 끌고 가려는 부담이 누적되기 쉬운 흐름입니다.\n도움을 받는 것이 약함이 아니라\n이 시기의 자연스러운 활용 방식입니다."
+  },
+  // ✦ 흐름을 안정시키는 방향
+  stabilize: {
+    consolidation: "지금은 새로운 것을 크게 늘리기보다,\n이미 가지고 있는 흐름을 정돈하는 쪽이 더 잘 맞습니다.\n생활 리듬이나 감정 소모를 줄이는 작은 조절이\n생각보다 큰 안정으로 이어질 수 있습니다.",
+    rhythm_recovery: "기본 생활 리듬 한 가지를 다시 잡는 작은 루틴이\n다른 모든 흐름의 균형을 잡아주는 시기입니다.\n수면·식사·운동 중 한 가지만 안정시켜도\n전반적인 흐름이 빠르게 살아납니다.",
+    boundary_set: "거리를 두는 한 박자가\n오히려 흐름을 살리는 시기입니다.\n받기만 하던 자리에서 한 발 물러나거나,\n주기만 하던 자리에서 잠시 멈출 때\n흐름의 균형이 회복됩니다.",
+    solo_recharge: "혼자만의 시간을 의식적으로 두는 것이\n흐름 회복의 핵심이 되는 시기입니다.\n사람들 사이에서 쌓인 피로를\n충분히 해소할 때 다음 흐름이 분명해집니다.",
+    relation_repair: "오해가 쌓인 관계 한 곳을 정리하는 것이\n전체 흐름을 빠르게 안정시키는 시기입니다.\n무겁게 풀려 하지 말고\n짧은 한 마디부터 시작해도 충분합니다.",
+    small_focus: "큰 결과를 만들기보다\n작은 한 가지를 끝까지 마무리하는 것이\n자기 신뢰를 다시 쌓아주는 시기입니다.\n완성도보다 마무리 자체에 무게를 두면\n다음 흐름이 훨씬 분명해집니다."
+  },
+  // 💭 지금 시기 조언
+  advice: {
+    delay_decision: "결론을 서두르기보다,\n한 번 더 자기 기준을 점검해보는 것이 좋습니다.\n특히 감정이 올라온 상태에서의 즉흥적 결정은\n며칠 뒤 피로감으로 돌아올 가능성이 있습니다.",
+    seek_perspective: "혼자 결정하기 어려운 시기라면,\n신뢰할 만한 한 사람의 시선을 빌리는 것이\n복잡한 상황을 단순하게 만들어줄 수 있습니다.\n협력은 약함이 아니라 이 시기의 강점 활용 방식입니다.",
+    rest_first: "결과보다 회복을 먼저 챙기는 쪽이\n장기 흐름을 더 단단하게 만들어줍니다.\n무리한 가속이 멈출 때\n오히려 다음 흐름이 분명해지는 시기입니다.",
+    emotion_check: "감정의 파동이 큰 시기라면,\n결정 전에 한 박자 호흡을 두는 것이 좋습니다.\n특히 강한 감정 상태에서의 메시지는\n다음 날 다시 읽어보는 습관이 흐름을 지켜줍니다.",
+    small_action: "큰 변화를 만들려 하기보다,\n작은 행동 한 가지를 의식적으로 끝맺는 것이\n흐름의 방향을 분명하게 만들어주는 시기입니다.",
+    self_care: "자기 자신에게 한 가지 친절을 의식적으로 베푸는 것이\n주변과의 흐름도 함께 살리는 시기입니다.\n나를 챙기는 것이 이기적인 것이 아니라\n이 시기의 자연스러운 회복 방식입니다."
+  }
+};
+
+/**
+ * profile + traits → oracle 3블록 매칭
+ */
+function v54_pickOracleBlocks(profile, traits) {
+  // risk 우선순위
+  let riskKey = 'overthinking';
+  if (traits.includes('self_depleting_chaser') || traits.includes('emotional_burnout')) riskKey = 'self_depleting';
+  else if (traits.includes('impulsive_actor') || traits.includes('emotional_surge'))    riskKey = 'overworking';
+  else if (traits.includes('intuitive_strategist') || traits.includes('cautious_perfectionist')) riskKey = 'overthinking';
+  else if (traits.includes('silent_observer') || traits.includes('direction_seeker'))   riskKey = 'avoidance';
+  else if (traits.includes('protective_nurturer') || traits.includes('warm_connector')) riskKey = 'boundary_loss';
+  else if (traits.includes('lonely_resilience') || traits.includes('hidden_manager'))   riskKey = 'isolation';
+  
+  // stabilize 우선순위
+  let stabKey = 'consolidation';
+  if (traits.includes('emotional_burnout') || profile.burnoutRisk === 'high')            stabKey = 'rhythm_recovery';
+  else if (traits.includes('protective_nurturer') || traits.includes('warm_connector'))  stabKey = 'boundary_set';
+  else if (traits.includes('solitary_recharger') || profile.isolation === 'high')        stabKey = 'solo_recharge';
+  else if (traits.includes('mask_with_distance'))                                         stabKey = 'relation_repair';
+  else if (traits.includes('direction_seeker') || traits.includes('low_drive'))          stabKey = 'small_focus';
+  
+  // advice 우선순위
+  let advKey = 'delay_decision';
+  if (traits.includes('lonely_resilience') || profile.supportLevel === 'low')             advKey = 'seek_perspective';
+  else if (traits.includes('emotional_burnout') || profile.burnoutRisk === 'high')        advKey = 'rest_first';
+  else if (traits.includes('emotional_surge') || traits.includes('impulsive_actor'))      advKey = 'emotion_check';
+  else if (traits.includes('cautious_perfectionist') || traits.includes('intuitive_strategist')) advKey = 'small_action';
+  else if (traits.includes('protective_nurturer'))                                         advKey = 'self_care';
+  
+  return {
+    risk:      V54_ORACLE_NARRATIVE.risk[riskKey],
+    stabilize: V54_ORACLE_NARRATIVE.stabilize[stabKey],
+    advice:    V54_ORACLE_NARRATIVE.advice[advKey]
+  };
+}
+
+// ════════════════════════════════════════════════════════════════════
+// ★★★ [V202.54.0 Step 7] V54_ENERGY_GUIDE_NARRATIVE — [5/6] 에너지 가이드 ★★★
+//   현재 V31: "강제 시점 / 오늘 깊은 사유 1번이 흐름을 정화" — 명령 + 시스템
+//   해결: 용신 오행별 강점 방향 + 멀리할 흐름 (사장님 7원칙 ⑤)
+// ════════════════════════════════════════════════════════════════════
+
+const V54_ENERGY_GUIDE_NARRATIVE = {
+  '목': {
+    direction: "성장과 새로운 시작이 강점이 되는 방향입니다.\n배움이나 시작하는 일에 마음을 두면\n자기 페이스가 자연스럽게 살아나는 시기로,\n작게라도 새 한 가지를 시작하는 게 핵심입니다.",
+    avoid:     "정체되거나 막힌 환경에 오래 머물면\n흐름이 흐려지기 쉬운 시기입니다.\n변화 신호가 올 때 작은 움직임 하나가\n전체 흐름을 다시 살려줍니다."
+  },
+  '화': {
+    direction: "표현과 따뜻한 연결이 강점이 되는 방향입니다.\n사람과의 진심 어린 대화나\n자기 색을 드러내는 활동이 흐름을 살리는 시기로,\n안에 담긴 것을 의식적으로 꺼내는 게 중요합니다.",
+    avoid:     "차갑거나 단절된 환경에 오래 머물면\n에너지가 빠르게 가라앉는 시기입니다.\n혼자만의 시간이 길어질 때\n의식적으로 연결을 만들어주는 게 좋습니다."
+  },
+  '토': {
+    direction: "안정과 신뢰 쌓기가 강점이 되는 방향입니다.\n꾸준한 루틴과 신뢰 관계를 다지는 활동이\n전체 흐름의 균형을 잡아주는 시기로,\n작은 약속 하나를 끝까지 지키는 게 핵심입니다.",
+    avoid:     "변동이 너무 큰 환경이나 즉흥적 결정은\n자기 결을 흔들기 쉬운 시기입니다.\n결정 전에 한 박자 호흡을 두는 습관이\n흐름의 안정을 지켜줍니다."
+  },
+  '금': {
+    direction: "정리와 결단이 강점이 되는 방향입니다.\n불필요한 것을 잘라내거나\n자기 기준을 분명히 세우는 활동이 흐름을 살리는 시기로,\n작은 정리 하나가 큰 명료함으로 이어집니다.",
+    avoid:     "흐릿한 결정이나 미루는 패턴이 길어지면\n에너지가 분산되기 쉬운 시기입니다.\n작은 일부터 끝까지 마무리하는 자세가\n전체 흐름의 명료함을 회복시켜 줍니다."
+  },
+  '수': {
+    direction: "깊은 생각과 정리가 강점이 되는 방향입니다.\n학습이나 깊은 대화처럼 안으로 정돈하는 활동이\n자기 페이스를 다시 안정시키는 시기로,\n혼자만의 시간이 회복의 핵심이 됩니다.",
+    avoid:     "표면적인 자극이나 즉흥적 결정은\n지금의 흐름을 흐리게 할 수 있는 시기입니다.\n결정 전에 충분히 정리하는 시간을 두면\n다음 단계가 훨씬 분명해집니다."
+  }
+};
+
+// ════════════════════════════════════════════════════════════════════
+// ★★★ [V202.54.0 Step 8] V54_LUCK_PHASE_NARRATIVE — 12운성 정밀 ★★★
+//   현재 V31: "▸ 단계적 진행 + 검증 후 확대" — 추상 사전식
+//   해결: 12 단계 × V54 톤 4~5줄 본문
+// ════════════════════════════════════════════════════════════════════
+
+const V54_LUCK_PHASE_NARRATIVE = {
+  '장생': "새로운 시작이 자연스럽게 자리잡는 시기에 가깝습니다.\n순수한 호기심과 배움의 에너지가 강한 흐름이며,\n작은 도전 하나가 큰 성장의 씨앗이 될 수 있습니다.\n다만 익숙함에 안주하면 흐름이 늦어지기 쉽습니다.",
+  '목욕': "지금은 외부 환경과 자기 결을 맞춰가는 시기에 가깝습니다.\n큰 결단보다 작은 정돈이 강점이 되는 흐름이며,\n새로운 자극에 끌리기 쉬운 양면도 함께 있습니다.\n감정 조절이 결정의 무게를 가볍게 만들어줍니다.",
+  '관대': "자기 결이 분명해지는 시기에 가깝습니다.\n결정과 추진의 자질이 살아나는 흐름이며,\n자기 색을 드러내는 자리에서 진가가 발휘됩니다.\n다만 자신감이 너무 강해지면 주변과의 마찰이 늘어날 수 있습니다.",
+  '건록': "안정된 자기 자리를 만드는 시기에 가깝습니다.\n노력의 결과가 가시화되는 흐름이며,\n신뢰와 책임이 함께 따라오는 자리에 놓이기 쉽습니다.\n무리한 확장보다 단단한 토대 쌓기가 핵심입니다.",
+  '제왕': "에너지의 정점에 가까운 시기입니다.\n결정력과 추진력이 최고치로 작동하는 흐름이며,\n사람들의 시선이 자연스럽게 모이는 자리에 놓이기 쉽습니다.\n다만 정점 이후의 흐름을 미리 준비하는 자세가 길게 갑니다.",
+  '쇠': "정점 이후의 정리 시기에 가깝습니다.\n새로운 시작보다 마무리와 회수가 강점이 되는 흐름이며,\n쌓아온 것을 정리하는 자리에서 진가가 발휘됩니다.\n무리한 가속보다 자연스러운 흐름을 따르는 게 핵심입니다.",
+  '병': "회복과 점검이 필요한 시기에 가깝습니다.\n몸과 마음의 신호를 의식적으로 듣는 흐름이며,\n무리한 결정보다 자기 돌봄이 강점이 되는 시기입니다.\n쉼은 약함이 아니라 다음 흐름을 위한 자연스러운 준비입니다.",
+  '사': "흐름이 가라앉는 시기에 가깝습니다.\n외부 결과보다 내면의 정리가 강점이 되는 흐름이며,\n깊은 사색과 통찰이 자연스럽게 따라오는 자리입니다.\n혼자만의 시간이 다음 단계의 씨앗을 만들어줍니다.",
+  '묘': "저장과 보관의 시기에 가깝습니다.\n표면적 결과보다 깊이를 쌓는 흐름이며,\n조용한 자리에서 자기 색을 다지는 시기입니다.\n외부 자극보다 안으로 정돈하는 자세가 다음 흐름을 준비합니다.",
+  '절': "비움과 정리의 시기에 가깝습니다.\n새로운 흐름을 받기 위해 기존을 내려놓는 시기이며,\n집착이 풀릴 때 의외의 길이 열리는 흐름입니다.\n결과보다 과정 자체에서 의미를 찾는 자세가 핵심입니다.",
+  '태': "새 흐름이 안에서 자라기 시작하는 시기에 가깝습니다.\n겉으로는 변화가 잘 보이지 않지만,\n안에서 다음 단계의 씨앗이 만들어지는 흐름입니다.\n조급함보다 자연스러운 시간을 두는 게 중요합니다.",
+  '양': "새 흐름이 형태를 갖춰가는 시기에 가깝습니다.\n조용히 자라온 에너지가 분명해지는 흐름이며,\n작은 시작이 큰 결과로 이어질 수 있는 토대가 만들어집니다.\n인내심과 꾸준함이 결과의 크기를 결정합니다."
+};
+
+// ════════════════════════════════════════════════════════════════════
 // [V202.54.0] 3계층 사주 정밀 엔진 종료
 // ════════════════════════════════════════════════════════════════════
 
@@ -7929,8 +8052,19 @@ function v31GenerateText(sajuData, judgeResult) {
   //   환각 0 (워커 사전 정의 풀에서 100% 생성)
   //   사장님 비전: 일간 × 십성 × 강도 + 심리 trait 모두 반영
   let v54DeepInsight = null;
+  let v54OracleNarrative = null;
+  let v54EnergyGuide = null;
   try {
     v54DeepInsight = v54_buildDeepInsight(sajuData);
+    // Step 6: 종합 신탁 (3블록)
+    if (v54DeepInsight && v54DeepInsight._profile && v54DeepInsight._traits) {
+      v54OracleNarrative = v54_pickOracleBlocks(v54DeepInsight._profile, v54DeepInsight._traits);
+    }
+    // Step 7: 에너지 가이드 (용신 오행 기반)
+    const yongShinEl = sajuData.yongShin && sajuData.yongShin.element;
+    if (yongShinEl && V54_ENERGY_GUIDE_NARRATIVE[yongShinEl]) {
+      v54EnergyGuide = V54_ENERGY_GUIDE_NARRATIVE[yongShinEl];
+    }
   } catch (e) {
     v54DeepInsight = { _error: String(e && e.message || e), _v: 'V202.54.0_fallback' };
   }
@@ -8020,6 +8154,12 @@ function v31GenerateText(sajuData, judgeResult) {
     //   [3/6] 박스 + 🌟 성향 신호 박스에 노출되어 사주학적 깊이 표현
     //   환각 0, 사주학적 정확, 일간 × 십성 × 심리 모두 반영
     deepInsight:        v54DeepInsight,      // { essenceCore, energyOperation, relationOperation, psychePattern, _profile, _traits }
+    
+    // ★ V202.54.0 Step 6 ★ [4/6] 종합 신탁 (3블록 trait 동적 매핑)
+    oracleNarrative:    v54OracleNarrative,  // { risk, stabilize, advice }
+    
+    // ★ V202.54.0 Step 7 ★ [5/6] 에너지 가이드 (용신 오행별)
+    energyGuideV54:     v54EnergyGuide,      // { direction, avoid }
 
     // [V31 #138] 동적 라벨 — 모순 버그 수정
     balanceLabel: balanceLabel,
@@ -8552,7 +8692,11 @@ function v31GeneratePro(sajuData, judgeResult, tier = 'free') {
       content: luckPhaseContent,
       data: luckPhase,
       // ★ [V202.31] 구조화 데이터 — 클라이언트가 시각화에 사용
-      friendlyData: buildFriendlyLuckPhase(luckPhase)
+      friendlyData: buildFriendlyLuckPhase(luckPhase),
+      // ★ V202.54.0 Step 8 ★ 12운성 V54 본문 (현재 일주 단계 기반)
+      v54_body: (luckPhase && luckPhase.day && V54_LUCK_PHASE_NARRATIVE[luckPhase.day])
+                ? V54_LUCK_PHASE_NARRATIVE[luckPhase.day]
+                : null
     };
 
     // ★ [V31 #137] 신살 검출
@@ -8569,7 +8713,18 @@ function v31GeneratePro(sajuData, judgeResult, tier = 'free') {
     proContent.shinSal = {
       title: `⚔️ 신살 검출 — ${shinSal.count}개`,
       content: shinSalContent,
-      data: shinSal
+      data: shinSal,
+      // ★ V202.54.0 Step 8 ★ 신살 V54 배열 (클라이언트가 v54_label/v54_body 노출)
+      v54_items: shinSal.detected.map(s => ({
+        name: s.info.name,
+        icon: s.info.icon,
+        v54_label: s.info.v54_label || null,
+        v54_body:  s.info.v54_body  || null,
+        // V31 fallback
+        meaning: s.info.meaning,
+        effect:  s.info.effect,
+        advice:  s.info.advice
+      }))
     };
 
     // ★ [V31 #137] 숨은 리스크 - 사주 정밀
@@ -19661,7 +19816,7 @@ export default {
     // ════════════════════════════════════════════════════════════════════
     if (url.pathname === "/version" && request.method === "GET") {
       return new Response(JSON.stringify({
-        version: "V202.54.0",    // ★★★★★ V202.54.0 사주 정밀분석 3계층 엔진 (사장님 + 외부 의견 통합) ★★★★★ 사장님 비전: "지구상 최고의 사주앱". 설계: 1층 구조 판정(deterministic profile, 17상태값) → 2층 Trait 매트릭스(28종 trait, 인터넷 사주 차단) → 3층 문장 풀(28 본문, 환각 0). 핵심 함수: v54_buildSajuProfile (사주→profile), v54_calculateSipsungStrength (십성 강도 자동), v54_matchTraits (profile→trait 배열), v54_buildEssenceCore/EnergyOperation/RelationOperation/PsychePattern (영역별 본문 생성), v54_buildDeepInsight (통합). v31GenerateText 응답에 deepInsight 필드 노출 — { essenceCore, energyOperation, relationOperation, psychePattern, _profile, _traits }. 검증: 같은 "화 강함"이지만 계/갑/임/병/무 일간 모두 다른 trait 매칭 확인 ✅ (계=emotional_burnout/self_depleting_chaser, 갑=creative_expresser/self_powered, 임=goal_chaser, 병=impulsive_actor, 무=emotional_stability/cautious_perfectionist) — 인터넷 사주 차단 검증. 환각 0 (워커 100% 사전 정의 풀). 백워드 호환 100% (옛 V31 풀 보존). V54.0 풀 7종 통합. 클라이언트 노출은 다음 단계 (Step 5).
+        version: "V202.54.0",    // ★★★★★ V202.54.0 사주 정밀분석 3계층 엔진 + Step 6+7+8 완료 (전체 V54 통합) ★★★★★ Step 1-5: 1층 profile(17상태) + 2층 trait(28종) + 3층 풀(28본문) + 4영역 본문 + 클라이언트 노출 ([3/6] 본질/에너지/관계 + 🌟 심리 패턴 + [6/6] 격국 v54_label/v54_body + 십성 풀이). Step 4.5: V54_SIPSUNG_EXPLAIN 10 십성 일상언어 풀이. Step 6: V54_ORACLE_NARRATIVE 종합 신탁 3블록 동적 매핑 (risk/stabilize/advice × 6 = 18 블록) + v54_pickOracleBlocks 매칭 함수, 클라이언트 [4/6] V31 5영역(구조균형/압박/보완/강제트리거/실행피드백) → V54 3블록(⚠흔들리기/✦안정/💭조언) 대치 (V31 fallback 보존). Step 7: V54_ENERGY_GUIDE_NARRATIVE 용신 오행(5) × direction+avoid 본문, 클라이언트 [5/6] V31 5블록 → V54 2블록 대치. Step 8: V54_LUCK_PHASE_NARRATIVE 12운성 × 4~5줄 본문, 신살 v54_items 배열로 v54_label/v54_body 클라이언트 노출. 모든 V54 영역 백워드 호환 100% (V54 필드 없으면 V31 fallback). 사장님 7원칙 100% 적용: ①사전식→서사식 ②수치→감각 ③사주용어→일상언어 ④시스템→통찰 ⑤명령→권유 ⑥추상→행동 ⑦결과+그림자.
         _ts: Date.now(),
         _ok: true
       }), {
