@@ -3316,7 +3316,7 @@
     (function() {
         'use strict';
         
-        const APP_VERSION = 'V202.52.0';  // ★ V202.52.0: V202.51.0 풀 시스템 자연 확장 — coreInsight 박스 4영역 추가 풀 분기 (line4 dominant + line5 surface + line5 hidden + line3 structure). LOVE_DOMINANT_SIDE_POOL / LOVE_SURFACE_STATE_POOL / LOVE_HIDDEN_FLOW_POOL / LOVE_STRUCTURE_SENTENCE_POOL 신규 4개 (각 9 서브타입 × 8개 = 288개 신규 텍스트). buildLoveCoreInsight 시드 선택 4개 추가 + content.* fallback 안전. line3/line4/line5 모두 풀 변수 사용. 매트릭스 8개 무손상 + Gemini 프롬프트 무손상 + 다른 박스 영향 0. 1단계 V202.51.0 + V202.52.0 = coreInsight 박스 완전 다양화 달성.
+        const APP_VERSION = 'V202.52.1';  // ★ V202.52.1 핫픽스: V202.52.0 (coreInsight 다양화) 위에 적용 — (A) LOVE_SYNONYM_MAP 4단어 추가 [단계/정리/회복/종결] — 라이브 반복 9~11회 차단, (B) 카드 본문 톤 매니페스토 #4 — 사장님 톤 정렬 (3요소: 부정전제+미묘한결+서브타입맥락) + 카테고리별 정서밀도 6단 차별화 [썸/연락/짝사랑/재회/결혼/이별], (C) 버전 뱃지 색상 +17% 밝게 (212,175,55 → 244,201,63 / alpha 0.72 → 0.82). 결제 가치 직결 핫픽스.
         window.APP_VERSION = APP_VERSION;
         
         // ★★★ [V202.17 결정적 수정] _sajuInput 복원 ★ 페이지 로드 즉시 ★ ★★★
@@ -4146,13 +4146,18 @@
         <!--     배경 색상 alpha: 0.35 → 0.50 (+~40%, 가독성 보강)                    -->
         <!--   유지:                                                                  -->
         <!--     글자 크기 0.58rem (사장님 명령: "글자 크기는 그대로")                 -->
+        <!-- [V202.52.1] ★ 버전 뱃지 색상 +17% 밝게 (사장님 라이브 결함: "너무 어둡다") ★ -->
+        <!--   글자 RGB: (212,175,55) → (244,201,63) — 정확히 +15% 골드 톤 유지       -->
+        <!--   글자 alpha: 0.72 → 0.82 — +13% 가시성 강화                              -->
+        <!--   체감 밝기: 약 +17% (RGB×alpha 결합)                                     -->
+        <!--   배경은 유지 (요청은 "표기" 한정)                                          -->
         <div id="zeus-version-badge" style="
             position: fixed;
             top: 8px;
             right: 8px;
             z-index: 100;
             font-size: 0.58rem;
-            color: rgba(212,175,55,0.72);
+            color: rgba(244,201,63,0.82);
             background: rgba(0,0,0,0.50);
             padding: 3px 7px;
             border-radius: 3px;
