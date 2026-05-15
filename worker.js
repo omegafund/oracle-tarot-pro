@@ -19152,7 +19152,7 @@ export default {
     // ════════════════════════════════════════════════════════════════════
     if (url.pathname === "/version" && request.method === "GET") {
       return new Response(JSON.stringify({
-        version: "V202.53.0-AB", // ★ V202.53.0-AB Phase A.1 + B 통합: (A.1) 카드별 독립 fallback — buildZeusCardBodies가 3장 모두 메이저여야 골격 반환하던 보수적 정책을 완화, 1장이라도 메이저면 그 카드 골격 반환 + 나머지는 null. 매니페스토 #7도 카드별 분기로 변경 (골격 명시된 카드는 강제 준수, 골격 없는 카드는 LLM 자유 작성 + 시제만 강제). (B) 마이너 아르카나 56장 ESSENCE 추가 — Wands/Cups/Swords/Pentacles × 14장 × 정역 × 3태그 = 336 영문 태그. 효과: 78카드 전 영역 ESSENCE 커버 → V53 골격 적용률 100% (fallback 0%). V53.0-A의 백틱 매치 결함 해소 유지, V52.x 모든 패치 그대로 유지. V53.0-A의 라이브 검증 결함(메이저 외 3장 케이스에서 골격 미적용 4/4) 완전 해소.
+        version: "V202.53.0-AC", // ★ V202.53.0-AC 긴급 안정화 핫픽스 (V53.0-AB 결정적 결함 차단): 라이브 검증 케이스 2건(재회/마음읽기)에서 LLM이 매니페스토 #7의 골격 라벨([PAST/PRESENT/FUTURE 골격])을 시제 라벨로 오인 → 카드명-본문 매핑 한 칸씩 밀림 + PAST/FUTURE 본문 누락 발생. 결제 직격 결함. 핫픽스: 매니페스토 #7 출력 조건에 false && 추가하여 LLM 골격 전달 즉시 비활성화 → V52.6 안정 상태로 즉시 복귀 (LLM은 매니페스토 #5/#6만 받음). 단 V53 인프라(CARD_ESSENCE 78장, SUBTYPE_ZONE, STITCH_POOL, ASSEMBLER, metrics.zeusCardBodies)는 ★ 그대로 보존 ★ → V53.1 클라이언트 직접 렌더링 진입 시 재활용. 1줄 변경, 위험 표면 최소.
         _ts: Date.now(),
         _ok: true
       }), {
@@ -21479,7 +21479,7 @@ ${_v52_5_extractedNames.length === 2 ? `
 ⚠️ 위반 시 결과: 사용자 "AI가 내 이름도 못 읽음" 인지 → 즉시 환불 사유
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-` : ''}${(_v53_skeletonPast || _v53_skeletonPresent || _v53_skeletonFuture) ? `
+` : ''}${false && (_v53_skeletonPast || _v53_skeletonPresent || _v53_skeletonFuture) ? `
 🚨🚨🚨 [V202.53.0-A 매니페스토 #7] V53 Macro-Block 골격 강제 준수 — 환각 0건 보장 🚨🚨🚨
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 사장님 V53.0 설계: 시스템이 카드×서브타입(${_v53_subtypeKey})별 본문 골격을 사전 생성.
