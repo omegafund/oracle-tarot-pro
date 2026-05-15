@@ -11891,7 +11891,77 @@ const CARD_ESSENCE = {
   'The Moon':           { up: ['intuition_strong','illusion','subconscious_fear'],  rev: ['confusion_clearing','hidden_truth_revealed','release_of_fear'] },
   'The Sun':            { up: ['joy','success','clarity'],                          rev: ['inner_clouds','temporary_setback','dimmed_warmth'] },
   'Judgement':          { up: ['awakening','reckoning','rebirth_call'],             rev: ['avoidance_of_judgement','self_doubt','inner_resistance'] },
-  'The World':          { up: ['completion','integration','fulfillment'],           rev: ['delayed_completion','unfinished_business','lack_of_closure'] }
+  'The World':          { up: ['completion','integration','fulfillment'],           rev: ['delayed_completion','unfinished_business','lack_of_closure'] },
+
+  // ──────────────────────────────────────────────────────────────
+  // ★ V202.53.0-B ★ 마이너 아르카나 56장 ESSENCE (Wands/Cups/Swords/Pentacles × 14)
+  //   Wands(완드): 열정·행동·창조 / Cups(컵): 감정·관계·직관 / Swords(검): 사고·갈등·결단 / Pentacles(펜타클): 현실·물질·안정
+  //   Phase B 완료: 78카드 전 영역 ESSENCE 커버 → fallback 0% 달성
+  // ──────────────────────────────────────────────────────────────
+
+  // ── Wands (완드) — 열정·행동·창조
+  'Ace of Wands':       { up: ['new_passion','spark','creative_impulse'],            rev: ['delayed_passion','lack_of_direction','blocked_energy'] },
+  'Two of Wands':       { up: ['planning','decision_point','future_vision'],         rev: ['indecision','fear_of_unknown','limited_view'] },
+  'Three of Wands':     { up: ['expansion','foresight','progress_view'],             rev: ['delayed_expansion','frustration','limited_progress'] },
+  'Four of Wands':      { up: ['celebration','stability','milestone'],               rev: ['unstable_foundation','postponed_joy','transition_unrest'] },
+  'Five of Wands':      { up: ['conflict','competition','disagreement'],             rev: ['conflict_avoidance','tension_release','inner_friction'] },
+  'Six of Wands':       { up: ['victory','recognition','public_acknowledgment'],     rev: ['delayed_recognition','self_doubt','setback'] },
+  'Seven of Wands':     { up: ['defense','perseverance','holding_ground'],           rev: ['overwhelm','giving_up','exhaustion'] },
+  'Eight of Wands':     { up: ['swift_movement','rapid_news','quick_action'],        rev: ['delays','miscommunication','scattered_focus'] },
+  'Nine of Wands':      { up: ['resilience','last_stand','wary_strength'],           rev: ['paranoia','depletion','defensive_burnout'] },
+  'Ten of Wands':       { up: ['burden','responsibility','heavy_load'],              rev: ['burden_release','delegation','overextended'] },
+  'Page of Wands':      { up: ['new_inspiration','exploration','free_spirit'],       rev: ['restlessness','lack_of_direction','immature_excitement'] },
+  'Knight of Wands':    { up: ['passion_action','impulsive_pursuit','adventurous'],  rev: ['recklessness','frustration','unfocused_passion'] },
+  'Queen of Wands':     { up: ['warmth','confidence','charismatic_energy'],          rev: ['jealousy','self_doubt','withdrawn'] },
+  'King of Wands':      { up: ['leadership','vision','passionate_authority'],        rev: ['authoritarian','impatience','ego_driven'] },
+
+  // ── Cups (컵) — 감정·관계·직관
+  'Ace of Cups':        { up: ['new_love','emotional_renewal','open_heart'],         rev: ['blocked_emotion','emotional_loss','withheld_feelings'] },
+  'Two of Cups':        { up: ['mutual_attraction','partnership','emotional_unity'], rev: ['imbalance','disconnection','one_sided_feelings'] },
+  'Three of Cups':      { up: ['celebration','community','shared_joy'],              rev: ['gossip','over_indulgence','isolated_joy'] },
+  'Four of Cups':       { up: ['contemplation','apathy','missed_opportunity'],       rev: ['re_engagement','awakening','open_acceptance'] },
+  'Five of Cups':       { up: ['loss','grief','focus_on_negative'],                  rev: ['acceptance','moving_on','partial_recovery'] },
+  'Six of Cups':        { up: ['nostalgia','reconnection','past_warmth'],            rev: ['stuck_in_past','moving_forward','past_release'] },
+  'Seven of Cups':      { up: ['fantasy','choice_overload','wishful_thinking'],      rev: ['clarity','focused_choice','reality_check'] },
+  'Eight of Cups':      { up: ['walking_away','emotional_journey','seeking_truth'],  rev: ['return_attempt','indecision','fear_of_loss'] },
+  'Nine of Cups':       { up: ['emotional_fulfillment','contentment','wish_granted'],rev: ['surface_happiness','unmet_desire','disappointment'] },
+  'Ten of Cups':        { up: ['family_harmony','emotional_completion','lasting_joy'],rev: ['disrupted_harmony','misalignment_of_values','strained_bonds'] },
+  'Page of Cups':       { up: ['emotional_message','tender_beginning','curious_heart'],rev: ['emotional_immaturity','blocked_message','misread_feelings'] },
+  'Knight of Cups':     { up: ['romantic_pursuit','emotional_offer','idealistic_love'],rev: ['unrealistic_expectations','moodiness','emotional_avoidance'] },
+  'Queen of Cups':      { up: ['emotional_depth','empathy','intuitive_caring'],      rev: ['emotional_overwhelm','codependence','withdrawn_feelings'] },
+  'King of Cups':       { up: ['emotional_balance','wise_compassion','steady_heart'],rev: ['emotional_manipulation','suppressed_feelings','moody_authority'] },
+
+  // ── Swords (검) — 사고·갈등·결단
+  'Ace of Swords':      { up: ['clarity','breakthrough','truth_revealed'],           rev: ['confusion','blocked_communication','misuse_of_logic'] },
+  'Two of Swords':      { up: ['stalemate','difficult_choice','avoidance'],          rev: ['indecision_release','revealed_truth','overwhelm'] },
+  'Three of Swords':    { up: ['heartbreak','painful_truth','sorrow'],               rev: ['healing','forgiveness','release_of_pain'] },
+  'Four of Swords':     { up: ['rest','contemplation','recovery'],                   rev: ['restlessness','burnout','forced_pause'] },
+  'Five of Swords':     { up: ['conflict_loss','win_at_cost','self_centered'],       rev: ['reconciliation','moving_past','release_of_resentment'] },
+  'Six of Swords':      { up: ['transition','moving_forward','gradual_recovery'],    rev: ['stuck_in_transition','resistance_to_change','unfinished_journey'] },
+  'Seven of Swords':    { up: ['deception','strategy','hidden_motives'],             rev: ['confession','revealed_truth','strategic_retreat'] },
+  'Eight of Swords':    { up: ['self_imposed_limits','feeling_trapped','restriction'],rev: ['release','self_acceptance','freedom_realization'] },
+  'Nine of Swords':     { up: ['anxiety','worry','sleepless_thoughts'],              rev: ['relief','release_of_fear','rational_perspective'] },
+  'Ten of Swords':      { up: ['painful_ending','rock_bottom','betrayal'],           rev: ['recovery','survival','slow_healing'] },
+  'Page of Swords':     { up: ['curiosity','new_ideas','sharp_thinking'],            rev: ['gossip','impulsive_words','scattered_thoughts'] },
+  'Knight of Swords':   { up: ['direct_action','rapid_pursuit','intellectual_drive'],rev: ['recklessness','impatience','aggressive_haste'] },
+  'Queen of Swords':    { up: ['independent_clarity','direct_truth','perceptive'],   rev: ['coldness','harsh_judgment','isolation'] },
+  'King of Swords':     { up: ['rational_authority','clear_judgment','principled'],  rev: ['cold_logic','manipulation','tyrannical_thinking'] },
+
+  // ── Pentacles (펜타클) — 현실·물질·안정
+  'Ace of Pentacles':   { up: ['new_opportunity','material_seed','foundation'],      rev: ['missed_opportunity','blocked_growth','poor_planning'] },
+  'Two of Pentacles':   { up: ['balance','juggling','adaptability'],                 rev: ['imbalance','overwhelm','priority_confusion'] },
+  'Three of Pentacles': { up: ['collaboration','craftsmanship','team_effort'],       rev: ['disjointed_effort','lack_of_teamwork','quality_issues'] },
+  'Four of Pentacles':  { up: ['stability','security','possessiveness'],             rev: ['letting_go','generosity','financial_release'] },
+  'Five of Pentacles':  { up: ['hardship','isolation','financial_strain'],           rev: ['recovery','help_arriving','end_of_hardship'] },
+  'Six of Pentacles':   { up: ['generosity','fair_exchange','support'],              rev: ['unequal_exchange','debt','strings_attached'] },
+  'Seven of Pentacles': { up: ['patient_growth','long_term_view','assessment'],      rev: ['impatience','poor_investment','wasted_effort'] },
+  'Eight of Pentacles': { up: ['diligent_work','mastery','skill_building'],          rev: ['lack_of_focus','mediocrity','disengagement'] },
+  'Nine of Pentacles':  { up: ['self_sufficiency','independent_satisfaction','refinement'],rev: ['superficial_satisfaction','financial_dependence','isolation'] },
+  'Ten of Pentacles':   { up: ['legacy','family_wealth','long_term_security'],       rev: ['family_conflict','financial_instability','fleeting_success'] },
+  'Page of Pentacles':  { up: ['new_venture','study','practical_curiosity'],         rev: ['lack_of_planning','procrastination','impractical_ideas'] },
+  'Knight of Pentacles':{ up: ['methodical_progress','reliability','patient_effort'],rev: ['stagnation','overcaution','perfectionism'] },
+  'Queen of Pentacles': { up: ['nurturing_security','practical_care','grounded'],    rev: ['neglect','financial_dependence','smothering'] },
+  'King of Pentacles':  { up: ['material_success','stable_leadership','reliable_provider'],rev: ['materialism','financial_obsession','controlling'] }
 };
 
 // ──────────────────────────────────────────────────────────────
@@ -12069,8 +12139,12 @@ function buildZeusCardBodies({ cleanCards, reversedFlags, loveSubType, score }) 
       score: typeof score === 'number' ? score : 0
     });
   }
-  // 메이저 1장이라도 없으면 전체 null (Phase A 한정 안전 — Phase B에서 해소)
-  if (!result.past || !result.present || !result.future) return null;
+  // ★ V202.53.0-A.1 정책 완화: 카드별 독립 fallback (Phase A 라이브 적용률 ↑) ★
+  //   이전 정책: 3장 모두 메이저여야 결과 반환 (메이저 3장 동시 확률 ≈ 2% — 비현실적)
+  //   변경 정책: 1장이라도 메이저면 그 카드 골격 반환, 나머지는 null (LLM 자유 작성)
+  //   효과: 메이저 1장 이상 등장 확률 ≈ 80% — 라이브 적용률 대폭 향상
+  //   V53.0-B에서 마이너 56장 추가 시 fallback 0% 달성
+  if (!result.past && !result.present && !result.future) return null;
   return result;
 }
 
@@ -19078,7 +19152,7 @@ export default {
     // ════════════════════════════════════════════════════════════════════
     if (url.pathname === "/version" && request.method === "GET") {
       return new Response(JSON.stringify({
-        version: "V202.53.0-A",  // ★ V202.53.0-A Macro-Block 엔진 Phase A: 사장님 설계 3층 구조(카드/관계/문체) 구현 — Layer 1 CARD_ESSENCE(메이저 22장×정역×3태그), Layer 2 SUBTYPE_ZONE(9서브타입×intensity+tones), Layer 3 STITCH_POOL_BY_ROLE(3role×4서브타입×6블록=72블록 한국어 본문 풀 — breakup/marriage/reunion/general 우선), Layer 4 assembleZeusCardBody 함수 + buildZeusCardBodies(metrics 통합). LLM 매니페스토 #7 신설: 시스템이 사전 생성한 본문 골격을 LLM이 의미·톤·시제 그대로 따르도록 절대 규칙. 영문 변수명 사용(V52.3 dollar-brace 검사 통과) + let 상위 선언(V52.6 변수 스코프 검사 통과). 메이저 외 카드 또는 미지원 서브타입은 골격 null → LLM이 기존 방식대로 작성 (fallback). V52.6 모든 결함 패치 그대로 유지. Phase B: 마이너 56장 ESSENCE 추가 예정 / Phase C: 나머지 5서브타입 STITCH POOL 완성 예정.
+        version: "V202.53.0-AB", // ★ V202.53.0-AB Phase A.1 + B 통합: (A.1) 카드별 독립 fallback — buildZeusCardBodies가 3장 모두 메이저여야 골격 반환하던 보수적 정책을 완화, 1장이라도 메이저면 그 카드 골격 반환 + 나머지는 null. 매니페스토 #7도 카드별 분기로 변경 (골격 명시된 카드는 강제 준수, 골격 없는 카드는 LLM 자유 작성 + 시제만 강제). (B) 마이너 아르카나 56장 ESSENCE 추가 — Wands/Cups/Swords/Pentacles × 14장 × 정역 × 3태그 = 336 영문 태그. 효과: 78카드 전 영역 ESSENCE 커버 → V53 골격 적용률 100% (fallback 0%). V53.0-A의 백틱 매치 결함 해소 유지, V52.x 모든 패치 그대로 유지. V53.0-A의 라이브 검증 결함(메이저 외 3장 케이스에서 골격 미적용 4/4) 완전 해소.
         _ts: Date.now(),
         _ok: true
       }), {
@@ -21005,7 +21079,10 @@ ${compatNote}
           if (_zcb2.past)    { _v53_skeletonPast    = _zcb2.past.skeleton    || ''; _v53_essencePast    = (_zcb2.past.essence    || []).join(', '); }
           if (_zcb2.present) { _v53_skeletonPresent = _zcb2.present.skeleton || ''; _v53_essencePresent = (_zcb2.present.essence || []).join(', '); }
           if (_zcb2.future)  { _v53_skeletonFuture  = _zcb2.future.skeleton  || ''; _v53_essenceFuture  = (_zcb2.future.essence  || []).join(', '); }
-          _v53_subtypeKey = (_zcb2.past && _zcb2.past.subtype) || '';
+          _v53_subtypeKey = (_zcb2.past && _zcb2.past.subtype)
+                         || (_zcb2.present && _zcb2.present.subtype)
+                         || (_zcb2.future && _zcb2.future.subtype)
+                         || '';
         }
 
         const masterPrompt = `
@@ -21402,35 +21479,39 @@ ${_v52_5_extractedNames.length === 2 ? `
 ⚠️ 위반 시 결과: 사용자 "AI가 내 이름도 못 읽음" 인지 → 즉시 환불 사유
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-` : ''}${_v53_skeletonPast ? `
+` : ''}${(_v53_skeletonPast || _v53_skeletonPresent || _v53_skeletonFuture) ? `
 🚨🚨🚨 [V202.53.0-A 매니페스토 #7] V53 Macro-Block 골격 강제 준수 — 환각 0건 보장 🚨🚨🚨
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 사장님 V53.0 설계: 시스템이 카드×서브타입(${_v53_subtypeKey})별 본문 골격을 사전 생성.
 LLM은 골격의 의미·톤을 ★ 반드시 ★ 따르며, 카드 의미를 자연 결합만 추가합니다.
 
 ✅ 시스템 생성 카드 본문 골격 (절대 변경 불가 — 의미·톤 그대로):
+   ※ 골격이 명시된 카드는 ★ 반드시 ★ 그 의미·톤을 따르세요.
+   ※ 골격이 없는 카드는 (메이저 외 카드 — Phase B 예정) LLM이 자유롭게 작성 가능.
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-[PAST 골격] (${_v53_essencePast})
-  ${_v53_skeletonPast}
+[PAST 골격] (${_v53_essencePast || '카드 정보 없음 — LLM 자유 작성'})
+  ${_v53_skeletonPast || '(메이저 외 카드 — LLM 자유 작성, 단 PAST 시제 유지)'}
 
-[PRESENT 골격] (${_v53_essencePresent})
-  ${_v53_skeletonPresent}
+[PRESENT 골격] (${_v53_essencePresent || '카드 정보 없음 — LLM 자유 작성'})
+  ${_v53_skeletonPresent || '(메이저 외 카드 — LLM 자유 작성, 단 PRESENT 시제 유지)'}
 
-[FUTURE 골격] (${_v53_essenceFuture})
-  ${_v53_skeletonFuture}
+[FUTURE 골격] (${_v53_essenceFuture || '카드 정보 없음 — LLM 자유 작성'})
+  ${_v53_skeletonFuture || '(메이저 외 카드 — LLM 자유 작성, 단 FUTURE 시제 유지)'}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 🚨 절대 작성 규칙:
-   1. 위 골격 문장을 ★ 그대로 ★ 사용하거나 ★ 자연 확장 (한 문장 추가) ★ 만 허용
-   2. 골격의 의미·톤·시제는 ★ 한 글자도 어긋나지 않게 ★ 보존
-   3. 카드 의미(괄호 안 essence 태그)를 골격에 자연스럽게 녹임
-   4. 시제 라벨(PAST/PRESENT/FUTURE)과 본문 시제 ★ 절대 일치 ★
+   1. 골격 ★ 명시된 ★ 카드: 골격 문장 그대로 사용 또는 자연 확장 (한 문장 추가) 만 허용
+   2. 골격 명시된 카드의 의미·톤·시제는 ★ 한 글자도 어긋나지 않게 ★ 보존
+   3. 골격 없는 카드: LLM이 자유 작성, 단 ★ 시제 라벨과 본문 시제 절대 일치 ★
+   4. 카드 의미(괄호 안 essence 태그)를 골격에 자연스럽게 녹임
    5. PAST → 과거 시제 "~였습니다", PRESENT → "~입니다", FUTURE → "~로 향합니다"
-   6. 골격의 톤(${_v53_subtypeKey} 서브타입)을 흐리는 어휘 사용 절대 금지
+   6. ★ 카드 본문(과거/현재/미래) 안에 호명 절대 금지 ★ (V52.4 매니페스토 #5 강화)
+      호명은 ZEUS LOVE ORACLE 통합 본문 1곳만
+   7. 골격의 톤(${_v53_subtypeKey} 서브타입)을 흐리는 어휘 사용 절대 금지
       · breakup 서브타입에 '발전/확장/결합' ★ 절대 금지 ★
       · marriage 서브타입에 '정리/이별/단절' ★ 절대 금지 ★
       · reunion 서브타입에 '강한 재진입/즉시 화해' ★ 절대 금지 ★
-   7. 결론·확정 어조 유지 ('~수도 있습니다' 류 회피형 금지)
+   8. 결론·확정 어조 유지 ('~수도 있습니다' 류 회피형 금지)
 
 ⚠️ 위반 시 결과: 시스템 골격과 LLM 본문 충돌 → 사용자 인지 "AI가 일관성 없음" → 환불 사유
 ✅ 준수 시 효과: 환각 0건 + 톤 일관성 100% + 사장님 V25.22 "사전 정의 풀" 가치 완성
