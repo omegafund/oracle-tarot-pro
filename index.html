@@ -3316,7 +3316,7 @@
     (function() {
         'use strict';
         
-        const APP_VERSION = 'V202.54.0';  // ★★★ V202.54.0 사주 프리미엄 톤 전면 재설계 (워커 Phase 1.1) ★★★ 사장님 7원칙: 사전식→서사식 / 수치→감각 / 사주용어→일상언어 / 시스템→통찰 / 명령→권유 / 추상→행동 / 결과→결과+그림자. 워커에 V54 풀 7종 신설 + v31GenerateText 응답에 신규 필드 노출. 클라이언트는 ★ 다음 단계 ★ 에서 신규 필드(dayNatureEssence, elementNarrative, strengthNarrative, balanceLabelV54, strengthLabelV54, archetype.v54_label/v54_body, shinSal.v54_label/v54_body) 노출 → 사장님 비전 즉시 작동. 이번 버전은 워커만 갱신 (응답 호환 보장).
+        const APP_VERSION = 'V202.54.0';  // ★★★ V202.54.0 사주 정밀분석 3계층 엔진 + 클라이언트 노출 완료 ★★★ Step 4.5 (워커): V54_SIPSUNG_EXPLAIN 풀 10 십성 + bars.explain 매핑. Step 5 (클라이언트): (1) [3/6] 사주 본질 박스에 💭 본질 결/에너지 작동 방식/관계 작동 방식 펼침 노출 (deepInsight.essenceCore/energyOperation/relationOperation). (2) 🌟 성향 신호 박스에 💭 심리 작동 패턴 V54 우선 노출 (deepInsight.psychePattern) + V31 signals fallback + 수치 노출 자동 차단 (V54 활성 시 "(화 49%)" 사라짐). (3) [6/6] 핵심 구조 박스 첫/둘째 barsHTML에 b.explain.short + action 한 줄 노출 (레벨 4+ 매우강함/강함만, 시각 부담 차단). (4) 격국 archetype에 v54_label + v54_body 깊이 본문 노출. 기존 박스 구조/큰 레이아웃 ★ 100% 보존 ★, 박스 안 텍스트만 V54 톤으로 대치. 안전: V54 필드 없으면 V31 자동 fallback (백워드 호환). 다음 단계: 신살 v54_body 노출 + LUCKY GUIDE 한 줄 이유 (사장님 라이브 검증 후).
         window.APP_VERSION = APP_VERSION;
         
         // ★★★ [V202.17 결정적 수정] _sajuInput 복원 ★ 페이지 로드 즉시 ★ ★★★
@@ -17276,11 +17276,18 @@ function renderSajuKakaoChatV185(data) {
                             background: linear-gradient(135deg, rgba(212,175,55,0.18), rgba(212,175,55,0.04)); 
                             border:2px solid rgba(212,175,55,0.55); border-radius:10px; text-align:center;">
                     <div style="color:#FFE08A; font-size:1.05rem; font-weight:900; line-height:1.3; margin-bottom:4px;">
-                        ${v85_v2tenStars.archetype.label}
+                        ${v85_v2tenStars.archetype.v54_label || v85_v2tenStars.archetype.label}
                     </div>
                     <div style="color:rgba(255,255,255,0.78); font-size:0.78rem; line-height:1.4;">
                         ${v85_v2tenStars.archetype.tagline}
                     </div>
+                    ${v85_v2tenStars.archetype.v54_body ? `
+                    <!-- ★ V202.54.0 Step 5 ★ 격국 깊이 본문 (사장님 7원칙 ⑦ 결과+그림자) -->
+                    <div style="margin-top:10px; padding-top:10px; border-top:1px dashed rgba(212,175,55,0.30); 
+                                color:rgba(255,255,255,0.85); font-size:0.80rem; line-height:1.7; 
+                                text-align:left; white-space:pre-line; word-break:keep-all;">
+                        ${v85_v2tenStars.archetype.v54_body}
+                    </div>` : ''}
                 </div>` : '';
             
             const barsHTML = v85_v2tenStars.bars.map(b => {
@@ -17288,8 +17295,20 @@ function renderSajuKakaoChatV185(data) {
                 const icon = _ohaengIcons[b.ohaeng] || '✨';
                 const fillPct = Math.max(8, Math.min(95, b.fillPct || 50));
                 const opacity = b.level >= 4 ? 1.0 : b.level >= 3 ? 0.85 : 0.65;
+                // ★ V202.54.0 Step 5 ★ 십성 일상 언어 풀이 (20-30대 친화)
+                //   사장님 7원칙 ③: "겁재" → "나와 같은 성분 · 경쟁자"
+                //   레벨 4+ (매우강함/강함)일 때만 풀이 노출 (시각 부담 차단)
+                const explainHTML = (b.level >= 4 && b.explain) ? `
+                    <div style="margin: -2px 0 9px 86px; padding-left:8px; border-left:2px solid ${color}55;">
+                        <div style="color:${color}dd; font-size:0.72rem; font-weight:700; line-height:1.4;">
+                            ${b.explain.short}
+                        </div>
+                        <div style="color:rgba(255,255,255,0.62); font-size:0.68rem; line-height:1.5; margin-top:1px;">
+                            ${b.explain.action}
+                        </div>
+                    </div>` : '';
                 return `
-                    <div style="display:flex; align-items:center; gap:8px; margin-bottom:7px; opacity:${opacity};">
+                    <div style="display:flex; align-items:center; gap:8px; margin-bottom:${b.level >= 4 && b.explain ? '4px' : '7px'}; opacity:${opacity};">
                         <span style="min-width:78px; font-size:0.78rem; font-weight:800; color:${color};">
                             ${icon} ${b.short}
                         </span>
@@ -17301,7 +17320,8 @@ function renderSajuKakaoChatV185(data) {
                         <span style="min-width:62px; text-align:right; font-size:0.72rem; font-weight:700; color:${color};">
                             ${b.category}
                         </span>
-                    </div>`;
+                    </div>
+                    ${explainHTML}`;
             }).join('');
             
             paidContent += `
@@ -19377,10 +19397,26 @@ function renderSajuResult(data) {
                     <strong style="color:#FFE08A;">▸ 일주 물상:</strong><br>${text.dayEssence}
                 </div>
                 
+                <!-- ★★★ [V202.54.0 Step 5] V54 일주 본질 결 펼침 ★★★ -->
+                ${text.deepInsight && text.deepInsight.essenceCore ? `
+                <div style="margin:0 0 14px 8px; padding:10px 12px; background:rgba(195,155,211,0.06); border-left:2px solid rgba(195,155,211,0.45); border-radius:0 6px 6px 0;">
+                    <div style="color:#C39BD3; font-size:0.78rem; font-weight:700; margin-bottom:6px;">💭 본질 결</div>
+                    <div style="color:rgba(255,255,255,0.88); font-size:0.82rem; line-height:1.75; white-space:pre-line;">${text.deepInsight.essenceCore}</div>
+                </div>
+                ` : ''}
+                
                 <!-- 오행 균형 -->
                 <div style="color:rgba(255,255,255,0.92); font-size:0.85rem; line-height:1.7; margin-bottom:10px;">
                     <strong style="color:#FFE08A;">▸ ${text.balanceLabel || '오행 균형'}:</strong><br>${text.balancePhrase}
                 </div>
+                
+                <!-- ★★★ [V202.54.0 Step 5] V54 에너지 작동 방식 펼침 ★★★ -->
+                ${text.deepInsight && text.deepInsight.energyOperation ? `
+                <div style="margin:0 0 14px 8px; padding:10px 12px; background:rgba(195,155,211,0.06); border-left:2px solid rgba(195,155,211,0.45); border-radius:0 6px 6px 0;">
+                    <div style="color:#C39BD3; font-size:0.78rem; font-weight:700; margin-bottom:6px;">💭 에너지 작동 방식</div>
+                    <div style="color:rgba(255,255,255,0.88); font-size:0.82rem; line-height:1.75; white-space:pre-line;">${text.deepInsight.energyOperation}</div>
+                </div>
+                ` : ''}
                 
                 <!-- 일간 강약 (#169 결함 ③ — "그래서?" 의미 추가) -->
                 <div style="color:rgba(255,255,255,0.92); font-size:0.85rem; line-height:1.7;">
@@ -19396,6 +19432,14 @@ function renderSajuResult(data) {
                         return meaning ? `<div style="margin-top:6px; padding:6px 10px; background:rgba(212,175,55,0.10); border-left:2px solid rgba(212,175,55,0.5); border-radius:0 4px 4px 0; font-size:0.80rem; color:#FFE08A; font-weight:700; font-style:italic;">→ 의미: ${meaning}</div>` : '';
                     })()}
                 </div>
+                
+                <!-- ★★★ [V202.54.0 Step 5] V54 관계 작동 방식 펼침 ★★★ -->
+                ${text.deepInsight && text.deepInsight.relationOperation ? `
+                <div style="margin:10px 0 14px 8px; padding:10px 12px; background:rgba(195,155,211,0.06); border-left:2px solid rgba(195,155,211,0.45); border-radius:0 6px 6px 0;">
+                    <div style="color:#C39BD3; font-size:0.78rem; font-weight:700; margin-bottom:6px;">💭 관계 작동 방식</div>
+                    <div style="color:rgba(255,255,255,0.88); font-size:0.82rem; line-height:1.75; white-space:pre-line;">${text.deepInsight.relationOperation}</div>
+                </div>
+                ` : ''}
 
                 ${(function() {
                     // ★★★ [V202.33 사장님 통찰] 사주 핵심 풀이 ★ [3/6] 안 통합 ★★★
@@ -19483,8 +19527,13 @@ function renderSajuResult(data) {
                     const _v46_signals = (data && data.v184_5 && data.v184_5.sajuSignals)
                                        || (data && data.sajuSignals)
                                        || null;
-                    if (!_v46_signals || !_v46_signals.signals || _v46_signals.signals.length === 0) {
-                        return '';  // 검출된 신호 없으면 박스 노출 X
+                    // ★★★ [V202.54.0 Step 5] V54 psychePattern 우선 노출 ★★★
+                    //   V54 deepInsight 있으면 → V54 본문 (수치 노출 자동 차단)
+                    //   V54 없을 때만 → V31 signals fallback (호환성)
+                    //   사장님 7원칙 ②: 수치 → 감각 번역 (자동 적용)
+                    const _v54_psyche = text.deepInsight && text.deepInsight.psychePattern;
+                    if (!_v54_psyche && (!_v46_signals || !_v46_signals.signals || _v46_signals.signals.length === 0)) {
+                        return '';  // V54 없고 V31 신호도 없으면 박스 노출 X
                     }
                     return `
                     <div style="margin-top:14px; padding:12px 12px; 
@@ -19492,18 +19541,19 @@ function renderSajuResult(data) {
                                 border-left:2px solid rgba(155,89,182,0.45); 
                                 border-radius:0 8px 8px 0;
                                 word-break:keep-all; overflow-wrap:break-word;">
-                        <!-- ★★★ [V202.47.1 사장님 명령] 헤더 한 줄 통합 ★★★
-                             사장님 진단: "성향 신호 + NATAL TENDENCY · 명식 기반 = 깨짐 + 외계어"
-                             해결: ① 명식 기반 ★ 제거 ★
-                                   ② 한 줄: "🌟 성향 신호 (NATAL TENDENCY)"
-                                   ③ flex → 단일 span (줄바꿈 방지)
-                             격리: 박스 구조/색상 ★ 보존 ★, 헤더 텍스트만 변경 -->
                         <div style="margin-bottom:8px; line-height:1.4;">
-                            <span style="color:#C39BD3; font-weight:900; font-size:0.84rem;">🌟 성향 신호</span>
+                            <span style="color:#C39BD3; font-weight:900; font-size:0.84rem;">🌟 ${_v54_psyche ? '심리 작동 패턴' : '성향 신호'}</span>
                             <span style="color:rgba(195,155,211,0.55); font-size:0.66rem; font-weight:700; letter-spacing:0.04em; margin-left:6px;">
-                                (NATAL TENDENCY)
+                                ${_v54_psyche ? '(PSYCHE PATTERN)' : '(NATAL TENDENCY)'}
                             </span>
                         </div>
+                        ${_v54_psyche ? `
+                        <!-- ★ V202.54.0 ★ V54 psychePattern 노출 (수치 노출 자동 차단) -->
+                        <div style="color:rgba(255,255,255,0.88); font-size:0.82rem; line-height:1.75; white-space:pre-line; padding:4px 0;">
+                            ${_v54_psyche}
+                        </div>
+                        ` : `
+                        <!-- V31 fallback (V54 없을 때만) -->
                         ${_v46_signals.signals.map(sig => {
                             const isRisk = sig.type === 'risk';
                             const color = isRisk ? '#FFB084' : '#7AD188';
@@ -19516,6 +19566,7 @@ function renderSajuResult(data) {
                                 ${sig.reason ? `<span style="color:rgba(255,255,255,0.50); font-size:0.7rem; margin-left:6px;">(${sig.reason})</span>` : ''}
                             </div>`;
                         }).join('')}
+                        `}
                         <div style="margin-top:8px; padding-top:8px; border-top:1px dashed rgba(255,255,255,0.10);
                                     font-size:0.66rem; color:rgba(255,255,255,0.50); line-height:1.5; font-style:italic;">
                             ※ 명식 기반 ★ 성향 흐름 ★ 표시입니다. 진단·예측·판단이 아닙니다.<br>
@@ -20014,11 +20065,18 @@ function renderSajuResult(data) {
                                     background: linear-gradient(135deg, rgba(212,175,55,0.18), rgba(212,175,55,0.04)); 
                                     border:2px solid rgba(212,175,55,0.55); border-radius:10px; text-align:center;">
                             <div style="color:#FFE08A; font-size:1.05rem; font-weight:900; line-height:1.3; margin-bottom:4px;">
-                                ${v2.archetype.label}
+                                ${v2.archetype.v54_label || v2.archetype.label}
                             </div>
                             <div style="color:rgba(255,255,255,0.78); font-size:0.78rem; line-height:1.4;">
                                 ${v2.archetype.tagline}
                             </div>
+                            ${v2.archetype.v54_body ? `
+                            <!-- ★ V202.54.0 Step 5 ★ 격국 깊이 본문 -->
+                            <div style="margin-top:10px; padding-top:10px; border-top:1px dashed rgba(212,175,55,0.30); 
+                                        color:rgba(255,255,255,0.85); font-size:0.80rem; line-height:1.7; 
+                                        text-align:left; white-space:pre-line; word-break:keep-all;">
+                                ${v2.archetype.v54_body}
+                            </div>` : ''}
                         </div>` : '';
                     
                     // 비주얼 바 (개선 1+2)
@@ -20028,8 +20086,18 @@ function renderSajuResult(data) {
                         const fillPct = Math.max(8, Math.min(95, b.fillPct || 50));
                         // 카테고리별 표시 강도 (매우 강함만 풀 톤, 나머지 톤 다운)
                         const opacity = b.level >= 4 ? 1.0 : b.level >= 3 ? 0.85 : 0.65;
+                        // ★ V202.54.0 Step 5 ★ 십성 일상 언어 풀이 (20-30대 친화)
+                        const explainHTML = (b.level >= 4 && b.explain) ? `
+                            <div style="margin: -2px 0 9px 86px; padding-left:8px; border-left:2px solid ${color}55;">
+                                <div style="color:${color}dd; font-size:0.72rem; font-weight:700; line-height:1.4;">
+                                    ${b.explain.short}
+                                </div>
+                                <div style="color:rgba(255,255,255,0.62); font-size:0.68rem; line-height:1.5; margin-top:1px;">
+                                    ${b.explain.action}
+                                </div>
+                            </div>` : '';
                         return `
-                            <div style="display:flex; align-items:center; gap:8px; margin-bottom:7px; opacity:${opacity};">
+                            <div style="display:flex; align-items:center; gap:8px; margin-bottom:${b.level >= 4 && b.explain ? '4px' : '7px'}; opacity:${opacity};">
                                 <span style="min-width:78px; font-size:0.78rem; font-weight:800; color:${color};">
                                     ${icon} ${b.short}
                                 </span>
@@ -20042,7 +20110,8 @@ function renderSajuResult(data) {
                                 <span style="min-width:62px; text-align:right; font-size:0.72rem; font-weight:700; color:${color};">
                                     ${b.category}
                                 </span>
-                            </div>`;
+                            </div>
+                            ${explainHTML}`;
                     }).join('');
                     
                     // 본문 텍스트 (기존 content에서 숫자 제거 후 표시 — fallback 안전망)
