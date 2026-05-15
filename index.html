@@ -3316,7 +3316,7 @@
     (function() {
         'use strict';
         
-        const APP_VERSION = 'V202.52.3';  // ★ V202.52.3 긴급 핫픽스: V202.52.2 워커 매니페스토 #5의 이름 자리표시자가 원래 dollar-brace 표기로 들어가 백틱 prompt 안에서 ReferenceError → 사장님 라이브 결함 '진행바 멈춤' 발생. 워커에서 대괄호 자리표시자로 치환. 클라이언트 변경은 V202.52.2와 동일 (Track A 시제 교정 + 배너 X 결함 3중 방어). 버전 동기화 목적으로 갱신.
+        const APP_VERSION = 'V202.52.4';  // ★ V202.52.4 핫픽스 (V202.52.3 라이브 추가 결함 4건): (#1 워커) 자연어 결혼/이별/재회 키워드 우선 분류 — compatibility 자동 추정 차단, (#2 클라이언트) RELATION ESSENCE 라벨 서브타입 분기 — 이별/재회 별도 톤 매핑 (이별 95점에 '발전 흐름' 결함 해소), (#3 워커) 이별 '발전' 어휘 금지 + 서브타입별 가이드 분기, (#4 워커) 호명 위치 1곳 1회만 강제 + 카드 본문 호명 금지. V202.52.3 base 위에 적용.
         window.APP_VERSION = APP_VERSION;
         
         // ★★★ [V202.17 결정적 수정] _sajuInput 복원 ★ 페이지 로드 즉시 ★ ★★★
@@ -12704,12 +12704,41 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
             const _re_scoreCat = o.scoreCategory || 'maintain';
             const _re_scoreNum = Math.max(0, Math.min(100, Math.round((_re_scoreRaw + 10) * 5)));  // 0~100 변환
             const _re_scorePct = Math.max(4, _re_scoreNum);  // 진척도 바 (최소 4% — 빈 바 회피)
-            const _re_scoreVis = ({
-                advance:  { color:'#2ecc71', label:'발전 흐름',   note:'안정적 결합으로 가는 단계',       arrow:'↗' },
-                maintain: { color:'#FFD970', label:'유지 흐름',   note:'균형 검증이 결과를 가르는 단계',   arrow:'→' },
-                realign:  { color:'#F39C12', label:'재정렬 구간', note:'관계 결 재점검이 필요한 단계',     arrow:'↻' },
-                close:    { color:'#E74C3C', label:'정리 구간',   note:'자기 회복이 우선되는 단계',         arrow:'⊘' }
-            }[_re_scoreCat]) || { color:'#FFD970', label:'유지 흐름', note:'균형 검증 단계', arrow:'→' };
+
+            // ★★★ [V202.52.4 사장님 라이브 결함] 서브타입별 라벨 매트릭스 ★★★
+            //   결함: 이별 케이스에 score 95점 → "발전 흐름 / 안정적 결합으로 가는 단계" 출력
+            //         사용자 인지: "이별이라면서 왜 95점 안정적 결합?"
+            //   원인: 라벨 매핑이 일반/궁합 톤 ★ 한 가지 ★ 로만 처리
+            //   해결: 서브타입별 라벨 분기 — 이별/재회는 별도 톤 매핑
+            //         · 이별: 회복 가능성 / 정리 진행도 톤
+            //         · 재회: 재접근 흐름 / 관망 흐름 톤
+            //         · 그 외: 기존 발전/유지/재정렬/정리 톤
+            const _re_subtypeKey = (_loveSubType === 'breakup' || _loveSubType === 'reunion')
+                ? _loveSubType
+                : 'general';
+            const _re_scoreVisMap = {
+                general: {
+                    advance:  { color:'#2ecc71', label:'발전 흐름',   note:'안정적 결합으로 가는 단계',       arrow:'↗' },
+                    maintain: { color:'#FFD970', label:'유지 흐름',   note:'균형 검증이 결과를 가르는 단계',   arrow:'→' },
+                    realign:  { color:'#F39C12', label:'재정렬 구간', note:'관계 결 재점검이 필요한 단계',     arrow:'↻' },
+                    close:    { color:'#E74C3C', label:'정리 구간',   note:'자기 회복이 우선되는 단계',         arrow:'⊘' }
+                },
+                breakup: {
+                    advance:  { color:'#2ecc71', label:'회복 가능성', note:'안정적 회복으로 가는 단계',         arrow:'↗' },
+                    maintain: { color:'#FFD970', label:'정리 진행도', note:'균형 점검이 결과를 가르는 단계',   arrow:'→' },
+                    realign:  { color:'#F39C12', label:'재조정 구간', note:'정리 방식 재점검이 필요한 단계',   arrow:'↻' },
+                    close:    { color:'#E74C3C', label:'난항 구간',   note:'자기 회복이 가장 우선되는 단계',   arrow:'⊘' }
+                },
+                reunion: {
+                    advance:  { color:'#2ecc71', label:'재접근 흐름', note:'안정적 재정렬로 가는 단계',         arrow:'↗' },
+                    maintain: { color:'#FFD970', label:'관망 흐름',   note:'시점 검증이 결과를 가르는 단계',   arrow:'→' },
+                    realign:  { color:'#F39C12', label:'재정비 구간', note:'재회 방식 재점검이 필요한 단계',   arrow:'↻' },
+                    close:    { color:'#E74C3C', label:'보류 구간',   note:'자기 회복이 우선되는 단계',         arrow:'⊘' }
+                }
+            };
+            const _re_scoreVis = (_re_scoreVisMap[_re_subtypeKey] && _re_scoreVisMap[_re_subtypeKey][_re_scoreCat])
+                || _re_scoreVisMap.general[_re_scoreCat]
+                || { color:'#FFD970', label:'유지 흐름', note:'균형 검증 단계', arrow:'→' };
             const _re_scoreBarHTML = `
                 <div style="margin: 4px 0 14px; padding: 11px 13px;
                             background: rgba(0,0,0,0.22); border-radius: 8px;
