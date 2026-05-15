@@ -3316,7 +3316,7 @@
     (function() {
         'use strict';
         
-        const APP_VERSION = 'V202.52.5';  // ★ V202.52.5 핫픽스 (V202.52.4 라이브 결정적 결함): 한글 이름 LLM 환각 차단 — 워커에 extractKoreanNames 정규식 6단계 추출 함수 신설 + 매니페스토 #6 신설로 추출된 이름을 LLM에 명시 전달. 라이브 결함: '이소영' → '이th영' 음소 환각 → 결제 신뢰 즉시 붕괴 차단. 클라이언트 변경 없음 (버전 동기화 목적). V202.52.4 base 위에 적용.
+        const APP_VERSION = 'V202.52.6';  // ★ V202.52.6 긴급 핫픽스 (V202.52.5 워커 결정적 결함): _v52_5_extractedNames 변수가 love 분기 안에서만 const 선언 → 다른 도메인에서 ReferenceError → 워커 응답 실패 (라이브 '나의 내일 연애운' 입력 진행바 멈춤). 해결: let으로 상위 선언 (모든 도메인 경로 안전). 클라이언트 변경 없음 (버전 동기화). V202.52.5 base 위에 적용.
         window.APP_VERSION = APP_VERSION;
         
         // ★★★ [V202.17 결정적 수정] _sajuInput 복원 ★ 페이지 로드 즉시 ★ ★★★
