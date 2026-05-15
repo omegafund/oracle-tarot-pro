@@ -3316,7 +3316,7 @@
     (function() {
         'use strict';
         
-        const APP_VERSION = 'V202.52.2';  // ★ V202.52.2 핫픽스 (Track A+B): Track A — (1) 시제 자동 교정 alignTenseWithLabel 줄단위 스캔 재설계 (기존 함수 dead code → 라이브 결함 자동 교정 작동), (2) 인앱 배너 X 결함 3중 방어 — result-view 표시 중 배너 표시 차단 + 결과 진입 시 잔존 배너 자동 정리 + X 버튼 stopPropagation. Track B — (3) 매니페스토 #5 (워커): 카테고리별 모범 톤 5개 + 이름 호명 규칙 + 무거운 카드 서브타입 톤 우선. V202.52.1 base 위에 적용.
+        const APP_VERSION = 'V202.52.3';  // ★ V202.52.3 긴급 핫픽스: V202.52.2 워커 매니페스토 #5의 이름 자리표시자가 원래 dollar-brace 표기로 들어가 백틱 prompt 안에서 ReferenceError → 사장님 라이브 결함 '진행바 멈춤' 발생. 워커에서 대괄호 자리표시자로 치환. 클라이언트 변경은 V202.52.2와 동일 (Track A 시제 교정 + 배너 X 결함 3중 방어). 버전 동기화 목적으로 갱신.
         window.APP_VERSION = APP_VERSION;
         
         // ★★★ [V202.17 결정적 수정] _sajuInput 복원 ★ 페이지 로드 즉시 ★ ★★★
