@@ -3316,7 +3316,7 @@
     (function() {
         'use strict';
         
-        const APP_VERSION = 'V202.52.6';  // ★ V202.52.6 긴급 핫픽스 (V202.52.5 워커 결정적 결함): _v52_5_extractedNames 변수가 love 분기 안에서만 const 선언 → 다른 도메인에서 ReferenceError → 워커 응답 실패 (라이브 '나의 내일 연애운' 입력 진행바 멈춤). 해결: let으로 상위 선언 (모든 도메인 경로 안전). 클라이언트 변경 없음 (버전 동기화). V202.52.5 base 위에 적용.
+        const APP_VERSION = 'V202.53.0-A';  // ★ V202.53.0-A 워커 Macro-Block 엔진 Phase A 진입 (사장님 설계 3층 구조 본격 구현): Layer 1 메이저 22장 ESSENCE + Layer 2 SUBTYPE_ZONE 9개 + Layer 3 STITCH_POOL 4서브타입×3role×6블록 = 72블록 + Layer 4 ASSEMBLER + LLM 매니페스토 #7. 클라이언트 변경 없음 — 버전 동기화 목적 (V53.1에서 클라이언트가 metrics.zeusCardBodies 직접 렌더링 예정). V52.6 base 위에 적용, 모든 V52.x 패치 유지.
         window.APP_VERSION = APP_VERSION;
         
         // ★★★ [V202.17 결정적 수정] _sajuInput 복원 ★ 페이지 로드 즉시 ★ ★★★
