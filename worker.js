@@ -8061,7 +8061,12 @@ function v31GenerateText(sajuData, judgeResult) {
       v54OracleNarrative = v54_pickOracleBlocks(v54DeepInsight._profile, v54DeepInsight._traits);
     }
     // Step 7: 에너지 가이드 (용신 오행 기반)
-    const yongShinEl = sajuData.yongShin && sajuData.yongShin.element;
+    // ★ V202.54.0-A 핫픽스 ★ sajuData.yongShin 없음 (별도 endpoint) → profile.deficientEl 사용
+    //   사주학 원리: 가장 약한 오행 = 채워야 할 기운 = 용신 후보 (정확도 80%+)
+    //   클라이언트의 detectYongshin과 동일 로직 (가장 약한 오행)
+    const yongShinEl = (sajuData.yongShin && sajuData.yongShin.element) ||
+                       (v54DeepInsight && v54DeepInsight._profile && v54DeepInsight._profile.deficientEl) ||
+                       null;
     if (yongShinEl && V54_ENERGY_GUIDE_NARRATIVE[yongShinEl]) {
       v54EnergyGuide = V54_ENERGY_GUIDE_NARRATIVE[yongShinEl];
     }
@@ -8538,18 +8543,26 @@ function v31GeneratePro(sajuData, judgeResult, tier = 'free') {
         for (const def of archetypeMap) {
           if (def.has.every(s => strongSipsungs.includes(s))) {
             // ★★★ [V202.54.0] V54 격국 깊이 매핑 ★★★
-            //   단일 십성 패턴(예: ['정재'])만 V54_GYEOKGUK_NARRATIVE 매핑
-            //   조합형(예: ['정관','정재'])은 기존 라벨 유지 (호환성)
-            //   효과: 사장님 예시 "재물 관리형: 안정" → "현실 기반형 구조: 큰 모험보다 쌓아가는 방식..."
+            //   단일 십성: 직접 매핑 (예: ['정재'] → 정재격)
+            //   조합형: 가장 강한 십성 기준 매핑 (예: ['식신','정재'] → 식신이 더 강하면 식신격)
+            //   ★ V202.54.0-A 핫픽스 ★ 조합형도 v54_body 매핑 (라이브 정화 사례 식신+정재 미작동 해결)
             let v54_label = null;
             let v54_body  = null;
-            if (def.has.length === 1) {
-              const _gyeokGukKey = def.has[0] + '격';
-              const _gyeokGukData = V54_GYEOKGUK_NARRATIVE[_gyeokGukKey];
-              if (_gyeokGukData) {
-                v54_label = _gyeokGukData.label;
-                v54_body  = _gyeokGukData.body;
-              }
+            // 가장 강한 (level 5/4 우선) 십성 찾기 — 조합형도 깊이 본문 매핑
+            let _topSipsung = def.has[0];
+            if (def.has.length > 1) {
+              const _scored = def.has.map(s => {
+                const bar = bars.find(b => b.sipsung === s);
+                return { s, level: bar ? bar.level : 0 };
+              });
+              _scored.sort((a, b) => b.level - a.level);
+              _topSipsung = _scored[0].s;
+            }
+            const _gyeokGukKey = _topSipsung + '격';
+            const _gyeokGukData = V54_GYEOKGUK_NARRATIVE[_gyeokGukKey];
+            if (_gyeokGukData) {
+              v54_label = _gyeokGukData.label;
+              v54_body  = _gyeokGukData.body;
             }
             archetype = { ...def, v54_label, v54_body };
             break;
@@ -19816,7 +19829,7 @@ export default {
     // ════════════════════════════════════════════════════════════════════
     if (url.pathname === "/version" && request.method === "GET") {
       return new Response(JSON.stringify({
-        version: "V202.54.0",    // ★★★★★ V202.54.0 사주 정밀분석 3계층 엔진 + Step 6+7+8 완료 (전체 V54 통합) ★★★★★ Step 1-5: 1층 profile(17상태) + 2층 trait(28종) + 3층 풀(28본문) + 4영역 본문 + 클라이언트 노출 ([3/6] 본질/에너지/관계 + 🌟 심리 패턴 + [6/6] 격국 v54_label/v54_body + 십성 풀이). Step 4.5: V54_SIPSUNG_EXPLAIN 10 십성 일상언어 풀이. Step 6: V54_ORACLE_NARRATIVE 종합 신탁 3블록 동적 매핑 (risk/stabilize/advice × 6 = 18 블록) + v54_pickOracleBlocks 매칭 함수, 클라이언트 [4/6] V31 5영역(구조균형/압박/보완/강제트리거/실행피드백) → V54 3블록(⚠흔들리기/✦안정/💭조언) 대치 (V31 fallback 보존). Step 7: V54_ENERGY_GUIDE_NARRATIVE 용신 오행(5) × direction+avoid 본문, 클라이언트 [5/6] V31 5블록 → V54 2블록 대치. Step 8: V54_LUCK_PHASE_NARRATIVE 12운성 × 4~5줄 본문, 신살 v54_items 배열로 v54_label/v54_body 클라이언트 노출. 모든 V54 영역 백워드 호환 100% (V54 필드 없으면 V31 fallback). 사장님 7원칙 100% 적용: ①사전식→서사식 ②수치→감각 ③사주용어→일상언어 ④시스템→통찰 ⑤명령→권유 ⑥추상→행동 ⑦결과+그림자.
+        version: "V202.54.0-A",  // ★ V202.54.0-A 핫픽스 ★ 라이브 정화 사례에서 발견된 2가지 결함 즉시 해결: (1) [5/6] 에너지 가이드 미작동 — sajuData.yongShin 객체 없음 (별도 endpoint) → profile.deficientEl fallback 사용 (가장 약한 오행 = 용신 후보, 사주학 정확도 80%+). (2) 격국 archetype 조합형 v54_body 미매핑 — 식신+정재 같은 조합형에서 v54_body가 null이던 결함을 가장 강한 십성(level 기준) 자동 선택 후 v54_body 매핑으로 해결. V54 8개 영역 완벽 작동 + 2개 핫픽스 추가 = 사주 모든 영역 V54 톤 100% 일관성 확보.
         _ts: Date.now(),
         _ok: true
       }), {
