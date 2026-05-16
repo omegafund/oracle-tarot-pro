@@ -12,8 +12,8 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <meta name="version" content="V202.54.5">
-    <meta name="zeus-build-tag" content="V202.54.5">
+    <meta name="version" content="V202.54.6">
+    <meta name="zeus-build-tag" content="V202.54.6">
     
     <title>ZEUS · Tarot Oracle</title>
 
@@ -3316,7 +3316,7 @@
     (function() {
         'use strict';
         
-        const APP_VERSION = 'V202.54.5';  // V202.54.5 ★ 결제 흐름 안전 우선 ★ 사장님 PC 일반 모드: V54.4 배포 후 QR 코드 단계 생략 → 결제 진행 멈춤. 핫픽스: (1) V54.4 카카오톡 인앱 감지 코드 ★ 비활성화 ★ (page load 시 작동하던 코드 제거 — PC 결제 흐름 영향 가능성 차단). (2) V54.3 baseUrl 정규화도 ★ 비활성화 ★ → V53.5 원래 코드 복귀. 유지: V54.1 방어막 + V54.2 진단 + V54.4 Gate 4 카테고리 매칭 (결제 흐름 무관). V54 사주 정밀 엔진 보존.
+        const APP_VERSION = 'V202.54.6';  // V202.54.6 ★ V200.5 자동 모달 무한 루프 차단 ★ 사장님 발견 결함: "Ctrl+F5 해도 결제 모달 고정되어 못 빠져나옴". 원인: V200.5가 사주 카테고리 진입 시마다 자동 트리거 → X 닫기해도 다음 진입 시 또 표시. 해결: sessionStorage._v546_userDismissed 플래그 — 사용자가 한 번 X 닫기하면 이 세션 동안 자동 표시 차단. 결제 흐름 V53.5 동일 (V202.54.5와 동일).
         
         // ════════════════════════════════════════════════════════════════════════
         // ★★★ [V202.54.5 결제 흐름 안전 우선] V54.4 카카오 인앱 감지 ★ 비활성화 ★
@@ -5902,11 +5902,22 @@ function selectCategory(catKey, btnEl) {
         //   해결: 사주 카테고리 재진입 시 기존 입력 데이터 있고 결제 안 했으면
         //         → 입력 모달 ★ 건너뛰고 ★ 결제 모달 ★ 자동 표시 ★
         //         → 사용자는 1회 입력으로 족함
+        //   
+        //   ★ V202.54.6 핫픽스 ★ 사장님 발견 결함:
+        //     "Ctrl+F5 아무리 해도 결제 모달이 고정되어 빠져나갈 수 없음"
+        //   원인: V200.5가 사주 카테고리 진입 시마다 자동 트리거
+        //         사용자가 X 닫기해도 다음 진입 시 또 자동 표시 = 무한 루프
+        //   해결: sessionStorage._v546_userDismissed 플래그 추가
+        //         사용자가 한 번 X 닫기하면 ★ 이 세션 ★ 동안 자동 표시 차단
+        //         → 사용자가 명시적으로 "사주 카드" 클릭하면 입력 모달로 시작
         try {
             const _existingPending = localStorage.getItem('sajuPendingResult');
             const _accessNow = (typeof getSajuAccessLevel === 'function') ? getSajuAccessLevel() : 'free';
+            const _userDismissed = sessionStorage.getItem('_v546_userDismissed');  // ★ V54.6 ★
             
-            if (_existingPending && _accessNow === 'free') {
+            if (_userDismissed) {
+                console.log('🛡 [V54.6] 사용자가 이전에 결제 모달 닫음 — 자동 표시 차단 (입력 모달로 진행)');
+            } else if (_existingPending && _accessNow === 'free') {
                 const _obj = JSON.parse(_existingPending);
                 // 30분 이내 입력만 인정 (오래된 데이터는 새 입력)
                 const _age = Date.now() - (_obj.savedAt || 0);
@@ -16327,9 +16338,10 @@ function showSajuPlanGate(sajuInput) {
             </div>
             
             <!-- 닫기 (사주 데이터는 보존 — 다음 진입 시 자동 재표시) -->
+            <!-- ★ V202.54.6 ★ 닫기 시 sessionStorage 플래그 설정 → 이 세션 자동 표시 차단 -->
             <div style="text-align:center; margin-top:14px;">
                 <button type="button"
-                        onclick="document.getElementById('sajuPlanGate').remove(); document.body.style.overflow='';"
+                        onclick="try{sessionStorage.setItem('_v546_userDismissed','1');}catch(_){} document.getElementById('sajuPlanGate').remove(); document.body.style.overflow='';"
                         style="background:transparent; color:rgba(255,255,255,0.4); 
                                border:none; font-size:0.78rem; cursor:pointer; 
                                padding:6px 12px; font-family:inherit;">
@@ -16337,7 +16349,7 @@ function showSajuPlanGate(sajuInput) {
                 </button>
                 <div style="margin-top:4px;">
                     <button type="button"
-                            onclick="document.getElementById('sajuPlanGate').remove(); document.body.style.overflow=''; try{localStorage.removeItem('sajuPendingResult'); sessionStorage.removeItem('sajuPendingResult');}catch(_){} if(typeof showSajuInputModal==='function'){showSajuInputModal();}"
+                            onclick="try{sessionStorage.setItem('_v546_userDismissed','1');}catch(_){} document.getElementById('sajuPlanGate').remove(); document.body.style.overflow=''; try{localStorage.removeItem('sajuPendingResult'); sessionStorage.removeItem('sajuPendingResult');}catch(_){} if(typeof showSajuInputModal==='function'){showSajuInputModal();}"
                             style="background:transparent; color:rgba(255,255,255,0.28); 
                                    border:none; font-size: 0.74rem; cursor:pointer; 
                                    padding:4px 10px; font-family:inherit; text-decoration:underline; text-underline-offset:2px;">
