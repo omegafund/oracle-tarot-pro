@@ -19913,7 +19913,7 @@ export default {
     // ════════════════════════════════════════════════════════════════════
     if (url.pathname === "/version" && request.method === "GET") {
       return new Response(JSON.stringify({
-        version: "V202.54.10",  // V202.54.9 cachedFullText 비었을 때 자동 회복 안내.
+        version: "V202.54.13",  // V202.54.9 cachedFullText 비었을 때 자동 회복 안내.
         _ts: Date.now(),
         _ok: true
       }), {
