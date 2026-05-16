@@ -12,8 +12,8 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <meta name="version" content="V202.54.0">
-    <meta name="zeus-build-tag" content="V202.54.0">
+    <meta name="version" content="V202.54.1">
+    <meta name="zeus-build-tag" content="V202.54.1">
     
     <title>ZEUS · Tarot Oracle</title>
 
@@ -3316,7 +3316,7 @@
     (function() {
         'use strict';
         
-        const APP_VERSION = 'V202.54.0';  // V54 사주 정밀 엔진 안정판 (사장님 백업 V53.5 복귀). 향후 핫픽스: V202.54.1 → 54.2 → ... → V202.55.0.
+        const APP_VERSION = 'V202.54.1';  // V54 안정판 + V202.54.1 진단 + 전방위 방어 핫픽스. 사장님 결함: "사주→투자→단타 클릭 시 사주 재표시" + "다른 카테고리 양방향 결함 가능". 해결: (1) v541_cleanupOtherCategories 통합 청소 함수 신설 — 카테고리 전환 시 다른 모든 카테고리 잔재 강제 청소 (localStorage + sessionStorage + DOM 모달 + 메모리 변수 + body.overflow 복원). (2) selectCategory + setSituation 진입 시 통합 방어막 작동. (3) renderSajuKakaoChatV185 호출 시 console.trace로 호출 스택 노출 (결함 재현 시 정확 원인 파악). 사용자 노출 영역 0 (콘솔 로그만).
         window.APP_VERSION = APP_VERSION;
         
         // ★★★ [V202.54.0-D 정밀 캐시 무효화 핫픽스] ★★★
@@ -5685,8 +5685,132 @@ const CATEGORY_CONFIG = {
     }
 };
 
+// ════════════════════════════════════════════════════════════════════════
+// ★★★ [V202.54.1 전방위 방어 시스템] 카테고리 분리 통합 청소 함수 ★★★
+//
+//   사장님 의도:
+//     "사주→연애 시 사주 튀어나옴 / 투자→사주 시 잔재 / 운세→투자 시 충돌"
+//     모든 카테고리 양방향 결함 가능 → ★ 전방위 방어막 ★ 필요
+//
+//   설계 원칙: "한 카테고리 진입 시 → ★ 다른 모든 카테고리 ★ 잔재 강제 청소"
+//
+//   진입 카테고리 → 청소 대상:
+//     saju  →  연애/투자/운세 잔재 (pendingOracle + 기타)
+//     love/stock/general  →  사주 잔재 (전체) + 다른 비사주 잔재
+//
+//   청소 영역 (각 카테고리):
+//     ① localStorage 잔재 키
+//     ② sessionStorage 잔재 키
+//     ③ DOM 모달 잔존 (강제 제거)
+//     ④ window 메모리 변수 잔재
+//     ⑤ document.body.style.overflow 복원
+//
+//   안전: try/catch 모든 영역 / 콘솔 로그로 진단 가능
+//   영향: 사용자 비노출 (콘솔만)
+//   효과: 결함 발생 시 ★ 자동 회복 ★ + 결함 자체 ★ 차단 ★
+// ════════════════════════════════════════════════════════════════════════
+function v541_cleanupOtherCategories(currentCat) {
+    try {
+        console.log('🛡 [V54.1 방어막] 카테고리 진입: "' + currentCat + '" — 다른 카테고리 잔재 청소 시작');
+        
+        // ───────────────────────────────────────────────────────────────
+        // 1. currentCat !== 'saju' → 사주 잔재 전체 청소
+        // ───────────────────────────────────────────────────────────────
+        if (currentCat !== 'saju') {
+            const _sajuKeys = ['sajuPendingResult', 'sajuPaymentContext', 'sajuPaidPlan',
+                              'sajuPaidExpiresAt', 'sajuTargetPlan', 'sajuPendingResultBackup'];
+            let _cleared = [];
+            _sajuKeys.forEach(k => {
+                try {
+                    if (localStorage.getItem(k)) { localStorage.removeItem(k); _cleared.push('LS:' + k); }
+                    if (sessionStorage.getItem(k)) { sessionStorage.removeItem(k); _cleared.push('SS:' + k); }
+                } catch(_) {}
+            });
+            
+            // 메모리 잔재
+            if (window._sajuPaymentContext) {
+                window._sajuPaymentContext = false;
+                _cleared.push('MEM:_sajuPaymentContext');
+            }
+            if (window._v185Data) {
+                window._v185Data = null;
+                _cleared.push('MEM:_v185Data');
+            }
+            
+            // DOM 사주 결과 모달 강제 제거
+            const _sajuModal = document.getElementById('sajuResultModal');
+            if (_sajuModal) {
+                _sajuModal.remove();
+                document.body.style.overflow = '';
+                _cleared.push('DOM:sajuResultModal');
+                console.warn('🛡 [V54.1] 사주 결과 모달 ★ 강제 제거 ★ — 결함 자동 회복');
+            }
+            
+            if (_cleared.length > 0) {
+                console.log('   → 사주 잔재 청소 (' + _cleared.length + '건):', _cleared);
+            }
+        }
+        
+        // ───────────────────────────────────────────────────────────────
+        // 2. currentCat === 'saju' → 비-사주 잔재 청소
+        //    (연애/투자/운세는 pendingOracle 공통 키 사용)
+        // ───────────────────────────────────────────────────────────────
+        if (currentCat === 'saju') {
+            let _cleared = [];
+            try {
+                if (localStorage.getItem('pendingOracle')) {
+                    localStorage.removeItem('pendingOracle');
+                    _cleared.push('LS:pendingOracle');
+                }
+            } catch(_) {}
+            
+            // 비-사주 결과 화면 잔존 가능 영역 정리 (oracle-content는 동일 div 재사용이라 X)
+            // _serverMetrics, investmentData 등 메모리 잔재 정리
+            if (window._serverMetrics) {
+                window._serverMetrics = null;
+                _cleared.push('MEM:_serverMetrics');
+            }
+            
+            if (_cleared.length > 0) {
+                console.log('   → 비-사주 잔재 청소 (' + _cleared.length + '건):', _cleared);
+            }
+        }
+        
+        // ───────────────────────────────────────────────────────────────
+        // 3. 공통 — 모든 카테고리 전환 시 body 스크롤 복원
+        //    (모달 닫힘 직후 body overflow:hidden 잔재 결함 차단)
+        // ───────────────────────────────────────────────────────────────
+        if (document.body.style.overflow === 'hidden') {
+            document.body.style.overflow = '';
+            console.log('   → body.overflow 복원 (hidden → 자동)');
+        }
+        
+        console.log('✅ [V54.1 방어막] 카테고리 분리 완료 — 현재: "' + currentCat + '"');
+    } catch(e) {
+        console.warn('[V54.1 방어막] 작동 중 오류 (안전 통과):', e.message);
+    }
+}
+
 // ══ 카테고리 선택 ══
 function selectCategory(catKey, btnEl) {
+    // ★★★ [V202.54.1 전방위 방어막 우선 적용] ★★★
+    v541_cleanupOtherCategories(catKey);
+    
+    // ★★★ [V202.54.1 진단 로그] 카테고리 전환 결함 추적 ★★★
+    //   사장님 발견: "사주 → 투자신탁 → 단타 클릭 시 사주 모드 재표시"
+    //   목적: 호출 시점 + 상태 + 호출 스택 콘솔 노출 (사용자 비노출)
+    //   영향: 콘솔 로그만 추가, 흐름 변경 0
+    try {
+        console.log('🔍 [V54.1 진단] selectCategory("' + catKey + '") 호출');
+        console.log('   • localStorage.sajuPendingResult:', !!localStorage.getItem('sajuPendingResult'));
+        console.log('   • localStorage.sajuPaymentContext:', localStorage.getItem('sajuPaymentContext'));
+        console.log('   • localStorage.pendingOracle:', !!localStorage.getItem('pendingOracle'));
+        console.log('   • window._v185Data 메모리:', !!window._v185Data);
+        console.log('   • window._sajuPaymentContext:', window._sajuPaymentContext);
+        console.log('   • DOM sajuResultModal 존재:', !!document.getElementById('sajuResultModal'));
+        console.log('   • document.body.style.overflow:', document.body.style.overflow);
+    } catch(_e) {}
+    
     // ★★★ [V200.3 결정적 차단] 카테고리 진입 시 다른 카테고리 잔재 정리 ★★★
     //   사장님 V200.2 검증 후 발견:
     //     "연애/주식/부동산/운세 결제 → 사주입력 화면 → 홈뷰 복귀"
@@ -5972,8 +6096,28 @@ function resetCategory() {
 // ══════════════════════════════════════════════════════════════════
 
 function setSituation(btn, type, domain) {
+    // ★★★ [V202.54.1 전방위 방어막 우선 적용] ★★★
+    //   서브타입 탭 클릭 시 (단타/매수타이밍/상대마음/재물 등)
+    //   → 도메인이 사주가 아니면 사주 잔재 청소
+    //   → 도메인이 사주면 비-사주 잔재 청소
+    //   사장님 발견: "사주 → 투자 → 단타 클릭 시 사주 모드 재표시"
+    //                "다른 카테고리에서도 발생 가능"
+    v541_cleanupOtherCategories(domain === 'saju' ? 'saju' : domain);
+    
+    // ★★★ [V202.54.1 진단 로그] 단타 탭 등 서브타입 클릭 결함 추적 ★★★
+    try {
+        console.log('🔍 [V54.1 진단] setSituation("' + type + '", "' + domain + '") 호출');
+        console.log('   • localStorage.sajuPendingResult:', !!localStorage.getItem('sajuPendingResult'));
+        console.log('   • localStorage.sajuPaymentContext:', localStorage.getItem('sajuPaymentContext'));
+        console.log('   • localStorage.pendingOracle:', !!localStorage.getItem('pendingOracle'));
+        console.log('   • window._v185Data 메모리:', !!window._v185Data);
+        console.log('   • DOM sajuResultModal 존재:', !!document.getElementById('sajuResultModal'));
+        console.log('   • document.body.style.overflow:', document.body.style.overflow);
+    } catch(_e) {}
+    
     // ═══════════════════════════════════════════════════════════════════════
     // ★ [V31 #191 CRITICAL 핫픽스] 카테고리 진입 시 사주 컨텍스트 자동 정리 ★
+    //   ★ V54.1: v541_cleanupOtherCategories가 이미 처리 — 호환 유지용 ★
     //   
     //   사장님 발견: "사주 본 후 연애 궁합 결제 → 사주 화면 좍 나옴"
     //   원인: 사주 컨텍스트(sajuPendingResult/sajuPaymentContext) 잔류
@@ -17226,6 +17370,19 @@ function renderSajuChatMessageV185(msg, index) {
 
 // ─── 메인 빌더 — 카카오 스타일 사주 결과창 ───
 function renderSajuKakaoChatV185(data) {
+    // ★★★ [V202.54.1 진단 로그] 사주 결과 모달 재표시 결함 추적 ★★★
+    //   사장님 결함: "사주 → 투자 → 단타 클릭 시 사주 모드 재표시"
+    //   목적: 어느 함수가 사주 모달을 호출했는지 ★ 호출 스택 ★ 노출
+    //   비고: 사용자 비노출 (콘솔만)
+    try {
+        console.log('🔍 [V54.1 진단] renderSajuKakaoChatV185 호출됨!');
+        console.log('   • 시각:', new Date().toLocaleTimeString());
+        console.log('   • data 존재:', !!data);
+        console.log('   • data.input:', data && data.input);
+        console.log('   • 호출 스택 (★ 누가 호출했는지 ★):');
+        console.trace();
+    } catch(_e) {}
+    
     // ★ V31 #188 핫픽스: 잔류 sajuResultModal 강제 제거 (display:none 잔류 회피) ★
     //   handleSajuPremiumCTA에서 hide 처리한 모달이 잔류해 새 결과 안 보이는 결함
     const oldModal = document.getElementById('sajuResultModal');
