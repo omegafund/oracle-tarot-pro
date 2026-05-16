@@ -19913,7 +19913,7 @@ export default {
     // ════════════════════════════════════════════════════════════════════
     if (url.pathname === "/version" && request.method === "GET") {
       return new Response(JSON.stringify({
-        version: "V202.54.0-E",  // ★ V202.54.0-E 테스터 피드백 반영 (A+B+C 통합) ★ 작업 A: 점사 결과 Progressive Disclosure 토글 (V54 깊이 본문 접기/펼치기). 작업 B: 첫 화면 3그리드 20대 친화 순서. 작업 C: 개발자 문구 정리. 워커 변경 없음 (클라이언트 UI 작업). V54.0-C 14영역 콘텐츠 그대로 보존.
+        version: "V202.54.7",  // V54 사주 정밀 엔진 + V202.54.7 결제 보호 핫픽스. 클라이언트 캐시 버스터 결제 콜백 URL 7종 감지 + 잔재 청소 비활성화.
         _ts: Date.now(),
         _ok: true
       }), {
