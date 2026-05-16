@@ -12,8 +12,8 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <meta name="version" content="V202.54.7">
-    <meta name="zeus-build-tag" content="V202.54.7">
+    <meta name="version" content="V202.54.8">
+    <meta name="zeus-build-tag" content="V202.54.8">
     
     <title>ZEUS · Tarot Oracle</title>
 
@@ -3371,60 +3371,22 @@
     (function() {
         'use strict';
         
-        const APP_VERSION = 'V202.54.7';  // ★ V202.54.7 결제 보호 핫픽스 ★ 사장님 라이브 결함 (500건 정상 → 갑자기 토스 결제 실패) 정밀 감사 + 핫픽스. 결함 1: V54.0-D 캐시 버스터가 토스 결제 콜백 URL(paymentKey/orderId/pg_token/imp_uid 등) 진입 시 리다이렉트 → 토스 SDK 검증 중단 → 결제 실패. 해결: 결제 콜백 URL 7종 감지 후 캐시 버스터 ★ 절대 스킵 ★. 결함 2: V54.0-F 잔재 청소가 결제 진행 중 localStorage(pendingOracle/sajuPaymentContext) 청소 → 결제 데이터 손실. 해결: if(false) 가드로 ★ 완전 비활성화 ★ (결제 흐름 우선, 매번 오버레이는 사장님 본인 영향만). 결제 흐름 100% 보호 + V54.0-D 옛 캐시 자동 처리 유지 + V54.0-E UI 토글/첫 화면 유지.
+        const APP_VERSION = 'V202.54.8';  // ★ V202.54.8 긴급 롤백 — 결제 정상화 우선 ★ 사장님 라이브: 전 테스터 카드+카카오 모두 결제 멈춤 → 우리 측 결함 확정. 롤백 영역: (1) V54.0-D 캐시 버스터 ★ 완전 비활성화 ★ (window.location.replace 리다이렉트가 결제 흐름 깨뜨림 추정). (2) V54.0-F 잔재 청소 비활성화 유지. (3) V202.54.7 결제 콜백 보호도 더 이상 필요 X (캐시 버스터 자체 비활성화). 보존 영역: V54 사주 정밀 엔진 14영역 콘텐츠 + Progressive Disclosure UI + 첫 화면 정리. 결제 흐름 V53.5와 동일 작동으로 복귀.
         window.APP_VERSION = APP_VERSION;
         
-        // ★★★ [V202.54.0-D 정밀 캐시 무효화 핫픽스 + V202.54.7 결제 보호] ★★★
-        //   PC zeustarot.com 옛 캐시 사용자 검은 화면 해결
-        //   ★ V202.54.7 ★ 사장님 라이브 결함 (결제 갑자기 실패):
-        //     원인: 캐시 버스터 리다이렉트가 토스 결제 콜백 URL 흐름 깨뜨림
-        //     예: ?paymentKey=xxx → 리다이렉트 → 토스 SDK 검증 중단 → 결제 실패
-        //   해결: 결제 콜백 URL 진입 시 ★ 절대 리다이렉트 X ★ (캐시 버스터 스킵)
-        //   안전: 결제 흐름 100% 보호 + 일반 페이지 캐시 버스터 정상 작동
+        // ★★★ [V202.54.8 긴급 롤백] 캐시 버스터 ★ 완전 비활성화 ★ ★★★
+        //   사장님 라이브 결함: 전 테스터 카드+카카오 모두 결제 멈춤
+        //   진단: V54.0-D 캐시 버스터 window.location.replace가
+        //         결제 진행 중 페이지 리로드 → 결제 흐름 깨짐
+        //   롤백: 캐시 버스터 전체 ★ 즉시 return ★ — V54 이전 동작으로 복귀
+        //   효과: 결제 흐름 V53.5와 동일 작동 + V54 점사 콘텐츠는 그대로 유지
+        //   부작용: 옛 캐시 사용자 자동 갱신 X → 사장님 Cloudflare Purge로 처리
         try {
-            const _LAST_VER_KEY = 'zeus_last_version';
-            const _lastVer = localStorage.getItem(_LAST_VER_KEY);
-            const _hasVerParam = window.location.search.indexOf('_v=') >= 0;
-            const _alreadyBusted = sessionStorage.getItem('_zeus_cache_busted');
-            
-            // ★ V202.54.7 ★ 결제 콜백 URL 감지 — 결제 흐름 절대 보호
-            const _params = window.location.search;
-            const _hash = window.location.hash || '';
-            const _isPaymentCallback = 
-                _params.indexOf('paid=') >= 0 ||         // 우리 자체 콜백
-                _params.indexOf('paymentKey=') >= 0 ||   // 토스 결제 콜백
-                _params.indexOf('orderId=') >= 0 ||      // 토스 주문 ID
-                _params.indexOf('pg_token=') >= 0 ||     // 카카오페이 콜백
-                _params.indexOf('imp_uid=') >= 0 ||      // 포트원 콜백
-                _params.indexOf('payment_method_type=') >= 0 || // 토스 결제 수단
-                _hash.indexOf('vt=') >= 0 ||             // V199.2 STAGE 1 hash
-                _hash.indexOf('paid=') >= 0;
-            
-            // 옛 캐시 의심 = 마지막 본 버전이 있고 + 현재 버전과 다름
-            const _isOldCache = _lastVer && _lastVer !== APP_VERSION;
-            
-            if (_isOldCache && !_hasVerParam && !_alreadyBusted && !_isPaymentCallback) {
-                // 옛 캐시 사용자 + ★ 결제 콜백 X ★ → 자동 캐시 무효화
-                sessionStorage.setItem('_zeus_cache_busted', '1');
-                console.warn('🔄 [V54] 옛 캐시 감지 (' + _lastVer + ' → ' + APP_VERSION + ') — 자동 갱신');
-                const _sep = window.location.search ? '&' : '?';
-                const _newUrl = window.location.pathname + 
-                                window.location.search + _sep + 
-                                '_v=' + Date.now() + 
-                                window.location.hash;
-                window.location.replace(_newUrl);
-                return;
-            }
-            
-            // ★ V202.54.7 ★ 결제 콜백 진입 로그 (디버그용)
-            if (_isPaymentCallback) {
-                console.log('💳 [V54] 결제 콜백 URL 감지 — 캐시 버스터 스킵 (결제 흐름 보호)');
-            }
-            
-            // 현재 버전 기록 (다음 배포 시 비교용)
-            localStorage.setItem(_LAST_VER_KEY, APP_VERSION);
+            // ★ 긴급 롤백 ★ 캐시 버스터 작동 자체 차단
+            // 옛 버전이 의심되어도 강제 리로드 X → 결제 흐름 보호 우선
+            localStorage.setItem('zeus_last_version', APP_VERSION);  // 버전 기록만
         } catch (e) {
-            console.warn('Cache buster skipped:', e);
+            console.warn('Version record skipped:', e);
         }
         
         // ★★★ [V202.17 결정적 수정] _sajuInput 복원 ★ 페이지 로드 즉시 ★ ★★★
