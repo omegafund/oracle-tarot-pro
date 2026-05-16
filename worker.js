@@ -19913,7 +19913,7 @@ export default {
     // ════════════════════════════════════════════════════════════════════
     if (url.pathname === "/version" && request.method === "GET") {
       return new Response(JSON.stringify({
-        version: "V202.54.7",  // V54 사주 정밀 엔진 + V202.54.7 결제 보호 핫픽스. 클라이언트 캐시 버스터 결제 콜백 URL 7종 감지 + 잔재 청소 비활성화.
+        version: "V202.54.8",  // V54 사주 정밀 엔진 + V202.54.8 긴급 롤백 (캐시 버스터 비활성화). 결제 흐름 V53 동작 복귀.
         _ts: Date.now(),
         _ok: true
       }), {
