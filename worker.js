@@ -19913,7 +19913,7 @@ export default {
     // ════════════════════════════════════════════════════════════════════
     if (url.pathname === "/version" && request.method === "GET") {
       return new Response(JSON.stringify({
-        version: "V202.54.2",  // V202.54.2 진단 (워커 변경 없음).
+        version: "V202.54.3",  // V202.54.3 결제 baseUrl 정규화 (워커 변경 없음).
         _ts: Date.now(),
         _ok: true
       }), {
