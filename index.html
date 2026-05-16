@@ -12,8 +12,8 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <meta name="version" content="V202.54.10">
-    <meta name="zeus-build-tag" content="V202.54.10">
+    <meta name="version" content="V202.54.13">
+    <meta name="zeus-build-tag" content="V202.54.13">
     
     <title>ZEUS · Tarot Oracle</title>
 
@@ -3316,7 +3316,7 @@
     (function() {
         'use strict';
         
-        const APP_VERSION = 'V202.54.10';  // V202.54.9 ★ 결정적 ★ 핫픽스. 사장님 시나리오: "투자 결제 완료 → 점사창 안 열림 → 또 결제 → 무한 루프 → 503". 진짜 원인: confirmPayment 시 cachedFullText 비어있음 (점사 텍스트 누적 안 됨). if (contentEl const APP_VERSION = 'V202.54.8';  // V202.54.8 ★ ChatGPT 통찰 ★ 진짜 카테고리 누출 영구 차단. ChatGPT 지적: "Gate 4 이전에 renderText 호출 측에서 isPaidUser 직접 전달 = PRO 모드 진입 후 차단 불가". 해결: v548_getCategoryScopedPaid() 헬퍼 신설 — renderText 호출 4곳 모두 isPaidUser → v548_getCategoryScopedPaid(isFinance) 교체. 사주 결제 + 비-사주 컨텍스트 = 자동 false. 카테고리별 PAID 매트릭스 정확 차단. V54.7 Gate 4 검증과 ★ 이중 차단 ★.const APP_VERSION = 'V202.54.8';  // V202.54.8 ★ ChatGPT 통찰 ★ 진짜 카테고리 누출 영구 차단. ChatGPT 지적: "Gate 4 이전에 renderText 호출 측에서 isPaidUser 직접 전달 = PRO 모드 진입 후 차단 불가". 해결: v548_getCategoryScopedPaid() 헬퍼 신설 — renderText 호출 4곳 모두 isPaidUser → v548_getCategoryScopedPaid(isFinance) 교체. 사주 결제 + 비-사주 컨텍스트 = 자동 false. 카테고리별 PAID 매트릭스 정확 차단. V54.7 Gate 4 검증과 ★ 이중 차단 ★. cachedFullText) 통과 못함 → renderText 호출 안 됨 → 화면 그대로 = 결제 게이트 잔존 → 사용자가 또 결제 클릭. 해결: cachedFullText 비었을 때 "결과 다시 받기" 안내 화면 표시 + 새로고침 버튼. 사용자가 무한 루프에서 탈출 가능.
+        const APP_VERSION = 'V202.54.13';  // V202.54.9 ★ 결정적 ★ 핫픽스. 사장님 시나리오: "투자 결제 완료 → 점사창 안 열림 → 또 결제 → 무한 루프 → 503". 진짜 원인: confirmPayment 시 cachedFullText 비어있음 (점사 텍스트 누적 안 됨). if (contentEl const APP_VERSION = 'V202.54.8';  // V202.54.8 ★ ChatGPT 통찰 ★ 진짜 카테고리 누출 영구 차단. ChatGPT 지적: "Gate 4 이전에 renderText 호출 측에서 isPaidUser 직접 전달 = PRO 모드 진입 후 차단 불가". 해결: v548_getCategoryScopedPaid() 헬퍼 신설 — renderText 호출 4곳 모두 isPaidUser → v548_getCategoryScopedPaid(isFinance) 교체. 사주 결제 + 비-사주 컨텍스트 = 자동 false. 카테고리별 PAID 매트릭스 정확 차단. V54.7 Gate 4 검증과 ★ 이중 차단 ★.const APP_VERSION = 'V202.54.8';  // V202.54.8 ★ ChatGPT 통찰 ★ 진짜 카테고리 누출 영구 차단. ChatGPT 지적: "Gate 4 이전에 renderText 호출 측에서 isPaidUser 직접 전달 = PRO 모드 진입 후 차단 불가". 해결: v548_getCategoryScopedPaid() 헬퍼 신설 — renderText 호출 4곳 모두 isPaidUser → v548_getCategoryScopedPaid(isFinance) 교체. 사주 결제 + 비-사주 컨텍스트 = 자동 false. 카테고리별 PAID 매트릭스 정확 차단. V54.7 Gate 4 검증과 ★ 이중 차단 ★. cachedFullText) 통과 못함 → renderText 호출 안 됨 → 화면 그대로 = 결제 게이트 잔존 → 사용자가 또 결제 클릭. 해결: cachedFullText 비었을 때 "결과 다시 받기" 안내 화면 표시 + 새로고침 버튼. 사용자가 무한 루프에서 탈출 가능.
         
         // ════════════════════════════════════════════════════════════════════════
         // ★★★ [V202.54.5 결제 흐름 안전 우선] V54.4 카카오 인앱 감지 ★ 비활성화 ★
@@ -24104,6 +24104,83 @@ function startTossPayment(planKey, method) {
         window._tossPaymentInProgress = false;
     }, 30000);
     
+    // ════════════════════════════════════════════════════════════════════════
+    // ★★★ [V202.54.11 모바일 결제 사용자 안내] ★★★
+    //
+    //   사장님 발견: "모바일 결제 시 토스/카카오 페이지 1~2개 끼어들어 → 신뢰성 직격"
+    //   원인: Toss SDK v1 모바일 결제 흐름 (페이지 1: 토스, 페이지 2: 카카오 연결)
+    //   해결책 1 (장기): SDK v2 마이그레이션
+    //   해결책 2 (즉시): 사용자에게 ★ 명확한 안내 ★ 표시
+    //                    → "결제 화면이 2단계로 표시될 수 있습니다"
+    //                    → 사용자가 "에러"라고 오인 차단
+    // ════════════════════════════════════════════════════════════════════════
+    try {
+        const _isMobile = /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent);
+        const _isKakao = paymentMethod === '카카오페이' || paymentMethod === '카카오';
+        
+        if (_isMobile && _isKakao && !sessionStorage.getItem('_v5411_payGuideShown')) {
+            sessionStorage.setItem('_v5411_payGuideShown', '1');
+            
+            // 결제 진입 직전 1.5초 안내 표시
+            const _guide = document.createElement('div');
+            _guide.id = 'v5411PayGuide';
+            _guide.style.cssText = `
+                position:fixed; top:0; left:0; width:100%; height:100%;
+                background:rgba(0,0,0,0.92); z-index:99999999;
+                display:flex; align-items:center; justify-content:center;
+                font-family:inherit; animation:fadeIn 0.3s;
+            `;
+            _guide.innerHTML = `
+                <div style="max-width:320px; padding:32px 24px; text-align:center;
+                            background:linear-gradient(135deg, #1a1530, #0d0a1f);
+                            border:1px solid rgba(212,175,55,0.5); border-radius:14px;">
+                    <div style="font-size:2rem; margin-bottom:14px;">💳</div>
+                    <div style="color:#FFE08A; font-size:1.1rem; font-weight:800; margin-bottom:14px;">
+                        카카오페이 결제 안내
+                    </div>
+                    <div style="color:rgba(255,255,255,0.88); font-size:0.88rem; line-height:1.7; 
+                                text-align:left; margin-bottom:18px;">
+                        📌 결제 화면이 ★ 2~3단계 ★로<br>
+                        &nbsp;&nbsp;&nbsp;순서대로 표시될 수 있습니다.<br><br>
+                        📌 정상 흐름:<br>
+                        &nbsp;&nbsp;&nbsp;1️⃣ 토스 결제 연결<br>
+                        &nbsp;&nbsp;&nbsp;2️⃣ 카카오 인증<br>
+                        &nbsp;&nbsp;&nbsp;3️⃣ 결제 완료<br><br>
+                        ⏳ 페이지 자동 전환을 기다려주세요.
+                    </div>
+                    <div style="color:#FFE08A; font-size:0.84rem; font-weight:700;">
+                        잠시 후 결제 화면이 자동으로 열립니다...
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(_guide);
+            
+            // 2초 후 안내 자동 제거 + 결제 진입
+            setTimeout(function() {
+                const g = document.getElementById('v5411PayGuide');
+                if (g) g.remove();
+                
+                // 결제 진입
+                toss.requestPayment(paymentMethod, {
+                    amount:       plan.amount,
+                    orderId:      orderId,
+                    orderName:    `제우스 오라클 ${plan.label}`,
+                    customerName: window._oracleUserName || '유저',
+                    successUrl:   baseUrl + '/success.html' + sajuQueryFlag,
+                    failUrl:      baseUrl + '/fail.html' + sajuQueryFlag
+                }).catch(err => {
+                    if (err.code !== 'USER_CANCEL') {
+                        alert('결제 요청에 실패했습니다: ' + (err.message || err.code));
+                    }
+                });
+            }, 2000);
+            
+            return;  // ← 안내 후 결제 진입 (위 setTimeout에서)
+        }
+    } catch(e) {
+        console.warn('[V54.11] 안내 표시 실패 (안전 통과):', e.message);
+    }
+    
     toss.requestPayment(paymentMethod, {
         amount:       plan.amount,
         orderId:      orderId,
@@ -24403,6 +24480,81 @@ let SHUFFLE_STATE = {
     pickedIndexes: [],   // 유저가 탭한 덱 위치 (0~77)
     isActive: false
 };
+
+// ════════════════════════════════════════════════════════════════════════
+// ★★★ [V202.54.13 ChatGPT 패치 검증 후 ★ 롤백 ★] ★★★
+//
+//   V54.12에서 ChatGPT 패치 적용했으나 ★ 정밀 감사 ★ 결과:
+//
+//   결함 1: confirmPayment 호출 0건 (HTML onclick 안에 없음)
+//     → wrapper 효과 ★ 0 ★
+//   결함 2: function declaration vs assignment 스코프 충돌
+//     → 원본 함수와 wrapper가 ★ 다른 변수 ★ 일 수 있음
+//   결함 3: bfcache 자동 청소가 정상 결제 흐름 ★ 방해 ★ 가능
+//     → iOS Safari 탭 전환 시 결제 모달 강제 제거
+//   결함 4: history.replaceState({paid:true}, ?paid=ok) ★ 보안 결함 ★
+//     → 결제 실패/취소 시에도 ?paid=ok 추가 → 백도어
+//   결함 5: _confirmLock 2.5초 ★ 너무 짧음 ★
+//     → 결제 처리 3~10초 가능, 도중 락 해제
+//
+//   결정: V54.12 ChatGPT 패치 ★ 완전 ★ 비활성화 (V54.11 상태로 복귀)
+//         → 사장님 영업 안전 최우선
+//         → 추후 검증된 안전 패치만 적용
+// ════════════════════════════════════════════════════════════════════════
+// V54.12 IIFE 패치 → if(false) 가드로 ★ 완전 비활성화 ★
+if (false) (function() {
+    // 비활성화된 ChatGPT 패치 (참고용 보존, 실행 X)
+    window._confirmLock = false;
+
+    function v5412_cleanupZombiePaymentUI() {
+        try {
+            document.querySelectorAll(
+                '.pay-modal-overlay, #payModalOverlay, #paymentMethodModalOverlay, #bankTransferModalOverlay'
+            ).forEach(el => { try { el.remove(); } catch(_) {} });
+            document.body.style.overflow = '';
+        } catch(e) {}
+    }
+
+    window.addEventListener('pageshow', function(e) {
+        if (e.persisted) {
+            v5412_cleanupZombiePaymentUI();
+            window._confirmLock = false;
+            if (window._tossPaymentInProgress) {
+                window._tossPaymentInProgress = false;
+            }
+        }
+    });
+
+    if (typeof confirmPayment === 'function') {
+        const _v5412_realConfirm = confirmPayment;
+        confirmPayment = async function() {
+            if (window._confirmLock) return;
+            window._confirmLock = true;
+            try {
+                if (typeof cachedFullText !== 'undefined' && !cachedFullText) {
+                    const pendingRaw = sessionStorage.getItem('pendingOracle') || '';
+                    if (pendingRaw) {
+                        const pending = JSON.parse(pendingRaw);
+                        if (pending.cachedFullText) {
+                            cachedFullText = pending.cachedFullText;
+                        }
+                    }
+                }
+                await _v5412_realConfirm.apply(this, arguments);
+                try {
+                    if (!location.search.includes('paid=ok')) {
+                        history.replaceState({ paid: true }, '', 
+                            location.pathname + '?paid=ok');
+                    }
+                } catch(_) {}
+            } finally {
+                setTimeout(function() { window._confirmLock = false; }, 2500);
+            }
+        };
+    }
+})();
+
+console.log('🛡 [V54.13] ChatGPT 패치 비활성화 — V54.11 상태 유지 (검증 부족 영역 차단)');
 
 // ── 날짜 기반 시드 생성 (질문 + 오늘 날짜 + 유저이름)
 function _makeDailySeed(question) {
