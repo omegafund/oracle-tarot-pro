@@ -19913,7 +19913,7 @@ export default {
     // ════════════════════════════════════════════════════════════════════
     if (url.pathname === "/version" && request.method === "GET") {
       return new Response(JSON.stringify({
-        version: "V202.54.4",  // V202.54.4 Gate 4 카테고리 매칭 + 카카오 인앱 감지 (워커 변경 없음).
+        version: "V202.54.5",  // V202.54.5 결제 흐름 영향 가능 영역 비활성화 (V54.3 baseUrl + V54.4 카카오 인앱).
         _ts: Date.now(),
         _ok: true
       }), {
