@@ -19913,7 +19913,7 @@ export default {
     // ════════════════════════════════════════════════════════════════════
     if (url.pathname === "/version" && request.method === "GET") {
       return new Response(JSON.stringify({
-        version: "V202.54.0-D",  // ★ V202.54.0-D 캐시 무효화 강화 핫픽스 ★ 라이브 PC 검은 화면 결함 (옛 캐시 사용자가 새 코드 못 받음) 영구 해결. 클라이언트 HTML 최상단에 즉시 작동 캐시 버스터 추가: 옛 캐시 사용자가 zeustarot.com 접속 시 자동으로 ?_v=timestamp URL로 강제 리다이렉트 → 새 코드 강제 로드 → sessionStorage 가드로 무한 리로드 방지. V54.0-C 콘텐츠 변경 0 (사주 점사 14영역 V54 톤 그대로). 향후 모든 배포에서 옛 캐시 자동 처리 보장.
+        version: "V202.54.0-E",  // ★ V202.54.0-E 테스터 피드백 반영 (A+B+C 통합) ★ 작업 A: 점사 결과 Progressive Disclosure 토글 (V54 깊이 본문 접기/펼치기). 작업 B: 첫 화면 3그리드 20대 친화 순서. 작업 C: 개발자 문구 정리. 워커 변경 없음 (클라이언트 UI 작업). V54.0-C 14영역 콘텐츠 그대로 보존.
         _ts: Date.now(),
         _ok: true
       }), {
