@@ -19913,7 +19913,7 @@ export default {
     // ════════════════════════════════════════════════════════════════════
     if (url.pathname === "/version" && request.method === "GET") {
       return new Response(JSON.stringify({
-        version: "V202.54.5",  // V202.54.5 결제 흐름 영향 가능 영역 비활성화 (V54.3 baseUrl + V54.4 카카오 인앱).
+        version: "V202.54.6",  // V202.54.6 V200.5 자동 모달 무한 루프 차단 (워커 변경 없음).
         _ts: Date.now(),
         _ok: true
       }), {
