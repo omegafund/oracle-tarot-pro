@@ -12,8 +12,8 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <meta name="version" content="V202.54.1">
-    <meta name="zeus-build-tag" content="V202.54.1">
+    <meta name="version" content="V202.54.2">
+    <meta name="zeus-build-tag" content="V202.54.2">
     
     <title>ZEUS · Tarot Oracle</title>
 
@@ -3316,7 +3316,7 @@
     (function() {
         'use strict';
         
-        const APP_VERSION = 'V202.54.1';  // V54 안정판 + V202.54.1 진단 + 전방위 방어 핫픽스. 사장님 결함: "사주→투자→단타 클릭 시 사주 재표시" + "다른 카테고리 양방향 결함 가능". 해결: (1) v541_cleanupOtherCategories 통합 청소 함수 신설 — 카테고리 전환 시 다른 모든 카테고리 잔재 강제 청소 (localStorage + sessionStorage + DOM 모달 + 메모리 변수 + body.overflow 복원). (2) selectCategory + setSituation 진입 시 통합 방어막 작동. (3) renderSajuKakaoChatV185 호출 시 console.trace로 호출 스택 노출 (결함 재현 시 정확 원인 파악). 사용자 노출 영역 0 (콘솔 로그만).
+        const APP_VERSION = 'V202.54.2';  // V202.54.2 ★ 결정적 결함 진단 ★ 사장님 발견: "사주 결제 후 → 연애/투자/운세 프리패스 → 503". 원인 추정: getSajuAccessLevel()이 사주 전용인데 다른 카테고리에서 호출되어 paid_token 적용. 추가: getSajuAccessLevel 호출 시점 + 현재 도메인 비교 + 다른 카테고리에서 호출 시 ★ 경고 + 호출 스택 ★. 라이브 검증으로 정확 위치 확정 → V202.54.3 정밀 핫픽스 예정.
         window.APP_VERSION = APP_VERSION;
         
         // ★★★ [V202.54.0-D 정밀 캐시 무효화 핫픽스] ★★★
@@ -18736,6 +18736,28 @@ function isProperlyPaid() {
 }
 
 function getSajuAccessLevel() {
+    // ★★★ [V202.54.2 진단] 사장님 발견 결함 추적 ★★★
+    //   결함: "사주 결제 후 → 연애/투자/운세 카테고리도 프리패스"
+    //   원인: getSajuAccessLevel() 함수가 ★ 사주 전용 ★ 인데
+    //         다른 카테고리에서도 호출되어 PAID 인정
+    //   진단: 호출 시점 + 현재 도메인 + 호출 스택 로그
+    //   영향: 콘솔만, 사용자 비노출
+    try {
+        const _domain = (typeof window.CURRENT_CATEGORY !== 'undefined') ? window.CURRENT_CATEGORY : 'unknown';
+        const _mode = (typeof window.CURRENT_MODE !== 'undefined') ? window.CURRENT_MODE : 'unknown';
+        const _plan = localStorage.getItem('sajuPaidPlan') || '';
+        if (_plan && _domain !== 'saju' && _domain !== 'unknown') {
+            console.warn('🚨 [V54.2 결함 감지] getSajuAccessLevel() 사주 X 카테고리에서 호출!');
+            console.warn('   • 현재 도메인:', _domain);
+            console.warn('   • 현재 모드:', _mode);
+            console.warn('   • sajuPaidPlan:', _plan);
+            console.warn('   • → 사주 PAID 토큰이 ★ 다른 카테고리 ★ 에 적용 가능 ★ 결함 ★');
+            console.trace('   • 호출 스택:');
+        } else if (_plan) {
+            console.log('🔍 [V54.2 진단] getSajuAccessLevel() 호출 — 도메인:', _domain, '/ plan:', _plan);
+        }
+    } catch(_e) {}
+    
     let paidPlan = '';
     try {
         paidPlan = localStorage.getItem('sajuPaidPlan') || '';
