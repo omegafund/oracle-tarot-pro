@@ -23924,6 +23924,36 @@ async function startTossPayment(planKey, method) {
                                     '오늘의 점사'
     );
     
+    // ─── [V55-MIGRATION 1.4] 결제 시작 직전 stale v55 흔적 강제 정리 ───
+    //   배경: 사장님 라이브 진단 — "orderId 불일치: 오늘 sj_ vs 어제 lv_"
+    //   원인 추정: 이전 결제 시도의 readingId가 localStorage/sessionStorage에 잔존
+    //              success-v55.html이 URL ?readingId= 무시하고 localStorage 우선 읽을 가능성
+    //   해결: 우리 도메인(zeustarot.com)에서 새 readingId 발급 직전 ★ 완전 정리 ★
+    //         (cross-origin 제약으로 oracle-tarot-v1 도메인 localStorage는 못 만짐 — 
+    //          그쪽은 사장님 ChatGPT 측 success-v55.html 점검 필요)
+    try {
+        const prevReadingId = localStorage.getItem('v55ActiveReadingId');
+        const prevSavedAtStr = localStorage.getItem('v55ActiveReadingId_savedAt');
+        const prevSavedAt = parseInt(prevSavedAtStr || '0', 10);
+        const ageMs = Date.now() - prevSavedAt;
+        
+        // 이전 readingId가 1분 이상 됐거나, savedAt 없으면 → 정리
+        // (1분 = 동일 세션 빠른 재시도는 보존, 그 외는 모두 stale)
+        if (!prevSavedAt || ageMs > 60 * 1000) {
+            if (prevReadingId) {
+                console.log('🧹 [V55-1.4] stale readingId 정리:', prevReadingId, 
+                            `(${Math.round(ageMs / 1000)}초 전)`);
+            }
+            localStorage.removeItem('v55ActiveReadingId');
+            localStorage.removeItem('v55ActiveReadingId_savedAt');
+            localStorage.removeItem('v55ActivePlan');
+            try { sessionStorage.removeItem('v55ActiveReadingId'); } catch(e) {}
+            try { delete window._v55ActiveReadingId; } catch(e) { window._v55ActiveReadingId = null; }
+        }
+    } catch(e) {
+        console.warn('[V55-1.4] stale 정리 실패:', e.message);
+    }
+
     let readingId;
     try {
         readingId = await _v55CreateReading(planKey, categoryHint, {
