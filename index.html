@@ -4807,6 +4807,12 @@ const WORKER_BASE_URL = 'https://tarot-api.omegafund01.workers.dev';
 // ════════════════════════════════════════════════════════════════════════════
 const WORKER_BASE_URL_V55 = 'https://tarot-api-merged.omegafund01.workers.dev';
 
+// [V55-MIGRATION 1.3] V55 정적 페이지 호스팅 도메인 (별도 워커)
+//   사장님 라이브 확인: GitHub Pages(zeustarot.com)에는 /v55/* 없음 → 404
+//   V55 정적 페이지는 oracle-tarot-v1 워커가 호스팅
+//   포함: /v55/success-v55.html, /v55/fail-v55.html, /v55/result-v55.html, /v55/V55PaymentContext.js
+const V55_STATIC_BASE = 'https://oracle-tarot-v1.omegafund01.workers.dev';
+
 const PAYMENT_PLANS = {
     // [V20.0] 990원 체험권 — 1시간 무제한 (체험 후 day/month 전환 유도)
     trial: {
@@ -23956,16 +23962,21 @@ async function startTossPayment(planKey, method) {
     const orderId = readingId;
     const paymentMethod = method || '카드';
 
-    // ─── successUrl / failUrl → V55 페이지 ───
-    //   /v55/success-v55.html — fix4: 3초 자동 fail 이동 (사용자 갇힘 차단)
-    //   /v55/fail-v55.html    — fix3: 토스 코드 6분류
-    //   ?readingId=... — V55PaymentContext.js가 query param 읽어서 polling 시작
-    const baseUrl = window.location.origin + window.location.pathname.replace(/\/[^/]*$/, '');
+    // ─── successUrl / failUrl → V55 정적 페이지 (oracle-tarot-v1 워커) ───
+    //   [V55-MIGRATION 1.3] 사장님 라이브 진단:
+    //     zeustarot.com → GitHub Pages → /v55/* 없음 → 404
+    //   해결: V55_STATIC_BASE (oracle-tarot-v1) 절대경로 사용
+    //
+    //   /v55/success-v55.html — fix4: URL 파라미터 누락 시 자동 fail 이동
+    //     · 토스가 ?paymentKey=...&orderId=...&amount=... 자동 부착
+    //     · V55PaymentContext.js가 /v55/confirm-payment 호출 → KV 저장
+    //   /v55/fail-v55.html    — fix3: 토스 코드 6분류 + 명확한 출구
+    //   ?readingId=... — 우리가 추가 부착 (lifecycle 추적용)
     const v55Qs   = '?readingId=' + encodeURIComponent(readingId)
                   + '&plan=' + encodeURIComponent(planKey)
                   + (isSajuCtx ? '&ctx=saju' : '');
-    const successUrl = baseUrl + '/v55/success-v55.html' + v55Qs;
-    const failUrl    = baseUrl + '/v55/fail-v55.html'    + v55Qs;
+    const successUrl = V55_STATIC_BASE + '/v55/success-v55.html' + v55Qs;
+    const failUrl    = V55_STATIC_BASE + '/v55/fail-v55.html'    + v55Qs;
 
     // ─── [V200.8.5 보존] Toss 결제 진입 마커 ───
     //   pagehide / bfcache 복귀 시 결제 모달 정리 로직과 협조
