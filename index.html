@@ -4983,7 +4983,15 @@ async function _v55CreateReading(planKey, categoryHint, extraPayload) {
         if (!data || !data.readingId) {
             throw new Error('readingId 누락 응답: ' + JSON.stringify(data).slice(0, 200));
         }
-        return data.readingId;
+        // [V55-MIGRATION 1.9] signedAccessToken도 함께 반환
+        //   워커 create-reading 응답에 signedAccessToken 포함되어 있음 (HMAC 7필드 기반)
+        //   이전(1.0~1.8): readingId만 받고 signedAccessToken 버림 → 결정적 결함
+        //   해결: { readingId, signedAccessToken } 객체로 반환 → 호출자가 둘 다 사용
+        //   워커 confirm-payment가 body.signedAccessToken을 verify → 일치해야 통과
+        return {
+            readingId:         data.readingId,
+            signedAccessToken: data.signedAccessToken || ''
+        };
     } finally {
         clearTimeout(timeoutId);
     }
@@ -23947,36 +23955,51 @@ async function startTossPayment(planKey, method) {
         if (stalePrev) {
             console.log('🧹 [V55-1.5] 결제 시작 — stale readingId 무조건 정리:', stalePrev);
         }
-        // 우리 도메인 V55 흔적 전부 (purchaseContext 류 포함)
+        // index.html 도메인 V55 흔적 전부 (purchaseContext + token 포함)
         ['v55ActiveReadingId', 'v55ActiveReadingId_savedAt', 'v55ActivePlan',
+         'v55ActiveToken',  // ★ patch 1.9: signedAccessToken stale 정리 추가
          'v55PurchaseContext', 'purchaseContext', 'v55CurrentReading'].forEach(k => {
             try { localStorage.removeItem(k); } catch(e) {}
             try { sessionStorage.removeItem(k); } catch(e) {}
         });
         try { delete window._v55ActiveReadingId; } catch(e) { window._v55ActiveReadingId = null; }
+        try { delete window._v55ActiveToken;     } catch(e) { window._v55ActiveToken     = null; }
         try { delete window._v55PurchaseContext; } catch(e) { window._v55PurchaseContext = null; }
     } catch(e) {
         console.warn('[V55-1.5] stale 정리 실패:', e.message);
     }
 
     let readingId;
+    let signedAccessToken;
     try {
-        readingId = await _v55CreateReading(planKey, categoryHint, {
+        // [V55-MIGRATION 1.9] _v55CreateReading 반환 형식 변경: { readingId, signedAccessToken }
+        const v55Result = await _v55CreateReading(planKey, categoryHint, {
             question:    questionForV55,
             sajuInput:   sajuInputForV55,
             queryMode:   (typeof CURRENT_MODE !== 'undefined') ? CURRENT_MODE : 'general',
             loveSubType: (typeof LOVE_SUBTYPE !== 'undefined') ? LOVE_SUBTYPE : null,
             stockSubType:(typeof STOCK_SUBTYPE !== 'undefined') ? STOCK_SUBTYPE : null
         });
-        console.log('✅ [V55] readingId 발급 완료:', readingId);
+        readingId         = v55Result.readingId;
+        signedAccessToken = v55Result.signedAccessToken;
+        console.log('✅ [V55] readingId 발급 완료:', readingId,
+                    signedAccessToken ? '(token 길이: ' + signedAccessToken.length + ')' : '⚠ token 누락');
         
-        // readingId 다중 저장 (BFCache 복귀 시 fetch용)
+        // [V55-MIGRATION 1.9] signedAccessToken 누락 시 즉시 거부 (워커가 검증 실패할 것)
+        if (!signedAccessToken || signedAccessToken.length < 32) {
+            throw new Error('signedAccessToken 응답 누락 (워커 응답 결함 의심)');
+        }
+        
+        // readingId + signedAccessToken 다중 저장 (BFCache 복귀 시 fetch용)
         try {
             localStorage.setItem('v55ActiveReadingId', readingId);
             localStorage.setItem('v55ActiveReadingId_savedAt', String(Date.now()));
             localStorage.setItem('v55ActivePlan', planKey);
+            localStorage.setItem('v55ActiveToken', signedAccessToken);  // ★ patch 1.9: token 보존
             sessionStorage.setItem('v55ActiveReadingId', readingId);
+            sessionStorage.setItem('v55ActiveToken', signedAccessToken);
             window._v55ActiveReadingId = readingId;
+            window._v55ActiveToken     = signedAccessToken;
         } catch(e) {}
     } catch(err) {
         console.error('❌ [V55] readingId 발급 실패:', err.message);
@@ -24029,22 +24052,27 @@ async function startTossPayment(planKey, method) {
     const nonce = `n${Date.now()}${Math.random().toString(36).slice(2,8)}`;
     const v55Query = '?readingId=' + encodeURIComponent(readingId)
                    + '&rid='      + encodeURIComponent(readingId)   // ★ 별칭 — fetch-reading 스키마와 동일
+                   + '&token='    + encodeURIComponent(signedAccessToken)  // ★ patch 1.9: 워커 fetch-reading + confirm-payment 스키마 일치
                    + '&plan='     + encodeURIComponent(planKey)
                    + '&n='        + nonce
                    + (isSajuCtx ? '&ctx=saju' : '');
     const successUrl = V55_STATIC_BASE + '/v55/success-v55.html' + v55Query;
     const failUrl    = V55_STATIC_BASE + '/v55/fail-v55.html'    + v55Query;
     
-    // [V55-MIGRATION 1.8] confirm 직전 진단 로그 — 사장님 분석 권고 "90% 잡히는 로그"
-    //   이 로그가 콘솔에 정확히 떠야 우리 측에서 readingId 단일 정체성 보장 확인됨
-    console.log('🔬 [V55-1.8 진단] orderId/readingId 단일 정체성 검증:', {
-        OUR_readingId:    readingId,
-        OUR_orderId:      orderId,       // ★ "ORD-" + readingId (KV와 일치)
-        URL_readingId:    readingId,     // successUrl query?readingId= 부착값
-        URL_rid:          readingId,     // successUrl query?rid= 부착값 (별칭)
+    // [V55-MIGRATION 1.9] confirm 직전 진단 로그 — readingId + token 정체성 검증
+    //   이 로그가 콘솔에 정확히 떠야 index.html에서 readingId/token 단일 정체성 보장 확인됨
+    //   ★ 워커 confirm-payment가 body.signedAccessToken으로 HMAC verify ★
+    //   ★ signedAccessToken은 워커 create-reading 응답에서 받은 값 그대로 ★
+    console.log('🔬 [V55-1.9 진단] readingId + signedAccessToken 정체성 검증:', {
+        readingId:        readingId,
+        orderId:          orderId,            // = "ORD-" + readingId (KV와 일치)
+        sat_length:       signedAccessToken.length,
+        sat_first_8:      signedAccessToken.slice(0, 8),
+        URL_rid:          readingId,          // successUrl ?rid=
+        URL_token_first_8:signedAccessToken.slice(0, 8),  // successUrl ?token=
         nonce:            nonce,
-        successUrl:       successUrl,
-        failUrl:          failUrl
+        successUrl_short: successUrl.slice(0, 120) + '...',
+        failUrl_short:    failUrl.slice(0, 120) + '...'
     });
 
     // ─── [V200.8.5 보존] Toss 결제 진입 마커 ───
