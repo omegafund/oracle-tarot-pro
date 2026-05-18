@@ -4939,7 +4939,8 @@ async function _v55CreateReading(planKey, categoryHint, extraPayload) {
     const body = {
         plan:           v55Plan,
         v54Plan:        planKey,
-        category:       categoryHint,
+        feature:        categoryHint,   // ★ V55 워커 필수 필드 ★
+        category:       categoryHint,   // V54 호환 보조
         idempotencyKey: `${planKey}_${Date.now()}_${Math.random().toString(36).slice(2,10)}`,
         clientVersion:  (typeof APP_VERSION !== 'undefined') ? APP_VERSION : 'unknown',
         ...(extraPayload || {})
@@ -23853,7 +23854,11 @@ async function startTossPayment(planKey, method) {
                    || (localStorage.getItem('sajuPaymentContext') === 'true');
     const categoryHint = _v55GetCategoryHint();
     
-    // 사주 입력 데이터 수집 (있으면 함께 전송)
+    // ─── 사주 입력 데이터 수집 + 워커 스키마 평탄화 ───
+    //   [핫픽스 1] 워커 에러: "sajuInput.year 잘못됨 (1900~2030)"
+    //   원인: 우리가 sajuInput.input.year 중첩 구조 + 문자열 타입으로 보냄
+    //         워커는 sajuInput.year 직접 접근 + 정수 기대
+    //   해결: 평탄화 + parseInt + 범위 검증 (year 1900~2030, month 1~12, day 1~31)
     let sajuInputForV55 = null;
     if (isSajuCtx) {
         try {
@@ -23861,12 +23866,36 @@ async function startTossPayment(planKey, method) {
                          || sessionStorage.getItem('sajuPendingResult');
             if (sajuRaw) {
                 const sajuObj = JSON.parse(sajuRaw);
-                if (sajuObj.input && sajuObj.input.year) {
+                const inp = sajuObj.input || {};
+                
+                const yr = parseInt(inp.year,  10);
+                const mo = parseInt(inp.month, 10);
+                const dy = parseInt(inp.day,   10);
+                const hr = (inp.hour !== undefined && inp.hour !== null && inp.hour !== '')
+                         ? parseInt(inp.hour, 10) : null;
+                
+                const yearOK  = Number.isFinite(yr) && yr >= 1900 && yr <= 2030;
+                const monthOK = Number.isFinite(mo) && mo >= 1 && mo <= 12;
+                const dayOK   = Number.isFinite(dy) && dy >= 1 && dy <= 31;
+                const hourOK  = (hr === null) || (Number.isFinite(hr) && hr >= 0 && hr <= 23);
+                
+                if (yearOK && monthOK && dayOK && hourOK) {
+                    // ★ 평탄 구조 ★ — 워커가 sajuInput.year로 직접 접근
                     sajuInputForV55 = {
-                        input:     sajuObj.input,
-                        category:  sajuObj.category,
-                        timePhase: sajuObj.timePhase
+                        year:      yr,
+                        month:     mo,
+                        day:       dy,
+                        hour:      hr,            // null 허용 (시간 모름)
+                        isLunar:   !!inp.isLunar,
+                        isLeap:    !!inp.isLeap,
+                        gender:    inp.gender || null,
+                        category:  sajuObj.category  || null,
+                        timePhase: sajuObj.timePhase || 'medium'
                     };
+                    console.log('✅ [V55] 사주 입력 검증 통과:', { yr, mo, dy, hr });
+                } else {
+                    console.warn('⚠ [V55] 사주 입력 검증 실패 — 사주 없이 진행', 
+                                 { yr, mo, dy, hr, yearOK, monthOK, dayOK, hourOK });
                 }
             }
         } catch(e) {
@@ -23874,10 +23903,24 @@ async function startTossPayment(planKey, method) {
         }
     }
     
+    // ─── question 기본값 처리 ───
+    //   [핫픽스 2] 워커 에러: "question 필수 (문자열)"
+    //   원인: 사주/카테고리 모드는 사용자가 seed-input에 질문 입력 안 함 → 빈 문자열
+    //   해결: 빈 경우 카테고리별 기본 question
+    const rawQuestion = document.getElementById('seed-input')?.value || '';
+    const userQuestion = (typeof rawQuestion === 'string') ? rawQuestion.trim() : '';
+    const questionForV55 = userQuestion || (
+        categoryHint === 'saju'   ? '사주 정밀 분석 요청'  :
+        categoryHint === 'love'   ? '연애·관계운 점사'    :
+        categoryHint === 'stock'  ? '투자 신탁 점사'      :
+        categoryHint === 'crypto' ? '코인 타이밍 점사'    :
+                                    '오늘의 점사'
+    );
+    
     let readingId;
     try {
         readingId = await _v55CreateReading(planKey, categoryHint, {
-            question:    document.getElementById('seed-input')?.value || '',
+            question:    questionForV55,
             sajuInput:   sajuInputForV55,
             queryMode:   (typeof CURRENT_MODE !== 'undefined') ? CURRENT_MODE : 'general',
             loveSubType: (typeof LOVE_SUBTYPE !== 'undefined') ? LOVE_SUBTYPE : null,
