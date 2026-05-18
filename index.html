@@ -4937,10 +4937,11 @@ function _v55GetCategoryHint() {
 async function _v55CreateReading(planKey, categoryHint, extraPayload) {
     const v55Plan = V54_TO_V55_PLAN_ALIAS[planKey] || planKey;
     const body = {
-        plan:           v55Plan,
-        v54Plan:        planKey,
-        feature:        categoryHint,   // ★ V55 워커 필수 필드 ★
-        category:       categoryHint,   // V54 호환 보조
+        plan:           v55Plan,        // V55 플랜 (entry/premium/month/year/lifetime)
+        v54Plan:        planKey,        // V54 호환 추적
+        feature:        v55Plan,        // ★ V55 워커 필수 — feature = 결제 플랜 (카테고리 X) ★
+        category:       categoryHint,   // 카테고리 hint (saju/love/stock/crypto/general) — 보조
+        categoryHint:   categoryHint,   // 별칭 (워커가 둘 중 어느 이름으로 받든 OK)
         idempotencyKey: `${planKey}_${Date.now()}_${Math.random().toString(36).slice(2,10)}`,
         clientVersion:  (typeof APP_VERSION !== 'undefined') ? APP_VERSION : 'unknown',
         ...(extraPayload || {})
