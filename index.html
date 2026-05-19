@@ -4952,10 +4952,17 @@ function _v55GetCategoryHint() {
 //   AbortController + 15s timeout = V55PaymentContext.js 동일 패턴 (BFCache 방어)
 async function _v55CreateReading(planKey, categoryHint, extraPayload) {
     const v55Plan = V54_TO_V55_PLAN_ALIAS[planKey] || planKey;
+    // ★ Patch 2.4-feature-fix ★
+    //   결함: 워커 VALID_FEATURES = ['basic', 'premium'] 만 인식
+    //         사장님 5플랜 (entry/premium/month/year/lifetime)을 그대로 feature로 보내면
+    //         entry/month/year/lifetime 모두 400 "VALIDATION_ERROR" 거부
+    //   해결: plan(사장님 매출 분석용)과 feature(워커 콘텐츠 양 결정용) 분리 매핑
+    //         entry → basic / 나머지 → premium
+    const v55Feature = (v55Plan === 'entry') ? 'basic' : 'premium';
     const body = {
-        plan:           v55Plan,        // V55 플랜 (entry/premium/month/year/lifetime)
+        plan:           v55Plan,        // V55 플랜 (entry/premium/month/year/lifetime) — 매출 분석 + 사장님 분류
         v54Plan:        planKey,        // V54 호환 추적
-        feature:        v55Plan,        // ★ V55 워커 필수 — feature = 결제 플랜 (카테고리 X) ★
+        feature:        v55Feature,     // ★ 워커 호환: basic/premium ★ — 콘텐츠 양 결정
         category:       categoryHint,   // 카테고리 hint (saju/love/stock/crypto/general) — 보조
         categoryHint:   categoryHint,   // 별칭 (워커가 둘 중 어느 이름으로 받든 OK)
         idempotencyKey: `${planKey}_${Date.now()}_${Math.random().toString(36).slice(2,10)}`,
