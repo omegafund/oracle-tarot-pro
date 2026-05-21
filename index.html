@@ -5214,19 +5214,29 @@ const PAYMENT_PLANS = {
 //   원칙: 기존 PAYMENT_PLANS 객체 비파괴 — 함수 내부에서 alias 변환
 //        → 단계 3에서 PAYMENT_PLANS 5플랜으로 정리 시 alias 점진 제거
 // ════════════════════════════════════════════════════════════════════════════
-
-// V54 8개 플랜 → V55 5개 플랜 alias 매핑
-//   사장님 5플랜 결정: entry(990) / premium(4900) / month(9900) / year(79000) / lifetime(299000)
-//   단건 결제만 — 자동결제(monthly/yearly recurring) 제거
+// ════════════════════════════════════════════════════════════════════════
+// ★ [V55-PRICE-UNIFY] 모든 카테고리 990/4,900 가격 통일 ★ (2026-05-21)
+//
+// 사장님 영업 전략 — 데이터적 정확:
+//   사주 카테고리: 990원 (saju_basic) + 4,900원 (saju_premium)
+//   카드 카테고리: 990원 (trial 체험권) + 4,900원 (premium 1일권 24시간 무제한)
+//
+// 폐기 항목:
+//   day (3,900원)      — 카드 1일권 → 4,900원 saju_premium으로 통합
+//   month (9,900원)    — 폐기
+//   monthly (9,900원)  — 폐기
+//   yearly (79,000원)  — 폐기
+//   lifetime (199,000) — 폐기
+//
+// 결정적 효과:
+//   ✓ amount mismatch 결함 영구 차단 (V55 워커 검증 단순화)
+//   ✓ 사용자 가격 인지 명확 (990 vs 4,900 단순 선택)
+//   ✓ V54 결제 모달 7개 → 2개 버튼 (사용자 결제 결정 시간 단축)
+// ════════════════════════════════════════════════════════════════════════
 const V54_TO_V55_PLAN_ALIAS = {
-    'trial':        'entry',     // 990 → entry 990
+    'trial':        'entry',     // 990 → entry 990 (체험권 = 진입)
     'saju_basic':   'entry',     // 990 → entry 990 (사주 기본 = 진입)
-    'saju_premium': 'premium',   // 4900 → premium 4900 (메인 conversion)
-    'day':          'entry',     // 3900 → entry 990 (단계 4에서 day 제거 예정)
-    'month':        'month',     // 9900 단건 그대로
-    'monthly':      'month',     // 9900 자동결제 → month 단건 (alias)
-    'yearly':       'year',      // 79000 자동결제 → year 단건 (alias)
-    'lifetime':     'lifetime'   // 199000 → 299000 (단계 3 가격 조정)
+    'saju_premium': 'premium'    // 4900 → premium 4900 (PREMIUM 점사 + 카드 1일권 통합)
 };
 
 // V55 카테고리 hint 추출 (readingId prefix 라우팅: saju=sj / love=lv / stock=st / crypto=cr / general=gn)
