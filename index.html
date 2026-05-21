@@ -17313,6 +17313,23 @@ window.handleSajuModalClose = function() {
     if (earlyOverlay) earlyOverlay.remove();
     const earlyStyle = document.getElementById('paidOverlayStyle');
     if (earlyStyle) earlyStyle.remove();
+    
+    // ════════════════════════════════════════════════════════════════════════
+    // ★ V55-MODAL-CLOSE ★ Hard Clear (★ 사용자 명시적 종료 ★)
+    //   외부 자문 정확:
+    //     닫기 클릭 = 세션 종료 → 완전 백지화 (사용자 명시적 의도)
+    //   사장님 라이브 결함:
+    //     닫기 후 연애 궁합 → 프리패스 (결제 없이 점사)
+    //     원인: paid_token + sajuPaidPlan 잔존
+    //   해결: Hard Clear로 모든 토큰 + 점사 데이터 청소
+    // ════════════════════════════════════════════════════════════════════════
+    try {
+        if (typeof window.clearOracleHardState === 'function') {
+            window.clearOracleHardState();
+        }
+    } catch (e) {
+        console.warn('[V55-MODAL-CLOSE] 결함:', e.message);
+    }
 };
 
 // ════════════════════════════════════════════════════════════════════════
