@@ -17253,54 +17253,38 @@ window.handleSajuRestart = function() {
     const earlyStyle = document.getElementById('paidOverlayStyle');
     if (earlyStyle) earlyStyle.remove();
     
-    // 3. 사주 결제 컨텍스트 정리 (window + localStorage 둘 다)
-    //    ★ V200.3: localStorage.sajuPendingResult 추가 정리 (다른 카테고리 보호)
-    window._sajuPaymentContext = false;
-    try { localStorage.removeItem('sajuPaymentContext'); } catch(e) {}
-    try { localStorage.removeItem('sajuPaidPlan'); } catch(e) {}
-    try { localStorage.removeItem('sajuPendingResult'); } catch(e) {}
-    try { sessionStorage.removeItem('sajuPendingResult'); } catch(e) {}
-    try { sessionStorage.removeItem('sajuPaymentContext'); } catch(e) {}
-    
     // ════════════════════════════════════════════════════════════════════════
-    // ★ V55-RESTART ★ V55 결제 토큰 6종 청소 (프리패스 원천 차단)
+    // ★ V55-RESTART ★ Hard Clear (★ 처음으로 = 세션 종료 ★)
     //   외부 자문 정확:
-    //     handleSajuRestart = 점사 완료 후 사용자가 명시적으로 누름
-    //     → pendingOracle + cachedFullText 청소 안전 (결제 진행 중 X)
-    //     → V55 결제 토큰 + 카드 잔존 모두 청소
+    //     처음으로 클릭 = 사용자 명시적 세션 종료 → 완전 백지화
+    //   기존 5/21 작업의 V55 청소 6종 → Hard Clear 단일 호출로 통합
+    //   유지보수 단순 + 중복 코드 제거
     // ════════════════════════════════════════════════════════════════════════
-    try { localStorage.removeItem('paid_token'); } catch(e) {}
-    try { localStorage.removeItem('oracleSessionToken'); } catch(e) {}
-    try { localStorage.removeItem('sajuPaidExpiresAt'); } catch(e) {}
-    try { localStorage.removeItem('verifiedAt'); } catch(e) {}
-    try { localStorage.removeItem('pendingOracle'); } catch(e) {}
-    try { sessionStorage.removeItem('pendingOracle'); } catch(e) {}
-    try { localStorage.removeItem('cachedFullText'); } catch(e) {}
-    console.log('🧹 [V55-RESTART] V55 결제 토큰 + 카드 잔존 청소 완료');
+    try {
+        if (typeof window.clearOracleHardState === 'function') {
+            window.clearOracleHardState();
+        }
+    } catch (e) {
+        console.warn('[V55-RESTART] 결함:', e.message);
+    }
     
-    // 4. 홈 화면 보장 (이미 그려져 있으면 그대로, 아니면 페이지 진입)
-    //    스크롤 맨 위로
+    // 3. 홈 화면 보장
     window.scrollTo({ top: 0, behavior: 'smooth' });
     
-    // 5. 사주 카드(보조)로 시각 안내 (옵션)
-    setTimeout(function() {
-        const sajuCard = document.querySelector('.saju-aux-card');
-        if (sajuCard) {
-            sajuCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        }
-    }, 400);
-    
     // ════════════════════════════════════════════════════════════════════════
-    // ★ V55-RESTART 안전 ★ — URL 청소 + 흔적 없는 메인 리다이렉트
-    //   외부 자문 정확: 600ms → 100ms (중복 터치 + BFCache 개입 차단)
+    // ★ Safari 안전 ★ — replaceState 폐기, location.replace 단독
+    //   외부 자문 정확:
+    //     replaceState + location.replace 이중 실행 → Safari history 꼬임
+    //     reload double fire + pageshow 중복 위험
+    //   해결: location.replace 단독 (250ms 안전 마진 — 렌더링 안전)
     // ════════════════════════════════════════════════════════════════════════
     setTimeout(function() {
         try {
             window.location.replace(window.location.pathname);
         } catch (e) {
-            console.warn('[V55-RESTART] location.replace 결함:', e.message);
+            window.location.href = '/';
         }
-    }, 100);
+    }, 250);
 };
 
 window.handleSajuModalClose = function() {
