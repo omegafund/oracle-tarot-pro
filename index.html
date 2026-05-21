@@ -4156,6 +4156,126 @@
     //       → hasToken 없음 → 사주 PAID 잔류 정리 (안전)
     //       → 정상 사용자 영향 X
     //   
+   // ════════════════════════════════════════════════════════════════════════
+    // ★ [V55-TUNNEL] V55 결제 통과 → V54 영업 진입 매개 ★ (2026-05-21)
+    //
+    // 외부 자문 (제미니/지피티/클로드) 통합 분석:
+    //   결함 1: 도메인 분리 (oracle-tarot-v1 vs zeustarot.com)
+    //   결함 2: V54 hardGuard 오판 (토큰 없으면 사주 PAID 청소)
+    //   해결: URL Parameter로 토큰 매개 + 강제 덮어쓰기
+    //
+    // 작동:
+    //   ① success-v55.html이 ?paid=ok&ctx=...&rid=...&token=... 매개
+    //   ② 이 IIFE가 URL → localStorage 강제 복원 (stale 토큰 덮어쓰기)
+    //   ③ hardGuard 이후 토큰 존재 → 사주 흐름 정상 진입
+    //
+    // 영향:
+    //   ✓ V54 점사 영역 100% 보존
+    //   ✓ V54 hardGuard 보안 100% 보존 (토큰 검증 그대로)
+    //   ✓ V200.7.10 보안 100% 보존 (URL ctx/plan 검증 그대로)
+    // ════════════════════════════════════════════════════════════════════════
+    (function v55TunnelTokenSync() {
+        try {
+            var p = new URLSearchParams(window.location.search);
+            var urlPaid = p.get('paid');
+            var urlCtx = (p.get('ctx') || '').toLowerCase();
+            var urlPlan = p.get('plan');
+            var urlRid = p.get('rid');
+            var urlToken = p.get('token');
+            
+            // V55 결제 통과 매개 감지 (paid=ok + rid + token 모두 있음)
+            var isV55TunnelEntry = (urlPaid === 'ok') && urlRid && urlToken;
+            
+            if (!isV55TunnelEntry) return;  // V55 매개 아님 → 정상 흐름
+            
+            console.log('🔓 [V55-TUNNEL] V55 결제 매개 감지 — localStorage 강제 복원');
+            console.log('  - rid:', urlRid);
+            console.log('  - ctx:', urlCtx);
+            console.log('  - plan:', urlPlan);
+            
+            // ① paid_token + oracleSessionToken ★ 강제 덮어쓰기 ★
+            //   외부 자문 정확: stale 토큰 잔존 시 옛 결제 컨텍스트 사용 위험
+            //   해결: 조건 없이 ★ 무조건 새 토큰 ★ 적용
+            localStorage.setItem('paid_token', 'V55_' + urlRid);
+            localStorage.setItem('oracleSessionToken', urlToken);
+            
+            // ② sajuPaymentContext ★ 강제 설정 ★ (사주 컨텍스트일 때)
+            if (urlCtx === 'saju') {
+                localStorage.setItem('sajuPaymentContext', 'true');
+                sessionStorage.setItem('sajuPaymentContext', 'true');
+                window._sajuPaymentContext = true;
+            }
+            
+            // ③ sajuPaidPlan ★ 강제 설정 ★
+            if (urlPlan) {
+                localStorage.setItem('sajuPaidPlan', urlPlan);
+                sessionStorage.setItem('sajuPaidPlan', urlPlan);
+            }
+            
+            // ④ sajuPaidExpiresAt + verifiedAt ★ 강제 설정 ★ (60분 유효)
+            var paidExpiresAt = Date.now() + (60 * 60 * 1000);
+            localStorage.setItem('sajuPaidExpiresAt', String(paidExpiresAt));
+            localStorage.setItem('verifiedAt', String(Date.now()));
+            
+            // ⑤ ★ stale pendingOracle 청소 ★ — 카드 fallback 차단
+            //   사장님 라이브 결함: "신탁의 실타래가..." 화면 멈춤
+            //   원인: 옛 카드 카테고리 pendingOracle 잔존 → V54 영업이 카드 fallback
+            //   해결: V55 진입 시 pendingOracle 강제 청소
+            if (urlCtx === 'saju') {
+                localStorage.removeItem('pendingOracle');
+                sessionStorage.removeItem('pendingOracle');
+                localStorage.removeItem('cachedFullText');
+            }
+            
+            console.log('✅ [V55-TUNNEL] localStorage 복원 완료 — hardGuard 통과 준비');
+            
+            // ⑥ ★ 사주 컨텍스트 ★ sajuPendingResult 비동기 복원 (워커 fetch-reading)
+            //   목적: success-v55.html이 다른 도메인이라 sajuPendingResult 못 전달
+            //   해결: V55 워커에서 sajuInput 직접 fetch + localStorage 저장
+            if (urlCtx === 'saju' && !localStorage.getItem('sajuPendingResult')) {
+                var V55_WORKER = 'https://tarot-api-merged.omegafund01.workers.dev';
+                fetch(V55_WORKER + '/v55/fetch-reading?rid=' + encodeURIComponent(urlRid) + 
+                      '&token=' + encodeURIComponent(urlToken))
+                    .then(function (r) { return r.json(); })
+                    .then(function (data) {
+                        var sajuInput = data.sajuInput || data.input;
+                        if (!sajuInput || !sajuInput.year) return;
+                        
+                        var v54Gender = (sajuInput.gender === 'female' || 
+                                        sajuInput.gender === '여' || 
+                                        sajuInput.gender === 'F') ? 'female' : 'male';
+                        
+                        var sajuPendingResult = {
+                            input: {
+                                year:     Number(sajuInput.year),
+                                month:    Number(sajuInput.month),
+                                day:      Number(sajuInput.day),
+                                hour:     (sajuInput.hour !== undefined && sajuInput.hour !== null && 
+                                          sajuInput.hour !== '') ? Number(sajuInput.hour) : null,
+                                minute:   Number(sajuInput.minute || 0),
+                                gender:   v54Gender,
+                                calendar: sajuInput.calendar === 'lunar' ? 'lunar' : 'solar',
+                                isLunar:  sajuInput.calendar === 'lunar' || !!sajuInput.isLunar
+                            },
+                            category:  data.category || 'fortune',
+                            timePhase: data.timePhase || 'medium',
+                            savedAt:   Date.now()
+                        };
+                        
+                        localStorage.setItem('sajuPendingResult', JSON.stringify(sajuPendingResult));
+                        sessionStorage.setItem('sajuPendingResult', JSON.stringify(sajuPendingResult));
+                        console.log('✅ [V55-TUNNEL] sajuPendingResult 복원 완료');
+                    })
+                    .catch(function (err) {
+                        console.warn('[V55-TUNNEL] sajuInput fetch 결함 (무시):', err.message);
+                    });
+            }
+        } catch (e) {
+            console.warn('[V55-TUNNEL] 매개 결함 (무시):', e.message);
+        }
+    })();
+    
+    // ════════════════════════════════════════════════════════════════════════ 
     //   ★ 이 코드는 ★ 마지막 안전망 ★ ★
     // ════════════════════════════════════════════════════════════════════════
     (function hardGuardV196() {
