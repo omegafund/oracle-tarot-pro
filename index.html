@@ -4336,8 +4336,122 @@
             console.warn('[V55-MOBILE-GUARD] 매개 결함 무시:', e.message);
         }
     })();
+   // ════════════════════════════════════════════════════════════════════════
+    // ★ [V55-STATE-MACHINE] Soft/Hard 2단계 멸균 시스템 ★ (2026-05-21 최종판)
+    //
+    // 외부 자문 통합 (제미니 + 지피티) + 클로드 정밀 검증:
+    //   사장님 V54 영업의 결제 흐름:
+    //     • 카드 카테고리 → selectedCards (Line 5095) 메모리/스토리지 보유
+    //     • 결제 통과 후 V54 자동 복원 (Line 7657) → selectedCards 사용
+    //     • renderStream (Line 8086)에 selectedCards 전달
+    //
+    //   ★ 결정적 결함 ★ (이전 단일 함수의 위험):
+    //     단일 청소 함수는 selectedCards 청소 → 카드 카테고리 결제 깨짐
+    //
+    //   ★ 해결 — Soft/Hard 2단계 ★:
+    //     Soft Clear (카테고리 이동):
+    //       - 결제 토큰만 청소 (paid_token, oracleSessionToken 등)
+    //       - selectedCards, reversedFlags, currentCategory 보존
+    //     Hard Clear (처음으로/닫기):
+    //       - 완전 백지화 (사용자 명시적 종료)
+    //
+    //   ★ 외부 자문 정확 ★:
+    //     ✓ currentCategory = 상태 머신 기준값 (절대 청소 X)
+    //     ✓ selectedCards = 카드 카테고리 결제 흐름 필수
+    //     ✓ replaceState + replace 이중 실행 폐기 (Safari history 꼬임)
+    //     ✓ selectCategory 조건부 청소 (transition 시에만)
+    // ════════════════════════════════════════════════════════════════════════
+    window._v55Debug = false;  // ★ 사장님 시험 시 true ★
     
-    // ════════════════════════════════════════════════════════════════════════    
+    window._v55Logger = function(scene) {
+        if (!window._v55Debug) return;
+        try {
+            console.log('📊 [STATE-LOG][' + scene + ']', {
+                currentCategory: localStorage.getItem('currentCategory') || 'NONE',
+                paid_token: localStorage.getItem('paid_token') ? '존재(O)' : '없음(X)',
+                sajuPaidPlan: localStorage.getItem('sajuPaidPlan') || '없음',
+                sajuPendingResult: localStorage.getItem('sajuPendingResult') ? '존재(O)' : '없음(X)',
+                pendingOracle: localStorage.getItem('pendingOracle') ? '존재(O)' : '없음(X)',
+                cachedFullText: localStorage.getItem('cachedFullText') ? '존재(O)' : '없음(X)',
+                selectedCards: localStorage.getItem('selectedCards') ? '보존(O)' : '없음(X)'
+            });
+        } catch(e) {}
+    };
+    
+    // ────────────────────────────────────────────────────────────────────────
+    // ★ Soft Clear ★ — 카테고리 이동용 (결제 토큰 + 대기 상태만 청소)
+    //   ★ 보존 ★: selectedCards, reversedFlags, currentCategory, 사용자 입력
+    //   ★ 청소 ★: 결제 토큰 (paid_token, oracleSessionToken 등)
+    // ────────────────────────────────────────────────────────────────────────
+    window.clearOracleSoftState = function() {
+        if (window._v55Debug) console.log('🧼 [V55-SOFT-CLEAR] 카테고리 이동용 경량 청소');
+        
+        var softKeys = [
+            // V55 결제 토큰
+            'paid_token',
+            'oracleSessionToken',
+            'verifiedAt',
+            'sajuPaidPlan',
+            'sajuPaymentContext',
+            'sajuPaidExpiresAt',
+            // 결제 대기 상태
+            'pendingOracle',
+            'cachedFullText',
+            'sajuPendingResult',
+            'sajuPendingResultBackup',
+            'oracleResultCache'
+        ];
+        softKeys.forEach(function(k) {
+            try { localStorage.removeItem(k); } catch(e) {}
+            try { sessionStorage.removeItem(k); } catch(e) {}
+        });
+        
+        // RAM 안전 변수 청소 (★ selectedCards/reversedFlags 보존 ★)
+        window._sajuPaymentContext = false;
+        window._cachedSajuResult = null;
+        window._cachedResult = null;
+    };
+    
+    // ────────────────────────────────────────────────────────────────────────
+    // ★ Hard Clear ★ — 처음으로/닫기용 (완전 백지화)
+    //   사용자가 명시적으로 세션 종료 → 모든 데이터 청소
+    //   주의: currentCategory 청소 X (상태 머신 기준값)
+    //         isPaidUser 청소 X (V54 점사 진행 보호)
+    // ────────────────────────────────────────────────────────────────────────
+    window.clearOracleHardState = function() {
+        window._v55Logger('HARD_CLEAR_BEFORE');
+        console.log('💥 [V55-HARD-CLEAR] 처음으로/닫기 — 완전 백지화');
+        
+        // Soft 영역 먼저
+        window.clearOracleSoftState();
+        
+        // Hard 추가 영역 (★ currentCategory 제외 — 상태 머신 기준값 ★)
+        var hardKeys = [
+            'selectedCards',
+            'reversedFlags',
+            'currentQuestion',
+            'saju_gender',
+            'user_gender',
+            'last_query',
+            'cached_saju_input'
+        ];
+        hardKeys.forEach(function(k) {
+            try { localStorage.removeItem(k); } catch(e) {}
+            try { sessionStorage.removeItem(k); } catch(e) {}
+        });
+        
+        // RAM 메모리 전면 청소 (★ isPaidUser 제외 — V54 점사 진행 보호 ★)
+        window._reversedFlags = null;
+        window.globalUserQuery = '';
+        window.currentGender = '';
+        window.userGender = '';
+        window.selectedSajuData = null;
+        window.currentSajuData = null;
+        window._lastRenderedOutput = null;
+    };
+    
+    // ════════════════════════════════════════════════════════════════════════ 
+   
     // ════════════════════════════════════════════════════════════════════════ 
     //   ★ 이 코드는 ★ 마지막 안전망 ★ ★
     // ════════════════════════════════════════════════════════════════════════
