@@ -4274,7 +4274,70 @@
             console.warn('[V55-TUNNEL] 매개 결함 (무시):', e.message);
         }
     })();
+// ════════════════════════════════════════════════════════════════════════
+    // ★ [V55-MOBILE-GUARD] 모바일 연속 결제 + 좀비 데이터 차단 ★
+    //   외부 자문 (제미니/지피티) 정확 반영:
+    //     일반 진입에서 pendingOracle + cachedFullText 청소 제외
+    //     이유: 카드 카테고리 결제 진행 중 데이터 + 점사 결과 캐시
+    //           사용자 우연 진입 시 데이터 보존 (V54 자동 복원 보호)
+    //   pageshow 리스너 폐기 (V54 v86HandlePageShow와 협조)
+    // ════════════════════════════════════════════════════════════════════════
+    (function v55MobileGuard() {
+        try {
+            var p = new URLSearchParams(window.location.search);
+            var urlPaid = p.get('paid');
+            var urlRid = p.get('rid') || p.get('readingId');
+            var urlToken = p.get('token');
+            
+            var isV55Entry = (urlPaid === 'ok') && urlRid && urlToken;
+            
+            if (!isV55Entry) {
+                // ① 메인 진입 — V55 결제 토큰 좀비만 타겟 청소
+                //   외부 자문 정확: pendingOracle + cachedFullText 제외
+                //   이유: 사용자가 카드 카테고리 결제 진입 후 우연히 메인 진입 시
+                //         pendingOracle 잔존 = 정상 (결제 통과 후 자동 복원)
+                //         cachedFullText = 점사 결과 캐시 (사용자 결과 읽는 중)
+                var v55TokenItems = [
+                    'paid_token',
+                    'oracleSessionToken',
+                    'sajuPaymentContext',
+                    'sajuPaidPlan',
+                    'sajuPaidExpiresAt',
+                    'verifiedAt'
+                ];
+                var cleared = [];
+                v55TokenItems.forEach(function (item) {
+                    if (localStorage.getItem(item)) {
+                        cleared.push(item);
+                        localStorage.removeItem(item);
+                    }
+                    sessionStorage.removeItem(item);
+                });
+                window._sajuPaymentContext = false;
+                
+                if (cleared.length > 0) {
+                    console.log('🧹 [V55-MOBILE-GUARD] 메인 진입 — V55 토큰 좀비 청소:', cleared.join(', '));
+                }
+            } else {
+                // ② V55 결제 진입 — 1.5초 후 URL 세탁
+                //   V54 v86HandlePageShow와 협조 (충돌 X)
+                setTimeout(function () {
+                    try {
+                        if (window.history && window.history.replaceState) {
+                            window.history.replaceState({}, document.title, window.location.pathname);
+                            console.log('✨ [V55-MOBILE-GUARD] URL 결제 매개 세탁 완료');
+                        }
+                    } catch (_) {}
+                }, 1500);
+            }
+            
+            // ★ pageshow 리스너 추가 X ★ (V54 v86HandlePageShow 자체 처리)
+        } catch (e) {
+            console.warn('[V55-MOBILE-GUARD] 매개 결함 무시:', e.message);
+        }
+    })();
     
+    // ════════════════════════════════════════════════════════════════════════    
     // ════════════════════════════════════════════════════════════════════════ 
     //   ★ 이 코드는 ★ 마지막 안전망 ★ ★
     // ════════════════════════════════════════════════════════════════════════
