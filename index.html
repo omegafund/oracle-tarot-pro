@@ -6190,6 +6190,44 @@ const CATEGORY_CONFIG = {
 
 // ══ 카테고리 선택 ══
 function selectCategory(catKey, btnEl) {
+    // ════════════════════════════════════════════════════════════════════════
+    // ★ V55-CATEGORY-DIAGNOSIS ★ 카테고리 누수 추적 (사장님 라이브 결함 진단)
+    //   외부 자문 정확 권고: 영업 시 항상 출력 (DEBUG 무관)
+    //   이유: 프리패스/카테고리 누수 실시간 추적 → 결함 발견 즉시 진단
+    // ════════════════════════════════════════════════════════════════════════
+    console.log('🎯 [CATEGORY-TRANSITION]', {
+        from: localStorage.getItem('currentCategory') || 'NONE',
+        to: catKey,
+        paid: !!localStorage.getItem('paid_token')
+    });
+    
+    // ════════════════════════════════════════════════════════════════════════
+    // ★ V55-CATEGORY-GUARD ★ 조건부 Soft Clear (★ 다른 카테고리 이동 시에만 ★)
+    //   외부 자문 정확 (제미니 + 지피티 + 클로드):
+    //     ★ 같은 카테고리 내 ★ (사주 990→4,900 재클릭) 청소 시 결제 토큰 사라짐
+    //     → 결제 진행 흐름 깨짐 → 결함 위험
+    //   해결: prevCategory !== catKey 일 때만 Soft Clear (★ 결제 토큰만 청소 ★)
+    //   ★ selectedCards 보존 ★ (카드 카테고리 결제 진행 보호)
+    //   ★ currentCategory ★ = 상태 머신 기준값 (절대 청소 X)
+    // ════════════════════════════════════════════════════════════════════════
+    try {
+        const prevCategory = localStorage.getItem('currentCategory');
+        if (prevCategory && prevCategory !== catKey) {
+            // 다른 카테고리로 이동 → Soft Clear (결제 토큰 청소)
+            if (typeof window.clearOracleSoftState === 'function') {
+                window.clearOracleSoftState();
+                console.log('🛡 [V55-CATEGORY-GUARD] 카테고리 전환:', prevCategory, '→', catKey);
+            }
+        }
+        // currentCategory 새 값 저장 (★ 청소 X 보존 ★)
+        localStorage.setItem('currentCategory', catKey);
+        if (typeof window._v55Logger === 'function') {
+            window._v55Logger('카테고리 진입 완료: ' + catKey);
+        }
+    } catch (e) {
+        console.warn('[V55-CATEGORY-GUARD] 오류 무시:', e.message);
+    }
+    
     // ★★★ [V200.3 결정적 차단] 카테고리 진입 시 다른 카테고리 잔재 정리 ★★★
     //   사장님 V200.2 검증 후 발견:
     //     "연애/주식/부동산/운세 결제 → 사주입력 화면 → 홈뷰 복귀"
