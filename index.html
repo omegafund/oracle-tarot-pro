@@ -20910,7 +20910,10 @@ function renderSajuResult(data) {
                                             white-space:pre-line; word-break:keep-all; overflow-wrap:break-word;">
 ${cleanContent}
                                 </div>` : ''}
-                            ${_v37_glossaryHTML}
+                           ${_v37_glossaryHTML ? `
+                            <div class="zt-pro-more" onclick="var d=document.getElementById('ztgloss');var o=d.classList.toggle('open');this.innerHTML=(o?'▲ 접기':'▼ 십성 용어 풀이 보기');" style="margin-top:10px;">▼ 십성 용어 풀이 보기</div>
+                            <div class="zt-pro-deep" id="ztgloss">${_v37_glossaryHTML}</div>
+                            ` : ''}
                         </div>`;
                 })() : ''}
                 
