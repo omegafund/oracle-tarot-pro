@@ -20958,70 +20958,107 @@ ${cleanContent}
                         </div>`;
                 })() : ''}
                 
-                ${data.pro.hiddenRisk ? `
-                <div style="margin-bottom:12px; padding:12px; background:rgba(231,76,60,0.08); border-left:3px solid #e74c3c; border-radius:0 6px 6px 0;">
-                    <div style="color:#FF8870; font-size:0.84rem; font-weight:800; margin-bottom:6px;">${data.pro.hiddenRisk.title || '⚠ 숨은 리스크'}</div>
-                    <div style="color:rgba(255,255,255,0.92); font-size:0.84rem; line-height:1.65; white-space:pre-line; word-break:keep-all; overflow-wrap:break-word;">${data.pro.hiddenRisk.content || ''}</div>
-                </div>` : ''}
-                
-                ${data.pro.timingPrecision ? `
-                <div style="margin-bottom:12px; padding:12px; background:rgba(46,204,113,0.08); border-left:3px solid #2ecc71; border-radius:0 6px 6px 0;">
-                    <div style="color:#5DD68A; font-size:0.84rem; font-weight:800; margin-bottom:6px;">${data.pro.timingPrecision.title || '⏱ 타이밍 정밀'}</div>
-                    <div style="color:rgba(255,255,255,0.92); font-size:0.84rem; line-height:1.65; white-space:pre-line; word-break:keep-all; overflow-wrap:break-word;">${data.pro.timingPrecision.content || ''}</div>
-                </div>` : ''}
-                
-                ${data.pro.luckPhase12 ? `
-                <div style="margin-bottom:12px; padding:12px; background:rgba(0,0,0,0.25); border-left:3px solid #FFD970; border-radius:0 6px 6px 0;">
-                    <div style="color:#FFD970; font-size:0.84rem; font-weight:800; margin-bottom:6px;">${data.pro.luckPhase12.title || '🌀 12운성'}</div>
-                    <div style="color:rgba(255,255,255,0.92); font-size:0.84rem; line-height:1.65; white-space:pre-line; word-break:keep-all; overflow-wrap:break-word;">${data.pro.luckPhase12.content || ''}</div>
-                    ${data.pro.luckPhase12.v54_body ? `
-                    <!-- ★ V202.54.0 Step 8 ★ 12운성 V54 깊이 본문 -->
-                    <div style="margin-top:12px; padding:10px 12px; background:rgba(195,155,211,0.06); border-left:2px solid rgba(195,155,211,0.45); border-radius:0 6px 6px 0;">
-                        <div style="color:#C39BD3; font-size:0.78rem; font-weight:700; margin-bottom:6px;">💭 현재 단계 깊이 통찰</div>
-                        <div style="color:rgba(255,255,255,0.88); font-size:0.82rem; line-height:1.75; white-space:pre-line; word-break:keep-all;">${data.pro.luckPhase12.v54_body}</div>
-                    </div>` : ''}
-                </div>` : ''}
-                
+                 ${data.pro.hiddenRisk ? (() => {
+                    const c = data.pro.hiddenRisk.content || '';
+                    const long = c.length > 80;
+                    const head = long ? c.slice(0, 70) + '…' : c;
+                    const id = 'zthr_' + Math.random().toString(36).slice(2,7);
+                    return `
+                <div class="zt-pro-bub mint">
+                    <div class="zt-pro-tit mint">⚠ ${(data.pro.hiddenRisk.title||'숨은 리스크').replace(/^[⚠️\s]+/,'')}</div>
+                    <div class="zt-pro-txt">${head}</div>
+                    ${long ? `
+                    <div class="zt-pro-more" onclick="var d=document.getElementById('${id}');var o=d.classList.toggle('open');this.innerHTML=(o?'▲ 접기':'▼ 숨은 이야기 보기');">▼ 숨은 이야기 보기</div>
+                    <div class="zt-pro-deep" id="${id}">${c}</div>` : ''}
+                </div>`;
+                })() : ''}
+
+                ${data.pro.timingPrecision ? (() => {
+                    const c = data.pro.timingPrecision.content || '';
+                    const long = c.length > 80;
+                    const head = long ? c.slice(0, 70) + '…' : c;
+                    const id = 'zttp_' + Math.random().toString(36).slice(2,7);
+                    return `
+                <div class="zt-pro-bub mint">
+                    <div class="zt-pro-tit mint">⏱ ${(data.pro.timingPrecision.title||'타이밍 정밀').replace(/^[⏱️\s]+/,'')}</div>
+                    <div class="zt-pro-txt">${head}</div>
+                    ${long ? `
+                    <div class="zt-pro-more" onclick="var d=document.getElementById('${id}');var o=d.classList.toggle('open');this.innerHTML=(o?'▲ 접기':'▼ 숨은 이야기 보기');">▼ 숨은 이야기 보기</div>
+                    <div class="zt-pro-deep" id="${id}">${c}</div>` : ''}
+                </div>`;
+                })() : ''}
+
+                ${data.pro.luckPhase12 ? (() => {
+                    const c = data.pro.luckPhase12.content || '';
+                    const deep = data.pro.luckPhase12.v54_body || '';
+                    const head = c.length > 80 ? c.slice(0, 70) + '…' : c;
+                    const full = deep ? (c + '\n\n💭 현재 단계 깊이 통찰\n' + deep) : c;
+                    const long = (c.length > 80) || deep;
+                    const id = 'ztlp_' + Math.random().toString(36).slice(2,7);
+                    return `
+                <div class="zt-pro-bub">
+                    <div class="zt-pro-tit">🌀 ${(data.pro.luckPhase12.title||'12운성').replace(/^[🌀\s]+/,'')}</div>
+                    <div class="zt-pro-txt">${head}</div>
+                    ${long ? `
+                    <div class="zt-pro-more" onclick="var d=document.getElementById('${id}');var o=d.classList.toggle('open');this.innerHTML=(o?'▲ 접기':'▼ 숨은 이야기 보기');">▼ 숨은 이야기 보기</div>
+                    <div class="zt-pro-deep" id="${id}">${full}</div>` : ''}
+                </div>`;
+                })() : ''}
+
                 ${data.pro.shinSal ? `
-                <div style="margin-bottom:12px; padding:12px; background:rgba(255,165,80,0.08); border-left:3px solid #FFB870; border-radius:0 6px 6px 0;">
-                    <div style="color:#FFD970; font-size:0.84rem; font-weight:800; margin-bottom:6px;">${data.pro.shinSal.title || '⚔️ 신살'}</div>
+                <div class="zt-pro-bub">
+                    <div class="zt-pro-tit">⚔️ ${data.pro.shinSal.title ? data.pro.shinSal.title.replace(/^[⚔️\s]+/, '') : '신살'}</div>
                     ${(data.pro.shinSal.v54_items && data.pro.shinSal.v54_items.length > 0) ? `
-                    <!-- ★★★ [V202.54.0 Step 8] V54 신살 노출 — 사장님 7원칙 ⑥ ★★★
-                         "도화살: 매력과 인기" → "관계 끌림 신호 + 양면" -->
-                    ${data.pro.shinSal.v54_items.map(item => `
-                        <div style="margin-bottom:10px; padding:10px 12px; background:rgba(0,0,0,0.18); border-left:2px solid rgba(255,184,112,0.5); border-radius:0 5px 5px 0;">
-                            <div style="color:#FFB870; font-size:0.84rem; font-weight:800; margin-bottom:6px;">
-                                ${item.v54_label || (item.icon + ' ' + item.name)}
-                            </div>
-                            ${item.v54_body ? `
-                            <div style="color:rgba(255,255,255,0.88); font-size:0.81rem; line-height:1.75; white-space:pre-line; word-break:keep-all;">${item.v54_body}</div>
-                            ` : `
-                            <div style="color:rgba(255,255,255,0.82); font-size:0.80rem; line-height:1.6;">
-                                ▸ ${item.meaning}<br>
-                                ▸ 효과: ${item.effect}<br>
-                                ▸ 조언: ${item.advice}
-                            </div>
-                            `}
-                        </div>
-                    `).join('')}
+                    ${data.pro.shinSal.v54_items.map((item, idx) => {
+                        const label = item.v54_label || (item.icon + ' ' + item.name);
+                        const body = item.v54_body || ('▸ ' + (item.meaning||'') + '\n▸ 효과: ' + (item.effect||'') + '\n▸ 조언: ' + (item.advice||''));
+                        const shortLine = item.v54_short || (body.split('\n')[0] || '').slice(0, 60);
+                        const did = 'ztss_' + idx + '_' + Math.random().toString(36).slice(2,7);
+                        return `
+                        <div style="margin-bottom:10px;">
+                            <div class="zt-pro-item-label">${label}</div>
+                            <div class="zt-pro-txt">${shortLine}</div>
+                            <div class="zt-pro-more" onclick="var d=document.getElementById('${did}');var o=d.classList.toggle('open');this.innerHTML=(o?'▲ 접기':'▼ 숨은 이야기 보기');">▼ 숨은 이야기 보기</div>
+                            <div class="zt-pro-deep" id="${did}">${body}</div>
+                        </div>`;
+                    }).join('')}
                     ` : `
-                    <div style="color:rgba(255,255,255,0.92); font-size:0.84rem; line-height:1.65; white-space:pre-line; word-break:keep-all; overflow-wrap:break-word;">${data.pro.shinSal.content || ''}</div>
+                    <div class="zt-pro-txt">${data.pro.shinSal.content || ''}</div>
                     `}
                 </div>` : ''}
-                
-                ${data.pro.familyPackage ? `
-                <div style="margin-bottom:12px; padding:12px; background:rgba(155,89,182,0.08); border-left:3px solid #9b59b6; border-radius:0 6px 6px 0;">
-                    <div style="color:#C39BD3; font-size:0.84rem; font-weight:800; margin-bottom:6px;">${data.pro.familyPackage.title || '👨‍👩‍👧 가족 사주'}</div>
-                    <div style="color:rgba(255,255,255,0.92); font-size:0.84rem; line-height:1.65; white-space:pre-line; word-break:keep-all; overflow-wrap:break-word;">${data.pro.familyPackage.content || ''}</div>
-                </div>` : ''}
-                
-                ${data.pro.yearlyOutlook ? `
-                <div style="padding:12px; background:rgba(52,152,219,0.08); border-left:3px solid #3498db; border-radius:0 6px 6px 0;">
-                    <div style="color:#7FCDFF; font-size:0.84rem; font-weight:800; margin-bottom:6px;">${data.pro.yearlyOutlook.title || '📅 연운 흐름'}</div>
-                    <div style="color:rgba(255,255,255,0.92); font-size:0.84rem; line-height:1.65; white-space:pre-line; word-break:keep-all; overflow-wrap:break-word;">${data.pro.yearlyOutlook.content || ''}</div>
-                </div>` : ''}
+
+                ${data.pro.familyPackage ? (() => {
+                    const c = data.pro.familyPackage.content || '';
+                    const long = c.length > 80;
+                    const head = long ? c.slice(0, 70) + '…' : c;
+                    const id = 'ztfp_' + Math.random().toString(36).slice(2,7);
+                    return `
+                <div class="zt-pro-bub">
+                    <div class="zt-pro-tit">👨‍👩‍👧 ${(data.pro.familyPackage.title||'가족 사주').replace(/^[👨‍👩‍👧\s]+/,'')}</div>
+                    <div class="zt-pro-txt">${head}</div>
+                    ${long ? `
+                    <div class="zt-pro-more" onclick="var d=document.getElementById('${id}');var o=d.classList.toggle('open');this.innerHTML=(o?'▲ 접기':'▼ 숨은 이야기 보기');">▼ 숨은 이야기 보기</div>
+                    <div class="zt-pro-deep" id="${id}">${c}</div>` : ''}
+                </div>`;
+                })() : ''}
+
+                ${data.pro.yearlyOutlook ? (() => {
+                    const c = data.pro.yearlyOutlook.content || '';
+                    const long = c.length > 80;
+                    const head = long ? c.slice(0, 70) + '…' : c;
+                    const id = 'ztyo_' + Math.random().toString(36).slice(2,7);
+                    return `
+                <div class="zt-pro-bub">
+                    <div class="zt-pro-tit">📅 ${(data.pro.yearlyOutlook.title||'연운 흐름').replace(/^[📅\s]+/,'')}</div>
+                    <div class="zt-pro-txt">${head}</div>
+                    ${long ? `
+                    <div class="zt-pro-more" onclick="var d=document.getElementById('${id}');var o=d.classList.toggle('open');this.innerHTML=(o?'▲ 접기':'▼ 숨은 이야기 보기');">▼ 숨은 이야기 보기</div>
+                   <div class="zt-pro-deep" id="${id}">${c}</div>` : ''}
+                </div>`;
+                })() : ''}
             </div>
             ` : ''}
+
 
             <!-- ═══════════════════════════════════════════════════════
                  [V31 #184.5 FINAL+] Tier 1 카테고리 — 라이브 연동
