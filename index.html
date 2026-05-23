@@ -3348,7 +3348,36 @@
         .v54-foldable[data-expanded="true"] .v54-hint {
             display: none;
         }
-</style>
+/* ───────────────────────────────────────────────
+   [텍스트칸 넓힘 1차안 · 사주 한정]
+   목적: 좌측선 박스 중첩으로 좁아진 텍스트칸 완화
+   범위: .pay-modal 안쪽만 (다른 화면 무관)
+   롤백: 이 블록 삭제하면 원상복구
+   ─────────────────────────────────────────────── */
+.pay-modal [style*="border-left:3px solid"] {
+    padding-left: 9px !important;       /* 기본 12~14px → 9px : 좌측 여백 축소 */
+    border-left-width: 2px !important;  /* 3px → 2px : 선 두께 완화 */
+    margin-left: 0 !important;          /* 좌측 바깥여백 제거 → 중첩 누적 방지 */
+}
+.pay-modal [style*="border-left:2px solid"] {
+    padding-left: 8px !important;
+    border-left-width: 1.5px !important;
+    margin-left: 0 !important;
+}
+ /* ───── [텍스트칸 넓힘 2차안 · 사주 한정] 중첩 박스 좌우 여백 축소 ───── */
+/* border(4면) 가진 섹션/강조 박스의 좌우 패딩만 줄임 — 세로선·배경·정렬 유지 */
+.pay-modal [style*="border:2px solid"],
+.pay-modal [style*="border:1.5px solid"],
+.pay-modal [style*="border:1px solid"] {
+    padding-left: 11px !important;
+    padding-right: 11px !important;
+}
+/* 뿌리 좌우 여백도 한 단계 축소 (24→14) */
+.pay-modal[style*="padding:24px 20px"] {
+    padding-left: 14px !important;
+    padding-right: 14px !important;
+}   
+    </style>
     <!-- [V19 Phase3] 결과창 이미지 캡처용 -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <!-- [V19 Phase6] Toss Payments SDK -->
