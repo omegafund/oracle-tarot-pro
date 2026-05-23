@@ -20762,8 +20762,10 @@ function renderSajuResult(data) {
     '정인': '☀ 보호받으며 성장하는 힘 — 배움과 인덕으로 받쳐지는 안정의 힘이에요. 학습·회복이 강점이지만, 누군가에게 기대는 마음이 커질 수 있어요.'
 };
                     const _v37_detectedSipsung = [];
-                    Object.keys(_v37_sipsungGlossary).forEach(k => {
-                        if (cleanContent && cleanContent.indexOf(k) >= 0) _v37_detectedSipsung.push(k);
+                    (v2.bars || []).forEach(b => {
+                        if (b && b.sipsung && _v37_sipsungGlossary[b.sipsung] && _v37_detectedSipsung.indexOf(b.sipsung) < 0) {
+                            _v37_detectedSipsung.push(b.sipsung);
+                        }
                     });
                     const _v37_glossaryHTML = _v37_detectedSipsung.length > 0 ? `
                         <div style="margin-top:12px; padding:10px 12px;
