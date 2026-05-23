@@ -3853,8 +3853,21 @@
         
         // ★ popstate ★ — 사용자가 브라우저 뒤로가기 클릭
         window.addEventListener('popstate', function(event) {
-            console.log('⬅ [V200.8.6] popstate 감지 — 결제 모달 정리');
-            // 뒤로가기 → 결제 모달 자동 닫기 (사용자 의도: 모달 닫고 싶음)
+            console.log('⬅ [V200.8.6] popstate 감지');
+            // 결제 진행 중이면 기존 동작 유지 (절대 건드리지 않음)
+            if (window._tossPaymentInProgress === true) { v85ClearPaymentModals(); return; }
+            // ★ 사주 결과 모달이 떠 있으면 → 처음으로 버튼과 동일 동작
+            var sajuModal = document.getElementById('sajuResultModal');
+            if (sajuModal) {
+                window._sajuBackGuard = false;
+                if (typeof window.handleSajuModalClose === 'function') {
+                    window.handleSajuModalClose();
+                } else {
+                    sajuModal.remove();
+                }
+                return;
+            }
+            // 그 외 — 기존 결제 모달 정리 그대로
             v85ClearPaymentModals();
         });
         
@@ -19345,6 +19358,13 @@ function showSajuByPlan(data) {
 }
 
 function renderSajuResult(data) {
+    // ★ 하드웨어 뒤로가기 안전망 — 결과 화면 진입 시 가짜 history 1개 추가
+    try {
+        if (!window._sajuBackGuard) {
+            history.pushState({ sajuModalOpen: true }, '', location.href);
+            window._sajuBackGuard = true;
+        }
+    } catch (_) {}
     // ════════════════════════════════════════════════════════════════════════
     // [V31 #192 ★ 사장님 가이드라인 정확 적용 ★]
     //   - FREE 사용자:    카카오 UI (3 메시지 + 결제 게이트)
