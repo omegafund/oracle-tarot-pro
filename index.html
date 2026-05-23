@@ -20016,7 +20016,7 @@ function renderSajuResult(data) {
                     return data.accuracy ? `<div style="color:rgba(255,255,255,0.5); font-size: 0.74rem; margin-top:4px;">${data.accuracy.note}</div>` : '';
                 })()}
             </div>
- 
+
             <!-- [2] 사주 명식 — 팩트 (시각 자산 그대로) -->
             <div style="margin:14px 0;">
                 <div style="display:flex; align-items:center; gap:6px; margin-bottom:6px;">
@@ -20024,54 +20024,58 @@ function renderSajuResult(data) {
                 </div>
                 ${meongSik}
             </div>
- 
+
             <!-- [2-2] 오행 분포 — 팩트 시각화 (시각 자산 그대로) -->
             <div style="margin:14px 0;">
                 <div style="color:#E8C766; font-size:0.84rem; font-weight:700; margin-bottom:8px;">⚖️ 오행 분포</div>
                 ${elBars}
             </div>
- 
+
             <!-- [3] 사주 본질 → ② 당신 안에 가장 강한 기운 -->
             <div style="margin:18px 0; padding:14px; background:rgba(212,175,55,0.06); border-left:3px solid rgba(201,162,39,0.55); border-radius:0 8px 8px 0;">
                 <div style="display:flex; align-items:center; gap:6px; margin-bottom:8px;">
                     <span style="color:#E8C766; font-size:0.92rem; font-weight:800;">🌳 당신 안에 가장 강한 기운</span>
                 </div>
- 
-                <!-- 일주 물상 (텍스트 그대로) -->
-                <div style="color:rgba(255,255,255,0.92); font-size:0.85rem; line-height:1.7; margin-bottom:10px;">
-                    <strong style="color:#FFE08A;">▸ 일주 물상:</strong><br>${text.dayEssence}
+
+                <!-- 일주 물상 — 도입문구 방식 (소제목 삭제) -->
+                <div style="color:rgba(255,255,255,0.92); font-size:0.85rem; line-height:1.7; margin-bottom:12px;">
+                    <span style="color:#FFE08A; font-weight:700;">당신을 한마디로 그리면, </span>${text.dayEssence}
                 </div>
- 
-                <!-- C-1: 본질 결 → 골드 말풍선 -->
+
+                <!-- C-1: 본질 결 → 골드 말풍선 (도입문구 = 제목, 소제목 삭제) -->
                 ${text.deepInsight && text.deepInsight.essenceCore ? (() => {
                     const _id = 'ztess_' + Math.random().toString(36).slice(2,7);
+                    const _full = text.deepInsight.essenceCore;
+                    const _head = _full.length > 40 ? _full.slice(0, 38) + '…' : _full;
                     return `
                 <div class="zt-pro-bub" style="margin-bottom:12px;">
-                    <div class="zt-pro-tit">💭 본질 결</div>
-                    <div class="zt-pro-more" onclick="var d=document.getElementById('${_id}');var o=d.classList.toggle('open');this.innerHTML=(o?'▲ 접기':'▼ 숨은 이야기 보기');" style="margin-top:0;border-top:none;padding-top:0;">▼ 숨은 이야기 보기</div>
-                    <div class="zt-pro-deep" id="${_id}">${text.deepInsight.essenceCore}</div>
+                    <div class="zt-pro-tit" style="line-height:1.55;">💭 당신 안의 타고난 본바탕은 ${_head}</div>
+                    <div class="zt-pro-more" onclick="var d=document.getElementById('${_id}');var o=d.classList.toggle('open');this.innerHTML=(o?'▲ 접기':'▼ 숨은 이야기 보기');">▼ 숨은 이야기 보기</div>
+                    <div class="zt-pro-deep" id="${_id}">${_full}</div>
                 </div>`;
                 })() : ''}
- 
-                <!-- 오행 균형 (텍스트 그대로) -->
-                <div style="color:rgba(255,255,255,0.92); font-size:0.85rem; line-height:1.7; margin-bottom:10px;">
-                    <strong style="color:#FFE08A;">▸ ${text.balanceLabel || '오행 균형'}:</strong><br>${text.balancePhrase}
+
+                <!-- 오행 균형 — 도입문구 방식 -->
+                <div style="color:rgba(255,255,255,0.92); font-size:0.85rem; line-height:1.7; margin-bottom:12px;">
+                    <span style="color:#FFE08A; font-weight:700;">당신의 에너지 균형은 </span>${text.balancePhrase}
                 </div>
- 
+
                 <!-- C-1: 에너지 작동 방식 → 골드 말풍선 -->
                 ${text.deepInsight && text.deepInsight.energyOperation ? (() => {
                     const _id = 'zteng_' + Math.random().toString(36).slice(2,7);
+                    const _full = text.deepInsight.energyOperation;
+                    const _head = _full.length > 40 ? _full.slice(0, 38) + '…' : _full;
                     return `
                 <div class="zt-pro-bub" style="margin-bottom:12px;">
-                    <div class="zt-pro-tit">💭 에너지 작동 방식</div>
-                    <div class="zt-pro-more" onclick="var d=document.getElementById('${_id}');var o=d.classList.toggle('open');this.innerHTML=(o?'▲ 접기':'▼ 숨은 이야기 보기');" style="margin-top:0;border-top:none;padding-top:0;">▼ 숨은 이야기 보기</div>
-                    <div class="zt-pro-deep" id="${_id}">${text.deepInsight.energyOperation}</div>
+                    <div class="zt-pro-tit" style="line-height:1.55;">💭 당신의 에너지 사용 방식은 ${_head}</div>
+                    <div class="zt-pro-more" onclick="var d=document.getElementById('${_id}');var o=d.classList.toggle('open');this.innerHTML=(o?'▲ 접기':'▼ 숨은 이야기 보기');">▼ 숨은 이야기 보기</div>
+                    <div class="zt-pro-deep" id="${_id}">${_full}</div>
                 </div>`;
                 })() : ''}
- 
-                <!-- 일간 강약 (텍스트 그대로) -->
+
+                <!-- 일간 강약 — 도입문구 방식 -->
                 <div style="color:rgba(255,255,255,0.92); font-size:0.85rem; line-height:1.7;">
-                    <strong style="color:#FFE08A;">▸ ${text.strengthLabel || '본질 흐름'}:</strong><br>${text.strengthPhrase}
+                    <span style="color:#FFE08A; font-weight:700;">당신의 중심 기운은 </span>${text.strengthPhrase}
                     ${(function() {
                         const sajuStateLocal = detectSajuState(elements, text.meta?.pillars || {});
                         let meaning = '';
@@ -20083,18 +20087,20 @@ function renderSajuResult(data) {
                         return meaning ? `<div style="margin-top:6px; padding:6px 10px; background:rgba(212,175,55,0.10); border-left:2px solid rgba(212,175,55,0.5); border-radius:0 4px 4px 0; font-size:0.80rem; color:#FFE08A; font-weight:700; font-style:italic;">→ 의미: ${meaning}</div>` : '';
                     })()}
                 </div>
- 
+
                 <!-- C-1: 관계 작동 방식 → 골드 말풍선 -->
                 ${text.deepInsight && text.deepInsight.relationOperation ? (() => {
                     const _id = 'ztrel_' + Math.random().toString(36).slice(2,7);
+                    const _full = text.deepInsight.relationOperation;
+                    const _head = _full.length > 40 ? _full.slice(0, 38) + '…' : _full;
                     return `
                 <div class="zt-pro-bub" style="margin:12px 0;">
-                    <div class="zt-pro-tit">💭 관계 작동 방식</div>
-                    <div class="zt-pro-more" onclick="var d=document.getElementById('${_id}');var o=d.classList.toggle('open');this.innerHTML=(o?'▲ 접기':'▼ 숨은 이야기 보기');" style="margin-top:0;border-top:none;padding-top:0;">▼ 숨은 이야기 보기</div>
-                    <div class="zt-pro-deep" id="${_id}">${text.deepInsight.relationOperation}</div>
+                    <div class="zt-pro-tit" style="line-height:1.55;">💭 당신이 사람을 대하는 방식은 ${_head}</div>
+                    <div class="zt-pro-more" onclick="var d=document.getElementById('${_id}');var o=d.classList.toggle('open');this.innerHTML=(o?'▲ 접기':'▼ 숨은 이야기 보기');">▼ 숨은 이야기 보기</div>
+                    <div class="zt-pro-deep" id="${_id}">${_full}</div>
                 </div>`;
                 })() : ''}
- 
+
                 ${(function() {
                     const _oracle = text.zeusSajuOracle;
                     if (!_oracle || !_oracle.coreStructure) return '';
@@ -20114,36 +20120,29 @@ function renderSajuResult(data) {
                     const _v36_ysIcon = _v36_iconMap[_ysName] || '☯';
                     const _v36_hsIcon = _hs ? (_v36_iconMap[_hs.name] || '✨') : '✨';
                     return `
-                    <!-- ③ 당신을 살리는 기운 (용신 + 희신) -->
+                    <!-- ③ 당신을 살리는 기운 (용신 용어 삭제, 도입문구 방식) -->
                     <div style="margin-top:14px; padding-top:12px; border-top:1px dashed rgba(201,162,39,0.35);">
                         <div style="color:#E8C766; font-size:0.9rem; font-weight:800; margin-bottom:8px;">🔥 당신을 살리는 기운</div>
                         <div style="color:rgba(255,255,255,0.92); font-size:0.88rem; line-height:1.7; word-break:keep-all; overflow-wrap:break-word;">
-                            <strong style="color:#FFE08A;">▸ ${_v36_ysIcon} 용신:</strong> 
-                            <span style="color:#7FCDFF; font-weight:800; font-size:0.95rem;">${_ysName ? _ysName + '(' + _ysHanja + ')' : '-'}</span>
-                            ${_hs ? `<span style="color:rgba(255,255,255,0.45); margin:0 6px;">·</span>
-                                    <strong style="color:#FFE08A;">${_v36_hsIcon} 희신:</strong>
-                                    <span style="color:#5DD68A; font-weight:800; font-size:0.95rem;">${_hs.name}(${_hs.hanja})</span>` : ''}
+                            <span style="color:#FFE08A; font-weight:700;">당신이 세상을 살아가는 데 가장 필요한 기운은 </span>
+                            <span style="color:#7FCDFF; font-weight:800; font-size:0.95rem;">${_v36_ysIcon} ${_ysName ? _ysName + '(' + _ysHanja + ')' : '-'}</span>
+                            <span style="color:rgba(255,255,255,0.92);">예요.</span>
+                            ${_hs ? `<br><span style="color:#FFE08A; font-weight:700;">이 기운을 돕는 보조 기운은 </span>
+                                    <span style="color:#5DD68A; font-weight:800; font-size:0.95rem;">${_v36_hsIcon} ${_hs.name}(${_hs.hanja})</span>
+                                    <span style="color:rgba(255,255,255,0.92);">이고요.</span>` : ''}
                         </div>
                         <div style="margin-top:10px; padding:9px 11px; 
                                     background:rgba(127,205,255,0.08); 
                                     border-left:2px solid rgba(127,205,255,0.4); 
                                     border-radius:0 6px 6px 0;
-                                    font-size:0.74rem; line-height:1.6; color:rgba(255,255,255,0.75);
+                                    font-size:0.76rem; line-height:1.65; color:rgba(255,255,255,0.78);
                                     word-break:keep-all; overflow-wrap:break-word;">
-                            <div style="margin-bottom:3px;">
-                                <span style="color:#7FCDFF; font-weight:800;">* 용신이란?</span> 
-                                삶의 균형을 잡아주는 핵심 에너지 — 채우면 운이 풀립니다
-                            </div>
-                            ${_hs ? `
-                            <div>
-                                <span style="color:#5DD68A; font-weight:800;">* 희신이란?</span> 
-                                용신을 돕는 보조 기운 — 함께 챙기면 효과가 배가됩니다
-                            </div>` : ''}
+                            이 기운을 일상에서 채우면 삶의 균형이 잡히고 운의 흐름이 풀립니다.${_hs ? ' 보조 기운까지 함께 챙기면 효과가 더 커져요.' : ''}
                         </div>
                     </div>
                     `;
                 })()}
- 
+
                 ${(function() {
                     const _v46_signals = (data && data.v184_5 && data.v184_5.sajuSignals)
                                        || (data && data.sajuSignals)
@@ -20191,9 +20190,9 @@ function renderSajuResult(data) {
                     `;
                 })()}
             </div>
- 
+
             ${(function() { return ''; })()}
- 
+
             ${(function() {
                 const _yongshinRaw = data.v184_5?.yongshin || data.yongshin || data.pro?.yongshin || null;
                 if (!_yongshinRaw || !_yongshinRaw.recommendations) return '';
@@ -20308,6 +20307,7 @@ function renderSajuResult(data) {
                 </div>
                 `;
             })()}
+
             <!-- ════════════════════════════════════════════════════════════
                  ★★★ [V202.32 사장님 B-1 안] [4/6]~[8/8] PRO 펼침 통합 ★★★
                  ★★★ [V202.37 #3 사장님 명령] 시인성 대폭 개선 ★★★
