@@ -3394,16 +3394,16 @@
     margin-left: 0 !important;
 }
 
-/* (B) 네모 테두리 박스 좌우 안쪽여백 축소 — 1~2.5px, 공백 유무 모두 */
-#oracle-content [style*="border:1px solid"],
-#oracle-content [style*="border: 1px solid"],
-#oracle-content [style*="border:1.5px solid"],
-#oracle-content [style*="border: 1.5px solid"],
-#oracle-content [style*="border:2px solid"],
-#oracle-content [style*="border: 2px solid"],
-#oracle-content [style*="border:2.5px solid"] {
-    padding-left: 11px !important;
-    padding-right: 11px !important;
+/* (B수정) 네모 테두리 박스 좌우 여백 축소 — border 포함 전부 (변수색 커버) */
+#oracle-content [style*="border:"][style*="solid"],
+#oracle-content [style*="border: "][style*="solid"] {
+    padding-left: 10px !important;
+    padding-right: 10px !important;
+}
+/* (C) 연애·투자·운세 바깥 컨테이너 좌우 여백 축소 — 텍스트 폭 확보 (진짜 주범) */
+.zenith-oracle-container {
+    padding-left: 12px !important;
+    padding-right: 12px !important;
 }
     </style>
     <!-- [V19 Phase3] 결과창 이미지 캡처용 -->
