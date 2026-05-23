@@ -3391,6 +3391,32 @@
     padding-left: 10px !important;
     border-radius: 8px !important;   /* 바 없앤 좌측 모서리도 둥글게 */
 }
+/* ═══════ [연애·투자·운세 확장 · #oracle-content 한정] ═══════ */
+/* 1+2+A 통합: 좌측선 제거 + 네모선 좌우여백 축소 (공백 변형 모두 커버) */
+
+/* (A) 좌측 강조선 제거 — 3px/4px/2px, 공백 유무 모두 */
+#oracle-content [style*="border-left:3px solid"],
+#oracle-content [style*="border-left: 3px solid"],
+#oracle-content [style*="border-left:4px solid"],
+#oracle-content [style*="border-left: 4px solid"],
+#oracle-content [style*="border-left:2px solid"],
+#oracle-content [style*="border-left: 2px solid"] {
+    border-left: none !important;
+    padding-left: 10px !important;
+    border-radius: 8px !important;
+}
+
+/* (B) 네모 테두리 박스 좌우 안쪽여백 축소 — 1~2.5px, 공백 유무 모두 */
+#oracle-content [style*="border:1px solid"],
+#oracle-content [style*="border: 1px solid"],
+#oracle-content [style*="border:1.5px solid"],
+#oracle-content [style*="border: 1.5px solid"],
+#oracle-content [style*="border:2px solid"],
+#oracle-content [style*="border: 2px solid"],
+#oracle-content [style*="border:2.5px solid"] {
+    padding-left: 11px !important;
+    padding-right: 11px !important;
+}
     </style>
     <!-- [V19 Phase3] 결과창 이미지 캡처용 -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
