@@ -4066,7 +4066,6 @@
             document.write([
                 '<style id="paidOverlayStyle">',
                 '  html, body { background: #0a0612 !important; }',
-                (hasPaidOk ? '  #home-view { display: none !important; }' : ''),
                 // ★ V31 #151: visibility:hidden 룰 제거됨 (정지 결함 차단)
                 '  #paidEarlyOverlay {',
                 '    position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;',
@@ -24430,9 +24429,6 @@ async function startTossPayment(planKey, method) {
         category:  categoryHint
     });
     
-    // ★ 결제 시작 로딩 오버레이 ON — 워커 대기/토스 전환 중 홈뷰 깜빡임 차단
-    _showPayStartOverlay(categoryHint);
-
     toss.requestPayment(paymentMethod, {
         amount:       plan.amount,
         orderId:      orderId,
@@ -24441,43 +24437,11 @@ async function startTossPayment(planKey, method) {
         successUrl:   successUrl,
         failUrl:      failUrl
     }).catch(err => {
-        // 취소/에러 시 오버레이 반드시 제거 (멈춤 방지)
-        _hidePayStartOverlay();
         if (err.code !== 'USER_CANCEL') {
             alert('결제 요청에 실패했습니다: ' + (err.message || err.code));
         }
     });
 }
-
-// ★ 결제 시작 로딩 오버레이 (success/index 황금 화면과 동일 디자인)
-function _showPayStartOverlay(categoryHint) {
-    try {
-        if (document.getElementById('payStartOverlay')) return;
-        var isSaju = (categoryHint === 'saju');
-        var sym = isSaju ? '☯' : '✦';
-        var title = isSaju ? 'PRO 사주 신탁 불러오는 중...' : '프리미엄 신탁 불러오는 중...';
-        var ov = document.createElement('div');
-        ov.id = 'payStartOverlay';
-        ov.setAttribute('style', 'position:fixed;top:0;left:0;width:100vw;height:100vh;z-index:9999999;background:linear-gradient(135deg,#0a0612 0%,#1a0a2e 100%);display:flex;align-items:center;justify-content:center;flex-direction:column;gap:18px;');
-        ov.innerHTML = '<div style="font-size:4rem;color:#FFD970;filter:drop-shadow(0 0 18px rgba(255,217,112,0.6));animation:paidSpin 2.5s linear infinite;">' + sym + '</div>'
-                     + '<div style="color:#FFD970;font-size:1.2rem;font-weight:900;letter-spacing:0.04em;text-align:center;padding:0 20px;">' + title + '</div>'
-                     + '<div style="color:rgba(255,255,255,0.6);font-size:0.85rem;text-align:center;line-height:1.6;padding:0 20px;">결제창을 준비하고 있습니다</div>';
-        if (!document.getElementById('payStartSpinKeyframes')) {
-            var st = document.createElement('style');
-            st.id = 'payStartSpinKeyframes';
-            st.textContent = '@keyframes paidSpin{from{transform:rotate(0deg);}to{transform:rotate(360deg);}}';
-            document.head.appendChild(st);
-        }
-        document.body.appendChild(ov);
-    } catch(_) {}
-}
-function _hidePayStartOverlay() {
-    try {
-        var ov = document.getElementById('payStartOverlay');
-        if (ov) ov.remove();
-    } catch(_) {}
-}
-
 function closePayModal() {
     const el = document.getElementById('payModalOverlay');
     if (el) el.remove();
