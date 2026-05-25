@@ -10173,25 +10173,18 @@ function buildStockMetrics({ totalScore, riskScore, cleanCards, isLeverage, quer
   else if (totalScore <= -6) trend = "강한 하락";
   else if (totalScore <= -2) trend = "하락";
 
-  // [V2.4] 서사형 추세 — 과거→미래 카드 흐름 반영
-  // 과거·현재·미래 카드 각각의 점수 계산해서 흐름 방향 판단
-  const CARD_SCORES = {
-    "The Sun":6,"The World":6,"The Magician":5,"The Chariot":5,"Strength":4,
-    "The Star":5,"Six of Wands":4,"Three of Pentacles":3,"Ten of Pentacles":4,
-    "Nine of Cups":3,"Four of Wands":3,"Temperance":2,"Justice":1,"Wheel of Fortune":0,
-    "Ace of Wands":3,"Ace of Pentacles":3,"Ace of Cups":2,"Ace of Swords":2,
-    "The Fool":1,"The Empress":3,"The Emperor":2,"The Hierophant":1,
-    "The Hanged Man":-2,"Death":-2,"The Moon":-2,"Judgement":1,
-    "The Tower":-6,"Ten of Swords":-6,"Five of Pentacles":-3,"Five of Cups":-3,
-    "Five of Swords":-2,"Three of Swords":-3,"Nine of Swords":-3,"Eight of Swords":-2,
-    "The Devil":-4,"Seven of Swords":-2,"Seven of Wands":0,"Five of Wands":-1,
-    "Two of Swords":-1,"Four of Cups":-1,"Four of Pentacles":0,"Six of Cups":0,
-    "Seven of Cups":-1,"Eight of Cups":-1,"Ten of Cups":3
+  // [V203.4] ★ 서사형 추세 — 숨은 CARD_SCORES 제거, 메인 CARD_SCORE 단일 참조 + 역방향 통일 ★
+  //   기존 결함: trend 전용 축약표(45장)가 메인(78장)과 24장 다른 값 + 역방향 무시
+  //              → trend와 flowSummary가 다른 점수로 계산돼 방향 모순 ('불사신')
+  //   수정: 통합 함수 getCardScore(메인표 + 역방향 *-1)로 일원화. flow/position/영성과 동일 규칙.
+  //   주의: trendNarrative 서사 분기·문구는 그대로 보존 (계산 기준만 통일, 표현 불변)
+  const getCardScore = (name, reversed = false) => {
+    const base = CARD_SCORE[name] ?? 0;
+    return reversed ? -base : base;
   };
-  const getScore = (name) => CARD_SCORES[name] ?? 0;
-  const pastScore    = getScore(cleanCards[0] || '');
-  const currentScore = getScore(cleanCards[1] || '');
-  const futureScore  = getScore(cleanCards[2] || '');
+  const pastScore    = getCardScore(cleanCards[0] || '', revFlags[0]);
+  const currentScore = getCardScore(cleanCards[1] || '', revFlags[1]);
+  const futureScore  = getCardScore(cleanCards[2] || '', revFlags[2]);
 
   // 흐름 방향: 미래 > 현재 → 상승 반전, 미래 < 현재 → 하락 가속
   let trendNarrative = trend;
@@ -10207,6 +10200,11 @@ function buildStockMetrics({ totalScore, riskScore, cleanCards, isLeverage, quer
     trendNarrative = "저점 형성 후 반등 시도 구간";
   } else if (pastScore > 0 && currentScore > 0 && futureScore <= 0) {
     trendNarrative = "상승 후 피로 누적 — 조정 가능성";
+  } else if (pastScore > 0 && futureScore < pastScore && (currentScore <= 0 || futureScore <= 0)) {
+    // [V203.4] 합산은 +(상승)이나 과거→미래 흐름이 하강하는 케이스(예: 강양수 시작→약음수 마감)
+    //   trend(합산)와 flowSummary(흐름)의 방향 충돌 방지 — '상승세이나 흐름 약화'로 일관화
+    //   GPT 원칙: '상승+약화'는 모순이 아닌 입체 서사 → 이 분기로 자연 편입
+    trendNarrative = `${trend} — 흐름 약화 주의`;
   }
 
   // [V19.9] action을 매도/매수 intent별로 완전 분기
