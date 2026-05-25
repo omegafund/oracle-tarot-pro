@@ -12763,20 +12763,19 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
         }
         
     // ════════════════════════════════════════════════════════════════════════
-    // [V203.1] 투자 카카오 채팅 UI — 5버블 (격리: stock/crypto 전용 · 사주 0% 영향)
+    // [V203.2] 투자 카카오 채팅 UI — 5버블 (격리: stock/crypto 전용 · 사주 0% 영향)
     //   사장님 확정 5버블: ①인사 ②핵심결론 ③지금시장 ④실행가이드 ⑤근거▼
     //   재사용: .saju-chat-* CSS (시각 통일) + _render5LayerBlock (깊이 엔진)
-    //   데이터 모드 2종 모두 처리: PRO(window._serverMetrics.topVerdict + layers) / 폴백
-    //   [V203.1 폭 버그 수정]
-    //     • 버블1~4: flex:1 로 넓힘 (좁은 86% → 아바타 제외 전폭)
-    //     • 버블5(근거): 좁은 채팅버블 X → 풀폭 패널 (5계층 깊이 콘텐츠 가독성 확보)
-    //       → .saju-chat-bubble [style*=flex]{min-width:0} 규칙 회피 = 1글자 깨짐 해결
-    //   모든 오버라이드는 .zt-stock-chat 스코프 → 사주/연애/운세 무영향.
+    //   데이터 모드 2종: PRO(window._serverMetrics.topVerdict + layers) / 폴백
+    //   [V203.1] 폭 버그: 근거=풀폭 패널, 버블 flex 넓힘
+    //   [V203.2] 사장님 명령 — 아바타를 버블 ★안으로★ (작은 배지) + 좌측 여백 제거
+    //            → 버블 풀폭(width:100%) · 본문 패딩 축소 = 텍스트 풀박스
+    //   모든 오버라이드 .zt-stock-chat 스코프 → 사주/연애/운세 무영향.
     // ════════════════════════════════════════════════════════════════════════
 
-    // ── 버블 1개 렌더 (대화 버블 + 풀폭 근거 패널 분기 + 도메인 아바타) ──
+    // ── 버블 1개 렌더 (대화 버블 + 풀폭 근거 패널 분기 + 버블내 아이콘 배지) ──
     function renderStockChatMessage(msg, index, avatarIcon) {
-        // [버블5] 근거 = 풀폭 접기 패널 (아바타 X, 채팅버블 클래스 X → 폭 제약 회피)
+        // [버블5] 근거 = 풀폭 접기 패널 (폭 제약 회피)
         if (msg.layout === 'full') {
             const sum   = (msg.collapse && msg.collapse.summary) || '근거 펼쳐보기 ▼';
             const inner = (msg.collapse && msg.collapse.html) || msg.html || '';
@@ -12794,19 +12793,26 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
             </div>`;
         }
 
-        // [버블1~4] 대화 버블 (사주 generic 미러)
+        // [버블1~4] 대화 버블 — 아바타 배지 버블 안으로, 풀폭
         const cls = msg.type === 'special'   ? 'special'
                   : msg.type === 'warning'   ? 'warning'
                   : msg.type === 'highlight' ? 'highlight'
                   : '';
-        const titleHtml = msg.title ? `<div class="saju-chat-bubble-title">${msg.title}</div>` : '';
-        const bodyHtml  = msg.html ? `<div>${msg.html}</div>` : (msg.text ? `<div>${msg.text}</div>` : '');
+        const body = msg.html || msg.text || '';
+        const inner = msg.title
+            ? `<div class="zt-stock-head">
+                   <span class="zt-stock-ico">${avatarIcon}</span>
+                   <span class="saju-chat-bubble-title" style="margin:0;">${msg.title}</span>
+               </div>
+               <div>${body}</div>`
+            : `<div class="zt-stock-head" style="margin-bottom:0;">
+                   <span class="zt-stock-ico">${avatarIcon}</span>
+                   <span style="flex:1;">${body}</span>
+               </div>`;
         return `
-        <div class="saju-chat-msg" style="animation-delay:${msg.delay != null ? msg.delay : index*150}ms;">
-            <div class="saju-chat-avatar">${avatarIcon}</div>
+        <div class="zt-stock-msg" style="animation-delay:${msg.delay != null ? msg.delay : index*150}ms;">
             <div class="saju-chat-bubble ${cls}">
-                ${titleHtml}
-                ${bodyHtml}
+                ${inner}
             </div>
         </div>`;
     }
@@ -12819,8 +12825,8 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
         const title  = ctx.title || '';
         const tv = (typeof window !== 'undefined' && window._serverMetrics && window._serverMetrics.topVerdict) || null;
 
-        // [버블1] 인사
-        const greeting = isSell ? '투자 매도 신탁 봐드릴게요 📉' : '투자 신탁 봐드릴게요 📈';
+        // [버블1] 인사 (아이콘은 배지가 담당 → 텍스트 끝 이모지 제거)
+        const greeting = isSell ? '투자 매도 신탁 봐드릴게요' : '투자 신탁 봐드릴게요';
 
         // [버블2] 핵심 결론 — topVerdict(신호/실행/주의) · 폴백(추세/행동)
         let b2;
@@ -12947,15 +12953,32 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
                     <div class="saju-chat-header-title">ZEUS 투자신탁</div>
                     <div class="saju-chat-header-status"><span style="font-size:0.7rem; color:var(--saju-mint);">✓ 분석 완료</span></div>
                 </div>
-                <div class="saju-chat-body" style="min-height:auto; padding-bottom:24px;">
+                <div class="saju-chat-body" style="min-height:auto;">
                     ${bubbles}
                 </div>
             </div>
             <style>
-                /* ★ V203.1 폭 수정 — 전부 .zt-stock-chat 스코프 (사주 무영향) ★ */
-                .zt-stock-chat .saju-chat-bubble { max-width:100% !important; flex:1 1 auto; }
-                .zt-stock-chat .saju-chat-msg { align-items:flex-start; }
-                /* 근거 풀폭 패널 — 5계층 깊이 콘텐츠 가독성 */
+                /* ★ V203.2 — 전부 .zt-stock-chat 스코프 (사주 무영향) ★ */
+                /* 본문 좌우 패딩 축소 (여백 회수) */
+                .zt-stock-chat .saju-chat-body { padding:14px 8px 26px 8px !important; }
+                /* 대화 버블 — 좌측 아바타 거터 제거 + 풀폭 */
+                .zt-stock-chat .zt-stock-msg {
+                    margin-bottom:10px; opacity:0; transform:translateY(8px);
+                    animation:sajuMsgIn 0.25s ease-out forwards;
+                }
+                .zt-stock-chat .zt-stock-msg .saju-chat-bubble {
+                    max-width:100% !important; width:100%; box-sizing:border-box;
+                    border-radius:14px; padding:12px 13px !important;
+                }
+                /* 버블 안 아이콘 배지 (옛 외부 아바타 → 내부 미니 배지) */
+                .zt-stock-chat .zt-stock-head { display:flex; align-items:center; gap:7px; margin-bottom:6px; }
+                .zt-stock-chat .zt-stock-ico {
+                    display:inline-flex; align-items:center; justify-content:center;
+                    width:23px; height:23px; border-radius:50%; flex-shrink:0;
+                    background:linear-gradient(135deg, var(--gold), var(--gold-radiant));
+                    font-size:0.74rem; box-shadow:0 0 7px rgba(212,175,55,0.4);
+                }
+                /* 근거 풀폭 패널 */
                 .zt-stock-chat .zt-stock-full {
                     margin:10px 0 10px; opacity:0; transform:translateY(8px);
                     animation:sajuMsgIn 0.25s ease-out forwards;
@@ -12976,7 +12999,7 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
                 }
             </style>`;
         } catch (err) {
-            console.warn('[V203.1] 투자 카카오 UI 렌더 실패, 기존 UI 폴백:', err);
+            console.warn('[V203.2] 투자 카카오 UI 렌더 실패, 기존 UI 폴백:', err);
             return (typeof _renderStockBlock === 'function') ? _renderStockBlock(d) : '';
         }
     }
