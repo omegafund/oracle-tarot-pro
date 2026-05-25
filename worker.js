@@ -10167,28 +10167,42 @@ function buildStockMetrics({ totalScore, riskScore, cleanCards, isLeverage, quer
   const volGate = riskGate.volatility;
   // ══════════════════════════════════════════════════════════════
 
+  // [V203.5] 양극 가드 우선 — 강긍정(+4↑)과 강부정(-4↓)이 공존하거나, 폭이 크고 합산이 0근처면
+  //   '극과 극의 기로'로 (5-5 상쇄 → 중립 오판 방지). 사장님 안: 양극단 그대로 서술 + 신중 선택 유도
   let trend = "중립";
-  if      (totalScore >= 6)  trend = "강한 상승";
-  else if (totalScore >= 2)  trend = "상승";
-  else if (totalScore <= -6) trend = "강한 하락";
-  else if (totalScore <= -2) trend = "하락";
+  if (_hasBipolar || (_b4Spread >= 8 && Math.abs(_b4Total) <= 2)) {
+    trend = "극과 극의 기로";
+  } else if (_b4Total >= 6)  trend = "강한 상승";
+  else if (_b4Total >= 2)    trend = "상승";
+  else if (_b4Total <= -6)   trend = "강한 하락";
+  else if (_b4Total <= -2)   trend = "하락";
 
   // [V203.4] ★ 서사형 추세 — 숨은 CARD_SCORES 제거, 메인 CARD_SCORE 단일 참조 + 역방향 통일 ★
   //   기존 결함: trend 전용 축약표(45장)가 메인(78장)과 24장 다른 값 + 역방향 무시
   //              → trend와 flowSummary가 다른 점수로 계산돼 방향 모순 ('불사신')
   //   수정: 통합 함수 getCardScore(메인표 + 역방향 *-1)로 일원화. flow/position/영성과 동일 규칙.
   //   주의: trendNarrative 서사 분기·문구는 그대로 보존 (계산 기준만 통일, 표현 불변)
+  // [V203.5] 역방향 = 약화(B4): 부호 유지하고 강도 감쇠 (재앙카드 역방향=약한 재앙, 축복카드 역방향=약한 축복)
+  //   사장님·GPT·V27 영성시스템 철학 일치 — '완전 반전'(-6→+6)의 극단 뒤집힘 방지
   const getCardScore = (name, reversed = false) => {
     const base = CARD_SCORE[name] ?? 0;
-    return reversed ? -base : base;
+    return reversed ? Math.round(base * 0.4) : base;
   };
   const pastScore    = getCardScore(cleanCards[0] || '', revFlags[0]);
   const currentScore = getCardScore(cleanCards[1] || '', revFlags[1]);
   const futureScore  = getCardScore(cleanCards[2] || '', revFlags[2]);
+  // [V203.5] trend·양극 판정용 B4 합산 (인자 totalScore는 완전반전 기반이라 별도 산출)
+  const _b4Scores   = [pastScore, currentScore, futureScore];
+  const _b4Total    = _b4Scores.reduce((a, b) => a + b, 0);
+  const _b4Spread   = Math.max(..._b4Scores) - Math.min(..._b4Scores);
+  const _hasBipolar = _b4Scores.some(s => s >= 4) && _b4Scores.some(s => s <= -4);
 
   // 흐름 방향: 미래 > 현재 → 상승 반전, 미래 < 현재 → 하락 가속
   let trendNarrative = trend;
-  if (futureScore > currentScore + 2 && currentScore < 0) {
+  if (trend === "극과 극의 기로") {
+    // [V203.5] 양극 공존(5-5형) — 한 방향 단정 대신 '신중한 선택' 서사 (사장님 안)
+    trendNarrative = "극과 극으로 갈리는 기로 — 신중한 선택 필요";
+  } else if (futureScore > currentScore + 2 && currentScore < 0) {
     trendNarrative = "단기 하락 → 반등 시도 전환 구간";
   } else if (futureScore > currentScore && currentScore > 0) {
     trendNarrative = `${trend} — 추세 강화 흐름`;
@@ -10218,6 +10232,7 @@ function buildStockMetrics({ totalScore, riskScore, cleanCards, isLeverage, quer
     else if (trend === "상승")      action = "분할 익절 — 단계적 차익실현";
     else if (trend === "하락")      action = "🟢 보수적 대응이 손실 제한 관점에서 도움이 될 수 있습니다";
     else if (trend === "강한 하락") action = "🚨 신속한 흐름 재평가와 포지션 대폭 조정이 고려될 수 있습니다";
+    else if (trend === "극과 극의 기로") action = "🟡 방향 확정 전까지 성급한 정리 보류 — 신중한 선택 구간";
     else                             action = "조건부 매도 — 추세 확인 후 분할";
 
     // 서사형 보정
@@ -10248,6 +10263,7 @@ function buildStockMetrics({ totalScore, riskScore, cleanCards, isLeverage, quer
     else if (trend === "상승")      action = "분할 매수";
     else if (trend === "하락")      action = "비중 축소";
     else if (trend === "강한 하락") action = "즉시 회피";
+    else if (trend === "극과 극의 기로") action = "🟡 진입 확신 전까지 관망 — 신중한 선택 구간";
 
     if (trendNarrative.includes("반등 시도")) {
       action = "관망 후 조건부 분할 진입";
@@ -10497,9 +10513,10 @@ function buildStockMetrics({ totalScore, riskScore, cleanCards, isLeverage, quer
   });
   const flowSummary = (() => {
     // 역방향 반영하여 실제 점수 계산
-    const firstScore  = (CARD_SCORE[cleanCards[0]] ?? 0) * (revFlags[0] ? -1 : 1);
-    const middleScore = (CARD_SCORE[cleanCards[1]] ?? 0) * (revFlags[1] ? -1 : 1);
-    const lastScore   = (CARD_SCORE[cleanCards[2]] ?? 0) * (revFlags[2] ? -1 : 1);
+    // [V203.5] flow도 역방향 B4 약화로 통일 (trend와 동일 규칙 → 방향 분열 방지)
+    const firstScore  = getCardScore(cleanCards[0] || '', revFlags[0]);
+    const middleScore = getCardScore(cleanCards[1] || '', revFlags[1]);
+    const lastScore   = getCardScore(cleanCards[2] || '', revFlags[2]);
 
     // [V24.4 룰 C] past/current/future 3점 서사 패턴 검증
     //   사장님 진단: past<current>future인데 "에너지 상승 흐름"으로 잘못 표시되는 버그
