@@ -6021,6 +6021,24 @@ let FORTUNE_SUBTYPE = '';
 // 현재 어느 도메인 바가 열려있는지 추적 (꼬임 방지용 가드)
 let ACTIVE_DOMAIN_BAR = ''; // '' | 'love' | 'stock' | 'realestate'
 
+// [V203.6] ★ 도메인 의도 복원 헬퍼 ★ — explicitDomain이 비는 것을 원천 차단
+//   근본: 결제/자연어 경로에서 ACTIVE_DOMAIN_BAR='' → explicitDomain='' →
+//        Worker 자연어 재분류(classifyByLLM) → 응답 지연 시 "엮이는 중"에서 멈춤
+//   해결(GPT 철학): 버튼이 선언한 의도(서브타입)가 있으면 그 도메인으로 확정 → 재분류 안 탐
+//   주의: 키워드/종목명 추가 아님. 이미 선언된 의도를 신뢰하는 것뿐.
+function resolveActiveDomain() {
+    try {
+        if (typeof ACTIVE_DOMAIN_BAR !== 'undefined' && ACTIVE_DOMAIN_BAR) return ACTIVE_DOMAIN_BAR;
+        var _cryptoSubs = ['crypto_buy','crypto_sell','scalping','holding','crypto_risk'];
+        if (typeof STOCK_SUBTYPE !== 'undefined' && STOCK_SUBTYPE) {
+            return _cryptoSubs.indexOf(STOCK_SUBTYPE) >= 0 ? 'crypto' : 'stock';
+        }
+        if (typeof LOVE_SUBTYPE !== 'undefined' && LOVE_SUBTYPE) return 'love';
+        if (typeof FORTUNE_SUBTYPE !== 'undefined' && FORTUNE_SUBTYPE) return 'general';
+    } catch (e) {}
+    return '';
+}
+
 // ══════════════════════════════════════════════════════════════════
 // [V25.0] 4-CATEGORY SYSTEM — 사장님 안 (자동 분류 폐기)
 // ══════════════════════════════════════════════════════════════════
@@ -8595,7 +8613,7 @@ async function startStreamFetch(userQuestion, cards) {
                 fortuneSubType: FORTUNE_SUBTYPE,
                 // [V25.0] 사용자가 명시 선택한 도메인 — 자동 분류 우회
                 //   서버는 이 값이 있으면 classifyQueryType 호출 없이 그대로 사용
-                explicitDomain: (typeof ACTIVE_DOMAIN_BAR !== 'undefined') ? ACTIVE_DOMAIN_BAR : ''
+                explicitDomain: resolveActiveDomain()  // [V203.6] 의도 fallback (빈값 방지)
             }),
             signal: controller.signal,
             // [V22.4] Wi-Fi/보안망 우회 옵션 (사장님 진단)
@@ -11341,9 +11359,9 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
     // [V25.28] 주식/코인/부동산 5계층 박스 활성 시 Gemini Core Insight 중복 차단
     //   5계층 박스 안에 이미 "🔥 핵심 해석" + "🧭 최종 결론" + "💡 행동 시 결과" 등이 있음
     //   투자 결과창에서 중복된 결론 박스 출력 방지 (매도/매수/코인 모두 동일 적용)
-    const _5layerInvestActive = !!(window._serverMetrics
-        && (isFinanceQuery
-            || (typeof window._isFinanceQuery !== 'undefined' && window._isFinanceQuery)));  // [V203.3] 전역 미세팅 시 renderText 인자로 보강 → 핵심흐름해석 중복 차단
+    const _5layerInvestActive = !!(typeof window !== 'undefined'
+        && window._serverMetrics
+        && (typeof window._isFinanceQuery !== 'undefined' && window._isFinanceQuery));
 
     // [V25.32] FORTUNE V25.32 (wealth/health/career) 활성 시 Gemini Core Insight 차단
     //   V25.32 자체 6박스(Core Insight 포함)를 생성하므로 중복 출력 방지
@@ -12762,248 +12780,6 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
                 </div>`;
         }
         
-    // ════════════════════════════════════════════════════════════════════════
-    // [V203.3] 투자 카카오 채팅 UI — 5버블 (격리: stock/crypto 전용 · 사주 0% 영향)
-    //   사장님 확정 5버블: ①인사 ②핵심결론 ③지금시장 ④실행가이드 ⑤근거▼
-    //   재사용: .saju-chat-* CSS (시각 통일) + _render5LayerBlock (깊이 엔진)
-    //   데이터 모드 2종: PRO(window._serverMetrics.topVerdict + layers) / 폴백
-    //   [V203.1] 폭 버그: 근거=풀폭 패널, 버블 flex 넓힘
-    //   [V203.2] 사장님 명령 — 아바타를 버블 ★안으로★ (작은 배지) + 좌측 여백 제거
-    //            → 버블 풀폭(width:100%) · 본문 패딩 축소 = 텍스트 풀박스
-    //   모든 오버라이드 .zt-stock-chat 스코프 → 사주/연애/운세 무영향.
-    // ════════════════════════════════════════════════════════════════════════
-
-    // ── 버블 1개 렌더 (대화 버블 + 풀폭 근거 패널 분기 + 버블내 아이콘 배지) ──
-    function renderStockChatMessage(msg, index, avatarIcon) {
-        // [버블5] 근거 = 풀폭 접기 패널 (폭 제약 회피)
-        if (msg.layout === 'full') {
-            const sum   = (msg.collapse && msg.collapse.summary) || '근거 펼쳐보기 ▼';
-            const inner = (msg.collapse && msg.collapse.html) || msg.html || '';
-            return `
-            <div class="zt-stock-full" style="animation-delay:${msg.delay != null ? msg.delay : index*150}ms;">
-                <details class="zt-stock-panel">
-                    <summary style="padding:13px 14px; cursor:pointer; list-style:none; user-select:none;
-                             -webkit-tap-highlight-color:transparent; display:flex; align-items:center; gap:8px;">
-                        <span style="font-size:1.15rem; filter:drop-shadow(0 0 6px rgba(93,214,138,0.5));">🔎</span>
-                        <span style="color:#5DD68A; font-size:0.88rem; font-weight:900; letter-spacing:0.02em; flex:1; word-break:keep-all;">${sum}</span>
-                        <span class="zt-stock-chev" style="color:#5DD68A; font-size:1.3rem; transition:transform 0.3s; line-height:1;">⌄</span>
-                    </summary>
-                    <div style="padding:10px 12px 14px;">${inner}</div>
-                </details>
-            </div>`;
-        }
-
-        // [버블1~4] 대화 버블 — 아바타 배지 버블 안으로, 풀폭
-        const cls = msg.type === 'special'   ? 'special'
-                  : msg.type === 'warning'   ? 'warning'
-                  : msg.type === 'highlight' ? 'highlight'
-                  : '';
-        const body = msg.html || msg.text || '';
-        const inner = msg.title
-            ? `<div class="zt-stock-head">
-                   <span class="zt-stock-ico">${avatarIcon}</span>
-                   <span class="saju-chat-bubble-title" style="margin:0;">${msg.title}</span>
-               </div>
-               <div>${body}</div>`
-            : `<div class="zt-stock-head" style="margin-bottom:0;">
-                   <span class="zt-stock-ico">${avatarIcon}</span>
-                   <span style="flex:1;">${body}</span>
-               </div>`;
-        return `
-        <div class="zt-stock-msg" style="animation-delay:${msg.delay != null ? msg.delay : index*150}ms;">
-            <div class="saju-chat-bubble ${cls}">
-                ${inner}
-            </div>
-        </div>`;
-    }
-
-    // ── 투자 데이터 → 5버블 메시지 배열 ──
-    function buildStockChatSequence(d, ctx) {
-        ctx = ctx || {};
-        const isSell = !!ctx.isSell;
-        const domain = ctx.domain || 'stock';
-        const title  = ctx.title || '';
-        const tv = (typeof window !== 'undefined' && window._serverMetrics && window._serverMetrics.topVerdict) || null;
-
-        // [버블1] 인사 (아이콘은 배지가 담당 → 텍스트 끝 이모지 제거)
-        const greeting = isSell ? '투자 매도 신탁 봐드릴게요' : '투자 신탁 봐드릴게요';
-
-        // [버블2] 핵심 결론 — topVerdict(신호/실행/주의) · 폴백(추세/행동)
-        let b2;
-        if (tv) {
-            b2 = `
-                <div style="font-size:1.0rem; color:#fff; font-weight:700; line-height:1.6; margin-bottom:10px;">👉 ${tv.signal || '-'}</div>
-                <div style="padding:8px 10px; background:rgba(46,204,113,0.08); border-left:3px solid var(--saju-mint); border-radius:0 8px 8px 0; margin-bottom:8px;">
-                    <div style="color:var(--saju-mint-light); font-size:0.72rem; font-weight:900; letter-spacing:0.08em; margin-bottom:4px;">⚡ 실행</div>
-                    <div style="font-size:0.9rem; color:rgba(255,255,255,0.92); line-height:1.6;">${tv.action || '-'}</div>
-                </div>
-                <div style="padding:8px 10px; background:rgba(231,76,60,0.06); border-left:3px solid #E74C3C; border-radius:0 8px 8px 0;">
-                    <div style="color:#FF8E72; font-size:0.72rem; font-weight:900; letter-spacing:0.08em; margin-bottom:4px;">⚠️ 주의</div>
-                    <div style="font-size:0.9rem; color:rgba(255,255,255,0.88); line-height:1.6;">${tv.caution || '-'}</div>
-                </div>`;
-        } else {
-            b2 = `
-                <div style="margin-bottom:6px;"><span style="color:var(--gold); font-weight:800;">📈 추세:</span> <b>${d.trend || '-'}</b></div>
-                <div><span style="color:var(--gold); font-weight:800;">🧭 행동:</span> <b>${d.action || '-'}</b></div>`;
-        }
-
-        // [버블3] 지금 시장은? — 추세 + 흐름요약만 (V203.3: 카드 나열 제거 = 카드장문/근거와 중복 차단)
-        //   카드 '의미'는 위 P/P/F 장문이, 카드 '근거'는 버블5 근거펼침이 담당.
-        //   버블3은 "그래서 지금 흐름이 이렇다"의 빠른 진단 = 3장 연결 스토리(flowSummary)만.
-        const b3parts = [];
-        if (d.trend) b3parts.push(`<div style="margin-bottom:6px;"><span style="color:var(--gold); font-weight:800;">📈 추세:</span> <b>${d.trend}</b></div>`);
-        if (d.flowSummary) b3parts.push(`<div style="font-size:0.88rem; color:rgba(255,255,255,0.9); line-height:1.7;">↳ ${d.flowSummary}</div>`);
-        const b3 = b3parts.join('') || '<div style="color:rgba(255,255,255,0.6);">시장 흐름 데이터 준비 중</div>';
-
-        // [버블4] 실행 가이드 — 포지션 + 타이밍 + 실행 트리거
-        const pos = d.position || {};
-        const b4parts = [];
-        if (pos.weight || pos.stopLoss || pos.target) {
-            b4parts.push(`<div style="margin-bottom:8px; font-size:0.9rem; line-height:1.85;">
-                <div>💰 ${isSell ? '매도 비중' : '권장 비중'}: <b>${pos.weight || '-'}</b></div>
-                <div>🛑 ${isSell ? '손실 한도' : '손절 기준'}: ${pos.stopLoss || '-'}</div>
-                <div>🎯 ${isSell ? '익절 구간' : '목표 구간'}: ${pos.target || '-'}</div>
-            </div>`);
-        }
-        const entryT = (d._server && d._server.entryTimingText) || '';
-        const exitT  = (d._server && d._server.exitTimingText)  || '';
-        if (entryT && exitT) {
-            b4parts.push(`<div style="margin-bottom:8px;">
-                <div style="padding:8px 10px; background:rgba(46,204,113,0.10); border-left:3px solid var(--saju-mint); border-radius:4px; margin-bottom:6px;">
-                    <div style="font-size:0.74rem; color:var(--saju-mint-light); font-weight:900; margin-bottom:2px;">${isSell ? '📉 1차 매도' : '📈 매수'} 타이밍</div>
-                    <div style="font-size:0.9rem; color:#fff; font-weight:700;">${entryT}</div>
-                </div>
-                <div style="padding:8px 10px; background:rgba(255,82,82,0.10); border-left:3px solid #ff5252; border-radius:4px;">
-                    <div style="font-size:0.74rem; color:#ff8080; font-weight:900; margin-bottom:2px;">${isSell ? '🚨 최종 청산' : '📉 매도'} 타이밍</div>
-                    <div style="font-size:0.9rem; color:#fff; font-weight:700;">${exitT}</div>
-                </div>
-            </div>`);
-        } else if (d.timingLabel) {
-            b4parts.push(`<div style="margin-bottom:8px; font-size:0.88rem; color:rgba(255,255,255,0.9); line-height:1.7; white-space:pre-line;">📅 ${d.timingLabel}</div>`);
-        }
-        if (tv && tv.decisiveTiming) {
-            const dt = tv.decisiveTiming;
-            b4parts.push(`<div style="padding:9px 10px; background:rgba(155,89,182,0.10); border:1px solid rgba(155,89,182,0.4); border-radius:8px; margin-top:4px;">
-                <div style="color:#C39BD3; font-size:0.72rem; font-weight:900; letter-spacing:0.08em; margin-bottom:6px;">🔮 실행 트리거</div>
-                ${dt.signal ? `<div style="font-size:0.9rem; color:#fff; font-weight:700; margin-bottom:5px;">${dt.signal}</div>` : ''}
-                ${dt.statement ? `<div style="font-size:0.84rem; color:rgba(255,255,255,0.9); line-height:1.6; margin-bottom:3px;">${dt.statement}</div>` : ''}
-                ${dt.condition ? `<div style="font-size:0.84rem; color:rgba(255,255,255,0.82); line-height:1.6; margin-bottom:5px;">${dt.condition}</div>` : ''}
-                ${dt.guidance ? `<div style="font-size:0.86rem; color:#FFD970; font-weight:600; line-height:1.6;">👉 ${dt.guidance}</div>` : ''}
-            </div>`);
-        }
-        const b4 = b4parts.join('') || '<div style="color:rgba(255,255,255,0.6);">실행 가이드 준비 중</div>';
-
-        // [버블5] 근거 (풀폭 접기) — 카드근거 + 5계층 깊이 엔진 + 리스크
-        const layer5HTML = (typeof _render5LayerBlock === 'function')
-            ? _render5LayerBlock(d, { isSell, domain, title })
-            : null;
-        const b5parts = [];
-        if (tv && tv.cardBasis) {
-            b5parts.push(`<div style="margin-bottom:10px; padding:9px 11px; background:rgba(212,175,55,0.08); border-left:3px solid var(--gold); border-radius:0 8px 8px 0;">
-                <div style="color:#FFD970; font-size:0.74rem; font-weight:900; margin-bottom:5px;">🎴 카드 근거</div>
-                <div style="font-size:0.9rem; color:rgba(255,255,255,0.88); line-height:1.7;">${tv.cardBasis}</div>
-            </div>`);
-        }
-        if (layer5HTML) {
-            b5parts.push(layer5HTML);
-        } else if (d.riskChecks && d.riskChecks.length) {
-            b5parts.push(`<div style="margin-bottom:10px;">
-                <div style="color:var(--gold); font-size:0.82rem; font-weight:900; margin-bottom:6px;">⚠️ 리스크 점검</div>
-                ${d.riskChecks.map(l => `<div style="font-size:0.86rem; color:rgba(255,255,255,0.88); line-height:1.7; margin-bottom:3px;">${l}</div>`).join('')}
-            </div>`);
-        }
-        if (d.risk) {
-            b5parts.push(`<div style="margin-top:6px; padding:10px 11px; background:linear-gradient(135deg, rgba(255,82,82,0.12), rgba(255,165,0,0.06)); border:1px solid rgba(255,82,82,0.45); border-left:4px solid #FF5252; border-radius:8px;">
-                <div style="color:#FF8080; font-size:0.76rem; font-weight:900; margin-bottom:5px;">🛡️ 리스크 경고</div>
-                <div style="font-size:0.9rem; color:rgba(255,255,255,0.95); line-height:1.7;">${d.risk}</div>
-            </div>`);
-        }
-        const b5 = b5parts.join('') || '<div style="color:rgba(255,255,255,0.6);">추가 근거 데이터 없음</div>';
-
-        return [
-            { type: 'normal',    html: greeting,                              delay: 0   },
-            { type: 'special',   title: '🎯 핵심 결론',   html: b2,            delay: 120 },
-            { type: 'highlight', title: '📊 지금 시장은?', html: b3,            delay: 240 },
-            { type: 'normal',    title: '⚡ 실행 가이드',  html: b4,            delay: 360 },
-            { layout: 'full', delay: 480,
-              collapse: { summary: '근거 펼쳐보기 — 5계층 분석 · 카드근거 · 리스크', html: b5 } }
-        ];
-    }
-
-    // ── 메인: 투자 카카오 결과 HTML 문자열 반환 (inline 삽입) ──
-    function renderStockKakaoChat(d) {
-        try {
-            const isStock = d && (d.type === 'stock' || d.type === 'crypto');
-            if (!isStock) return '';
-            const isSell = (d._server && d._server.stockIntent === 'sell') || (d.intent === 'sell');
-            const domain = d.type === 'crypto' ? 'crypto' : 'stock';
-            const baseTitle = d.type === 'crypto' ? '🪙 코인' : '📈 주식';
-            const intentTitle = isSell ? '실전 매도 신탁' : '실전 투자 신탁';
-            const title = `${baseTitle} ${intentTitle}`;
-            const avatarIcon = d.type === 'crypto' ? '🪙' : '📈';
-
-            const messages = buildStockChatSequence(d, { isSell, domain, title });
-            const bubbles = messages.map((m, i) => renderStockChatMessage(m, i, avatarIcon)).join('');
-
-            return `
-            <div class="saju-chat-modal zt-stock-chat" style="min-height:auto;">
-                <div class="saju-chat-header">
-                    <span class="saju-chat-header-icon">${avatarIcon}</span>
-                    <div class="saju-chat-header-title">ZEUS 투자신탁</div>
-                    <div class="saju-chat-header-status"><span style="font-size:0.7rem; color:var(--saju-mint);">✓ 분석 완료</span></div>
-                </div>
-                <div class="saju-chat-body" style="min-height:auto;">
-                    ${bubbles}
-                </div>
-            </div>
-            <style>
-                /* ★ V203.2 — 전부 .zt-stock-chat 스코프 (사주 무영향) ★ */
-                /* 본문 좌우 패딩 축소 (여백 회수) */
-                .zt-stock-chat .saju-chat-body { padding:14px 8px 26px 8px !important; }
-                /* 대화 버블 — 좌측 아바타 거터 제거 + 풀폭 */
-                .zt-stock-chat .zt-stock-msg {
-                    margin-bottom:10px; opacity:0; transform:translateY(8px);
-                    animation:sajuMsgIn 0.25s ease-out forwards;
-                }
-                .zt-stock-chat .zt-stock-msg .saju-chat-bubble {
-                    max-width:100% !important; width:100%; box-sizing:border-box;
-                    border-radius:14px; padding:12px 13px !important;
-                }
-                /* 버블 안 아이콘 배지 (옛 외부 아바타 → 내부 미니 배지) */
-                .zt-stock-chat .zt-stock-head { display:flex; align-items:center; gap:7px; margin-bottom:6px; }
-                .zt-stock-chat .zt-stock-ico {
-                    display:inline-flex; align-items:center; justify-content:center;
-                    width:23px; height:23px; border-radius:50%; flex-shrink:0;
-                    background:linear-gradient(135deg, var(--gold), var(--gold-radiant));
-                    font-size:0.74rem; box-shadow:0 0 7px rgba(212,175,55,0.4);
-                }
-                /* 근거 풀폭 패널 */
-                .zt-stock-chat .zt-stock-full {
-                    margin:10px 0 10px; opacity:0; transform:translateY(8px);
-                    animation:sajuMsgIn 0.25s ease-out forwards;
-                }
-                .zt-stock-chat .zt-stock-panel {
-                    width:100%; border-radius:12px; overflow:hidden;
-                    background:linear-gradient(135deg, rgba(122,209,136,0.13), rgba(93,214,138,0.04));
-                    border:1.5px solid rgba(122,209,136,0.5);
-                }
-                .zt-stock-chat .zt-stock-panel summary::-webkit-details-marker { display:none; }
-                .zt-stock-chat .zt-stock-panel summary::marker { content:''; }
-                .zt-stock-chat .zt-stock-panel[open] summary { border-bottom:1px solid rgba(122,209,136,0.3); background:rgba(122,209,136,0.08); }
-                .zt-stock-chat .zt-stock-panel[open] .zt-stock-chev { transform:rotate(180deg); }
-                .zt-stock-chat .zt-stock-panel:not([open]) { animation:ztStockPulse 2.4s ease-in-out infinite; }
-                @keyframes ztStockPulse {
-                    0%,100% { box-shadow:0 0 12px rgba(122,209,136,0.18); }
-                    50%     { box-shadow:0 0 20px rgba(122,209,136,0.42); }
-                }
-            </style>`;
-        } catch (err) {
-            console.warn('[V203.3] 투자 카카오 UI 렌더 실패, 기존 UI 폴백:', err);
-            return (typeof _renderStockBlock === 'function') ? _renderStockBlock(d) : '';
-        }
-    }
-
-
         function _renderStockBlock(d) {
             const isStock = d && (d.type === 'stock' || d.type === 'crypto');
             if (!isStock) return '';
@@ -14602,7 +14378,7 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
             if (!isFinanceQuery || !investData) return '';
             // 우선순위: 주식/코인
             if (investData.type === 'stock' || investData.type === 'crypto') {
-                return renderStockKakaoChat(investData);
+                return _renderStockBlock(investData);
             }
             // 그 외 (life 등)은 여기서 렌더링 안 함 — 아래 운세 경로가 처리
             return '';
@@ -24439,7 +24215,7 @@ async function startTossPayment(planKey, method) {
             stockSubType:   (typeof STOCK_SUBTYPE !== 'undefined') ? STOCK_SUBTYPE : '',
             reSubType:      (typeof RE_SUBTYPE !== 'undefined') ? RE_SUBTYPE : '',
             fortuneSubType: (typeof FORTUNE_SUBTYPE !== 'undefined') ? FORTUNE_SUBTYPE : '',
-            activeDomainBar:(typeof ACTIVE_DOMAIN_BAR !== 'undefined') ? ACTIVE_DOMAIN_BAR : ''
+            activeDomainBar: resolveActiveDomain()  // [V203.6] 의도 fallback (결제복귀 빈값 방지)
         };
         localStorage.setItem('pendingOracle', JSON.stringify(pendingOracle));
     } catch(e) {
