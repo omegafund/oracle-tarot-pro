@@ -3407,7 +3407,7 @@
 }
 
 /* ═══════════════════════════════════════════════════════════════════
-   [V203.7] ★ 모바일 발열(GPU 과부하) 최적화 ★
+   [V203.3] ★ 모바일 발열(GPU 과부하) 최적화 ★
    진단: 별 반짝임 SVG 인라인 애니 21개 + backdrop-filter blur 15개 +
          배경 glow 무한 애니 → 모바일 GPU가 매 프레임 쉬지 않고 렌더 → 발열
    해결(모바일 전용, 디자인 보존):
@@ -3436,6 +3436,26 @@
     }
     /* GPU 합성 강제 트리거 will-change 모바일 해제 (메모리 누수 방지) */
     * { will-change: auto !important; }
+
+    /* ═══ [V203.3] 2차 발열 최적화 — 발열 최우선 (사용자 전원 지적) ═══
+       진단: 한 점사 박스 10개+, 각 박스 다중 box-shadow(144개)+filter blur(20개)
+             → 5회 누적 시 그림자 150겹+ 동시 합성 → GPU 잔열
+       해결: 그림자 남기되 여러겹→단순화, blur 제거. 입체감 유지+부하 제거 */
+    /* ④ 박스 그림자 단순화 — 상시 표시 박스만. ★타로카드(.deck-card) 제외=UX 보존★ */
+    [class*="oracle"], [class*="bubble"], [class*="box"], [class*="result"],
+    [class*="zenith"], [class*="zeus"], [class*="panel"], [class*="paywall"],
+    [class*="gate"], .situation-tabs, .cat-card, .saju-plan-card, .saju-aux-card {
+        box-shadow: 0 1px 3px rgba(0,0,0,0.3) !important;
+    }
+    /* ⑤ 인라인 filter blur 제거 (deck-card 카드효과는 위 제외로 보존) */
+    [style*="filter:blur"], [style*="filter: blur"] {
+        filter: none !important;
+        -webkit-filter: none !important;
+    }
+    /* ⑥ SVG glow 필터 무력화 — 상시 표시 로고/별 SVG 글로우만 */
+    [filter="url(#glow-soft)"], [filter="url(#glow)"], [filter="url(#glow-strong)"], [filter="url(#starGlow)"] {
+        filter: none !important;
+    }
 }
     </style>
     <!-- [V19 Phase3] 결과창 이미지 캡처용 -->
@@ -6053,7 +6073,7 @@ let FORTUNE_SUBTYPE = '';
 // 현재 어느 도메인 바가 열려있는지 추적 (꼬임 방지용 가드)
 let ACTIVE_DOMAIN_BAR = ''; // '' | 'love' | 'stock' | 'realestate'
 
-// [V203.6] ★ 도메인 의도 복원 헬퍼 ★ — explicitDomain이 비는 것을 원천 차단
+// [V203.2] ★ 도메인 의도 복원 헬퍼 ★ — explicitDomain이 비는 것을 원천 차단
 //   근본: 결제/자연어 경로에서 ACTIVE_DOMAIN_BAR='' → explicitDomain='' →
 //        Worker 자연어 재분류(classifyByLLM) → 응답 지연 시 "엮이는 중"에서 멈춤
 //   해결(GPT 철학): 버튼이 선언한 의도(서브타입)가 있으면 그 도메인으로 확정 → 재분류 안 탐
@@ -8645,7 +8665,7 @@ async function startStreamFetch(userQuestion, cards) {
                 fortuneSubType: FORTUNE_SUBTYPE,
                 // [V25.0] 사용자가 명시 선택한 도메인 — 자동 분류 우회
                 //   서버는 이 값이 있으면 classifyQueryType 호출 없이 그대로 사용
-                explicitDomain: resolveActiveDomain()  // [V203.6] 의도 fallback (빈값 방지)
+                explicitDomain: resolveActiveDomain()  // [V203.2] 의도 fallback (빈값 방지)
             }),
             signal: controller.signal,
             // [V22.4] Wi-Fi/보안망 우회 옵션 (사장님 진단)
@@ -24247,7 +24267,7 @@ async function startTossPayment(planKey, method) {
             stockSubType:   (typeof STOCK_SUBTYPE !== 'undefined') ? STOCK_SUBTYPE : '',
             reSubType:      (typeof RE_SUBTYPE !== 'undefined') ? RE_SUBTYPE : '',
             fortuneSubType: (typeof FORTUNE_SUBTYPE !== 'undefined') ? FORTUNE_SUBTYPE : '',
-            activeDomainBar: resolveActiveDomain()  // [V203.6] 의도 fallback (결제복귀 빈값 방지)
+            activeDomainBar: resolveActiveDomain()  // [V203.2] 의도 fallback (결제복귀 빈값 방지)
         };
         localStorage.setItem('pendingOracle', JSON.stringify(pendingOracle));
     } catch(e) {
