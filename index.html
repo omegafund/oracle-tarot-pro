@@ -3405,6 +3405,38 @@
     padding-left: 12px !important;
     padding-right: 12px !important;
 }
+
+/* ═══════════════════════════════════════════════════════════════════
+   [V203.7] ★ 모바일 발열(GPU 과부하) 최적화 ★
+   진단: 별 반짝임 SVG 인라인 애니 21개 + backdrop-filter blur 15개 +
+         배경 glow 무한 애니 → 모바일 GPU가 매 프레임 쉬지 않고 렌더 → 발열
+   해결(모바일 전용, 디자인 보존):
+     ① 별·반짝임 무한 애니 정지 (별은 보이되 깜빡임만 멈춤 → 분위기 유지, GPU 0)
+     ② backdrop-filter blur 제거 (반투명 배경색으로 대체 — 시각차 거의 없음)
+     ③ 배경 glow/shimmer/pulse 무한 애니 정지 (버튼 1회성 효과는 영향 적음)
+   원칙: 데스크톱(유저 1%)은 그대로. 점사/영업/결제 로직 무관 (CSS만).
+   ═══════════════════════════════════════════════════════════════════ */
+@media (max-width: 768px) {
+    /* ① 별 반짝임 — SVG 인라인 style 애니까지 모두 정지 (헤더 로고 등) */
+    [style*="starTwinkle"], [style*="starFade"], [style*="starPulse"],
+    [class*="starTwinkle"], .star-icon {
+        animation: none !important;
+        opacity: 0.55 !important;  /* 정적이되 은은하게 — 신탁 분위기 유지 */
+    }
+    /* ② backdrop-filter blur 전면 제거 → GPU 레이어 합성 부하 제거
+       클래스명 일일이 안 맞추고 전역 차단 (모바일 GPU 최대 절약, 누락 0) */
+    * {
+        backdrop-filter: none !important;
+        -webkit-backdrop-filter: none !important;
+    }
+    /* ③ 배경 상시 glow/shimmer/pulse 무한 애니 정지 (장식성) */
+    [style*="emerald-glow"], [style*="zeusGlowPulse"], [style*="heroShimmer"],
+    [class*="emerald-glow"], [class*="GlowPulse"], [class*="Shimmer"] {
+        animation: none !important;
+    }
+    /* GPU 합성 강제 트리거 will-change 모바일 해제 (메모리 누수 방지) */
+    * { will-change: auto !important; }
+}
     </style>
     <!-- [V19 Phase3] 결과창 이미지 캡처용 -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
