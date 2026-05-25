@@ -1,5 +1,6 @@
 // ══════════════════════════════════════════════════════════════════
-// 🏛️ ZEUS ORACLE WORKER v2 — Single Source of Truth
+// 🏛️ ZEUS ORACLE WORKER V203 — Single Source of Truth
+//   [V203] trend 점수표 단일화·역방향 약화·양극가드(V203.1) + 점사 멈춤 수정(V203.2)
 // ══════════════════════════════════════════════════════════════════
 // [V2 변경점]
 //   1. 질문 유형 분류 4분기: 부동산 > 주식/코인 > 연애 > 일반 운세
@@ -2162,7 +2163,7 @@ function classifyByKeywords(prompt) {
 //  비용 최소화: 짧은 프롬프트 + Gemini Flash + maxTokens 20
 async function classifyByLLM(prompt, apiKey) {
   if (!apiKey || !prompt) return null;
-  // [V203.6] ★ 타임아웃 안전벨트 ★ — 분류 LLM 응답 지연 시 무한 대기로 점사 멈춤 방지
+  // [V203.2] ★ 타임아웃 안전벨트 ★ — 분류 LLM 응답 지연 시 무한 대기로 점사 멈춤 방지
   //   (근본 원인: explicitDomain 빈 채로 진입 → 이 분류 호출 hang → "엮이는 중"에서 멈춤)
   //   주의: 자연어 분류 '확대'가 아니라 기존 호출에 4초 타임아웃만 추가 (비용·로직 불변)
   const _llmController = new AbortController();
@@ -2196,7 +2197,7 @@ async function classifyByLLM(prompt, apiKey) {
     const match = text.toLowerCase().match(/\b(realestate|stock|crypto|love|life)\b/);
     return match ? match[1] : null;
   } catch(e) {
-    // [V203.6] 타임아웃(abort) 포함 모든 실패 → null (호출부에서 폴백 처리)
+    // [V203.2] 타임아웃(abort) 포함 모든 실패 → null (호출부에서 폴백 처리)
     console.warn('LLM classify fail:', e && e.name === 'AbortError' ? 'timeout(4s)' : e);
     return null;
   } finally {
@@ -10176,12 +10177,12 @@ function buildStockMetrics({ totalScore, riskScore, cleanCards, isLeverage, quer
   const volGate = riskGate.volatility;
   // ══════════════════════════════════════════════════════════════
 
-  // [V203.4] ★ 서사형 추세 — 숨은 CARD_SCORES 제거, 메인 CARD_SCORE 단일 참조 + 역방향 통일 ★
+  // [V203.1] ★ 서사형 추세 — 숨은 CARD_SCORES 제거, 메인 CARD_SCORE 단일 참조 + 역방향 통일 ★
   //   기존 결함: trend 전용 축약표(45장)가 메인(78장)과 24장 다른 값 + 역방향 무시
   //              → trend와 flowSummary가 다른 점수로 계산돼 방향 모순 ('불사신')
   //   수정: 통합 함수 getCardScore(메인표 + 역방향 *-1)로 일원화. flow/position/영성과 동일 규칙.
   //   주의: trendNarrative 서사 분기·문구는 그대로 보존 (계산 기준만 통일, 표현 불변)
-  // [V203.5] 역방향 = 약화(B4): 부호 유지하고 강도 감쇠 (재앙카드 역방향=약한 재앙, 축복카드 역방향=약한 축복)
+  // [V203.1] 역방향 = 약화(B4): 부호 유지하고 강도 감쇠 (재앙카드 역방향=약한 재앙, 축복카드 역방향=약한 축복)
   //   사장님·GPT·V27 영성시스템 철학 일치 — '완전 반전'(-6→+6)의 극단 뒤집힘 방지
   const getCardScore = (name, reversed = false) => {
     const base = CARD_SCORE[name] ?? 0;
@@ -10190,13 +10191,13 @@ function buildStockMetrics({ totalScore, riskScore, cleanCards, isLeverage, quer
   const pastScore    = getCardScore(cleanCards[0] || '', revFlags[0]);
   const currentScore = getCardScore(cleanCards[1] || '', revFlags[1]);
   const futureScore  = getCardScore(cleanCards[2] || '', revFlags[2]);
-  // [V203.5] trend·양극 판정용 B4 합산 (인자 totalScore는 완전반전 기반이라 별도 산출)
+  // [V203.1] trend·양극 판정용 B4 합산 (인자 totalScore는 완전반전 기반이라 별도 산출)
   const _b4Scores   = [pastScore, currentScore, futureScore];
   const _b4Total    = _b4Scores.reduce((a, b) => a + b, 0);
   const _b4Spread   = Math.max(..._b4Scores) - Math.min(..._b4Scores);
   const _hasBipolar = _b4Scores.some(s => s >= 4) && _b4Scores.some(s => s <= -4);
 
-  // [V203.5] 양극 가드 우선 — 강긍정(+4↑)과 강부정(-4↓)이 공존하거나, 폭이 크고 합산이 0근처면
+  // [V203.1] 양극 가드 우선 — 강긍정(+4↑)과 강부정(-4↓)이 공존하거나, 폭이 크고 합산이 0근처면
   //   '극과 극의 기로'로 (5-5 상쇄 → 중립 오판 방지). 사장님 안: 양극단 그대로 서술 + 신중 선택 유도
   //   ★ 반드시 _b4Scores/_hasBipolar 선언 이후에 위치 (TDZ ReferenceError 방지) ★
   let trend = "중립";
@@ -10210,7 +10211,7 @@ function buildStockMetrics({ totalScore, riskScore, cleanCards, isLeverage, quer
   // 흐름 방향: 미래 > 현재 → 상승 반전, 미래 < 현재 → 하락 가속
   let trendNarrative = trend;
   if (trend === "극과 극의 기로") {
-    // [V203.5] 양극 공존(5-5형) — 한 방향 단정 대신 '신중한 선택' 서사 (사장님 안)
+    // [V203.1] 양극 공존(5-5형) — 한 방향 단정 대신 '신중한 선택' 서사 (사장님 안)
     trendNarrative = "극과 극으로 갈리는 기로 — 신중한 선택 필요";
   } else if (futureScore > currentScore + 2 && currentScore < 0) {
     trendNarrative = "단기 하락 → 반등 시도 전환 구간";
@@ -10225,7 +10226,7 @@ function buildStockMetrics({ totalScore, riskScore, cleanCards, isLeverage, quer
   } else if (pastScore > 0 && currentScore > 0 && futureScore <= 0) {
     trendNarrative = "상승 후 피로 누적 — 조정 가능성";
   } else if (pastScore > 0 && futureScore < pastScore && (currentScore <= 0 || futureScore <= 0)) {
-    // [V203.4] 합산은 +(상승)이나 과거→미래 흐름이 하강하는 케이스(예: 강양수 시작→약음수 마감)
+    // [V203.1] 합산은 +(상승)이나 과거→미래 흐름이 하강하는 케이스(예: 강양수 시작→약음수 마감)
     //   trend(합산)와 flowSummary(흐름)의 방향 충돌 방지 — '상승세이나 흐름 약화'로 일관화
     //   GPT 원칙: '상승+약화'는 모순이 아닌 입체 서사 → 이 분기로 자연 편입
     trendNarrative = `${trend} — 흐름 약화 주의`;
@@ -10523,7 +10524,7 @@ function buildStockMetrics({ totalScore, riskScore, cleanCards, isLeverage, quer
   });
   const flowSummary = (() => {
     // 역방향 반영하여 실제 점수 계산
-    // [V203.5] flow도 역방향 B4 약화로 통일 (trend와 동일 규칙 → 방향 분열 방지)
+    // [V203.1] flow도 역방향 B4 약화로 통일 (trend와 동일 규칙 → 방향 분열 방지)
     const firstScore  = getCardScore(cleanCards[0] || '', revFlags[0]);
     const middleScore = getCardScore(cleanCards[1] || '', revFlags[1]);
     const lastScore   = getCardScore(cleanCards[2] || '', revFlags[2]);
