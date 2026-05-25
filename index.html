@@ -11341,9 +11341,9 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
     // [V25.28] 주식/코인/부동산 5계층 박스 활성 시 Gemini Core Insight 중복 차단
     //   5계층 박스 안에 이미 "🔥 핵심 해석" + "🧭 최종 결론" + "💡 행동 시 결과" 등이 있음
     //   투자 결과창에서 중복된 결론 박스 출력 방지 (매도/매수/코인 모두 동일 적용)
-    const _5layerInvestActive = !!(typeof window !== 'undefined'
-        && window._serverMetrics
-        && (typeof window._isFinanceQuery !== 'undefined' && window._isFinanceQuery));
+    const _5layerInvestActive = !!(window._serverMetrics
+        && (isFinanceQuery
+            || (typeof window._isFinanceQuery !== 'undefined' && window._isFinanceQuery)));  // [V203.3] 전역 미세팅 시 renderText 인자로 보강 → 핵심흐름해석 중복 차단
 
     // [V25.32] FORTUNE V25.32 (wealth/health/career) 활성 시 Gemini Core Insight 차단
     //   V25.32 자체 6박스(Core Insight 포함)를 생성하므로 중복 출력 방지
@@ -12763,7 +12763,7 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
         }
         
     // ════════════════════════════════════════════════════════════════════════
-    // [V203.2] 투자 카카오 채팅 UI — 5버블 (격리: stock/crypto 전용 · 사주 0% 영향)
+    // [V203.3] 투자 카카오 채팅 UI — 5버블 (격리: stock/crypto 전용 · 사주 0% 영향)
     //   사장님 확정 5버블: ①인사 ②핵심결론 ③지금시장 ④실행가이드 ⑤근거▼
     //   재사용: .saju-chat-* CSS (시각 통일) + _render5LayerBlock (깊이 엔진)
     //   데이터 모드 2종: PRO(window._serverMetrics.topVerdict + layers) / 폴백
@@ -12847,13 +12847,12 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
                 <div><span style="color:var(--gold); font-weight:800;">🧭 행동:</span> <b>${d.action || '-'}</b></div>`;
         }
 
-        // [버블3] 지금 시장은? — 추세 + 카드 에너지 흐름
+        // [버블3] 지금 시장은? — 추세 + 흐름요약만 (V203.3: 카드 나열 제거 = 카드장문/근거와 중복 차단)
+        //   카드 '의미'는 위 P/P/F 장문이, 카드 '근거'는 버블5 근거펼침이 담당.
+        //   버블3은 "그래서 지금 흐름이 이렇다"의 빠른 진단 = 3장 연결 스토리(flowSummary)만.
         const b3parts = [];
-        if (d.trend) b3parts.push(`<div style="margin-bottom:8px;"><span style="color:var(--gold); font-weight:800;">📈 추세:</span> <b>${d.trend}</b></div>`);
-        if (d.cardNarrative && d.cardNarrative.length) {
-            b3parts.push(d.cardNarrative.map(line => `<div style="font-size:0.86rem; color:rgba(255,255,255,0.88); line-height:1.7; margin-bottom:4px;">• ${line}</div>`).join(''));
-        }
-        if (d.flowSummary) b3parts.push(`<div style="margin-top:6px; font-size:0.83rem; color:rgba(212,175,55,0.85); font-style:italic;">↳ ${d.flowSummary}</div>`);
+        if (d.trend) b3parts.push(`<div style="margin-bottom:6px;"><span style="color:var(--gold); font-weight:800;">📈 추세:</span> <b>${d.trend}</b></div>`);
+        if (d.flowSummary) b3parts.push(`<div style="font-size:0.88rem; color:rgba(255,255,255,0.9); line-height:1.7;">↳ ${d.flowSummary}</div>`);
         const b3 = b3parts.join('') || '<div style="color:rgba(255,255,255,0.6);">시장 흐름 데이터 준비 중</div>';
 
         // [버블4] 실행 가이드 — 포지션 + 타이밍 + 실행 트리거
@@ -12999,7 +12998,7 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
                 }
             </style>`;
         } catch (err) {
-            console.warn('[V203.2] 투자 카카오 UI 렌더 실패, 기존 UI 폴백:', err);
+            console.warn('[V203.3] 투자 카카오 UI 렌더 실패, 기존 UI 폴백:', err);
             return (typeof _renderStockBlock === 'function') ? _renderStockBlock(d) : '';
         }
     }
