@@ -17923,7 +17923,8 @@ function renderSajuChatMessageV185(msg, index) {
         const bars = ['목','화','토','금','수'].map(el => {
             const val = dist[el] || 0;
             const pct = total > 0 ? Math.round((val / total) * 100) : 0;
-            const barW = Math.max(2, pct);
+            // [V203.5] 바 기준값 60 스케일 (오행 5분할이라 한 종류가 100% 불가 → 100기준이면 너무 짧음)
+            const barW = Math.min(100, Math.max(8, Math.round((pct / 60) * 100)));
             return `<div style="display:flex; align-items:center; gap:9px; margin-bottom:7px;">
                 <div style="width:38px; font-size:0.82rem; font-weight:600; color:${elColors[el]};">${elIcons[el]} ${el}</div>
                 <div style="flex:1; background:rgba(0,0,0,0.35); height:14px; border-radius:7px; overflow:hidden; border:1px solid rgba(255,255,255,0.10);">
@@ -20116,16 +20117,16 @@ function renderSajuResult(data) {
     const elIcons = { '목':'🌳', '화':'🔥', '토':'🟫', '금':'⚙️', '수':'💧' };
     const elBars = ['목','화','토','금','수'].map(el => {
         const val = elements[el] || 0;
-        const pct = maxEl > 0 ? (val / maxEl) * 100 : 0;
-        // 전체 대비 비율 (사장님 표시 안)
+        // [V203.5] FREE와 동일 — 표시 %는 전체대비, 바는 기준값 60 스케일
         const sharePct = totalEl > 0 ? Math.round((val / totalEl) * 100) : 0;
+        const barW = Math.min(100, Math.max(8, Math.round((sharePct / 60) * 100)));
         return `
         <div style="display:flex; align-items:center; gap:8px; margin-bottom:6px;">
             <div style="width:36px; font-size:0.78rem;">${elIcons[el]} ${el}</div>
-            <div style="flex:1; background:rgba(255,255,255,0.06); height:14px; border-radius:7px; overflow:hidden;">
-                <div style="width:${pct}%; height:100%; background:${elColors[el]}; opacity:0.85;"></div>
+            <div style="flex:1; background:rgba(0,0,0,0.35); height:14px; border-radius:7px; overflow:hidden; border:1px solid rgba(255,255,255,0.10);">
+                <div style="width:${barW}%; height:100%; background:${elColors[el]}; border-radius:7px; box-shadow:0 0 7px ${elColors[el]};"></div>
             </div>
-            <div style="width:42px; text-align:right; font-size:0.78rem; color:rgba(255,255,255,0.85); font-weight:700;">${sharePct}%</div>
+            <div style="width:42px; text-align:right; font-size:0.78rem; color:${elColors[el]}; font-weight:800;">${sharePct}%</div>
         </div>`;
     }).join('');
 
