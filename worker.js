@@ -11846,7 +11846,16 @@ function getLoveScoreCategoryV2(score, cards, revFlags, loveSubType) {
   }
   // 단절 신호 → maintain (advance에서)
   if (collapse >= maintainDownT && baseCategory === 'advance') return 'maintain';
-  
+
+  // [V203.6] 역방향 붕괴 카드 가드 — 연애 전용 보정층 (공용 엔진 untouched)
+  //   calcCardScores가 역방향을 완전반전(Tower[역]=+6)해 advance 둔갑 → collapse 1장은 임계 미달로 통과.
+  //   강한 붕괴카드(COLLAPSE 3+)가 역방향이면 advance→maintain 하향. 정방향 무관, 점수엔진 보존.
+  const _hasReversedCollapse = cards && revFlags && cards.some((c, i) => {
+    const nm = typeof c === 'string' ? c : (c && c.name) || '';
+    return revFlags[i] === true && (COLLAPSE_SIGNAL_CARDS[nm] || 0) >= 3;
+  });
+  if (_hasReversedCollapse && baseCategory === 'advance') return 'maintain';
+
   return baseCategory;
 }
 
