@@ -21812,7 +21812,7 @@ ${cleanContent}
 //     let selectedProduct = null;
 //     function selectProduct(type) { selectedProduct = type; }
 //     function getPrice(type) {
-//         const map = { trial:990, day:3900, month:9900, year:79000, lifetime:199000 };
+//         const map = { trial:990, day:4900, month:9900, year:79000, lifetime:199000 };
 //         return map[type];
 //     }
 //     function onBankTransferClick() {
@@ -21828,7 +21828,7 @@ ${cleanContent}
 
 // 초기 상태: 1일권 기본 (타로) / 사주는 trial 강제
 window._zeusBankSelectedPlan = 'day';
-window._zeusBankSelectedAmount = 3900;
+window._zeusBankSelectedAmount = 4900;
 
 window.zeusBankSelectPlan = function(btn, plan, amount) {
     // 모든 버튼 강조 해제
@@ -21995,14 +21995,14 @@ function showPayModal() {
     // 기존 계좌이체 섹션 (폴백 — 접힌 상태)
     // ════════════════════════════════════════════════════════════════════════
     // [V31 #166 사장님 법적 리스크 차단] 사주 계좌이체 990원 통일
-    //   사장님 진단: "990원 표시인데 3900원 결제 = 사기/민원 소송 리스크"
+    //   사장님 진단: "990원 표시인데 4900원 결제 = 사기/민원 소송 리스크"
     //   법적 근거:
     //     ① 표시광고법 위반 (가격 표시-결제 불일치)
     //     ② 전자상거래법 제13조 (정확한 가격 표시 의무)
     //     ③ 민사소송 가능 (사용자 손해배상 청구)
     //   해결:
     //     ① 사주 계좌이체 = 990원 단일 (표시-결제 일치)
-    //     ② 타로 계좌이체 = 3900원 (cfg.amount 그대로 — 표시도 3900원)
+    //     ② 타로 계좌이체 = 4900원 (cfg.amount 그대로 — 표시도 4900원)
     //     ③ 990원 계좌이체 수수료는 운영 부담으로 흡수 (법적 리스크 회피)
     // ════════════════════════════════════════════════════════════════════════
     // ════════════════════════════════════════════════════════════════════════
@@ -22012,7 +22012,7 @@ function showPayModal() {
     //     ✅ 타로 (연애/주식/부동산/운세) = 5종 모두 선택 가능
     //   초기값:
     //     사주: 990원 (단일)
-    //     타로: 3900원 (1일권 기본 선택)
+    //     타로: 4900원 (1일권 기본 선택)
     //   동적 갱신:
     //     window.zeusBankSelectPlan(btn, plan, amount) → 입금 금액/토스 링크 갱신
     // ════════════════════════════════════════════════════════════════════════
@@ -22023,10 +22023,10 @@ function showPayModal() {
         window._zeusBankSelectedAmount = 990;
     } else {
         window._zeusBankSelectedPlan = 'day';
-        window._zeusBankSelectedAmount = 3900;
+        window._zeusBankSelectedAmount = 4900;
     }
     
-    const sajuAmount = isSajuContext ? 990 : 3900;  // 초기 표시값 (사주=990, 타로 1일권 기본=3900)
+    const sajuAmount = isSajuContext ? 990 : 4900;  // 초기 표시값 (사주=990, 타로 1일권 기본=4900)
     const sajuTossAmount = sajuAmount;
     const amountFmt = sajuAmount.toLocaleString('ko-KR');
     
@@ -23180,7 +23180,7 @@ function showPaymentMethodModal(planKey) {
                 </button>
 
                 <!-- [V26.5] 계좌이체 — 사장님 진단 안 (글로벌 표준 패턴)
-                     모든 plan(990/3900/9900/79000/199000)에서 계좌이체 가능
+                     모든 plan(990/4900/9900/79000/199000)에서 계좌이체 가능
                      한국 50대+ 핵심 타겟층 35% 결제 보호 -->
                 <button onclick="closePaymentMethodModal(); showBankTransferModal('${planKey}');" style="
                     display:flex; align-items:center; justify-content:space-between;
