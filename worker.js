@@ -19890,6 +19890,132 @@ async function buildSajuSafeV184_5(input, ctx) {
   }
 })();
 
+// ════════════════════════════════════════════════════════════════════════════
+// [V60-ZEUS-SHIELD] 초정밀 디도스 차단 및 자산 보호 엔진
+// ════════════════════════════════════════════════════════════════════════════
+
+async function handleUltimateZeusShield(request, env, userId, planKey, question) {
+    // [0] GLOBAL EMERGENCY KILL SWITCH
+    const KV = env.ZEUS_TAROT_KV;
+    if (!KV) return { success: true, isResponse: false, noKV: true };
+
+    const systemLock = await KV.get("SYSTEM_LOCK");
+    if (systemLock === "true") {
+        return new Response(JSON.stringify({
+            error: "SYSTEM_LOCK",
+            message: "현재 카드의 흐름이 과도하게 집중되고 있습니다. 잠시 후 다시 시도해 주세요."
+        }), { status: 503, headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" } });
+    }
+
+    // [1] QUESTION VALIDATION
+    if (!question || question.trim().length < 2) {
+        return new Response(JSON.stringify({ error: "QUESTION_EMPTY", message: "질문이 너무 짧습니다." }),
+            { status: 400, headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" } });
+    }
+    if (question.length > 500) {
+        return new Response(JSON.stringify({ error: "QUESTION_TOO_LONG", message: "질문은 500자 이하로 작성해 주세요." }),
+            { status: 400, headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" } });
+    }
+    const blockedPatterns = [/https?:\/\//i, /<script/i, /100 examples/i, /all cards/i, /repeat 100/i];
+    for (const pattern of blockedPatterns) {
+        if (pattern.test(question)) {
+            return new Response(JSON.stringify({ error: "PROMPT_BLOCKED", message: "바른 문장으로 다시 질문해 주세요." }),
+                { status: 400, headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" } });
+        }
+    }
+
+    // [2] DEVICE FINGERPRINT
+    const ip = request.headers.get("cf-connecting-ip") || "unknown";
+    const ua = request.headers.get("user-agent") || "";
+    const lang = request.headers.get("accept-language") || "";
+    const fpRaw = new TextEncoder().encode(`${ua}:${lang}`);
+    const fpHash = await crypto.subtle.digest("SHA-256", fpRaw);
+    const fingerprint = Array.from(new Uint8Array(fpHash)).map(b => b.toString(16).padStart(2, "0")).join("");
+    const keyBase = `${userId || 'guest'}:${fingerprint}:${ip}`;
+
+    // [3] CONCURRENCY LOCK
+    const concurrentKey = `active:${keyBase}`;
+    const active = await KV.get(concurrentKey);
+    if (active === "true") {
+        return new Response(JSON.stringify({ error: "CONCURRENT_REQUEST", message: "이전 점사가 아직 진행 중입니다. 잠시만 기다려 주세요." }),
+            { status: 429, headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" } });
+    }
+    await KV.put(concurrentKey, "true", { expirationTtl: 20 });
+
+    try {
+        // [4] ADAPTIVE COOLDOWN
+        const usageKey = `usage:${keyBase}`;
+        let currentUsage = parseInt((await KV.get(usageKey)) || "0");
+        let cooldown = 3;
+        if (currentUsage > 20) cooldown = 5;
+        if (currentUsage > 50) cooldown = 8;
+
+        const coolKey = `cool:${keyBase}`;
+        const cool = await KV.get(coolKey);
+        if (cool === "true") {
+            return new Response(JSON.stringify({ error: "COOLDOWN", message: `카드의 흐름이 정리되지 않았습니다. ${cooldown}초 후 다시 시도해 주세요.` }),
+                { status: 429, headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" } });
+        }
+
+        // [5] PLAN LIMIT
+        let limit = 80;
+        let ttl = 86400;
+        if (planKey === "trial" || planKey === "entry" || planKey === "saju_basic") {
+            limit = 30;
+            ttl = 3600;
+        }
+        if (currentUsage >= limit) {
+            return new Response(JSON.stringify({ error: "LIMIT_EXCEEDED", message: `본 상품의 점사 가능 횟수(${limit}회)를 모두 사용하셨습니다.` }),
+                { status: 429, headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" } });
+        }
+
+        // [6] PENDING
+        const pendingKey = `pending:${keyBase}`;
+        let pending = parseInt((await KV.get(pendingKey)) || "0");
+        await KV.put(pendingKey, String(pending + 1), { expirationTtl: 60 });
+
+        // [7] DAILY BUDGET SHIELD
+        const globalKey = "GLOBAL_DAILY_AI_USAGE";
+        let globalUsage = parseInt((await KV.get(globalKey)) || "0");
+        if (globalUsage > 10000) {
+            await KV.put("SYSTEM_LOCK", "true", { expirationTtl: 600 });
+            return new Response(JSON.stringify({ error: "GLOBAL_LIMIT", message: "시스템 보호가 작동 중입니다. 잠시 후 이용 바랍니다." }),
+                { status: 503, headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" } });
+        }
+
+        // [8] COOLDOWN 잠금 설정
+        await KV.put(coolKey, "true", { expirationTtl: cooldown });
+
+        return { success: true, isResponse: false, keyBase, usageKey, pendingKey, ttl, globalKey, concurrentKey };
+
+    } catch (err) {
+        await KV.delete(concurrentKey);
+        throw err;
+    }
+}
+
+async function commitZeusUsage(env, shieldData) {
+    if (!env.ZEUS_TAROT_KV || shieldData.noKV) return;
+    const KV = env.ZEUS_TAROT_KV;
+    try {
+        let usage = parseInt((await KV.get(shieldData.usageKey)) || "0");
+        await KV.put(shieldData.usageKey, String(usage + 1), { expirationTtl: shieldData.ttl });
+        let pending = parseInt((await KV.get(shieldData.pendingKey)) || "0");
+        await KV.put(shieldData.pendingKey, String(Math.max(0, pending - 1)), { expirationTtl: 60 });
+        let globalUsage = parseInt((await KV.get(shieldData.globalKey)) || "0");
+        await KV.put(shieldData.globalKey, String(globalUsage + 1), { expirationTtl: 86400 });
+    } catch (_) {}
+}
+
+async function rollbackZeusUsage(env, shieldData) {
+    if (!env.ZEUS_TAROT_KV || shieldData.noKV) return;
+    const KV = env.ZEUS_TAROT_KV;
+    try {
+        let pending = parseInt((await KV.get(shieldData.pendingKey)) || "0");
+        await KV.put(shieldData.pendingKey, String(Math.max(0, pending - 1)), { expirationTtl: 60 });
+    } catch (_) {}
+}
+
 // ══════════════════════════════════════════════════════════════════════════
 // 🚪 메인 엔트리
 // ══════════════════════════════════════════════════════════════════════════
@@ -19964,6 +20090,20 @@ export default {
         const body = await request.json();
         const { input, category = 'fortune', timePhase = 'medium', tier = 'free' } = body;
 
+        // ══════════════════════════════════════════════════════════════
+        // [V60-ZEUS-SHIELD] 사주 오라클 DDoS 차단 + 사용량 게이트
+        // ══════════════════════════════════════════════════════════════
+        const _sajuRawToken = request.headers.get("x-session-token") || "";
+        const _sajuIsPaid   = await verifyToken(_sajuRawToken, env.TOKEN_SECRET);
+        const _sajuPlanKey  = _sajuIsPaid ? (tier === 'free' ? 'trial' : 'day') : 'free';
+        const _sajuUserId   = request.headers.get("cf-connecting-ip") || "unknown";
+        const _sajuQuestion = JSON.stringify(input || {}).slice(0, 200);
+        const _sajuShield   = await handleUltimateZeusShield(
+            request, env, _sajuUserId, _sajuPlanKey, _sajuQuestion || "saju"
+        );
+        if (_sajuShield instanceof Response) return _sajuShield;
+        // ══════════════════════════════════════════════════════════════
+
         // Chunk 5 통합: 풀 플로우 + 감사 + 자동 fallback (★ 기존 100% 보존 ★)
         const result = v31RunSajuOracleWithAudit(input, category, timePhase, tier);
 
@@ -20022,7 +20162,7 @@ export default {
           v184_5Data = { _error: String(e.message || e), _phase: 'try-catch' };
         }
 
-        return new Response(JSON.stringify({
+        const _sajuFinalResponse = new Response(JSON.stringify({
           ...result,
           domain: 'saju',           // ★ [V31 #135 사장님 4번] 클라이언트가 사주 응답인지 명시 인식
           category: category,       // ★ 입력받은 카테고리 그대로 반환
@@ -20106,7 +20246,21 @@ export default {
           headers: { ...corsHeaders(), "Content-Type": "application/json" }
         });
 
+        // ✅ 성공 → 사용량 확정 차감 + concurrency lock 해제
+        await commitZeusUsage(env, _sajuShield);
+        if (!_sajuShield.noKV && _sajuShield.concurrentKey) {
+          try { await env.ZEUS_TAROT_KV.delete(_sajuShield.concurrentKey); } catch(_) {}
+        }
+        return _sajuFinalResponse;
+
       } catch (e) {
+        // ❌ 실패 → 롤백 + lock 해제
+        if (typeof _sajuShield !== 'undefined') {
+          await rollbackZeusUsage(env, _sajuShield);
+          if (!_sajuShield.noKV && _sajuShield.concurrentKey) {
+            try { await env.ZEUS_TAROT_KV.delete(_sajuShield.concurrentKey); } catch(_) {}
+          }
+        }
         return new Response(JSON.stringify({
           ok: false,
           error: `V31 Chunk 5 처리 오류: ${e.message}`,
@@ -20819,7 +20973,8 @@ export default {
       try {
         // 1. 관리자 비밀번호 검증
         const adminPass = request.headers.get("x-admin-pass") || "";
-        const expectedPass = env.ADMIN_PASSWORD || "zeus2026admin";  // Cloudflare 환경변수로 변경 권장
+        const expectedPass = env.ADMIN_PASSWORD;
+        if (!expectedPass) return new Response(JSON.stringify({ success: false, error: "ADMIN_PASSWORD not configured" }), { status: 500, headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" } });
         if (adminPass !== expectedPass) {
           return new Response(JSON.stringify({ success: false, error: "unauthorized" }), {
             status: 401,
@@ -21055,7 +21210,8 @@ export default {
     if (url.pathname === "/admin/list" && request.method === "GET") {
       try {
         const adminPass = request.headers.get("x-admin-pass") || "";
-        const expectedPass = env.ADMIN_PASSWORD || "zeus2026admin";
+        const expectedPass = env.ADMIN_PASSWORD;
+        if (!expectedPass) return new Response(JSON.stringify({ success: false, error: "ADMIN_PASSWORD not configured" }), { status: 500, headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" } });
         if (adminPass !== expectedPass) {
           return new Response(JSON.stringify({ success: false, error: "unauthorized" }), {
             status: 401, headers: { ...corsHeaders(), "Content-Type": "application/json" }
@@ -21101,7 +21257,8 @@ export default {
     if (url.pathname === "/admin/block" && request.method === "POST") {
       try {
         const adminPass = request.headers.get("x-admin-pass") || "";
-        const expectedPass = env.ADMIN_PASSWORD || "zeus2026admin";
+        const expectedPass = env.ADMIN_PASSWORD;
+        if (!expectedPass) return new Response(JSON.stringify({ success: false, error: "ADMIN_PASSWORD not configured" }), { status: 500, headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" } });
         if (adminPass !== expectedPass) {
           return new Response(JSON.stringify({ success: false, error: "unauthorized" }), {
             status: 401, headers: { ...corsHeaders(), "Content-Type": "application/json" }
@@ -21193,6 +21350,30 @@ export default {
 
         const rawToken = request.headers.get("x-session-token") || "";
         const isPaid   = await verifyToken(rawToken, env.TOKEN_SECRET);
+
+        // ══════════════════════════════════════════════════════════════
+        // [V60-ZEUS-SHIELD] DDoS 차단 + 사용량 게이트 (Gemini 호출 전)
+        // ══════════════════════════════════════════════════════════════
+        const _planKey = (() => {
+          // 토큰 페이로드에서 plan 추출 (paid|userId|expiry 형식)
+          try {
+            const parts = rawToken.split("|");
+            // verify-toss 발급 토큰: paid|userId|expiry|hmac
+            // userId에 plan 정보가 없으므로 orderId prefix로 추론
+            // 간단하게 isPaid 여부 + 토큰 만료 시간으로 trial/day 구분
+            if (!isPaid) return "free";
+            const expiry = parseInt(parts[2] || "0");
+            const remaining = expiry - Date.now();
+            if (remaining <= 3600 * 1000 * 2) return "trial";   // 2시간 이하 = trial
+            return "day";
+          } catch(_) { return isPaid ? "day" : "free"; }
+        })();
+        const _shieldUserId = request.headers.get("cf-connecting-ip") || "unknown";
+        const _shieldResult = await handleUltimateZeusShield(
+            request, env, _shieldUserId, _planKey, prompt || ""
+        );
+        if (_shieldResult instanceof Response) return _shieldResult;
+        // ══════════════════════════════════════════════════════════════
 
         // [절대 수정 금지]
         // [V2.5] gemini-2.5-flash 사용 — Tier 1 키로 일 10,000회 무료 한도 내 사용
@@ -22833,6 +23014,7 @@ ${metrics.cryptoSubtype === 'crypto_buy' ? `
         writer.write(encoder.encode(metricsSSE));
 
         (async () => {
+          let _streamOk = false;
           try {
             const reader = geminiResponse.body.getReader();
             while (true) {
@@ -22840,9 +23022,20 @@ ${metrics.cryptoSubtype === 'crypto_buy' ? `
               if (done) break;
               await writer.write(value);
             }
+            _streamOk = true;
+            // ✅ Gemini 스트림 완료 → 사용량 확정 차감
+            await commitZeusUsage(env, _shieldResult);
           } catch (e) {
             // 스트림 중단 — 조용히 종료
           } finally {
+            if (!_streamOk) {
+              // ❌ 스트림 실패 → 사용량 롤백
+              await rollbackZeusUsage(env, _shieldResult);
+            }
+            // concurrency lock 해제
+            if (!_shieldResult.noKV && _shieldResult.concurrentKey) {
+              try { await env.ZEUS_TAROT_KV.delete(_shieldResult.concurrentKey); } catch(_) {}
+            }
             try { await writer.close(); } catch(_) {}
           }
         })();
@@ -22859,6 +23052,11 @@ ${metrics.cryptoSubtype === 'crypto_buy' ? `
         });
 
       } catch (e) {
+        // 동기 예외 시 rollback
+        try { await rollbackZeusUsage(env, _shieldResult); } catch(_) {}
+        if (typeof _shieldResult !== 'undefined' && !_shieldResult.noKV && _shieldResult.concurrentKey) {
+          try { await env.ZEUS_TAROT_KV.delete(_shieldResult.concurrentKey); } catch(_) {}
+        }
         return new Response(
           JSON.stringify({ error: e.message }),
           { headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" } }
