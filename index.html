@@ -5309,7 +5309,7 @@ const WORKER_BASE_URL_V55 = 'https://tarot-api-merged.omegafund01.workers.dev';
 const V55_STATIC_BASE = 'https://oracle-tarot-v1.omegafund01.workers.dev';
 
 const PAYMENT_PLANS = {
-    // [V20.0] 990원 체험권 — 1시간 무제한 (체험 후 day/month 전환 유도)
+    // [V20.0] 990원 체험권 — 1시간 무제한
     trial: {
         id:     'trial',
         amount: 990,
@@ -5318,10 +5318,7 @@ const PAYMENT_PLANS = {
         desc:   '1시간 무제한 점사 (체험)',
         hours:  1
     },
-    // [V31 #187] 990원 사주 기본 정밀 — Freemium 진입 장벽 폭 낮춤
-    //   목적: "현재 상태 확인" 가치 + 4,900원 업셀 자연 유도
-    //   포함: 사주 명식 + 6대 분야 + 시계열 (현재 상태 분석)
-    //   미포함: 대운 / 인생 전환 / 잠재력 정밀 (4,900원 영역)
+    // [V31 #187] 990원 사주 기본 정밀
     saju_basic: {
         id:     'saju_basic',
         amount: 990,
@@ -5329,70 +5326,17 @@ const PAYMENT_PLANS = {
         emoji:  '💫',
         desc:   '현재 상태 + 사주 명식 + 시계열 (1회)',
         hours:  24,
-        sajuOnly: true     // 사주 전용 플랜
+        sajuOnly: true
     },
-    // [V31 #185 Phase 2] 4,900원 사주 프리미엄 — 카카오 UI 잠긴 메시지 CTA
-    //   대상: 사주 정밀 분석 (대운 8단계 + 십성 + 6대 분야 + 5대 잠재력 + 오행 정밀)
-    //   포지셔닝: 990원과 9,900원 사이 — 사주 단일 정밀
+    // [V31 #185 Phase 2] 4,900원 사주 프리미엄 / 타로 1일권 통합 플랜
     saju_premium: {
         id:     'saju_premium',
         amount: 4900,
-        label:  '사주 정밀 분석',
+        label:  '1일 PREMIUM 이용권',
         emoji:  '☯',
-        desc:   '대운 8단계 + 십성 + 잠재력 정밀 (1회)',
-        hours:  24,        // 24시간 유효
-        sajuOnly: true     // 사주 전용 플랜 (다른 카테고리 영향 0)
-    },
-    day: {
-        id:     'day',
-        amount: 3900,
-        label:  '1일 이용권',
-        emoji:  '🔥',
-        desc:   '24시간 무제한 점사',
-        days:   1
-    },
-    month: {
-        id:     'month',
-        amount: 9900,
-        label:  '30일 이용권',
-        emoji:  '💎',
-        desc:   '30일 무제한 점사 + 모든 미래 해석',
-        days:   30
-    },
-    // ══════════════════════════════════════════════════════════════════
-    // [V23 P0-2] 월 구독 + 연 구독 + 평생 이용권 (글로벌 톱앱 표준)
-    //   글로벌 데이터:
-    //     • Co-Star: $9.99/월 + 연 30% 할인
-    //     • 구독 모델 매출 = 단일 결제 대비 3~5배
-    //     • LTV (평생 가치) 5배 ↑
-    // ══════════════════════════════════════════════════════════════════
-    monthly: {
-        id:     'monthly',
-        amount: 9900,
-        label:  '월 구독 (자동결제)',
-        emoji:  '🌙',
-        desc:   '매월 9,900원 — 무제한 신탁 + 일별 카드',
-        days:   30,
-        recurring: true   // 자동 갱신
-    },
-    yearly: {
-        id:     'yearly',
-        amount: 79000,
-        label:  '연 구독 (33% 할인)',
-        emoji:  '⭐',
-        desc:   '연 79,000원 — 월 6,583원 (33% 절약)',
-        days:   365,
-        recurring: true,
-        savings: '34%'  // 월 9,900 × 12 = 118,800 vs 79,000
-    },
-    lifetime: {
-        id:     'lifetime',
-        amount: 199000,
-        label:  '평생 이용권',
-        emoji:  '👑',
-        desc:   '한 번 결제 — 평생 무제한 신탁',
-        days:   36500,  // 100년
-        recurring: false
+        desc:   '24시간 한정 · 연애/투자/운세 모두 무제한',
+        hours:  24,
+        sajuOnly: false // 타로/사주 공용으로 쓰기 위해 false 또는 제거
     }
 };
 
