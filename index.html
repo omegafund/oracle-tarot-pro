@@ -20675,7 +20675,15 @@ ${_oracle.storyBridge ? `
                             ${text.energyGuideV54.direction}
                         </div>
                     </div>
-                    
+                    ${text.energyGuideV54.why ? `
+                    <div style="margin-bottom:10px; padding:12px 14px; background:rgba(255,224,138,0.06); border-left:3px solid rgba(255,224,138,0.5); border-radius:0 6px 6px 0;">
+                        <div style="color:#FFE08A; font-size:0.80rem; font-weight:800; margin-bottom:7px;">💡 왜 이 기운이 지금 필요한가</div>
+                        <div style="color:rgba(255,255,255,0.88); font-size:0.82rem; line-height:1.8; white-space:pre-line; word-break:keep-all;">
+                            ${text.energyGuideV54.why}
+                        </div>
+                    </div>
+                    ` : ''}
+                   
                     <!-- ★ V202.54.0-E ★ ⚠ 멀어지면 좋은 흐름 = 토글 -->
                     <div class="v54-foldable" data-expanded="false" style="margin-bottom:10px;">
                         <div class="v54-header" style="padding:10px 12px; background:rgba(231,76,60,0.08); border-left:3px solid rgba(231,76,60,0.55); border-radius:0 6px 6px 0;">
