@@ -20184,19 +20184,7 @@ function renderSajuResult(data) {
                 <div style="display:flex; align-items:center; gap:6px; margin-bottom:8px;">
                     <span style="color:#E8C766; font-size:0.92rem; font-weight:800;">🌳 당신 안에 가장 강한 기운</span>
                 </div>
-
-                <!-- 일주 물상 — 도입문구 방식 (소제목 삭제) -->
-                <div style="color:rgba(255,255,255,0.92); font-size:0.85rem; line-height:1.7; margin-bottom:12px;">
-    <span style="color:#FFE08A; font-weight:700;">당신을 한마디로 그리면, </span>${text.coreNarrative?.essence || text.dayEssence}
-</div>
-
-<div style="color:rgba(255,255,255,0.88); font-size:0.82rem; line-height:1.75; margin-bottom:12px; border-left:2px solid rgba(255,224,138,0.4); padding-left:10px;">
-    ${text.coreNarrative?.behavior || text.balancePhrase}
-</div>
-
-<div style="color:rgba(255,255,255,0.85); font-size:0.82rem; line-height:1.75; margin-bottom:12px; border-left:2px solid rgba(255,224,138,0.25); padding-left:10px;">
-    ${text.coreNarrative?.relationship || text.strengthPhrase}
-</div>
+               
                <!-- C-1: 본질/에너지/관계 말풍선 — 제목 중복 제거 -->
                 ${text.deepInsight && text.deepInsight.essenceCore ? (() => {
                     const _id = 'ztess_' + Math.random().toString(36).slice(2,7);
