@@ -21034,14 +21034,14 @@ ${cleanContent}
                 ${data.pro.luckPhase12 ? (() => {
                     const c = data.pro.luckPhase12.content || '';
                     const deep = data.pro.luckPhase12.v54_body || '';
-                    const head = c.length > 80 ? c.slice(0, 70) + '…' : c;
-                    const full = deep ? (c + '\n\n💭 현재 단계 깊이 통찰\n' + deep) : c;
+                    const head = '';
+                    const full = deep ? (deep) : c;
                     const long = (c.length > 80) || deep;
                     const id = 'ztlp_' + Math.random().toString(36).slice(2,7);
                     return `
                 <div class="zt-pro-bub">
                     <div class="zt-pro-tit">🌀 ${(data.pro.luckPhase12.title||'12운성').replace(/^[🌀\s]+/,'')}</div>
-                    <div class="zt-pro-txt">${head}</div>
+                   ${head ? `<div class="zt-pro-txt">${head}</div>` : ''}
                     ${long ? `
                     <div class="zt-pro-more" onclick="var d=document.getElementById('${id}');var o=d.classList.toggle('open');this.innerHTML=(o?'▲ 접기':'▼ 숨은 이야기 보기');">▼ 숨은 이야기 보기</div>
                     <div class="zt-pro-deep" id="${id}">${full}</div>` : ''}
