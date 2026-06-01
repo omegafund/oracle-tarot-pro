@@ -8157,7 +8157,10 @@ function v31GenerateText(sajuData, judgeResult) {
                    null;
     }
     if (yongShinEl && V54_ENERGY_GUIDE_NARRATIVE[yongShinEl]) {
-      v54EnergyGuide = V54_ENERGY_GUIDE_NARRATIVE[yongShinEl];
+      v54EnergyGuide = {
+        ...V54_ENERGY_GUIDE_NARRATIVE[yongShinEl],
+        why: whyNeedYongsin(sajuData)
+      };
     }
   } catch (e) {
     v54DeepInsight = { _error: String(e && e.message || e), _v: 'V202.54.0_fallback' };
@@ -8224,15 +8227,25 @@ function v31GenerateText(sajuData, judgeResult) {
   //   기존: "사주 신탁 — 갑(목) 일간 / 토끼띠"  ← '사주 신탁' 중복 (상단에 이미 있음)
   //   진화: "(여) 갑(목) 일간 · 토끼띠 명식"   ← (남)(여) 추가, 중복 제거
   const _genderLabel = (meta.gender === 'male') ? '(남)' : (meta.gender === 'female') ? '(여)' : '';
+  // ★ coreNarrative — 3섹션 독립 서사 (반복 제거)
+  const coreNarrative = {
+    essence:      v54DeepInsight?.essenceCore      || dayEssence,
+    behavior:     v54DeepInsight?.energyOperation  || balancePhrase,
+    relationship: v54DeepInsight?.relationOperation || strengthPhrase
+  };
+
   return {
     // 헤더
     title: `${_genderLabel} ${meta.dayMaster}(${meta.dayMasterElement}) 일간 · ${meta.zodiac}띠 명식`,
     subtitle: labelText,
 
-    // 본문 (3개 핵심)
+    // 본문 (3개 핵심) — 기존 호환 유지
     dayEssence: dayEssence,
     balancePhrase: balancePhrase,
     strengthPhrase: strengthPhrase,
+
+    // ★ coreNarrative — 3섹션 독립 서사
+    coreNarrative,
 
     // ★★★ [V202.54.0] 사주 프리미엄 톤 신규 필드 ★★★
     //   사장님 7원칙 반영 — 사전식 → 서사식 깊이
@@ -8286,10 +8299,11 @@ function v31GenerateText(sajuData, judgeResult) {
       score: judgement.score,
       meta,
       strength,
+      sajuData,
       enforcedTldr,
       enforcedAction,
-      enforcedRisk: '',  // ★ V202.31 safe default — v31GenerateText 안에 정의 안 됨
-      yongshin: null,    // ★ V202.31 safe default — sajuData에 yongshin 없음 (별도 endpoint에서 계산)
+      enforcedRisk: '',
+      yongshin: null,
       dayPillar,
       timePhase
     }),
@@ -8336,6 +8350,69 @@ function v31GenerateText(sajuData, judgeResult) {
 //
 // 격리: 사주만 (queryType 분기 없음 - 사주 결과 함수 안에서만 호출)
 // ══════════════════════════════════════════════════════════════════
+// ★ buildStoryBridge — 본질→용신→현재 시기를 하나의 서사로 연결
+function buildStoryBridge(sajuData, v54DeepInsight, v54EnergyGuide) {
+  const strength = sajuData.strength.level;
+  const dayEl = sajuData.meta.dayMasterElement;
+
+  // 본질에서 약점 추출
+  const weaknessDesc = (strength === 'strong' || strength === 'extra_strong')
+    ? '혼자 버티려는 경향'
+    : '에너지가 분산되기 쉬운 흐름';
+
+  // 용신 오행
+  const elements = sajuData.elements;
+  const sorted = Object.entries(elements).sort((a, b) => a[1] - b[1]);
+  const yongEl = sorted[0][0];
+  const elName = { '목':'목(木)', '화':'화(火)', '토':'토(土)', '금':'금(金)', '수':'수(水)' }[yongEl] || yongEl;
+
+  // 현재 시기 (12운성 기반)
+  const dayBranch = sajuData.pillars.day?.branch;
+  const dayMaster = sajuData.meta.dayMaster;
+  const phaseKey = V31_LUCK_PHASE_LOOKUP[dayMaster]?.[dayBranch];
+  const phaseInfo = phaseKey ? V31_LUCK_PHASE_12[phaseKey] : null;
+
+  const currentDesc = phaseInfo
+    ? `${phaseInfo.short} 흐름`
+    : '전환기 흐름';
+
+  return `원래 ${weaknessDesc}이 강한 명식입니다.\n\n지금은 ${currentDesc}이라 그 성향이 더 강하게 나타날 수 있습니다.\n\n그래서 이번 시기에는\n${elName}의 기운처럼\n${sorted[0][0] === '수' ? '멈춤과 정리' : sorted[0][0] === '목' ? '새 방향 열기' : sorted[0][0] === '화' ? '표현과 연결' : sorted[0][0] === '토' ? '중심 잡기' : '정리와 결단'}가 중요합니다.`;
+}
+// ★ whyNeedYongsin — 왜 이 오행이 이 사람에게 필요한가
+function whyNeedYongsin(sajuData) {
+  const dayEl = sajuData.meta.dayMasterElement;
+  const elements = sajuData.elements;
+  const strength = sajuData.strength.level;
+
+  const sorted = Object.entries(elements).sort((a, b) => a[1] - b[1]);
+  const yongEl = sorted[0][0];
+
+  const dayDesc = {
+    '목': '앞으로 밀고 나가는',
+    '화': '강하게 표현하는',
+    '토': '중심을 잡으려는',
+    '금': '단호하게 결정하는',
+    '수': '깊이 생각하는'
+  }[dayEl] || '자기 방식으로 가는';
+
+  const roleDesc = {
+    '목': '새로운 방향을 만들어주는',
+    '화': '표현하고 연결하는',
+    '토': '중심을 잡아주는',
+    '금': '불필요한 것을 정리해주는',
+    '수': '멈추고 방향을 확인하는'
+  }[yongEl] || '균형을 잡아주는';
+
+  const contextDesc = (strength === 'strong' || strength === 'extra_strong')
+    ? '하지만 혼자 끌고 가다 보면 방향을 잃기 쉽습니다.'
+    : '하지만 에너지가 분산되면 흐름이 흐려집니다.';
+
+  const elName = {
+    '목':'목(木)', '화':'화(火)', '토':'토(土)', '금':'금(金)', '수':'수(水)'
+  }[yongEl] || yongEl;
+
+  return `원래 ${dayDesc} 힘이 강한 명식입니다.\n${contextDesc}\n\n그래서 ${elName}의 기운은\n추진력을 더하는 것보다 ${roleDesc} 역할을 합니다.`;
+}
 function buildZeusSajuOracleBox(ctx) {
   const { score, meta, yongshin, dayPillar } = ctx;
 
@@ -8363,6 +8440,11 @@ function buildZeusSajuOracleBox(ctx) {
 
   return {
     coreStructure,
+    storyBridge: (function() {
+      try {
+        return buildStoryBridge(ctx.sajuData);
+      } catch(e) { return null; }
+    })(),
     _score: score,
     _v: 'V202.33'
   };
