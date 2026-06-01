@@ -20187,9 +20187,16 @@ function renderSajuResult(data) {
 
                 <!-- 일주 물상 — 도입문구 방식 (소제목 삭제) -->
                 <div style="color:rgba(255,255,255,0.92); font-size:0.85rem; line-height:1.7; margin-bottom:12px;">
-                    <span style="color:#FFE08A; font-weight:700;">당신을 한마디로 그리면, </span>${text.dayEssence}
-                </div>
+    <span style="color:#FFE08A; font-weight:700;">당신을 한마디로 그리면, </span>${text.coreNarrative?.essence || text.dayEssence}
+</div>
 
+<div style="color:rgba(255,255,255,0.88); font-size:0.82rem; line-height:1.75; margin-bottom:12px; border-left:2px solid rgba(255,224,138,0.4); padding-left:10px;">
+    ${text.coreNarrative?.behavior || text.balancePhrase}
+</div>
+
+<div style="color:rgba(255,255,255,0.85); font-size:0.82rem; line-height:1.75; margin-bottom:12px; border-left:2px solid rgba(255,224,138,0.25); padding-left:10px;">
+    ${text.coreNarrative?.relationship || text.strengthPhrase}
+</div>
                 <!-- C-1: 본질 결 → 골드 말풍선 (도입문구 = 제목, 소제목 삭제) -->
                 ${text.deepInsight && text.deepInsight.essenceCore ? (() => {
                     const _id = 'ztess_' + Math.random().toString(36).slice(2,7);
@@ -20268,6 +20275,9 @@ function renderSajuResult(data) {
                     const _v36_ysIcon = _v36_iconMap[_ysName] || '☯';
                     const _v36_hsIcon = _hs ? (_v36_iconMap[_hs.name] || '✨') : '✨';
                     return `
+${_oracle.storyBridge ? `
+<div style="background:rgba(255,224,138,0.08); border-left:3px solid #FFE08A; border-radius:6px; padding:14px 16px; margin-bottom:16px; color:rgba(255,255,255,0.92); font-size:0.84rem; line-height:1.8; white-space:pre-line;">${_oracle.storyBridge}</div>
+` : ''}
                     <!-- ③ 당신을 살리는 기운 (용신 용어 삭제, 도입문구 방식) -->
                     <div style="margin-top:14px; padding-top:12px; border-top:1px dashed rgba(201,162,39,0.35);">
                         <div style="color:#E8C766; font-size:0.9rem; font-weight:800; margin-bottom:8px;">🔥 당신을 살리는 기운</div>
