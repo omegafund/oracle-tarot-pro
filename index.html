@@ -21055,12 +21055,12 @@ ${cleanContent}
                     ${data.pro.shinSal.v54_items.map((item, idx) => {
                         const label = item.v54_label || (item.icon + ' ' + item.name);
                         const body = item.v54_body || ('▸ ' + (item.meaning||'') + '\n▸ 효과: ' + (item.effect||'') + '\n▸ 조언: ' + (item.advice||''));
-                        const shortLine = item.v54_short || (body.split('\n')[0] || '').slice(0, 60);
+                        const shortLine = item.v54_short || '';
                         const did = 'ztss_' + idx + '_' + Math.random().toString(36).slice(2,7);
                         return `
                         <div style="margin-bottom:10px;">
-                            <div class="zt-pro-item-label">${label}</div>
-                            <div class="zt-pro-txt">${shortLine}</div>
+                           <div class="zt-pro-item-label">${label}</div>
+                            ${shortLine ? `<div class="zt-pro-txt">${shortLine}</div>` : ''}
                             <div class="zt-pro-more" onclick="var d=document.getElementById('${did}');var o=d.classList.toggle('open');this.innerHTML=(o?'▲ 접기':'▼ 숨은 이야기 보기');">▼ 숨은 이야기 보기</div>
                             <div class="zt-pro-deep" id="${did}">${body}</div>
                         </div>`;
