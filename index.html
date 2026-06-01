@@ -20210,11 +20210,6 @@ function renderSajuResult(data) {
                 </div>`;
                 })() : ''}
 
-                <!-- 오행 균형 — 도입문구 방식 -->
-                <div style="color:rgba(255,255,255,0.92); font-size:0.85rem; line-height:1.7; margin-bottom:12px;">
-                    <span style="color:#FFE08A; font-weight:700;">당신의 에너지 균형은 </span>${text.balancePhrase}
-                </div>
-
                 <!-- C-1: 에너지 작동 방식 → 골드 말풍선 -->
                 ${text.deepInsight && text.deepInsight.energyOperation ? (() => {
                     const _id = 'zteng_' + Math.random().toString(36).slice(2,7);
@@ -20228,21 +20223,7 @@ function renderSajuResult(data) {
                 </div>`;
                 })() : ''}
 
-                <!-- 일간 강약 — 도입문구 방식 -->
-                <div style="color:rgba(255,255,255,0.92); font-size:0.85rem; line-height:1.7;">
-                    <span style="color:#FFE08A; font-weight:700;">당신의 중심 기운은 </span>${text.strengthPhrase}
-                    ${(function() {
-                        const sajuStateLocal = detectSajuState(elements, text.meta?.pillars || {});
-                        let meaning = '';
-                        if (sajuStateLocal.strength === 'weak') {
-                            meaning = '혼자보다 함께가 운을 만듭니다';
-                        } else if (sajuStateLocal.strength === 'strong') {
-                            meaning = '내적 중심이 흐름을 이끕니다';
-                        }
-                        return meaning ? `<div style="margin-top:6px; padding:6px 10px; background:rgba(212,175,55,0.10); border-left:2px solid rgba(212,175,55,0.5); border-radius:0 4px 4px 0; font-size:0.80rem; color:#FFE08A; font-weight:700; font-style:italic;">→ 의미: ${meaning}</div>` : '';
-                    })()}
-                </div>
-
+               
                 <!-- C-1: 관계 작동 방식 → 골드 말풍선 -->
                 ${text.deepInsight && text.deepInsight.relationOperation ? (() => {
                     const _id = 'ztrel_' + Math.random().toString(36).slice(2,7);
@@ -20275,11 +20256,7 @@ function renderSajuResult(data) {
                     const _v36_ysIcon = _v36_iconMap[_ysName] || '☯';
                     const _v36_hsIcon = _hs ? (_v36_iconMap[_hs.name] || '✨') : '✨';
                     return `
-${text.lifeNarrative ? `
-<div style="background:rgba(255,224,138,0.06); border-left:3px solid rgba(255,224,138,0.5); border-radius:6px; padding:16px 18px; margin-bottom:16px; color:rgba(255,255,255,0.92); font-size:0.84rem; line-height:1.9; white-space:pre-line;">${text.lifeNarrative}</div>
-` : _oracle.storyBridge ? `
-<div style="background:rgba(255,224,138,0.08); border-left:3px solid #FFE08A; border-radius:6px; padding:14px 16px; margin-bottom:16px; color:rgba(255,255,255,0.92); font-size:0.84rem; line-height:1.8; white-space:pre-line;">${_oracle.storyBridge}</div>
-` : ''}
+
                     <!-- ③ 당신을 살리는 기운 (용신 용어 삭제, 도입문구 방식) -->
                     <div style="margin-top:14px; padding-top:12px; border-top:1px dashed rgba(201,162,39,0.35);">
                         <div style="color:#E8C766; font-size:0.9rem; font-weight:800; margin-bottom:8px;">🔥 당신을 살리는 기운</div>
@@ -20557,6 +20534,9 @@ ${text.lifeNarrative ? `
                         <span style="font-size:0.7rem; color:#7ad188; font-weight:900; letter-spacing:0.05em;">[4/6]</span>
                         <span style="color:#2ecc71; font-size:0.92rem; font-weight:900;">⚡ 종합 신탁</span>
                     </div>
+                    ${text.lifeNarrative ? `
+                    <div style="background:rgba(255,224,138,0.06); border-left:3px solid rgba(255,224,138,0.5); border-radius:6px; padding:16px 18px; margin-bottom:16px; color:rgba(255,255,255,0.92); font-size:0.84rem; line-height:1.9; white-space:pre-line;">${text.lifeNarrative}</div>
+                    ` : ''}
                     
                     ${(text.oracleNarrative && text.oracleNarrative.risk) ? `
                     <!-- ★★★ [V202.54.0 Step 6] V54 3블록 노출 — 사장님 비전 ★★★
