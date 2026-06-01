@@ -20197,41 +20197,33 @@ function renderSajuResult(data) {
 <div style="color:rgba(255,255,255,0.85); font-size:0.82rem; line-height:1.75; margin-bottom:12px; border-left:2px solid rgba(255,224,138,0.25); padding-left:10px;">
     ${text.coreNarrative?.relationship || text.strengthPhrase}
 </div>
-                <!-- C-1: 본질 결 → 골드 말풍선 (도입문구 = 제목, 소제목 삭제) -->
+               <!-- C-1: 본질/에너지/관계 말풍선 — 제목 중복 제거 -->
                 ${text.deepInsight && text.deepInsight.essenceCore ? (() => {
                     const _id = 'ztess_' + Math.random().toString(36).slice(2,7);
                     const _full = text.deepInsight.essenceCore;
-                    const _head = _full.length > 40 ? _full.slice(0, 38) + '…' : _full;
                     return `
                 <div class="zt-pro-bub" style="margin-bottom:12px;">
-                    <div class="zt-pro-tit" style="line-height:1.55;">💭 당신 안의 타고난 본바탕은 ${_head}</div>
+                    <div class="zt-pro-tit" style="line-height:1.55;">💭 당신 안의 타고난 본바탕</div>
                     <div class="zt-pro-more" onclick="var d=document.getElementById('${_id}');var o=d.classList.toggle('open');this.innerHTML=(o?'▲ 접기':'▼ 숨은 이야기 보기');">▼ 숨은 이야기 보기</div>
                     <div class="zt-pro-deep" id="${_id}">${_full}</div>
                 </div>`;
                 })() : ''}
-
-                <!-- C-1: 에너지 작동 방식 → 골드 말풍선 -->
                 ${text.deepInsight && text.deepInsight.energyOperation ? (() => {
                     const _id = 'zteng_' + Math.random().toString(36).slice(2,7);
                     const _full = text.deepInsight.energyOperation;
-                    const _head = _full.length > 40 ? _full.slice(0, 38) + '…' : _full;
                     return `
                 <div class="zt-pro-bub" style="margin-bottom:12px;">
-                    <div class="zt-pro-tit" style="line-height:1.55;">💭 당신의 에너지 사용 방식은 ${_head}</div>
+                    <div class="zt-pro-tit" style="line-height:1.55;">💭 당신의 에너지 사용 방식</div>
                     <div class="zt-pro-more" onclick="var d=document.getElementById('${_id}');var o=d.classList.toggle('open');this.innerHTML=(o?'▲ 접기':'▼ 숨은 이야기 보기');">▼ 숨은 이야기 보기</div>
                     <div class="zt-pro-deep" id="${_id}">${_full}</div>
                 </div>`;
                 })() : ''}
-
-               
-                <!-- C-1: 관계 작동 방식 → 골드 말풍선 -->
                 ${text.deepInsight && text.deepInsight.relationOperation ? (() => {
                     const _id = 'ztrel_' + Math.random().toString(36).slice(2,7);
                     const _full = text.deepInsight.relationOperation;
-                    const _head = _full.length > 40 ? _full.slice(0, 38) + '…' : _full;
                     return `
                 <div class="zt-pro-bub" style="margin:12px 0;">
-                    <div class="zt-pro-tit" style="line-height:1.55;">💭 당신이 사람을 대하는 방식은 ${_head}</div>
+                    <div class="zt-pro-tit" style="line-height:1.55;">💭 당신이 사람을 대하는 방식</div>
                     <div class="zt-pro-more" onclick="var d=document.getElementById('${_id}');var o=d.classList.toggle('open');this.innerHTML=(o?'▲ 접기':'▼ 숨은 이야기 보기');">▼ 숨은 이야기 보기</div>
                     <div class="zt-pro-deep" id="${_id}">${_full}</div>
                 </div>`;
