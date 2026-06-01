@@ -20275,7 +20275,9 @@ function renderSajuResult(data) {
                     const _v36_ysIcon = _v36_iconMap[_ysName] || '☯';
                     const _v36_hsIcon = _hs ? (_v36_iconMap[_hs.name] || '✨') : '✨';
                     return `
-${_oracle.storyBridge ? `
+${text.lifeNarrative ? `
+<div style="background:rgba(255,224,138,0.06); border-left:3px solid rgba(255,224,138,0.5); border-radius:6px; padding:16px 18px; margin-bottom:16px; color:rgba(255,255,255,0.92); font-size:0.84rem; line-height:1.9; white-space:pre-line;">${text.lifeNarrative}</div>
+` : _oracle.storyBridge ? `
 <div style="background:rgba(255,224,138,0.08); border-left:3px solid #FFE08A; border-radius:6px; padding:14px 16px; margin-bottom:16px; color:rgba(255,255,255,0.92); font-size:0.84rem; line-height:1.8; white-space:pre-line;">${_oracle.storyBridge}</div>
 ` : ''}
                     <!-- ③ 당신을 살리는 기운 (용신 용어 삭제, 도입문구 방식) -->
