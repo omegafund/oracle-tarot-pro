@@ -13532,6 +13532,7 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
                             </div>
                             <div style="padding:8px 10px; background:rgba(52,152,219,0.08); border-radius:6px;">
                                 <div style="color:#5DADE2; font-size:0.74rem; font-weight:900; margin-bottom:4px;">[상대 상태]</div>
+                                ${re.partnerMind ? `<div style="color:#7FCDFF; font-weight:700; margin-bottom:4px;">💭 ${re.partnerMind}</div>` : ''}
                                 <div>✔ ${re.partnerBlock.visible}</div>
                                 <div>✔ ${re.partnerBlock.real}</div>
                             </div>
