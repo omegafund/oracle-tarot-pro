@@ -11848,22 +11848,7 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
                         📌 ${strategyLabel}: ${layers.decision.strategy}
                     </div>
 
-                    ${layers.marketState ? `
-                    <!-- [V25.40 Phase 4] 시장 상태 박스 (사장님 안) — PRO 차별화 -->
-                    <!--   카드 분석 + 리스크 + 변동성 결합 자동 생성              -->
-                    <!--   포지션·전략 다음, 한줄 결론 직전 위치                    -->
-                    <!-- ★ [V202.11 사장님 명령 3] 테두리 제거 (시인성 개선, 모바일 텍스트 공간 확보) ★ -->
-                    <div style="margin-top:4px; margin-bottom:10px; padding:11px 14px;
-                                background: linear-gradient(135deg, rgba(155,89,182,0.16), rgba(155,89,182,0.04));
-                                border-radius: 10px;">
-                        <div style="font-size:0.74rem; color:#C39BD3; font-weight:800; letter-spacing:0.12em; margin-bottom:6px;">
-                            📊 현재 시장 상태
-                        </div>
-                        <div style="font-size:0.86rem; color:rgba(255,255,255,0.92); font-weight:600; line-height:1.7;">
-                            <div style="margin-bottom:3px;">→ ${layers.marketState.structure} + ${layers.marketState.pressure}</div>
-                            <div>→ ${layers.marketState.priority}</div>
-                        </div>
-                    </div>` : ''}
+                    ${''}
 
                     ${layers.decision.oneLineSummary ? `
                     <!-- [V25.40 Phase 6] 한줄 결론 박스 (사장님 안) — TL;DR 패턴 -->
