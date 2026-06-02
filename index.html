@@ -13403,6 +13403,17 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
                     </div>
                 </div>` : '';
 
+            const box0 = b.loveNarrative ? `
+                <div style="${boxBase} border:1px solid rgba(255,224,138,0.3); background:rgba(255,224,138,0.05);">
+                    <div style="margin-bottom:10px;">
+                        <div style="${labelGold}">✦ 두 사람의 흐름</div>
+                        <div style="font-size:0.7rem; color:rgba(212,175,55,0.75); font-weight:700; letter-spacing:0.18em; margin-top:3px;">RELATIONSHIP NARRATIVE</div>
+                    </div>
+                    <div style="font-size:0.88rem; color:rgba(255,255,255,0.92); line-height:1.9; white-space:pre-line;">
+                        ${b.loveNarrative}
+                    </div>
+                </div>` : '';
+
             const box1 = `
                 <div style="${boxBase} ${goldBorder}">
                     <div style="margin-bottom:12px;">
@@ -13685,6 +13696,7 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
                     <span style="display:block; font-size:0.7rem; color:rgba(212,175,55,0.85); letter-spacing:0.18em; margin-top:4px;">ZEUS LOVE ORACLE</span>
                 </h3>
                 ${topVerdictBox}
+                ${box0}
                 ${box1}
                 ${box2}
                 ${/* ★★★ [V202.48.4 진짜 매니페스토 #1 적용] ★★★
