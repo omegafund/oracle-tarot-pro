@@ -20177,15 +20177,15 @@ function renderSajuResult(data) {
                 })()}
             </div>
 
-            <!-- [2] 사주 명식 — 팩트 (시각 자산 그대로) -->
-            <div style="margin:14px 0;">
-                <div style="display:flex; align-items:center; gap:6px; margin-bottom:6px;">
-                    <span style="color:#E8C766; font-size:0.84rem; font-weight:700;">📜 사주 명식</span>
-                </div>
-                ${meongSik}
-            </div>
+           <!-- [2] 사주 명식 — 팩트 (시각 자산 그대로) -->
+<div style="margin:14px 0;">
+    <div style="display:flex; align-items:center; gap:6px; margin-bottom:6px;">
+        <span style="color:#E8C766; font-size:0.84rem; font-weight:700;">📜 사주 명식</span>
+    </div>
+    ${meongSik}
+</div>
 
-            <!-- [2-2] 오행 분포 -->
+<!-- [2-2] 오행 분포 -->
 <div style="margin:14px 0;">
     <div style="color:#E8C766; font-size:0.84rem; font-weight:700; margin-bottom:8px;">
         ⚖️ 오행 분포
@@ -20195,42 +20195,64 @@ function renderSajuResult(data) {
 
 <!-- C-1 -->
 <div style="margin:18px 0; padding:14px; background:rgba(212,175,55,0.06); border-left:3px solid rgba(201,162,39,0.55); border-radius:0 8px 8px 0;">
-            <div style="margin:18px 0; padding:14px; background:rgba(212,175,55,0.06); border-left:3px solid rgba(201,162,39,0.55); border-radius:0 8px 8px 0;">
-                <div style="display:flex; align-items:center; gap:6px; margin-bottom:8px;">
-                    <span style="color:#E8C766; font-size:0.92rem; font-weight:800;">🌳 당신 안에 가장 강한 기운</span>
-                </div>
-               
-               <!-- C-1: 본질/에너지/관계 말풍선 — 제목 중복 제거 -->
-                ${text.deepInsight && text.deepInsight.essenceCore ? (() => {
-                    const _id = 'ztess_' + Math.random().toString(36).slice(2,7);
-                    const _full = text.deepInsight.essenceCore;
-                    return `
-                <div class="zt-pro-bub" style="margin-bottom:12px;">
-                    <div class="zt-pro-tit" style="line-height:1.55;"><span style="color:#7AD188;">💭</span> 당신 안의 타고난 본바탕</div>
-                    <div class="zt-pro-more" onclick="var d=document.getElementById('${_id}');var o=d.classList.toggle('open');this.innerHTML=(o?'▲ 접기':'▼ 숨은 이야기 보기');">▼ 숨은 이야기 보기</div>
-                    <div class="zt-pro-deep" id="${_id}">${_full}</div>
-                </div>`;
-                })() : ''}
-                ${text.deepInsight && text.deepInsight.energyOperation ? (() => {
-                    const _id = 'zteng_' + Math.random().toString(36).slice(2,7);
-                    const _full = text.deepInsight.energyOperation;
-                    return `
-                <div class="zt-pro-bub" style="margin-bottom:12px;">
-                    <div class="zt-pro-tit" style="line-height:1.55;"><span style="color:#7AD188;">💭</span> 당신의 에너지 사용 방식</div>
-                    <div class="zt-pro-more" onclick="var d=document.getElementById('${_id}');var o=d.classList.toggle('open');this.innerHTML=(o?'▲ 접기':'▼ 숨은 이야기 보기');">▼ 숨은 이야기 보기</div>
-                    <div class="zt-pro-deep" id="${_id}">${_full}</div>
-                </div>`;
-                })() : ''}
-                ${text.deepInsight && text.deepInsight.relationOperation ? (() => {
-                    const _id = 'ztrel_' + Math.random().toString(36).slice(2,7);
-                    const _full = text.deepInsight.relationOperation;
-                    return `
-                <div class="zt-pro-bub" style="margin:12px 0;">
-                    <div class="zt-pro-tit" style="line-height:1.55;"><span style="color:#7AD188;">💭</span> 당신이 사람을 대하는 방식</div>
-                    <div class="zt-pro-more" onclick="var d=document.getElementById('${_id}');var o=d.classList.toggle('open');this.innerHTML=(o?'▲ 접기':'▼ 숨은 이야기 보기');">▼ 숨은 이야기 보기</div>
-                    <div class="zt-pro-deep" id="${_id}">${_full}</div>
-                </div>`;
-                })() : ''}
+
+    <div style="display:flex; align-items:center; gap:6px; margin-bottom:8px;">
+        <span style="color:#E8C766; font-size:0.92rem; font-weight:800;">🌳 당신 안에 가장 강한 기운</span>
+    </div>
+
+    <!-- C-1: 본질/에너지/관계 말풍선 -->
+    ${text.deepInsight && text.deepInsight.essenceCore ? (() => {
+        const _id = 'ztess_' + Math.random().toString(36).slice(2,7);
+        const _full = text.deepInsight.essenceCore;
+        return `
+    <div class="zt-pro-bub" style="margin-bottom:12px;">
+        <div class="zt-pro-tit" style="line-height:1.55;">
+            <span style="color:#7AD188;">💭</span> 당신 안의 타고난 본바탕
+        </div>
+        <div class="zt-pro-more" onclick="var d=document.getElementById('${_id}');var o=d.classList.toggle('open');this.innerHTML=(o?'▲ 접기':'▼ 숨은 이야기 보기');">
+            ▼ 숨은 이야기 보기
+        </div>
+        <div class="zt-pro-deep" id="${_id}">
+            ${_full}
+        </div>
+    </div>`;
+    })() : ''}
+
+    ${text.deepInsight && text.deepInsight.energyOperation ? (() => {
+        const _id = 'zteng_' + Math.random().toString(36).slice(2,7);
+        const _full = text.deepInsight.energyOperation;
+        return `
+    <div class="zt-pro-bub" style="margin-bottom:12px;">
+        <div class="zt-pro-tit" style="line-height:1.55;">
+            <span style="color:#7AD188;">💭</span> 당신의 에너지 사용 방식
+        </div>
+        <div class="zt-pro-more" onclick="var d=document.getElementById('${_id}');var o=d.classList.toggle('open');this.innerHTML=(o?'▲ 접기':'▼ 숨은 이야기 보기');">
+            ▼ 숨은 이야기 보기
+        </div>
+        <div class="zt-pro-deep" id="${_id}">
+            ${_full}
+        </div>
+    </div>`;
+    })() : ''}
+
+    ${text.deepInsight && text.deepInsight.relationOperation ? (() => {
+        const _id = 'ztrel_' + Math.random().toString(36).slice(2,7);
+        const _full = text.deepInsight.relationOperation;
+        return `
+    <div class="zt-pro-bub" style="margin:12px 0;">
+        <div class="zt-pro-tit" style="line-height:1.55;">
+            <span style="color:#7AD188;">💭</span> 당신이 사람을 대하는 방식
+        </div>
+        <div class="zt-pro-more" onclick="var d=document.getElementById('${_id}');var o=d.classList.toggle('open');this.innerHTML=(o?'▲ 접기':'▼ 숨은 이야기 보기');">
+            ▼ 숨은 이야기 보기
+        </div>
+        <div class="zt-pro-deep" id="${_id}">
+            ${_full}
+        </div>
+    </div>`;
+    })() : ''}
+
+</div>
 
                 ${(function() {
                     const _oracle = text.zeusSajuOracle;
