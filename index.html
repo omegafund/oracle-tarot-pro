@@ -10843,7 +10843,6 @@ function _mapServerMetricsToInvestData(sm, cards) {
             score:       sm.totalScore ?? 0,
             power:       0,
             cardNarrative: sm.cardNarrative || [],
-            investNarrative: sm.investNarrative || null,
             flowSummary:   sm.flowSummary   || '',
             riskChecks:    sm.riskChecks    || [],
             scenarios:     sm.scenarios     || null,
@@ -12880,12 +12879,7 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
             }
 
             const finalOracleHTML = (d.finalOracle || '').toString().replace(/\n/g, '<br>');
-            // ★ 투자 흐름 서사 (카드 → 시장 흐름)
-            const investNarrativeHTML = d.investNarrative ? `
-                <div style="margin-bottom:14px; padding:14px 16px; border-radius:10px; border:1px solid rgba(212,175,55,0.3); background:rgba(212,175,55,0.06);">
-                    <div style="color:var(--gold); font-size:0.82rem; font-weight:900; letter-spacing:0.1em; margin-bottom:8px;">📊 시장 흐름 해석</div>
-                    <div style="font-size:0.88rem; color:rgba(255,255,255,0.92); line-height:1.9; white-space:pre-line;">${d.investNarrative}</div>
-                </div>` : '';
+
             // 카드 에너지 → (투자/매도) 맥락
             const narrativeHTML = (d.cardNarrative && d.cardNarrative.length) ? `
                 <div style="margin-bottom:14px; padding-bottom:12px; border-bottom:1px solid rgba(212,175,55,0.18);">
@@ -13117,8 +13111,7 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
                 <h3 style="color:var(--gold); text-align:center; margin:0 0 13px 0; font-size:1.1rem; padding-bottom:8px;">
                     ${title}
                 </h3>
-               ${_topVerdictHTML}
-                ${investNarrativeHTML}
+                ${_topVerdictHTML}
                 ${_layer5Wrapped || (narrativeHTML + riskHTML + positionHTML + timingHTML + `
                 <!-- 지표 요약 (추세/행동만) [폴백 — 5계층 없을 때만] -->
                 <div style="display:flex; flex-direction:column; gap:8px; font-size:0.92rem; margin-bottom:12px;">
