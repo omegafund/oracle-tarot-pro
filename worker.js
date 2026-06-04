@@ -8227,11 +8227,19 @@ function v31GenerateText(sajuData, judgeResult) {
   //   기존: "사주 신탁 — 갑(목) 일간 / 토끼띠"  ← '사주 신탁' 중복 (상단에 이미 있음)
   //   진화: "(여) 갑(목) 일간 · 토끼띠 명식"   ← (남)(여) 추가, 중복 제거
   const _genderLabel = (meta.gender === 'male') ? '(남)' : (meta.gender === 'female') ? '(여)' : '';
-  // ★ coreNarrative — 3섹션 독립 서사 (반복 제거)
+  // ★ coreNarrative — 3섹션 독립 서사 [V202.55 개선]
+  //   각 섹션이 서로 다른 데이터 소스를 사용해 반복 완전 제거
+  //   essence      = 일주 본질 결 (dayNatureEssence) → 없으면 essenceCore → dayEssence
+  //                  소스: V54_DAY_NATURE_POOL (일주 고유 서사, trait 무관)
+  //   behavior     = 오행 에너지 구조 (elementNarrative) → 없으면 energyOperation → balancePhrase
+  //                  소스: V54_ELEMENT_NARRATIVE (오행 편중/균형 행동 묘사)
+  //   relationship = 관계 작동 방식 (strengthNarrative) → 없으면 relationOperation → strengthPhrase
+  //                  소스: V54_STRENGTH_NARRATIVE (신강신약 관계 패턴)
+  //   → 3섹션이 각각 "일주", "오행", "신강신약" 로 완전히 다른 축을 담음
   const coreNarrative = {
-    essence:      v54DeepInsight?.essenceCore      || dayEssence,
-    behavior:     v54DeepInsight?.energyOperation  || balancePhrase,
-    relationship: v54DeepInsight?.relationOperation || strengthPhrase
+    essence:      dayNatureEssence                    || v54DeepInsight?.essenceCore      || dayEssence,
+    behavior:     elementNarrative                    || v54DeepInsight?.energyOperation  || balancePhrase,
+    relationship: strengthNarrative                   || v54DeepInsight?.relationOperation || strengthPhrase
   };
 
   return {
@@ -8350,68 +8358,99 @@ function v31GenerateText(sajuData, judgeResult) {
 //
 // 격리: 사주만 (queryType 분기 없음 - 사주 결과 함수 안에서만 호출)
 // ══════════════════════════════════════════════════════════════════
-// ★ buildStoryBridge — 본질→용신→현재 시기를 하나의 서사로 연결
+// ★ buildStoryBridge — 본질→현재 시기→용신 실천으로 이어지는 단일 서사
+//   [V202.55] 개선: v54DeepInsight·v54EnergyGuide 실제 활용 + whyNeedYongsin과 역할 분리
+//   역할 분리:
+//     buildStoryBridge = "지금 이 시기, 어떤 흐름인가" (시간 축)
+//     whyNeedYongsin   = "왜 이 오행이 필요한가" (원인 축)
 function buildStoryBridge(sajuData, v54DeepInsight, v54EnergyGuide) {
   const strength = sajuData.strength.level;
   const dayEl = sajuData.meta.dayMasterElement;
-
-  // 본질에서 약점 추출
-  const weaknessDesc = (strength === 'strong' || strength === 'extra_strong')
-    ? '혼자 버티려는 경향'
-    : '에너지가 분산되기 쉬운 흐름';
-
-  // 용신 오행
   const elements = sajuData.elements;
   const sorted = Object.entries(elements).sort((a, b) => a[1] - b[1]);
   const yongEl = sorted[0][0];
   const elName = { '목':'목(木)', '화':'화(火)', '토':'토(土)', '금':'금(金)', '수':'수(水)' }[yongEl] || yongEl;
 
-  // 현재 시기 (12운성 기반)
+  // 1) 현재 시기 — 12운성 meaning/advice 활용 (short 라벨 대신 서사)
   const dayBranch = sajuData.pillars.day?.branch;
   const dayMaster = sajuData.meta.dayMaster;
   const phaseKey = V31_LUCK_PHASE_LOOKUP[dayMaster]?.[dayBranch];
   const phaseInfo = phaseKey ? V31_LUCK_PHASE_12[phaseKey] : null;
 
-  const currentDesc = phaseInfo
-    ? `${phaseInfo.short} 흐름`
-    : '전환기 흐름';
+  const phaseNarrative = phaseInfo ? phaseInfo.meaning : '흐름이 전환되는 시기';
+  const phaseAdvice    = phaseInfo ? phaseInfo.advice  : '현재 흐름을 점검하며 다음을 준비하는 것이 좋습니다';
 
-  return `원래 ${weaknessDesc}이 강한 명식입니다.\n\n지금은 ${currentDesc}이라 그 성향이 더 강하게 나타날 수 있습니다.\n\n그래서 이번 시기에는\n${elName}의 기운처럼\n${sorted[0][0] === '수' ? '멈춤과 정리' : sorted[0][0] === '목' ? '새 방향 열기' : sorted[0][0] === '화' ? '표현과 연결' : sorted[0][0] === '토' ? '중심 잡기' : '정리와 결단'}가 중요합니다.`;
+  // 2) psychePattern — trait 기반 내면 서사 (있을 때만 삽입)
+  const psycheLayer = (v54DeepInsight && v54DeepInsight.psychePattern)
+    ? v54DeepInsight.psychePattern
+    : null;
+
+  // 3) 용신 실천 힌트 — v54EnergyGuide.direction 우선, 없으면 오행별 기본값
+  const practiceHint = (v54EnergyGuide && v54EnergyGuide.direction)
+    ? v54EnergyGuide.direction
+    : { '수': '멈추고 방향을 재정비하는 것', '목': '새 흐름에 첫 발을 내딛는 것',
+        '화': '연결하고 표현하는 것', '토': '기반을 다지고 중심을 잡는 것',
+        '금': '불필요한 것을 덜어내고 결단하는 것' }[yongEl] || '흐름을 정돈하는 것';
+
+  // 4) 서사 조립: 시기 → 내면 흐름 → 실천
+  let bridge = `지금 명식은 ${phaseNarrative}에 접어든 구간입니다.\n`;
+  bridge += `${phaseAdvice}.\n\n`;
+  if (psycheLayer) {
+    bridge += `${psycheLayer}\n\n`;
+  }
+  bridge += `이 시기에 ${elName} 기운을 실생활에서 활용한다면,\n${practiceHint}이 가장 자연스러운 방향입니다.`;
+
+  return bridge;
 }
 // ★ whyNeedYongsin — 왜 이 오행이 이 사람에게 필요한가
+//   [V202.55] 개선: 오행 간 상생/상극 인과로 설명 (buildStoryBridge와 역할 완전 분리)
+//   - buildStoryBridge = "지금 이 시기" (시간 축)
+//   - whyNeedYongsin   = "명식 구조상 왜 이 오행이 빠져 있는가" (원인 축)
 function whyNeedYongsin(sajuData) {
   const dayEl = sajuData.meta.dayMasterElement;
   const elements = sajuData.elements;
   const strength = sajuData.strength.level;
 
   const sorted = Object.entries(elements).sort((a, b) => a[1] - b[1]);
-  const yongEl = sorted[0][0];
-
-  const dayDesc = {
-    '목': '앞으로 밀고 나가는',
-    '화': '강하게 표현하는',
-    '토': '중심을 잡으려는',
-    '금': '단호하게 결정하는',
-    '수': '깊이 생각하는'
-  }[dayEl] || '자기 방식으로 가는';
-
-  const roleDesc = {
-    '목': '새로운 방향을 만들어주는',
-    '화': '표현하고 연결하는',
-    '토': '중심을 잡아주는',
-    '금': '불필요한 것을 정리해주는',
-    '수': '멈추고 방향을 확인하는'
-  }[yongEl] || '균형을 잡아주는';
-
-  const contextDesc = (strength === 'strong' || strength === 'extra_strong')
-    ? '하지만 혼자 끌고 가다 보면 방향을 잃기 쉽습니다.'
-    : '하지만 에너지가 분산되면 흐름이 흐려집니다.';
+  const yongEl = sorted[0][0];    // 가장 약한 = 용신
+  const dominantEl = Object.entries(elements).sort((a, b) => b[1] - a[1])[0][0]; // 가장 강한
 
   const elName = {
     '목':'목(木)', '화':'화(火)', '토':'토(土)', '금':'금(金)', '수':'수(水)'
   }[yongEl] || yongEl;
 
-  return `원래 ${dayDesc} 힘이 강한 명식입니다.\n${contextDesc}\n\n그래서 ${elName}의 기운은\n추진력을 더하는 것보다 ${roleDesc} 역할을 합니다.`;
+  const dominantName = {
+    '목':'목(木)', '화':'화(火)', '토':'토(土)', '금':'금(金)', '수':'수(水)'
+  }[dominantEl] || dominantEl;
+
+  // 오행 과잉 → 소모 구조 설명 (오행 고유 언어로)
+  const dominantExcess = {
+    '목': '앞만 보고 밀어붙이는 힘이 명식 전체를 끌고 가고 있어',
+    '화': '표현하고 뻗어나가는 에너지가 명식 전체를 채우고 있어',
+    '토': '안정과 고집의 힘이 명식 안에서 두텁게 쌓여 있어',
+    '금': '결단하고 끊어내는 기운이 명식 전체를 주도하고 있어',
+    '수': '깊이 생각하고 내부를 탐색하는 흐름이 명식을 채우고 있어'
+  }[dominantEl] || '한쪽 오행이 명식을 주도하고 있어';
+
+  // 용신 오행이 빠진 이유 — 상극/상생 구조로 설명
+  const missingReason = {
+    '목': '뿌리내리고 새 방향을 여는 힘이 자연히 소진',
+    '화': '연결하고 밖으로 드러내는 에너지가 눌려 있는 상태',
+    '토': '중심을 잡고 집중하는 힘이 얇아진 구조',
+    '금': '불필요한 것을 덜어내는 결단력이 부족한 흐름',
+    '수': '멈추고 내면을 돌보는 힘이 고갈되기 쉬운 패턴'
+  }[yongEl] || '균형 오행이 부족한 구조';
+
+  // 채웠을 때 일어나는 변화
+  const fillEffect = {
+    '목': '의도하지 않은 정체가 줄고, 새 출구가 자연스럽게 생깁니다',
+    '화': '표현이 살아나면 관계와 기회가 함께 열립니다',
+    '토': '집중하는 구간이 생기면 에너지 분산이 멈춥니다',
+    '금': '줄여낼 곳이 보이면 남은 힘이 더 선명하게 작동합니다',
+    '수': '쉬는 틈이 생기면 다음 추진력이 더 단단해집니다'
+  }[yongEl] || '흐름이 안정됩니다';
+
+  return `명식 안에서 ${dominantName}의 기운이 강합니다.\n${dominantExcess}, ${missingReason}이 생기기 쉬운 구조입니다.\n\n${elName}의 기운이 채워질 때\n${fillEffect}.`;
 }
 function buildZeusSajuOracleBox(ctx) {
   const { score, meta, yongshin, dayPillar, sajuData } = ctx;
