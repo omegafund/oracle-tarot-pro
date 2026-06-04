@@ -20204,7 +20204,7 @@ function renderSajuResult(data) {
                     const _head = _full.length > 40 ? _full.slice(0, 38) + '…' : _full;
                     return `
                 <div class="zt-pro-bub" style="margin-bottom:12px;">
-                    <div class="zt-pro-tit" style="line-height:1.55;">💭 당신 안의 타고난 본바탕은 ${_head}</div>
+                    <div class="zt-pro-tit" style="line-height:1.55;">🔮 당신이 원래 그런 사람인 이유 ${_head}</div>
                     <div class="zt-pro-more" onclick="var d=document.getElementById('${_id}');var o=d.classList.toggle('open');this.innerHTML=(o?'▲ 접기':'▼ 숨은 이야기 보기');">▼ 숨은 이야기 보기</div>
                     <div class="zt-pro-deep" id="${_id}">${_full}</div>
                 </div>`;
@@ -20222,7 +20222,7 @@ function renderSajuResult(data) {
                     const _head = _full.length > 40 ? _full.slice(0, 38) + '…' : _full;
                     return `
                 <div class="zt-pro-bub" style="margin-bottom:12px;">
-                    <div class="zt-pro-tit" style="line-height:1.55;">💭 당신의 에너지 사용 방식은 ${_head}</div>
+                    <div class="zt-pro-tit" style="line-height:1.55;">🌊 평생 반복되는 숙제 ${_head}</div>
                     <div class="zt-pro-more" onclick="var d=document.getElementById('${_id}');var o=d.classList.toggle('open');this.innerHTML=(o?'▲ 접기':'▼ 숨은 이야기 보기');">▼ 숨은 이야기 보기</div>
                     <div class="zt-pro-deep" id="${_id}">${_full}</div>
                 </div>`;
@@ -20250,7 +20250,7 @@ function renderSajuResult(data) {
                     const _head = _full.length > 40 ? _full.slice(0, 38) + '…' : _full;
                     return `
                 <div class="zt-pro-bub" style="margin:12px 0;">
-                    <div class="zt-pro-tit" style="line-height:1.55;">💭 당신이 사람을 대하는 방식은 ${_head}</div>
+                    <div class="zt-pro-tit" style="line-height:1.55;">🪞 사람들이 당신을 오해하는 이유 ${_head}</div>
                     <div class="zt-pro-more" onclick="var d=document.getElementById('${_id}');var o=d.classList.toggle('open');this.innerHTML=(o?'▲ 접기':'▼ 숨은 이야기 보기');">▼ 숨은 이야기 보기</div>
                     <div class="zt-pro-deep" id="${_id}">${_full}</div>
                 </div>`;
@@ -20553,7 +20553,7 @@ ${_oracle.storyBridge ? `
                 <div style="margin:20px 0; padding:16px; background:linear-gradient(135deg, rgba(46,204,113,0.10), rgba(46,204,113,0.04)); border:2px solid rgba(46,204,113,0.45); border-radius:10px;">
                     <div style="display:flex; align-items:center; gap:6px; margin-bottom:12px;">
                         <span style="font-size:0.7rem; color:#7ad188; font-weight:900; letter-spacing:0.05em;">[4/6]</span>
-                        <span style="color:#2ecc71; font-size:0.92rem; font-weight:900;">⚡ 종합 신탁</span>
+                        <span style="color:#2ecc71; font-size:0.92rem; font-weight:900;">⚡ 지금 반드시 알아야 할 것</span>
                     </div>
                     
                     ${(text.oracleNarrative && text.oracleNarrative.risk) ? `
@@ -21074,7 +21074,7 @@ ${cleanContent}
                     const deep = data.pro.luckPhase12.v54_body || '';
                     const head = c.length > 80 ? c.slice(0, 70) + '…' : c;
                     const _nb_stage = text.narrativeBlocks?.currentStage || null;
-                    const full = _nb_stage ? _nb_stage : (deep ? (c + '\n\n💭 현재 단계 깊이 통찰\n' + deep) : c);
+                    const full = _nb_stage ? _nb_stage : (deep ? (c + '\n\n⏳ 지금 이 시기가 중요한 이유\n' + deep) : c);
                     const long = (c.length > 80) || deep;
                     const id = 'ztlp_' + Math.random().toString(36).slice(2,7);
                     return `
