@@ -20200,7 +20200,7 @@ function renderSajuResult(data) {
                 <!-- C-1: 본질 결 → 골드 말풍선 (도입문구 = 제목, 소제목 삭제) -->
                 ${text.deepInsight && text.deepInsight.essenceCore ? (() => {
                     const _id = 'ztess_' + Math.random().toString(36).slice(2,7);
-                    const _full = text.deepInsight.essenceCore;
+                    const _full = text.narrativeBlocks?.identity || text.deepInsight.essenceCore;
                     const _head = _full.length > 40 ? _full.slice(0, 38) + '…' : _full;
                     return `
                 <div class="zt-pro-bub" style="margin-bottom:12px;">
@@ -20218,7 +20218,7 @@ function renderSajuResult(data) {
                 <!-- C-1: 에너지 작동 방식 → 골드 말풍선 -->
                 ${text.deepInsight && text.deepInsight.energyOperation ? (() => {
                     const _id = 'zteng_' + Math.random().toString(36).slice(2,7);
-                    const _full = text.deepInsight.energyOperation;
+                    const _full = text.narrativeBlocks?.lifePattern || text.deepInsight.energyOperation;
                     const _head = _full.length > 40 ? _full.slice(0, 38) + '…' : _full;
                     return `
                 <div class="zt-pro-bub" style="margin-bottom:12px;">
@@ -20246,7 +20246,7 @@ function renderSajuResult(data) {
                 <!-- C-1: 관계 작동 방식 → 골드 말풍선 -->
                 ${text.deepInsight && text.deepInsight.relationOperation ? (() => {
                     const _id = 'ztrel_' + Math.random().toString(36).slice(2,7);
-                    const _full = text.deepInsight.relationOperation;
+                    const _full = text.narrativeBlocks?.relationship || text.deepInsight.relationOperation;
                     const _head = _full.length > 40 ? _full.slice(0, 38) + '…' : _full;
                     return `
                 <div class="zt-pro-bub" style="margin:12px 0;">
@@ -20566,7 +20566,7 @@ ${_oracle.storyBridge ? `
                     <div style="margin-top:8px; padding:12px 14px; background:rgba(231,76,60,0.08); border-left:3px solid rgba(231,76,60,0.55); border-radius:0 6px 6px 0;">
                         <div style="color:#FF9870; font-size:0.80rem; font-weight:800; margin-bottom:7px; letter-spacing:0.02em;">⚠ 현재 흐름에서 흔들리기 쉬운 부분</div>
                         <div style="color:rgba(255,255,255,0.88); font-size:0.82rem; line-height:1.75; white-space:pre-line; word-break:keep-all;">
-                            ${text.oracleNarrative.risk}
+                            ${text.narrativeBlocks?.oracle || text.oracleNarrative.risk}
                         </div>
                     </div>
                     
@@ -21073,7 +21073,8 @@ ${cleanContent}
                     const c = data.pro.luckPhase12.content || '';
                     const deep = data.pro.luckPhase12.v54_body || '';
                     const head = c.length > 80 ? c.slice(0, 70) + '…' : c;
-                    const full = deep ? (c + '\n\n💭 현재 단계 깊이 통찰\n' + deep) : c;
+                    const _nb_stage = text.narrativeBlocks?.currentStage || null;
+                    const full = _nb_stage ? _nb_stage : (deep ? (c + '\n\n💭 현재 단계 깊이 통찰\n' + deep) : c);
                     const long = (c.length > 80) || deep;
                     const id = 'ztlp_' + Math.random().toString(36).slice(2,7);
                     return `

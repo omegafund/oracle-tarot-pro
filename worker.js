@@ -8358,6 +8358,219 @@ function v31GenerateText(sajuData, judgeResult) {
 //
 // 격리: 사주만 (queryType 분기 없음 - 사주 결과 함수 안에서만 호출)
 // ══════════════════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════════════════
+// ★★★ [V202.56] buildGeminiSajuContext — Gemini 3층 컨텍스트 빌더 ★★★
+//   오메가 설계:
+//     1층 raw:         일간/격국/12운성 3개 (Gemini 내부 참조용)
+//     2층 interpreted: 워커 풀이 사주 데이터를 인간 언어로 변환
+//     3층 currentFlow: 현재 시기 + 용신 조언
+//   절대 미포함: 오행%, 십성 레이블, 점수 → Gemini 설명충 방지
+// ══════════════════════════════════════════════════════════════════
+function buildGeminiSajuContext(sajuData, v54DeepInsight, v54EnergyGuide, proContent) {
+  const { meta, elements, strength, pillars } = sajuData;
+
+  // ── 1층 raw (3개만) ──
+  const dayBranch  = pillars.day?.branch;
+  const phaseKey   = V31_LUCK_PHASE_LOOKUP[meta.dayMaster]?.[dayBranch];
+  const phaseInfo  = phaseKey ? V31_LUCK_PHASE_12[phaseKey] : null;
+  const phaseLabel = phaseInfo ? phaseInfo.name : '전환기';
+
+  // 격국 라벨 추출 (proContent.tenStars 또는 v54 profile)
+  const _profile   = v54DeepInsight && v54DeepInsight._profile;
+  const geokgukLabel = (_profile && _profile.geokguk) || '균형격';
+
+  const raw = {
+    일간: `${meta.dayMaster}(${meta.dayMasterElement})`,
+    격국: geokgukLabel,
+    일주운성: phaseLabel
+  };
+
+  // ── 2층 interpreted (워커 풀 → 인간 언어 변환) ──
+  // identity: 일간 특성 + 신강신약
+  const identityMap = {
+    '목': '스스로 방향을 정하고 밀어붙이는 독립심이 강한 성향',
+    '화': '표현력이 강하고 감정 기복이 있지만 매력이 넘치는 성향',
+    '토': '안정과 중심을 중시하며 고집스러운 면이 있는 성향',
+    '금': '결단력이 강하고 원칙적이며 냉철한 성향',
+    '수': '직관과 사고력이 깊고 내면이 풍부한 성향'
+  };
+  const strengthMap = {
+    extra_strong: '혼자 모든 것을 끌고 가려는 경향이 매우 강함',
+    strong:       '독립적이고 자기 주도적인 성향이 강함',
+    balanced:     '주도할 때와 따를 때를 구분하는 균형 잡힌 성향',
+    weak:         '협력과 지원을 통해 가장 빛나는 성향',
+    extra_weak:   '신뢰 기반의 관계 속에서 힘이 살아나는 성향'
+  };
+  const identity = `${identityMap[meta.dayMasterElement] || '자기 방식이 분명한 성향'}, ${strengthMap[strength.level] || '균형 흐름'}`;
+
+  // lifePattern: trait 기반 삶의 반복 패턴
+  const traits = (v54DeepInsight && v54DeepInsight._traits) || [];
+  const patternMap = {
+    self_depleting_chaser: '목표를 향해 달리다 자신을 마르게 하는 패턴',
+    emotional_burnout:     '감정 소진 후 갑자기 단절하는 패턴',
+    impulsive_actor:       '충동적으로 결정하고 나중에 후회하는 패턴',
+    boundary_loss:         '다른 사람의 문제를 자신의 것으로 떠안는 패턴',
+    overthinking:          '너무 깊이 생각하다 결정 시점을 놓치는 패턴',
+    isolation:             '혼자 버티다 지쳐 갑자기 무너지는 패턴',
+    avoidance:             '결정을 미루다 흐름을 놓치는 패턴'
+  };
+  const lifePattern = traits.length > 0
+    ? (patternMap[traits[0]] || '혼자 짊어지려는 경향이 삶에서 반복됨')
+    : '책임감이 강해 과로로 이어지기 쉬운 패턴';
+
+  // strength (강점)
+  const _sipsung = proContent && proContent.mainSipsung;
+  const strengthDescMap = {
+    '식신': '창의적 표현과 생산 능력',
+    '겁재': '경쟁과 위기 상황에서 발휘되는 추진력',
+    '편재': '사업적 감각과 확장 능력',
+    '정관': '신뢰와 조직 내 리더십',
+    '편인': '직관과 통찰력',
+    '정인': '학습과 안정적 회복력',
+    '비견': '독립적 추진력',
+    '상관': '창의성과 혁신 에너지',
+    '정재': '현실적 관리와 생활력',
+    '편관': '위기 돌파력과 강한 책임감'
+  };
+  const userStrength = strengthDescMap[_sipsung] || '추진력과 표현력';
+
+  // risk
+  const riskMap = {
+    extra_strong: '과로와 독선으로 인한 관계 마찰',
+    strong:       '혼자 끌고 가다 번아웃되는 위험',
+    balanced:     '우유부단함과 타이밍을 놓치는 위험',
+    weak:         '타인 의존과 에너지 분산',
+    extra_weak:   '자기 소진과 감정적 고갈'
+  };
+  const risk = riskMap[strength.level] || '에너지 분산과 방향 상실';
+
+  // relationship style
+  const relMap = {
+    '목': '돌봄과 지원을 제공하지만 자신은 마지막에 챙기는 유형',
+    '화': '관계 초반 열기가 강하지만 감정 피로가 쌓이면 거리를 두는 유형',
+    '토': '의리를 중시하고 오래 관계를 유지하지만 고집이 갈등을 만드는 유형',
+    '금': '명확한 기준과 선을 갖고 있어 오해를 받기 쉬운 유형',
+    '수': '깊게 이해하지만 표현이 부족해 오해를 받기 쉬운 유형'
+  };
+  const relationship = relMap[meta.dayMasterElement] || '신뢰를 쌓는 데 시간이 필요한 유형';
+
+  const interpreted = { identity, lifePattern, strength: userStrength, risk, relationship };
+
+  // ── 3층 currentFlow ──
+  const sorted   = Object.entries(elements).sort((a, b) => a[1] - b[1]);
+  const yongEl   = sorted[0][0];
+  const flowMap  = {
+    extra_strong: '확장보다 내려놓고 정리하는 흐름',
+    strong:       '추진하되 속도를 조절하는 흐름',
+    balanced:     '현 상태를 유지하며 기회를 보는 흐름',
+    weak:         '협력과 지원을 적극 활용하는 흐름',
+    extra_weak:   '회복과 재충전이 우선인 흐름'
+  };
+  const yongAdviceMap = {
+    '수': '멈추고 내면을 정리하는 시간을 의식적으로 만들기',
+    '목': '새로운 방향으로 첫 발을 내딛는 작은 시도',
+    '화': '표현하고 연결하는 활동으로 에너지를 열기',
+    '토': '기반을 다지고 하나에 집중하는 루틴 만들기',
+    '금': '불필요한 것을 덜어내고 핵심만 남기는 정리'
+  };
+
+  const currentFlow = {
+    flow:         flowMap[strength.level] || '균형을 유지하며 다음을 준비하는 흐름',
+    stage:        phaseInfo ? phaseInfo.meaning : '전환기 흐름',
+    stageAdvice:  phaseInfo ? phaseInfo.advice  : '흐름을 점검하며 준비하세요',
+    yongsinAdvice: yongAdviceMap[yongEl] || '균형을 회복하는 데 집중하기'
+  };
+
+  return { raw, interpreted, currentFlow, _v: 'V202.56' };
+}
+
+// ══════════════════════════════════════════════════════════════════
+// ★★★ [V202.56] callGeminiForSajuNarrative — 사주 서사 5블록 생성 ★★★
+//   입력: buildGeminiSajuContext() 결과
+//   출력: narrativeBlocks { identity, lifePattern, relationship, oracle, currentStage }
+//   실패 시: null 반환 → 클라이언트는 기존 워커 풀 출력 유지 (안전 폴백)
+// ══════════════════════════════════════════════════════════════════
+async function callGeminiForSajuNarrative(ctx, geminiApiKey) {
+  if (!geminiApiKey || !ctx) return null;
+
+  const { raw, interpreted, currentFlow } = ctx;
+
+  const systemPrompt = `당신은 20년 경력의 역술가입니다.
+아래 사주 해석 정보를 바탕으로 5개 섹션을 작성하세요.
+
+절대 금지:
+- 갑목, 식신격, 겁재, 목욕, 오행%, 용신 등 사주 전문 용어 사용
+- "당신의 사주는", "명식에서" 같은 사주 분석 말투
+- 나열식 항목 (①②③ 또는 - 기호)
+- "~입니다" 반복 (문장마다 다른 어미 사용)
+
+반드시:
+- 마치 상담실에서 직접 대화하듯 따뜻하고 통찰 있는 문체
+- 읽는 사람이 "어? 나 얘기잖아" 하고 느낄 만한 구체적 묘사
+- 각 섹션 3~5문장, 전체 흐름이 자연스럽게 연결
+- 섹션 제목은 아래 형식 그대로 출력
+
+출력 형식 (반드시 이 태그 사용):
+[본모습]
+(3~5문장)
+[패턴]
+(3~5문장)
+[관계방식]
+(3~5문장)
+[신탁]
+(3~5문장)
+[현재흐름]
+(3~5문장)`;
+
+  const userPrompt = `해석 정보:
+성향: ${interpreted.identity}
+삶의 반복 패턴: ${interpreted.lifePattern}
+강점: ${interpreted.strength}
+위험: ${interpreted.risk}
+관계 방식: ${interpreted.relationship}
+현재 흐름: ${currentFlow.flow}
+현재 시기: ${currentFlow.stage}
+시기 조언: ${currentFlow.stageAdvice}
+핵심 회복 행동: ${currentFlow.yongsinAdvice}`;
+
+  try {
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiApiKey}`;
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        system_instruction: { parts: [{ text: systemPrompt }] },
+        contents: [{ parts: [{ text: userPrompt }] }],
+        generationConfig: { temperature: 0.85, maxOutputTokens: 1200 }
+      })
+    });
+
+    if (!res.ok) return null;
+    const data = await res.json();
+    const raw_text = data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+    if (!raw_text) return null;
+
+    // 5블록 파싱
+    const parse = (tag, text) => {
+      const m = text.match(new RegExp(`\[${tag}\]\s*([\s\S]*?)(?=\[|$)`));
+      return m ? m[1].trim() : null;
+    };
+
+    const identity     = parse('본모습', raw_text);
+    const lifePattern  = parse('패턴', raw_text);
+    const relationship = parse('관계방식', raw_text);
+    const oracle       = parse('신탁', raw_text);
+    const currentStage = parse('현재흐름', raw_text);
+
+    // 하나라도 없으면 전체 null (부분 실패 방지)
+    if (!identity || !lifePattern || !relationship || !oracle || !currentStage) return null;
+
+    return { identity, lifePattern, relationship, oracle, currentStage, _v: 'V202.56_gemini' };
+  } catch (e) {
+    return null; // 실패 → 폴백
+  }
+}
+
 // ★ buildStoryBridge — 본질→현재 시기→용신 실천으로 이어지는 단일 서사
 //   [V202.55] 개선: v54DeepInsight·v54EnergyGuide 실제 활용 + whyNeedYongsin과 역할 분리
 //   역할 분리:
@@ -20283,6 +20496,29 @@ export default {
           v184_5Data = { _error: String(e.message || e), _phase: 'try-catch' };
         }
 
+        // ══════════════════════════════════════════════════════════════
+        // ★★★ [V202.56] Gemini 사주 서사 5블록 생성 ★★★
+        //   실패 시 null → 기존 워커 풀 출력 유지 (완전 안전 폴백)
+        // ══════════════════════════════════════════════════════════════
+        let _narrativeBlocks = null;
+        try {
+          if (env.GEMINI_API_KEY && result.ok && result.text) {
+            const _sajuForCtx = v31ExtractSaju(
+              v31ValidateSajuInput(input).normalized
+            );
+            const _v54ForCtx = (() => {
+              try { return v54_buildDeepInsight(_sajuForCtx); } catch(_) { return null; }
+            })();
+            const _geminiCtx = buildGeminiSajuContext(
+              _sajuForCtx, _v54ForCtx, null,
+              result.pro || null
+            );
+            _narrativeBlocks = await callGeminiForSajuNarrative(_geminiCtx, env.GEMINI_API_KEY);
+          }
+        } catch (_nbErr) {
+          _narrativeBlocks = null; // 안전 폴백
+        }
+
         const _sajuFinalResponse = new Response(JSON.stringify({
           ...result,
           domain: 'saju',           // ★ [V31 #135 사장님 4번] 클라이언트가 사주 응답인지 명시 인식
@@ -20362,7 +20598,8 @@ export default {
               };
             }
           })(),
-          message: "[V31 Chunk 5 + V31 #184.5 FINAL+ + V200.8.0 paywall preview] TEXT + INTENT + PRO + AUDIT + Tier 1 + Preview 통합 완료"
+          narrativeBlocks: _narrativeBlocks,  // ★ [V202.56] Gemini 서사 5블록 (null이면 클라이언트 폴백)
+          message: "[V202.56 + V31 Chunk 5 + V31 #184.5 FINAL+ + V200.8.0] TEXT + NARRATIVE + PRO + AUDIT + Tier 1 + Preview 통합 완료"
         }), {
           headers: { ...corsHeaders(), "Content-Type": "application/json" }
         });
