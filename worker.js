@@ -9310,6 +9310,36 @@ function v31RunSajuOracle(input, category = 'fortune', timePhase = 'medium', tie
     console.warn('[V202.13] 양력/음력 변환 실패 (무시):', convErr.message);
   }
 
+  // ★★★ [V202.59] inputDisplay — 결제 후 본화면 생년월일시 표시용 ★★★
+  //   PRO 화면 명식 아래 "여 양력 1985.05.18 09:00 (음:1985.03.29)" 형식
+  let inputDisplayStr = '';
+  try {
+    const norm = validation.normalized;
+    const _gender = norm.gender === 'male' ? '남' : norm.gender === 'female' ? '여' : '';
+    const _calendar = norm.calendar === 'lunar' ? '음력' : '양력';
+    const _y = String(norm.year);
+    const _m = String(norm.month).padStart(2, '0');
+    const _d = String(norm.day).padStart(2, '0');
+    const _hr = (typeof norm.hour === 'number' && norm.hour >= 0)
+      ? String(norm.hour).padStart(2, '0') + ':00' : '';
+    const _timePart = _hr ? ` ${_hr}` : '';
+    const _genderPart = _gender ? _gender + ' ' : '';
+    let _altPart = '';
+    if (norm.calendar === 'solar' && lunarDateOut) {
+      const _ly = String(lunarDateOut.year);
+      const _lm = String(lunarDateOut.month).padStart(2, '0');
+      const _ld = String(lunarDateOut.day).padStart(2, '0');
+      const _leap = lunarDateOut.isLeapMonth ? '윤' : '';
+      _altPart = ` (음: ${_ly}.${_leap}${_lm}.${_ld})`;
+    } else if (norm.calendar === 'lunar' && solarDateOut) {
+      const _sy = String(solarDateOut.year);
+      const _sm = String(solarDateOut.month).padStart(2, '0');
+      const _sd = String(solarDateOut.day).padStart(2, '0');
+      _altPart = ` (양: ${_sy}.${_sm}.${_sd})`;
+    }
+    inputDisplayStr = `${_genderPart}${_calendar} ${_y}.${_m}.${_d}${_timePart}${_altPart}`;
+  } catch(_idErr) { inputDisplayStr = ''; }
+
   return {
     ok: true,
     version: 'V31_Chunk4',
@@ -9318,6 +9348,8 @@ function v31RunSajuOracle(input, category = 'fortune', timePhase = 'medium', tie
     // ★ [V202.13] 양력/음력 둘 다 표시용 ★
     solarDate: solarDateOut,
     lunarDate: lunarDateOut,
+    // ★ [V202.59] 결제 후 본화면 명식 아래 생년월일시 표시용
+    inputDisplay: inputDisplayStr,
     accuracy: {
       level: validation.normalized.calendar === 'solar' ? 'high' : 'medium',
       note: validation.normalized.calendar === 'solar'

@@ -20161,6 +20161,8 @@ function renderSajuResult(data) {
                             return `<div style="color:rgba(255,224,138,0.85); font-size:0.7rem; margin-top:6px; font-weight:600; letter-spacing:0.02em;">${_genderPart}${_calendar} ${_yStr}.${_mStr}.${_dStr}${_timePart}${_altDate}</div>`;
                         }
                     } catch(e) {}
+                    // ★ [V202.59] 워커 응답 inputDisplay 폴백 (window._sajuInput 없을 때)
+                    if (data.inputDisplay) return `<div style="color:rgba(255,224,138,0.85); font-size:0.7rem; margin-top:6px; font-weight:600; letter-spacing:0.02em;">${data.inputDisplay}</div>`;
                     return data.accuracy ? `<div style="color:rgba(255,255,255,0.5); font-size: 0.74rem; margin-top:4px;">${data.accuracy.note}</div>` : '';
                 })()}
             </div>
