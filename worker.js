@@ -20536,6 +20536,7 @@ export default {
         try {
           if (!env.GEMINI_API_KEY) {
             _narrativeDebug = { step: 'skip', reason: 'no_api_key' };
+            console.log('[V202.60 NARRATIVE] no_api_key — GEMINI_API_KEY 없음');
           } else if (!result.ok) {
             _narrativeDebug = { step: 'skip', reason: 'result_not_ok' };
           } else if (!result.text) {
@@ -20563,6 +20564,7 @@ export default {
                 hasBlocks: !!_narrativeBlocks,
                 blockKeys: _narrativeBlocks ? Object.keys(_narrativeBlocks) : []
               };
+              console.log('[V202.60 NARRATIVE]', JSON.stringify(_narrativeDebug));
             }
           }
         } catch (_nbErr) {
