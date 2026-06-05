@@ -8550,6 +8550,30 @@ async function callGeminiForSajuNarrative(ctx, geminiApiKey) {
       })
     });
 
+    // 429 Too Many Requests → 1초 후 1회 재시도
+    if (res.status === 429) {
+      console.log('[V202.64 RETRY] 429 — 1초 후 재시도');
+      await new Promise(r => setTimeout(r, 1000));
+      const res2 = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          system_instruction: { parts: [{ text: systemPrompt }] },
+          contents: [{ parts: [{ text: userPrompt }] }],
+          generationConfig: { temperature: 0.85, maxOutputTokens: 1200 }
+        })
+      });
+      if (!res2.ok) {
+        console.log('[V202.64 RETRY_FAIL]', res2.status);
+        return null;
+      }
+      const data2 = await res2.json();
+      const raw_text2 = data2?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+      console.log('[V202.64 RETRY_TEXT]', raw_text2.slice(0, 200));
+      if (!raw_text2) return null;
+      // 재시도 성공 시 raw_text를 재할당하고 계속
+      Object.defineProperty(res, '_retryText', { value: raw_text2 });
+    }
     if (!res.ok) {
       console.log('[V202.62 GEMINI_HTTP]', res.status, res.statusText);
       return null;
@@ -20333,7 +20357,7 @@ async function handleUltimateZeusShield(request, env, userId, planKey, question)
         return new Response(JSON.stringify({ error: "CONCURRENT_REQUEST", message: "이전 점사가 아직 진행 중입니다. 잠시만 기다려 주세요." }),
             { status: 429, headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" } });
     }
-    await KV.put(concurrentKey, "true", { expirationTtl: 20 });
+    await KV.put(concurrentKey, "true", { expirationTtl: 10 }); // [V202.64] 10초로 단축
 
     try {
         // [4] ADAPTIVE COOLDOWN
@@ -20346,6 +20370,7 @@ async function handleUltimateZeusShield(request, env, userId, planKey, question)
         const coolKey = `cool:${keyBase}`;
         const cool = await KV.get(coolKey);
         if (cool === "true") {
+            await KV.delete(concurrentKey); // [V202.64] lock 해제
             return new Response(JSON.stringify({ error: "COOLDOWN", message: `카드의 흐름이 정리되지 않았습니다. ${cooldown}초 후 다시 시도해 주세요.` }),
                 { status: 429, headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" } });
         }
@@ -20358,6 +20383,7 @@ async function handleUltimateZeusShield(request, env, userId, planKey, question)
             ttl = 3600;
         }
         if (currentUsage >= limit) {
+            await KV.delete(concurrentKey); // [V202.64] lock 해제
             return new Response(JSON.stringify({ error: "LIMIT_EXCEEDED", message: `본 상품의 점사 가능 횟수(${limit}회)를 모두 사용하셨습니다.` }),
                 { status: 429, headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" } });
         }
@@ -20372,6 +20398,7 @@ async function handleUltimateZeusShield(request, env, userId, planKey, question)
         let globalUsage = parseInt((await KV.get(globalKey)) || "0");
         if (globalUsage > 10000) {
             await KV.put("SYSTEM_LOCK", "true", { expirationTtl: 600 });
+            await KV.delete(concurrentKey); // [V202.64] lock 해제
             return new Response(JSON.stringify({ error: "GLOBAL_LIMIT", message: "시스템 보호가 작동 중입니다. 잠시 후 이용 바랍니다." }),
                 { status: 503, headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" } });
         }
