@@ -8491,7 +8491,12 @@ function buildGeminiSajuContext(sajuData, v54DeepInsight, v54EnergyGuide, proCon
 //   실패 시: null 반환 → 클라이언트는 기존 워커 풀 출력 유지 (안전 폴백)
 // ══════════════════════════════════════════════════════════════════
 async function callGeminiForSajuNarrative(ctx, geminiApiKey) {
-  if (!geminiApiKey || !ctx) return null;
+  // ★ [V202.63] 진입 로그 — 파라미터 유효성 확인
+  console.log('[V202.63 ENTRY] geminiApiKey:', !!geminiApiKey, 'ctx:', !!ctx, 'ctx.interpreted:', !!(ctx && ctx.interpreted), 'ctx.currentFlow:', !!(ctx && ctx.currentFlow));
+  if (!geminiApiKey || !ctx) {
+    console.log('[V202.63 EARLY_NULL] key:', !!geminiApiKey, 'ctx:', !!ctx);
+    return null;
+  }
 
   const { raw, interpreted, currentFlow } = ctx;
 
