@@ -8545,10 +8545,18 @@ async function callGeminiForSajuNarrative(ctx, geminiApiKey) {
       })
     });
 
-    if (!res.ok) return null;
+    if (!res.ok) {
+      console.log('[V202.62 GEMINI_HTTP]', res.status, res.statusText);
+      return null;
+    }
     const data = await res.json();
+    // Gemini 응답 구조 전체 로그 (진단용)
+    console.log('[V202.62 GEMINI_RAW]', JSON.stringify(data).slice(0, 500));
     const raw_text = data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
-    if (!raw_text) return null;
+    if (!raw_text) {
+      console.log('[V202.62 NO_TEXT] candidates:', JSON.stringify(data?.candidates?.map(c=>Object.keys(c))));
+      return null;
+    }
 
     // 5블록 파싱 [V202.61 수정: 정규식 이스케이프 수정 + 유연한 태그 매칭]
     const parse = (tag, text) => {
