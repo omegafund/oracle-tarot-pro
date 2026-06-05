@@ -20529,26 +20529,45 @@ export default {
         }
 
         // ══════════════════════════════════════════════════════════════
-        // ★★★ [V202.56] Gemini 사주 서사 5블록 생성 ★★★
-        //   실패 시 null → 기존 워커 풀 출력 유지 (완전 안전 폴백)
+        // ★★★ [V202.60] Gemini 사주 서사 5블록 생성 (진단 로그 추가) ★★★
         // ══════════════════════════════════════════════════════════════
         let _narrativeBlocks = null;
+        let _narrativeDebug = { step: 'init' };
         try {
-          if (env.GEMINI_API_KEY && result.ok && result.text) {
-            const _sajuForCtx = v31ExtractSaju(
-              v31ValidateSajuInput(input).normalized
-            );
-            const _v54ForCtx = (() => {
-              try { return v54_buildDeepInsight(_sajuForCtx); } catch(_) { return null; }
-            })();
-            const _geminiCtx = buildGeminiSajuContext(
-              _sajuForCtx, _v54ForCtx, null,
-              result.pro || null
-            );
-            _narrativeBlocks = await callGeminiForSajuNarrative(_geminiCtx, env.GEMINI_API_KEY);
+          if (!env.GEMINI_API_KEY) {
+            _narrativeDebug = { step: 'skip', reason: 'no_api_key' };
+          } else if (!result.ok) {
+            _narrativeDebug = { step: 'skip', reason: 'result_not_ok' };
+          } else if (!result.text) {
+            _narrativeDebug = { step: 'skip', reason: 'no_result_text' };
+          } else {
+            _narrativeDebug = { step: 'validating' };
+            const _validation = v31ValidateSajuInput(input);
+            if (!_validation || !_validation.normalized) {
+              _narrativeDebug = { step: 'skip', reason: 'validation_failed' };
+            } else {
+              _narrativeDebug = { step: 'extracting' };
+              const _sajuForCtx = v31ExtractSaju(_validation.normalized);
+              _narrativeDebug = { step: 'building_v54' };
+              const _v54ForCtx = (() => {
+                try { return v54_buildDeepInsight(_sajuForCtx); } catch(e) { return null; }
+              })();
+              _narrativeDebug = { step: 'building_ctx' };
+              const _geminiCtx = buildGeminiSajuContext(
+                _sajuForCtx, _v54ForCtx, null, result.pro || null
+              );
+              _narrativeDebug = { step: 'calling_gemini', hasKey: !!env.GEMINI_API_KEY };
+              _narrativeBlocks = await callGeminiForSajuNarrative(_geminiCtx, env.GEMINI_API_KEY);
+              _narrativeDebug = {
+                step: _narrativeBlocks ? 'success' : 'gemini_returned_null',
+                hasBlocks: !!_narrativeBlocks,
+                blockKeys: _narrativeBlocks ? Object.keys(_narrativeBlocks) : []
+              };
+            }
           }
         } catch (_nbErr) {
-          _narrativeBlocks = null; // 안전 폴백
+          _narrativeDebug = { step: 'error', message: String(_nbErr && _nbErr.message || _nbErr) };
+          _narrativeBlocks = null;
         }
 
         const _sajuFinalResponse = new Response(JSON.stringify({
@@ -20631,6 +20650,7 @@ export default {
             }
           })(),
           narrativeBlocks: _narrativeBlocks,  // ★ [V202.56] Gemini 서사 5블록 (null이면 클라이언트 폴백)
+          _narrativeDebug: _narrativeDebug,         // ★ [V202.60] 진단용 (배포 후 제거)
           message: "[V202.56 + V31 Chunk 5 + V31 #184.5 FINAL+ + V200.8.0] TEXT + NARRATIVE + PRO + AUDIT + Tier 1 + Preview 통합 완료"
         }), {
           headers: { ...corsHeaders(), "Content-Type": "application/json" }
