@@ -8550,11 +8550,19 @@ async function callGeminiForSajuNarrative(ctx, geminiApiKey) {
     const raw_text = data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
     if (!raw_text) return null;
 
-    // 5블록 파싱
+    // 5블록 파싱 [V202.61 수정: 정규식 이스케이프 수정 + 유연한 태그 매칭]
     const parse = (tag, text) => {
-      const m = text.match(new RegExp(`\[${tag}\]\s*([\s\S]*?)(?=\[|$)`));
+      // \[ 이스케이프 수정 + **[태그]** 마크다운 감싸기 대응 + 대소문자 무관
+      const pattern = new RegExp(
+        '(?:\\*{0,2})\\[' + tag + '\\](?:\\*{0,2})\\s*([\\s\\S]*?)(?=(?:\\*{0,2})\\[|$)',
+        'i'
+      );
+      const m = text.match(pattern);
       return m ? m[1].trim() : null;
     };
+
+    // 파싱 전 raw_text 로그 (진단용)
+    console.log('[V202.61 RAW_TEXT]', raw_text.slice(0, 300));
 
     const identity     = parse('본모습', raw_text);
     const lifePattern  = parse('패턴', raw_text);
@@ -8562,12 +8570,18 @@ async function callGeminiForSajuNarrative(ctx, geminiApiKey) {
     const oracle       = parse('신탁', raw_text);
     const currentStage = parse('현재흐름', raw_text);
 
+    console.log('[V202.61 PARSE]', JSON.stringify({
+      identity: !!identity, lifePattern: !!lifePattern,
+      relationship: !!relationship, oracle: !!oracle, currentStage: !!currentStage
+    }));
+
     // 하나라도 없으면 전체 null (부분 실패 방지)
     if (!identity || !lifePattern || !relationship || !oracle || !currentStage) return null;
 
-    return { identity, lifePattern, relationship, oracle, currentStage, _v: 'V202.56_gemini' };
+    return { identity, lifePattern, relationship, oracle, currentStage, _v: 'V202.61_gemini' };
   } catch (e) {
-    return null; // 실패 → 폴백
+    console.log('[V202.61 CATCH]', String(e && e.message || e));
+    return null;
   }
 }
 
