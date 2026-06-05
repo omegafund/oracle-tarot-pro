@@ -20597,9 +20597,14 @@ export default {
             }
           }
         } catch (_nbErr) {
-          _narrativeDebug = { step: 'error', message: String(_nbErr && _nbErr.message || _nbErr) };
+          _narrativeDebug = { 
+            step: 'error', 
+            message: String(_nbErr && _nbErr.message || _nbErr),
+            stack: String(_nbErr && _nbErr.stack || '').slice(0, 200),
+            lastStep: _narrativeDebug && _narrativeDebug.step
+          };
           _narrativeBlocks = null;
-          console.log('[V202.60 NARRATIVE ERROR]', JSON.stringify(_narrativeDebug));
+          console.log('[V202.63 CATCH_DETAIL]', JSON.stringify(_narrativeDebug));
         }
 
         const _sajuFinalResponse = new Response(JSON.stringify({
