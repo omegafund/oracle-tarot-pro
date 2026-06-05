@@ -20541,11 +20541,13 @@ export default {
             _narrativeDebug = { step: 'skip', reason: 'result_not_ok' };
           } else if (!result.text) {
             _narrativeDebug = { step: 'skip', reason: 'no_result_text' };
+            console.log('[V202.60 NARRATIVE]', JSON.stringify(_narrativeDebug));
           } else {
             _narrativeDebug = { step: 'validating' };
             const _validation = v31ValidateSajuInput(input);
             if (!_validation || !_validation.normalized) {
               _narrativeDebug = { step: 'skip', reason: 'validation_failed' };
+              console.log('[V202.60 NARRATIVE]', JSON.stringify(_narrativeDebug));
             } else {
               _narrativeDebug = { step: 'extracting' };
               const _sajuForCtx = v31ExtractSaju(_validation.normalized);
@@ -20570,6 +20572,7 @@ export default {
         } catch (_nbErr) {
           _narrativeDebug = { step: 'error', message: String(_nbErr && _nbErr.message || _nbErr) };
           _narrativeBlocks = null;
+          console.log('[V202.60 NARRATIVE ERROR]', JSON.stringify(_narrativeDebug));
         }
 
         const _sajuFinalResponse = new Response(JSON.stringify({
