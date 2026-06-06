@@ -20614,7 +20614,9 @@ export default {
                 _sajuForCtx, _v54ForCtx, null, result.pro || null
               );
               _narrativeDebug = { step: 'calling_gemini', hasKey: !!env.GEMINI_API_KEY };
-              _narrativeBlocks = await callGeminiForSajuNarrative(_geminiCtx, env.GEMINI_API_KEY);
+              // [검증] 사주 narrative Gemini 호출 차단 — 5월 상태(사주 로컬)로 복귀, 분당 Gemini 호출 축소
+              _narrativeBlocks = null;
+              // _narrativeBlocks = await callGeminiForSajuNarrative(_geminiCtx, env.GEMINI_API_KEY);
               _narrativeDebug = {
                 step: _narrativeBlocks ? 'success' : 'gemini_returned_null',
                 hasBlocks: !!_narrativeBlocks,
