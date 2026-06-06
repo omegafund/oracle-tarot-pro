@@ -23466,8 +23466,7 @@ ${metrics.cryptoSubtype === 'crypto_buy' ? `
             error: "Gemini API 거부",
             code: errorCode,
             userMessage,
-            detail: errorText.slice(0, 500),
-            _keyTail: (env.GEMINI_API_KEY || "").slice(-4)
+            detail: errorText.slice(0, 500)
           }), {
             status: geminiResponse.status, headers: corsHeaders()
           });
