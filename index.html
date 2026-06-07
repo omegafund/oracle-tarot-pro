@@ -12866,11 +12866,7 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
 
             const finalOracleHTML = (d.finalOracle || '').toString().replace(/\n/g, '<br>');
             // ★ 투자 흐름 서사 (카드 → 시장 흐름)
-            const investNarrativeHTML = d.investNarrative ? `
-                <div style="margin-bottom:14px; padding:14px 16px; border-radius:10px; border:1px solid rgba(212,175,55,0.3); background:rgba(212,175,55,0.06);">
-                    <div style="color:var(--gold); font-size:0.82rem; font-weight:900; letter-spacing:0.1em; margin-bottom:8px;">📊 시장 흐름 해석</div>
-                    <div style="font-size:0.88rem; color:rgba(255,255,255,0.92); line-height:1.9; white-space:pre-line;">${d.investNarrative}</div>
-                </div>` : '';
+            const investNarrativeHTML = ''; // [V203.8] 삭제 — TOP VERDICT와 중복
             // 카드 에너지 → (투자/매도) 맥락
             const narrativeHTML = (d.cardNarrative && d.cardNarrative.length) ? `
                 <div style="margin-bottom:14px; padding-bottom:12px; border-bottom:1px solid rgba(212,175,55,0.18);">
@@ -13404,8 +13400,6 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
                     <div style="font-size:0.9rem; color:rgba(255,255,255,0.92);">
                         <div>${b.coreInsight.line1}</div>
                         <div style="margin-top:6px;">${b.coreInsight.line3}</div>
-                        <div>${b.coreInsight.line4}</div>
-                        <div style="margin-top:6px; color:rgba(212,175,55,0.95); font-style:italic;">${b.coreInsight.line5}</div>
                         <div style="margin-top:8px; padding:6px 10px; background:rgba(46,204,113,0.08); border-radius:6px; font-size:0.78rem; color:rgba(46,204,113,0.95);">
                             ↳ 관계 흐름: <b>${b.coreInsight.flowArrow}</b>
                         </div>
@@ -13509,24 +13503,11 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
                     </div>
                     ${_re_scoreBarHTML}
                     <div style="font-size:0.88rem; color:rgba(255,255,255,0.92);">
-                        <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:10px;">
-                            <div style="padding:8px 10px; background:rgba(46,204,113,0.08); border-radius:6px;">
-                                <div style="color:#2ecc71; font-size:0.74rem; font-weight:900; margin-bottom:4px;">[유저님 상태]</div>
-                                <div>✔ ${re.userBlock.strength}</div>
-                                <div>✔ ${re.userBlock.hidden}</div>
-                            </div>
-                            <div style="padding:8px 10px; background:rgba(52,152,219,0.08); border-radius:6px;">
-                                <div style="color:#5DADE2; font-size:0.74rem; font-weight:900; margin-bottom:4px;">[상대 상태]</div>
-                                ${re.partnerMind ? `<div style="color:#7FCDFF; font-weight:700; margin-bottom:4px;">💭 ${re.partnerMind}</div>` : ''}
-                                <div>✔ ${re.partnerBlock.visible}</div>
-                                <div>✔ ${re.partnerBlock.real}</div>
-                            </div>
-                        </div>
-                        <div style="padding:8px 10px; background:rgba(0,0,0,0.18); border-radius:6px; font-size:0.82rem;">
-                            <div style="color:#FFE08A; margin-bottom:4px;">두 사람 구조: <b>${re.dynamic} ↔ ${re.counterDynamic}</b></div>
-                            <div style="font-size:0.78rem; color:rgba(255,255,255,0.78);">
-                                균형 유지 → ${re.positiveResult}<br>
-                                균형 붕괴 → ${re.negativeResult}
+                        <div style="padding:8px 10px; background:rgba(0,0,0,0.18); border-radius:6px; font-size:0.84rem;">
+                            <div style="color:#FFE08A; margin-bottom:6px; font-weight:700;">⚠️ 이 관계의 핵심 문제</div>
+                            <div style="margin-bottom:4px;">${re.dynamic}</div>
+                            <div style="font-size:0.78rem; color:rgba(255,255,255,0.72); margin-top:6px;">
+                                이 간격이 계속되면 → ${re.negativeResult}
                             </div>
                         </div>
                     </div>
@@ -13643,24 +13624,16 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
                                 box-shadow: 0 0 14px rgba(231,76,60,0.18);">
                         👉 지금 흐름은 "${fn.pivot}"
                     </div>` : ''}
-                    <div style="text-align:center; margin-bottom:12px;">
-                        <div style="color:#fff; font-size:1.15rem; font-weight:900;">👉 ${fn.finalState}</div>
+                    <div style="text-align:center; margin-bottom:14px;">
+                        <div style="color:#fff; font-size:1.1rem; font-weight:900;">👉 ${fn.finalState}</div>
                     </div>
-                    <div style="font-size:0.88rem; color:rgba(255,255,255,0.92); text-align:center; margin-bottom:12px;">
-                        ${fn.finalExplanation}
+                    <div style="margin-top:10px; text-align:center; padding:12px; background:rgba(212,175,55,0.15); border-radius:8px;">
+                        <div style="color:#FFE08A; font-size:0.76rem; font-weight:700; margin-bottom:6px;">앞으로의 방향</div>
+                        <div style="color:#fff; font-size:0.93rem; font-weight:900;">"${fn.finalKey}"</div>
                     </div>
-                    <div style="padding:10px 12px; background:rgba(0,0,0,0.25); border-radius:8px; font-size:0.84rem;">
-                        <div style="color:#2ecc71; margin-bottom:6px;">✔ 좋은 길</div>
-                        <div style="margin-bottom:10px; padding-left:10px;">→ ${fn.goodPath}</div>
-                        <div style="color:#E74C3C; margin-bottom:6px;">△ 권하지 않는 길</div>
-                        <div style="padding-left:10px;">→ ${fn.badPath}</div>
-                    </div>
-                    <div style="margin-top:12px; text-align:center; padding:10px; background:rgba(212,175,55,0.15); border-radius:8px;">
-                        <div style="color:#FFE08A; font-size:0.78rem; font-weight:700; margin-bottom:4px;">최종 키</div>
-                        <div style="color:#fff; font-size:0.95rem; font-weight:900;">"${fn.finalKey}"</div>
-                    </div>
-                    <div style="margin-top:10px; text-align:center; color:rgba(255,255,255,0.85); font-size:0.85rem; font-style:italic;">
-                        ${fn.coreKey}
+                    <div style="margin-top:12px; padding:12px 14px; background:linear-gradient(135deg,rgba(212,175,55,0.12),rgba(46,204,113,0.06)); border-left:4px solid #D4AF37; border-radius:0 10px 10px 0; text-align:center;">
+                        <div style="font-size:0.7rem; color:rgba(212,175,55,0.7); font-weight:800; letter-spacing:0.15em; margin-bottom:6px;">🌟 한 줄 신탁</div>
+                        <div style="color:rgba(255,255,255,0.92); font-size:0.9rem; font-style:italic; line-height:1.7;">${fn.coreKey}</div>
                     </div>
                 </div>`;
 
@@ -13748,9 +13721,7 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
                 <div style="font-size: 0.94rem; color: rgba(255,255,255,0.95); line-height: 1.95; font-weight: 500;">
                     ${ci.line1}<br>
                     ${ci.line2}<br>
-                    ${ci.line3}<br>
-                    ${ci.line4}<br>
-                    ${ci.line5}
+                    ${ci.line3}
                 </div>
                 <div style="margin-top:12px; padding-top:10px; border-top:1px solid rgba(212,175,55,0.18); font-size:0.84rem; color:rgba(255,217,112,0.85);">
                     ↳ 운세 흐름: <b>${ci.flowArrow}</b>
@@ -13770,18 +13741,12 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
                     🌊 흐름 본질 진단
                 </div>
                 <div style="font-size:0.88rem; line-height:1.85; color:rgba(255,255,255,0.92);">
-                    <div style="margin-bottom:8px;"><b style="color:#FFD970;">[유저님 상태]</b></div>
-                    <div style="padding-left:8px; margin-bottom:6px;">✔ ${es.userBlock.strength}</div>
-                    <div style="padding-left:8px; margin-bottom:10px;">✔ ${es.userBlock.hidden}</div>
-                    <div style="margin-bottom:8px;"><b style="color:#FFD970;">[흐름 신호]</b></div>
-                    <div style="padding-left:8px; margin-bottom:6px;">✔ ${es.flowBlock.visible}</div>
-                    <div style="padding-left:8px; margin-bottom:10px;">✔ ${es.flowBlock.real}</div>
-                    <div style="padding:8px 10px; background:rgba(212,175,55,0.08); border-radius:6px; font-size:0.84rem;">
-                        두 흐름의 구조: <b>${es.dynamic}</b> ↔ <b>${es.counterDynamic}</b>
-                    </div>
-                    <div style="margin-top:8px; font-size:0.82rem; color:rgba(255,255,255,0.85);">
-                        균형 유지 → ${es.positiveResult}<br>
-                        균형 붕괴 → ${es.negativeResult}
+                    <div style="padding:10px 12px; background:rgba(212,175,55,0.08); border-radius:8px; font-size:0.86rem; margin-bottom:10px;">
+                        <div style="color:#FFD970; font-weight:800; margin-bottom:6px;">⚠️ 이 관계의 핵심 문제</div>
+                        <div style="margin-bottom:4px;">${es.dynamic}</div>
+                        <div style="font-size:0.8rem; color:rgba(255,255,255,0.72); margin-top:6px;">
+                            이 간격이 계속되면 → ${es.negativeResult}
+                        </div>
                     </div>
                 </div>
                 <div style="margin-top:10px; padding:10px 12px; background:rgba(212,175,55,0.08); border-left:3px solid var(--gold); border-radius:0 8px 8px 0; font-size:0.88rem; color:rgba(255,255,255,0.95); font-weight:600;">
@@ -13880,28 +13845,16 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
                 <div style="color: #FFD970; font-size: 0.86rem; font-weight: 900; letter-spacing: 0.1em; margin-bottom: 12px; text-align:center;">
                     ✨ FINAL VERDICT
                 </div>
-                <div style="text-align:center; font-size:1rem; color:#FFD970; font-weight:900; margin-bottom:6px;">
+                <div style="text-align:center; font-size:1rem; color:#FFD970; font-weight:900; margin-bottom:14px;">
                     👉 ${fn.finalState}
                 </div>
-                <div style="text-align:center; font-size:0.86rem; color:rgba(255,255,255,0.85); margin-bottom:14px;">
-                    ${fn.finalExplanation}
+                <div style="margin-top:10px; text-align:center; padding:12px; background:rgba(212,175,55,0.15); border-radius:8px; margin-bottom:12px;">
+                    <div style="color:#FFE08A; font-size:0.76rem; font-weight:700; margin-bottom:6px;">앞으로의 방향</div>
+                    <div style="font-size:0.95rem; color:#fff; font-weight:900;">"${fn.finalKey}"</div>
                 </div>
-                <div style="display:flex; gap:8px; margin-bottom:10px;">
-                    <div style="flex:1; padding:10px; background:rgba(46,204,113,0.08); border-radius:8px; font-size:0.82rem;">
-                        <div style="color:#2ecc71; font-weight:800; margin-bottom:4px;">✔ 좋은 길</div>
-                        → ${fn.goodPath}
-                    </div>
-                    <div style="flex:1; padding:10px; background:rgba(255,128,128,0.08); border-radius:8px; font-size:0.82rem;">
-                        <div style="color:#FF8080; font-weight:800; margin-bottom:4px;">△ 권하지 않는 길</div>
-                        → ${fn.badPath}
-                    </div>
-                </div>
-                <div style="margin-top:14px; padding:12px; background:rgba(212,175,55,0.10); border-radius:8px; text-align:center;">
-                    <div style="font-size:0.72rem; color:rgba(255,217,112,0.7); letter-spacing:0.15em; margin-bottom:6px;">최종 키</div>
-                    <div style="font-size:0.96rem; color:#FFD970; font-weight:900;">"${fn.finalKey}"</div>
-                </div>
-                <div style="margin-top:10px; padding:10px 12px; background:rgba(212,175,55,0.06); border-left:3px solid var(--gold); border-radius:0 8px 8px 0; font-size:0.86rem; color:rgba(255,255,255,0.95); font-weight:600; text-align:center;">
-                    ${fn.coreKey}
+                <div style="padding:12px 14px; background:linear-gradient(135deg,rgba(212,175,55,0.12),rgba(46,204,113,0.06)); border-left:4px solid #D4AF37; border-radius:0 10px 10px 0; text-align:center;">
+                    <div style="font-size:0.7rem; color:rgba(212,175,55,0.7); font-weight:800; letter-spacing:0.15em; margin-bottom:6px;">🌟 한 줄 신탁</div>
+                    <div style="color:rgba(255,255,255,0.92); font-size:0.9rem; font-style:italic; line-height:1.7;">${fn.coreKey}</div>
                 </div>
             </div>`;
             
