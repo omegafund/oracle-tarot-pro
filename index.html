@@ -13633,7 +13633,7 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
                     </div>
                     <div style="margin-top:12px; padding:12px 14px; background:linear-gradient(135deg,rgba(212,175,55,0.12),rgba(46,204,113,0.06)); border-left:4px solid #D4AF37; border-radius:0 10px 10px 0; text-align:center;">
                         <div style="font-size:0.7rem; color:rgba(212,175,55,0.7); font-weight:800; letter-spacing:0.15em; margin-bottom:6px;">🌟 한 줄 신탁</div>
-                        <div style="color:rgba(255,255,255,0.92); font-size:0.9rem; font-style:italic; line-height:1.7;">${fn.coreKey}</div>
+                        <div style="color:rgba(255,255,255,0.92); font-size:0.9rem; font-style:italic; line-height:1.7;">${(window._serverMetrics && window._serverMetrics.oracleTagline) || fn.coreKey}</div>
                     </div>
                 </div>`;
 
@@ -13854,7 +13854,7 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
                 </div>
                 <div style="padding:12px 14px; background:linear-gradient(135deg,rgba(212,175,55,0.12),rgba(46,204,113,0.06)); border-left:4px solid #D4AF37; border-radius:0 10px 10px 0; text-align:center;">
                     <div style="font-size:0.7rem; color:rgba(212,175,55,0.7); font-weight:800; letter-spacing:0.15em; margin-bottom:6px;">🌟 한 줄 신탁</div>
-                    <div style="color:rgba(255,255,255,0.92); font-size:0.9rem; font-style:italic; line-height:1.7;">${fn.coreKey}</div>
+                    <div style="color:rgba(255,255,255,0.92); font-size:0.9rem; font-style:italic; line-height:1.7;">${(window._serverMetrics && window._serverMetrics.oracleTagline) || fn.coreKey}</div>
                 </div>
             </div>`;
             
