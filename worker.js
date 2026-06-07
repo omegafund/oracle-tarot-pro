@@ -8313,7 +8313,9 @@ function v31GenerateText(sajuData, judgeResult) {
       enforcedRisk: '',
       yongshin: null,
       dayPillar,
-      timePhase
+      timePhase,
+      v54DeepInsight,
+      v54EnergyGuide
     }),
 
     // 메타 정보
@@ -8717,7 +8719,7 @@ function whyNeedYongsin(sajuData) {
   return `명식 안에서 ${dominantName}의 기운이 강합니다.\n${dominantExcess}, ${missingReason}이 생기기 쉬운 구조입니다.\n\n${elName}의 기운이 채워질 때\n${fillEffect}.`;
 }
 function buildZeusSajuOracleBox(ctx) {
-  const { score, meta, yongshin, dayPillar, sajuData } = ctx;
+  const { score, meta, yongshin, dayPillar, sajuData, v54DeepInsight, v54EnergyGuide } = ctx;
 
   // ── ☯ 사주 핵심 구조 (★ V202.33: 이것만 유지 ★) ──
   //   일주 물상은 [3/6] 사주 본질 박스에 이미 있음 → 중복 회피
@@ -8745,7 +8747,7 @@ function buildZeusSajuOracleBox(ctx) {
     coreStructure,
     storyBridge: (function() {
       try {
-        return buildStoryBridge(ctx.sajuData);
+        return buildStoryBridge(ctx.sajuData, v54DeepInsight, v54EnergyGuide);
       } catch(e) { return null; }
     })(),
     _score: score,
