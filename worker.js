@@ -16172,14 +16172,24 @@ ${actionGuide.oneLine}`;
     // [V25.14] 5차원 영성 레이더 차트 데이터 (Claude 2순위)
     cardDimensions: buildCardDimensionsArray(cleanCards, []),
     // [V25.24] 100% JS Layered Matrix Oracle (6박스 + PRO)
-    oracleV25_24: buildLoveOracleV25_24({
-      totalScore,
-      cards: cleanCards.map(c => ({ name: typeof c === 'string' ? c : (c?.name || '') })),
-      revFlags: [false, false, false],
-      loveSubType,
-      numerology: finalTimingText,
-      prompt   // [V27.0.4] 시드 다양화 — 종목/대상 식별용
-    }),
+    // ★ [V203.9 D-3] _ov24 캐시 — oracleV25_24 한 번만 계산, 두 필드 공유
+    ...(() => {
+      const _ov24 = buildLoveOracleV25_24({
+        totalScore,
+        cards: cleanCards.map(c => ({ name: typeof c === 'string' ? c : (c?.name || '') })),
+        revFlags: [false, false, false],
+        loveSubType,
+        numerology: finalTimingText,
+        prompt
+      });
+      return {
+        oracleV25_24: _ov24,
+        // scoreCategory 기반 한 줄 신탁 — Gemini 원문과 무관하게 방향 고정
+        oracleTagline: (_ov24 && _ov24.boxes && _ov24.boxes.final && _ov24.boxes.final.coreKey)
+          ? _ov24.boxes.final.coreKey
+          : null
+      };
+    })(),
     finalOracle: compatSummary || criticalInterpretation,
     layers: {
       emotionFlow,
@@ -22269,6 +22279,8 @@ export default {
               _topVerdict.decisiveTiming = _decisiveTiming;
             }
             metrics.topVerdict = _topVerdict;
+            // ★ [V203.9 D-3] 투자 oracleTagline — topVerdict.signal 기반 한 줄 신탁
+            metrics.oracleTagline = _topVerdict.action || null;
           }
 
           // [V21.1] 종목명 주입 — Client에서 이모지 → 종목명 자동 치환에 사용
@@ -22569,8 +22581,62 @@ ${compatNote}
                          || '';
         }
 
+        // ★ [V203.9 C+D-1] direction 선언 — masterPrompt 최상단 삽입
+        //   목적: Gemini가 첫 토큰부터 방향을 인식 (76% 지점 정렬 지시 보완)
+        //   연애: scoreCategory(advance/maintain/realign/close) → 방향 선언
+        //   투자: scenarioKey/stockIntent → buy/sell 방향 선언
+        //   운세: oracleV25_32.scoreCategory → 방향 선언
+        const _directionDecl = (() => {
+          // 연애
+          if (queryType === 'love' && metrics && metrics.oracleV25_24) {
+            const sc = metrics.oracleV25_24.scoreCategory;
+            const map = {
+              advance:  '★ 이 점사의 흐름 방향: 진전 가능 (자연스러운 발전 구간)
+이 방향과 모순되는 최종 결론은 절대 제시할 수 없습니다.',
+              maintain: '★ 이 점사의 흐름 방향: 균형 유지 (표현 방식이 결과를 가름)
+이 방향과 모순되는 최종 결론은 절대 제시할 수 없습니다.',
+              realign:  '★ 이 점사의 흐름 방향: 방식 전환 (내면 정리가 우선인 시기)
+이 방향과 모순되는 최종 결론은 절대 제시할 수 없습니다.',
+              close:    '★ 이 점사의 흐름 방향: 정리 흐름 (자기 회복이 핵심)
+이 방향과 모순되는 최종 결론은 절대 제시할 수 없습니다.'
+            };
+            return map[sc] || '';
+          }
+          // 투자
+          if ((queryType === 'stock' || queryType === 'crypto') && metrics) {
+            const intent = metrics.stockIntent || 'buy';
+            if (intent === 'sell') {
+              return '★ 이 점사의 흐름 방향: 매도·정리 검토 구간
+이 방향과 모순되는 최종 결론(매수 권유 등)은 절대 제시할 수 없습니다.';
+            }
+            return '★ 이 점사의 흐름 방향: 매수·진입 검토 구간
+이 방향과 모순되는 최종 결론(매도 권유 등)은 절대 제시할 수 없습니다.';
+          }
+          // 운세
+          if (queryType === 'life' && metrics && metrics.oracleV25_32) {
+            const sc = metrics.oracleV25_32.scoreCategory;
+            const map = {
+              advance:  '★ 이 점사의 흐름 방향: 활성·확장 구간
+이 방향과 모순되는 최종 결론은 절대 제시할 수 없습니다.',
+              maintain: '★ 이 점사의 흐름 방향: 점검·유지 구간
+이 방향과 모순되는 최종 결론은 절대 제시할 수 없습니다.',
+              realign:  '★ 이 점사의 흐름 방향: 재정비 구간
+이 방향과 모순되는 최종 결론은 절대 제시할 수 없습니다.',
+              close:    '★ 이 점사의 흐름 방향: 회복·보호 구간
+이 방향과 모순되는 최종 결론은 절대 제시할 수 없습니다.'
+            };
+            return map[sc] || '';
+          }
+          return '';
+        })();
+
         const masterPrompt = `
-${financeInject}
+${_directionDecl ? `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[★ 최우선 방향 선언 — 모든 지시보다 우선]
+${_directionDecl}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+` : ''}${financeInject}
 [USER: ${userName || ""}]
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
