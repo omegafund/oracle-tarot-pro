@@ -12272,8 +12272,17 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
                     <div style="color:${colors.rules}; font-size:0.78rem; font-weight:900; letter-spacing:0.08em; margin-bottom:8px;">
                         🛡 제우스 행동 지침
                     </div>
-                    <div style="font-size:0.86rem; color:rgba(255,255,255,0.92); line-height:1.9;">
-                        ${rules.map(r => `<div>✔ ${r}</div>`).join('')}
+                    <div style="font-size:0.88rem; color:rgba(255,255,255,0.92); line-height:2.0;">
+                        ${rules.map((r, i) => {
+                            // ★ [V203.10 E안] 체크리스트형 렌더링
+                            // 이미 "1." 형식이면 그대로, 아니면 번호 추가
+                            const isNumbered = /^\d+\./.test(r.trim());
+                            const txt = isNumbered ? r.trim() : `${i+1}. ${r}`;
+                            return `<div style="display:flex; align-items:flex-start; gap:8px; margin-bottom:4px;">
+                                <span style="color:#2ecc71; font-weight:900; min-width:16px;">☑</span>
+                                <span>${txt}</span>
+                            </div>`;
+                        }).join('')}
                     </div>
                 </div>` : '';
 

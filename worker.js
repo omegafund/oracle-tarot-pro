@@ -16154,6 +16154,16 @@ ${actionGuide.oneLine}`
 ${getLoveCardFlavor(futCard, false)}
 ${actionGuide.oneLine}`;
 
+  // ★ [V203.9 D-3] _cachedOv24 — oracleV25_24 한 번만 계산
+  const _cachedOv24 = buildLoveOracleV25_24({
+    totalScore,
+    cards: cleanCards.map(c => ({ name: typeof c === 'string' ? c : (c?.name || '') })),
+    revFlags: [false, false, false],
+    loveSubType,
+    numerology: finalTimingText,
+    prompt
+  });
+
   return {
     // [V25.38] type 필드 — 클라이언트 도메인 식별용 (5차원 라벨 매핑)
     type: 'love',
@@ -16176,24 +16186,11 @@ ${actionGuide.oneLine}`;
     // [V25.14] 5차원 영성 레이더 차트 데이터 (Claude 2순위)
     cardDimensions: buildCardDimensionsArray(cleanCards, []),
     // [V25.24] 100% JS Layered Matrix Oracle (6박스 + PRO)
-    // ★ [V203.9 D-3] _ov24 캐시 — oracleV25_24 한 번만 계산, 두 필드 공유
-    ...(() => {
-      const _ov24 = buildLoveOracleV25_24({
-        totalScore,
-        cards: cleanCards.map(c => ({ name: typeof c === 'string' ? c : (c?.name || '') })),
-        revFlags: [false, false, false],
-        loveSubType,
-        numerology: finalTimingText,
-        prompt
-      });
-      return {
-        oracleV25_24: _ov24,
-        // scoreCategory 기반 한 줄 신탁 — Gemini 원문과 무관하게 방향 고정
-        oracleTagline: (_ov24 && _ov24.boxes && _ov24.boxes.final && _ov24.boxes.final.coreKey)
-          ? _ov24.boxes.final.coreKey
-          : null
-      };
-    })(),
+    // ★ [V203.9 D-3] oracleV25_24 + oracleTagline (단일 계산)
+    oracleV25_24: _cachedOv24,
+    oracleTagline: (_cachedOv24 && _cachedOv24.boxes && _cachedOv24.boxes.final && _cachedOv24.boxes.final.coreKey)
+      ? _cachedOv24.boxes.final.coreKey
+      : null,
     finalOracle: compatSummary || criticalInterpretation,
     layers: {
       emotionFlow,
