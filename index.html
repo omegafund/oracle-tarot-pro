@@ -13091,6 +13091,15 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
                 </style>`
                 : layer5HTML;
 
+            // ★ [V203.11] 7블록 공통 렌더러
+            return `
+            <div class="final-oracle final-oracle-stock" style="padding:10px 6px; background:rgba(212,175,55,0.08); border-radius:12px; margin-top:18px;">
+                <h3 style="color:var(--gold); text-align:center; margin:0 0 13px 0; font-size:1.1rem; padding-bottom:8px; border-bottom:1px solid rgba(212,175,55,0.25);">
+                    ${title}
+                </h3>
+                ${_renderZeus7Block(d, d.type === 'crypto' ? 'crypto' : 'stock')}
+            </div>`;
+            // ── 아래는 레거시 (V203.11 이후 미도달) ──
             return `
             <!-- ★★★ [V202.19 사장님 명령] 주식/코인 매도 박스 외곽 테두리 제거 ★★★ -->
             <!--   사장님 라이브 결함:                                            -->
@@ -13331,11 +13340,182 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
             return _v48_timingBox + _v48_mindBox + _v48_riskBox + _v48_actionBox;
         }
 
+
+        // ════════════════════════════════════════════════════════
+        // ★ [V203.11] _renderZeus7Block — 연애·투자 공통 7블록 렌더러
+        //   블록 순서: CORE → VERDICT → TIMING → RISK → ACTION → ONE LINE
+        //   (① ZEUS ORACLE은 외부 Gemini 서사가 담당 — 이 함수 외부)
+        //   domain: 'love' | 'stock' | 'crypto'
+        // ════════════════════════════════════════════════════════
+        function _renderZeus7Block(d, domain) {
+            const isLove  = domain === 'love';
+            const isStock = domain === 'stock' || domain === 'crypto';
+            const isSell  = !isLove && ((d._server?.stockIntent === 'sell') || (d.intent === 'sell'));
+            const sm      = window._serverMetrics || {};
+            const layers  = d.layers || d._server?.layers || {};
+            const ov24    = sm.oracleV25_24 || null;
+            const tv      = sm.topVerdict   || null;
+
+            const boxBase  = 'margin-bottom:14px; border-radius:10px; padding:14px 16px; line-height:1.85;';
+            const labelBase = 'font-size:0.78rem; font-weight:900; letter-spacing:0.12em; margin-bottom:8px;';
+            const bodyBase  = 'font-size:0.88rem; color:rgba(255,255,255,0.92); line-height:1.85;';
+
+            // ── ② CORE INSIGHT — 왜? (layers.criticalInterpretation)
+            const _critRaw = layers.criticalInterpretation;
+            const _critText = (() => {
+                if (!_critRaw) return '';
+                if (typeof _critRaw === 'string') return _critRaw;
+                if (typeof _critRaw === 'object') {
+                    const body = _critRaw.body || '';
+                    const key  = _critRaw.keyInsight || '';
+                    if (body && key) return body + '\n👉 핵심: ' + key;
+                    return body || (key ? '👉 핵심: ' + key : '');
+                }
+                return '';
+            })();
+            const coreHTML = _critText ? `
+                <div style="${boxBase} background:rgba(46,204,113,0.06); border:1px solid rgba(46,204,113,0.35); border-left:3px solid #2ecc71;">
+                    <div style="${labelBase} color:#2ecc71;">🧠 핵심 흐름 해석 &nbsp;<span style="font-size:0.68rem; opacity:0.7;">CORE INSIGHT</span></div>
+                    <div style="${bodyBase} white-space:pre-line;">${_critText.replace(/\n/g,'<br>')}</div>
+                </div>` : '';
+
+            // ── ③ TOP VERDICT — 무엇? (2줄 끝)
+            let verdictText = '';
+            let verdictSub  = '';
+            if (isLove && ov24 && ov24.boxes && ov24.boxes.final) {
+                verdictText = ov24.boxes.final.finalState || '';
+                verdictSub  = ov24.boxes.final.pivot      || '';
+            } else if (isStock && tv) {
+                verdictText = tv.signal  || '';
+                verdictSub  = tv.caution || '';
+            }
+            const verdictHTML = verdictText ? `
+                <div style="${boxBase} background:linear-gradient(135deg,rgba(241,196,15,0.10),rgba(231,76,60,0.06)); border:2px solid rgba(241,196,15,0.45); border-radius:12px;">
+                    <div style="${labelBase} color:#F1C40F; text-align:center;">🎯 신탁 결론 &nbsp;<span style="font-size:0.68rem; opacity:0.7;">TOP VERDICT</span></div>
+                    <div style="font-size:1.0rem; color:#fff; font-weight:800; text-align:center; margin-bottom:${verdictSub ? '8px' : '0'}; line-height:1.6;">👉 ${verdictText}</div>
+                    ${verdictSub ? `<div style="font-size:0.84rem; color:rgba(255,220,100,0.85); text-align:center; font-style:italic;">${verdictSub}</div>` : ''}
+                </div>` : '';
+
+            // ── ④ TIMING — 언제?
+            let timingHTML = '';
+            if (isLove && ov24 && ov24.boxes && ov24.boxes.timing) {
+                const tm = ov24.boxes.timing;
+                timingHTML = `
+                <div style="${boxBase} background:rgba(155,89,182,0.06); border:1px solid rgba(155,89,182,0.35); border-left:3px solid #9B59B6;">
+                    <div style="${labelBase} color:#C39BD3;">⏱ 타이밍 &nbsp;<span style="font-size:0.68rem; opacity:0.7;">TIMING</span></div>
+                    <div style="${bodyBase}">
+                        ${tm.timingNow  ? `<div style="margin-bottom:4px;">👉 ${tm.timingNow}</div>`  : ''}
+                        ${tm.timingNext ? `<div style="margin-bottom:4px;">👉 ${tm.timingNext}</div>` : ''}
+                        ${tm.shortTerm  ? `<div style="margin-top:8px; font-size:0.84rem; color:rgba(255,255,255,0.8);">🟢 단기: ${tm.shortTerm}</div>` : ''}
+                        ${tm.midTerm    ? `<div style="font-size:0.84rem; color:rgba(255,255,255,0.8);">🟡 중기: ${tm.midTerm}</div>`    : ''}
+                        ${tm.criticalTiming ? `<div style="margin-top:8px; padding:6px 10px; background:rgba(155,89,182,0.10); border-radius:6px; font-size:0.84rem;">⚡ 전환 시점: <b style="color:#C39BD3;">${tm.criticalTiming}</b></div>` : ''}
+                    </div>
+                </div>`;
+            } else if (isStock && tv && tv.decisiveTiming) {
+                const dt = tv.decisiveTiming;
+                timingHTML = `
+                <div style="${boxBase} background:rgba(155,89,182,0.06); border:1px solid rgba(155,89,182,0.35); border-left:3px solid #9B59B6;">
+                    <div style="${labelBase} color:#C39BD3; text-align:center;">🔮 타이밍 시그널 &nbsp;<span style="font-size:0.68rem; opacity:0.7;">TIMING</span></div>
+                    <div style="${bodyBase}">
+                        <div style="font-size:0.95rem; color:#fff; font-weight:700; text-align:center; margin-bottom:8px; padding-bottom:8px; border-bottom:1px solid rgba(155,89,182,0.25);">${dt.signal || ''}</div>
+                        ${dt.statement  ? `<div style="margin-bottom:4px;">${dt.statement}</div>`  : ''}
+                        ${dt.condition  ? `<div style="margin-bottom:4px; color:rgba(255,255,255,0.8);">${dt.condition}</div>` : ''}
+                        ${dt.guidance   ? `<div style="margin-top:8px; color:#FFD970; font-weight:600;">👉 ${dt.guidance}</div>` : ''}
+                    </div>
+                </div>`;
+            }
+
+            // ── ⑤ RISK — 무엇을 조심? (최대 2개)
+            let riskHTML = '';
+            if (isLove && ov24 && ov24.boxes && ov24.boxes.risk) {
+                const rk = ov24.boxes.risk;
+                const items = [rk.risk1, rk.risk2].filter(Boolean).slice(0,2);
+                if (items.length) {
+                    riskHTML = `
+                <div style="${boxBase} background:rgba(243,156,18,0.06); border:1px solid rgba(243,156,18,0.35); border-left:3px solid #F39C12;">
+                    <div style="${labelBase} color:#F39C12;">⚠️ 이것만 조심 &nbsp;<span style="font-size:0.68rem; opacity:0.7;">RISK</span></div>
+                    <div style="${bodyBase}">
+                        ${items.map(r => `<div style="margin-bottom:6px; padding-left:6px; border-left:2px solid rgba(243,156,18,0.4);">▸ ${r}</div>`).join('')}
+                    </div>
+                </div>`;
+                }
+            } else if (isStock && layers.risk && layers.risk.cautions) {
+                const items = (layers.risk.cautions || []).slice(0,2);
+                if (items.length) {
+                    riskHTML = `
+                <div style="${boxBase} background:rgba(243,156,18,0.06); border:1px solid rgba(243,156,18,0.35); border-left:3px solid #F39C12;">
+                    <div style="${labelBase} color:#F39C12;">⚠️ 이것만 조심 &nbsp;<span style="font-size:0.68rem; opacity:0.7;">RISK</span></div>
+                    <div style="${bodyBase}">
+                        ${items.map(r => `<div style="margin-bottom:6px; padding-left:6px; border-left:2px solid rgba(243,156,18,0.4);">▸ ${r}</div>`).join('')}
+                    </div>
+                </div>`;
+                }
+            }
+
+            // ── ⑥ ACTION — 어떻게? (번호 체크리스트)
+            let actionItems = [];
+            if (isLove && ov24 && ov24.boxes && ov24.boxes.actionGuide) {
+                const ag = ov24.boxes.actionGuide;
+                if (ag.action1) actionItems.push({ text: ag.action1, result: ag.actionResult1, avoid: false });
+                if (ag.action2) actionItems.push({ text: ag.action2, result: ag.actionResult2, avoid: false });
+                if (ag.avoidAction) actionItems.push({ text: ag.avoidAction, result: ag.riskEffect, avoid: true });
+            } else if (isStock && layers.rules && layers.rules.length) {
+                actionItems = layers.rules.map(r => ({ text: r, result: null, avoid: false }));
+            }
+            const actionHTML = actionItems.length ? `
+                <div style="${boxBase} background:rgba(46,204,113,0.06); border:1px solid rgba(46,204,113,0.35); border-left:3px solid #2ecc71;">
+                    <div style="${labelBase} color:#2ecc71;">🛡 행동 &nbsp;<span style="font-size:0.68rem; opacity:0.7;">ACTION</span></div>
+                    <div style="${bodyBase}">
+                        ${actionItems.filter(a => !a.avoid).map((a, i) => `
+                        <div style="margin-bottom:10px; padding:8px 10px; background:rgba(46,204,113,0.04); border-radius:8px; border-left:2px solid rgba(46,204,113,0.45);">
+                            <div style="display:flex; align-items:center; gap:8px; margin-bottom:4px;">
+                                <span style="display:inline-flex; align-items:center; justify-content:center; width:20px; height:20px; border-radius:50%; background:#2ecc71; color:#fff; font-size:0.7rem; font-weight:900;">${i+1}</span>
+                                <span style="color:rgba(255,255,255,0.95); font-weight:700; line-height:1.5;">${a.text}</span>
+                            </div>
+                            ${a.result ? `<div style="padding-left:28px; font-size:0.8rem; color:rgba(122,209,136,0.85);">⤷ ${a.result}</div>` : ''}
+                        </div>`).join('')}
+                        ${actionItems.filter(a => a.avoid).map(a => `
+                        <div style="margin-top:6px; padding:8px 10px; background:rgba(231,76,60,0.06); border-radius:8px; border-left:2px solid rgba(231,76,60,0.45);">
+                            <div style="display:flex; align-items:center; gap:8px; margin-bottom:4px;">
+                                <span style="display:inline-flex; align-items:center; justify-content:center; width:20px; height:20px; border-radius:50%; background:#E74C3C; color:#fff; font-size:0.75rem; font-weight:900;">!</span>
+                                <span style="color:rgba(255,200,200,0.95); font-weight:700; line-height:1.5;">피할 것: ${a.text}</span>
+                            </div>
+                            ${a.result ? `<div style="padding-left:28px; font-size:0.8rem; color:rgba(255,142,114,0.85);">⤷ ${a.result}</div>` : ''}
+                        </div>`).join('')}
+                    </div>
+                </div>` : '';
+
+            // ── ⑦ ONE LINE — 기억할 한 문장
+            let oneLine = '';
+            if (isLove) {
+                oneLine = (sm.oracleTagline)
+                    || (ov24 && ov24.boxes && ov24.boxes.final && ov24.boxes.final.coreKey)
+                    || '';
+            } else if (isStock) {
+                oneLine = sm.oracleTagline || (tv && tv.action) || '';
+            }
+            const oneLineHTML = oneLine ? `
+                <div style="margin-top:4px; padding:14px 16px; background:linear-gradient(135deg,rgba(212,175,55,0.12),rgba(46,204,113,0.06)); border-left:4px solid #D4AF37; border-radius:0 10px 10px 0; text-align:center;">
+                    <div style="font-size:0.7rem; color:rgba(212,175,55,0.7); font-weight:800; letter-spacing:0.15em; margin-bottom:6px;">🌟 한 줄 신탁</div>
+                    <div style="color:rgba(255,255,255,0.92); font-size:0.9rem; font-style:italic; line-height:1.7;">${oneLine}</div>
+                </div>` : '';
+
+            return coreHTML + verdictHTML + timingHTML + riskHTML + actionHTML + oneLineHTML;
+        }
+
         function _renderLoveBlockV25_24(_cards, _qRaw, _loveSubType, serverOracle, _fi) {
-            // serverOracle = window._serverMetrics.oracleV25_24 (Worker가 생성)
+            // ★ [V203.11] 7블록 공통 렌더러로 통합
             const o = serverOracle;
             if (!o || !o.boxes) return null;
-
+            const _d = { layers: {}, _server: window._serverMetrics || {} };
+            return `<div class="final-oracle final-oracle-love" style="padding:10px 6px; background:rgba(46,204,113,0.04); border:1px solid rgba(46,204,113,0.45); border-radius:12px; margin-top:18px;">
+                <h3 style="color:#2ecc71; text-align:center; margin:0 0 14px 0; font-size:1.15rem; border-bottom:1px solid rgba(46,204,113,0.35); padding-bottom:10px;">
+                    💘 연애 흐름 신탁
+                    <span style="display:block; font-size:0.7rem; color:rgba(212,175,55,0.85); letter-spacing:0.18em; margin-top:4px;">ZEUS LOVE ORACLE</span>
+                </h3>
+                ${_renderZeus7Block(_d, 'love')}
+            </div>`;
+            // ── 아래 코드는 V203.11에서 _renderZeus7Block으로 흡수됨 (레거시 보존)
             const b = o.boxes;
             const pro = o.proEnhancement;
 
