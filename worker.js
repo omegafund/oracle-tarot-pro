@@ -21863,7 +21863,7 @@ export default {
         // ══════════════════════════════════════════════════════════════
 
         // [V2.6] gemini-2.0-flash 사용 — 2.5-flash 503(과부하) 빈발로 변경, 무료 한도 더 높음
-        const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:streamGenerateContent?alt=sse&key=${env.GEMINI_API_KEY}`;
+        const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${env.GEMINI_API_KEY}`;
 
         const txt = (prompt || "").toLowerCase();
         const leverageKeywords = ["레버리지","3배","2배","인버스"];
@@ -23589,23 +23589,27 @@ ${metrics.cryptoSubtype === 'crypto_buy' ? `
 
         writer.write(encoder.encode(metricsSSE));
 
+        // [V203.8] generateContent 일반 호출 — streamGenerateContent 대체
+        //   이유: 무료 등급에서 streamGenerateContent(SSE) 503 빈발 확인
+        //   구글 공식: "무료 등급에선 스트리밍이 503에 취약"
+        //   방식: JSON 응답 전체 수신 → 텍스트 추출 → {_type:"text"} SSE 이벤트로 래핑
+        //   클라이언트: parsed?._type === 'text' 분기로 수신 (index.html 동기 수정)
         (async () => {
           let _streamOk = false;
           try {
-            const reader = geminiResponse.body.getReader();
-            while (true) {
-              const { done, value } = await reader.read();
-              if (done) break;
-              await writer.write(value);
-            }
+            const geminiJson = await geminiResponse.json();
+            const geminiText = geminiJson?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+            const textPayload = JSON.stringify({ _type: 'text', text: geminiText });
+            await writer.write(encoder.encode(`data: ${textPayload}\n\n`));
+            await writer.write(encoder.encode(`data: [DONE]\n\n`));
             _streamOk = true;
-            // ✅ Gemini 스트림 완료 → 사용량 확정 차감
+            // ✅ 완료 → 사용량 확정 차감
             await commitZeusUsage(env, _shieldResult);
           } catch (e) {
-            // 스트림 중단 — 조용히 종료
+            // 오류 — 조용히 종료
           } finally {
             if (!_streamOk) {
-              // ❌ 스트림 실패 → 사용량 롤백
+              // ❌ 실패 → 사용량 롤백
               await rollbackZeusUsage(env, _shieldResult);
             }
             // concurrency lock 해제
