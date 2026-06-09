@@ -8664,7 +8664,10 @@ async function startStreamFetch(userQuestion, cards) {
         clearTimeout(connectTimer); // 연결 성공 → 타임아웃 해제
         // [V22.4] 응답 상태 명시적 체크 (Wi-Fi 차단 시 4xx/5xx 가능)
         if (!response.ok) {
-            throw new Error("NETWORK_BLOCK_" + response.status);
+            // [V203.9 진단] 실제 에러 내용 노출 — 원인 불명 503 추적용
+            let _errBody = '';
+            try { _errBody = await response.text(); } catch(_) {}
+            throw new Error("ERR_" + response.status + ": " + _errBody.slice(0, 300));
         }
         return response;
     } catch(e) {
