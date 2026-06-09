@@ -13099,8 +13099,9 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
                 </h3>
                 ${_renderZeus7Block(d, d.type === 'crypto' ? 'crypto' : 'stock')}
             </div>`;
-            // ── 아래는 레거시 (V203.11 이후 미도달) ──
-            return `
+            // ── 아래는 레거시 (V203.11 이후 절대 미도달) ──
+            /* if (false) { */ // ★ [V203.11] 주석 처리 — 7블록으로 대체
+            /* return `
             <!-- ★★★ [V202.19 사장님 명령] 주식/코인 매도 박스 외곽 테두리 제거 ★★★ -->
             <!--   사장님 라이브 결함:                                            -->
             <!--     주식 매도 박스 외곽 ★ 노란 테두리 ★ 그대로 표시              -->
@@ -13146,7 +13147,8 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
                 <!-- [V25.17] 사장님 진단: 핵심 해석 중복 출력 제거 (산일전기 화면)
                      layers.criticalInterpretation이 별도 박스에서 V25.15 안으로 출력됨 -->
                 <!-- [V23.7] 면책은 PRO Hook 뒤 최하단으로 이동됨 -->
-            </div>`;
+            </div>\`; */
+            // ★ [V203.11] 레거시 블록 끝 (주석 처리)
         }
 
 
@@ -13466,14 +13468,23 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
                 <div style="${boxBase} background:rgba(46,204,113,0.06); border:1px solid rgba(46,204,113,0.35); border-left:3px solid #2ecc71;">
                     <div style="${labelBase} color:#2ecc71;">🛡 행동 &nbsp;<span style="font-size:0.68rem; opacity:0.7;">ACTION</span></div>
                     <div style="${bodyBase}">
-                        ${actionItems.filter(a => !a.avoid).map((a, i) => `
+                        ${actionItems.filter(a => !a.avoid).map((a, i) => {
+                            // ★ [V203.12] 이미 번호 포함된 텍스트면 배지만 제거하고 텍스트 그대로
+                            const isAlreadyNumbered = /^\d+\./.test((a.text||'').trim());
+                            const displayText = isAlreadyNumbered
+                                ? (a.text||'').trim().replace(/^\d+\.\s*/, '')
+                                : a.text;
+                            const badgeNum = isAlreadyNumbered
+                                ? (a.text||'').trim().match(/^(\d+)/)?.[1] || (i+1)
+                                : i+1;
+                            return `
                         <div style="margin-bottom:10px; padding:8px 10px; background:rgba(46,204,113,0.04); border-radius:8px; border-left:2px solid rgba(46,204,113,0.45);">
                             <div style="display:flex; align-items:center; gap:8px; margin-bottom:4px;">
-                                <span style="display:inline-flex; align-items:center; justify-content:center; width:20px; height:20px; border-radius:50%; background:#2ecc71; color:#fff; font-size:0.7rem; font-weight:900;">${i+1}</span>
-                                <span style="color:rgba(255,255,255,0.95); font-weight:700; line-height:1.5;">${a.text}</span>
+                                <span style="display:inline-flex; align-items:center; justify-content:center; width:20px; height:20px; border-radius:50%; background:#2ecc71; color:#fff; font-size:0.7rem; font-weight:900;">${badgeNum}</span>
+                                <span style="color:rgba(255,255,255,0.95); font-weight:700; line-height:1.5;">${displayText}</span>
                             </div>
                             ${a.result ? `<div style="padding-left:28px; font-size:0.8rem; color:rgba(122,209,136,0.85);">⤷ ${a.result}</div>` : ''}
-                        </div>`).join('')}
+                        </div>`;}).join('')}
                         ${actionItems.filter(a => a.avoid).map(a => `
                         <div style="margin-top:6px; padding:8px 10px; background:rgba(231,76,60,0.06); border-radius:8px; border-left:2px solid rgba(231,76,60,0.45);">
                             <div style="display:flex; align-items:center; gap:8px; margin-bottom:4px;">
@@ -13486,13 +13497,16 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
                 </div>` : '';
 
             // ── ⑦ ONE LINE — 기억할 한 문장
+            // ★ [V203.12] oneLine null/빈문자 강화 체크
             let oneLine = '';
             if (isLove) {
-                oneLine = (sm.oracleTagline)
-                    || (ov24 && ov24.boxes && ov24.boxes.final && ov24.boxes.final.coreKey)
-                    || '';
+                const _tag = (sm.oracleTagline||'').trim();
+                const _ck  = (ov24&&ov24.boxes&&ov24.boxes.final&&ov24.boxes.final.coreKey||'').trim();
+                oneLine = _tag || _ck;
             } else if (isStock) {
-                oneLine = sm.oracleTagline || (tv && tv.action) || '';
+                const _tag = (sm.oracleTagline||'').trim();
+                const _act = (tv&&tv.action||'').trim();
+                oneLine = _tag || _act;
             }
             const oneLineHTML = oneLine ? `
                 <div style="margin-top:4px; padding:14px 16px; background:linear-gradient(135deg,rgba(212,175,55,0.12),rgba(46,204,113,0.06)); border-left:4px solid #D4AF37; border-radius:0 10px 10px 0; text-align:center;">
@@ -13515,7 +13529,9 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
                 </h3>
                 ${_renderZeus7Block(_d, 'love')}
             </div>`;
-            // ── 아래 코드는 V203.11에서 _renderZeus7Block으로 흡수됨 (레거시 보존)
+            // ── 아래 코드는 V203.11 이후 절대 미도달 (새 return 이후)
+            // if(false) 처리로 JS 파서 오류 방지
+            if (false) {
             const b = o.boxes;
             const pro = o.proEnhancement;
 
@@ -14091,6 +14107,7 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
                 ${box6HTML}
                 ${proBox}
             </div>`;
+            } // ★ [V203.12] if(false) 연애 레거시 블록 닫기
         }
 
         function _renderLoveBlock(cards, qRaw, loveSubType) {
@@ -14801,7 +14818,8 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
                 //     ③ [open] 상태 CTA 변경 — "탭하여 접기 ▲"로 자연 전환
                 //     ④ V202.48.3 디버그 패널 ★ 제거 ★ — 검증 완료 (사장님 명령)
                 // ════════════════════════════════════════════════════════════
-                const _v48_loveDeepToggle = (v25_24HTML && _v48_loveDeepBoxes) ? `
+                // ★ [V203.11] 7블록 통합 후 레거시 펼침 토글 비활성화
+                const _v48_loveDeepToggle = false ? `
                 <details class="zeus-love-deep-toggle" style="margin-top:22px; cursor:pointer;
                             background:linear-gradient(135deg, rgba(255,217,112,0.16), rgba(212,175,55,0.10));
                             border:2.5px solid rgba(255,217,112,0.65); border-radius:16px;
