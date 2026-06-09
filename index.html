@@ -8816,7 +8816,10 @@ async function renderStream(fetchPromise, cards) {
                         continue; // metrics 이벤트는 텍스트 누적에서 제외
                     }
 
-                    const chunk  = parsed?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+                    // [V203.8] generateContent 일반 호출 전환 — {_type:"text"} 이벤트 수신
+                    const chunk = (parsed?._type === 'text' && parsed?.text)
+                        ? parsed.text
+                        : (parsed?.candidates?.[0]?.content?.parts?.[0]?.text || ''); // 하위 호환
                     if (!chunk) continue;
                     fullText += chunk;
                     cachedFullText = fullText;
