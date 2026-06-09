@@ -21862,9 +21862,8 @@ export default {
         if (_shieldResult instanceof Response) return _shieldResult;
         // ══════════════════════════════════════════════════════════════
 
-        // [절대 수정 금지]
-        // [V2.5] gemini-2.5-flash 사용 — Tier 1 키로 일 10,000회 무료 한도 내 사용
-        const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:streamGenerateContent?alt=sse&key=${env.GEMINI_API_KEY}`;
+        // [V2.6] gemini-2.0-flash 사용 — 2.5-flash 503(과부하) 빈발로 변경, 무료 한도 더 높음
+        const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:streamGenerateContent?alt=sse&key=${env.GEMINI_API_KEY}`;
 
         const txt = (prompt || "").toLowerCase();
         const leverageKeywords = ["레버리지","3배","2배","인버스"];
@@ -23498,8 +23497,8 @@ ${metrics.cryptoSubtype === 'crypto_buy' ? `
 ` : ''}
 `;
 
-        // [V2.5] Gemini 호출 — 503/429/UNAVAILABLE 시 자동 1회 재시도
-        async function callGeminiWithRetry(maxRetries = 1) {
+        // [V2.6] Gemini 호출 — 503/429/UNAVAILABLE 시 자동 재시도 (3회, 점증 대기)
+        async function callGeminiWithRetry(maxRetries = 3) {
           let lastError = null;
           for (let attempt = 0; attempt <= maxRetries; attempt++) {
             try {
@@ -23526,17 +23525,17 @@ ${metrics.cryptoSubtype === 'crypto_buy' ? `
                 })
               });
 
-              // 일시적 오류(503/429)면 재시도
+              // 일시적 오류(503/429)면 재시도 — 점증 대기(2초, 4초, 8초)
               if ((r.status === 503 || r.status === 429) && attempt < maxRetries) {
                 lastError = await r.text();
-                await new Promise(rs => setTimeout(rs, 1500)); // 1.5초 대기
+                await new Promise(rs => setTimeout(rs, 2000 * Math.pow(2, attempt)));
                 continue;
               }
               return r;
             } catch (e) {
               lastError = e.message;
               if (attempt < maxRetries) {
-                await new Promise(rs => setTimeout(rs, 1500));
+                await new Promise(rs => setTimeout(rs, 2000 * Math.pow(2, attempt)));
                 continue;
               }
               throw e;
@@ -23545,7 +23544,7 @@ ${metrics.cryptoSubtype === 'crypto_buy' ? `
           throw new Error("Gemini 재시도 실패: " + lastError);
         }
 
-        const geminiResponse = await callGeminiWithRetry(1);
+        const geminiResponse = await callGeminiWithRetry(3);
 
         if (!geminiResponse.ok) {
           const errorText = await geminiResponse.text();
