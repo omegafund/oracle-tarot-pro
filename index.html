@@ -13005,16 +13005,8 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
                             ${_tv202_25.action}
                         </div>
                     </div>
-                    <div style="padding:9px 10px; background:rgba(231,76,60,0.06); border-left:3px solid #E74C3C; border-radius:0 8px 8px 0; margin-bottom:8px;">
-                        <div style="color:#FF8E72; font-size:0.72rem; font-weight:900; letter-spacing:0.1em; margin-bottom:5px;">
-                            ⚠️ 주의
-                        </div>
-                        <div style="font-size:0.9rem; color:rgba(255,255,255,0.88); font-weight:500; line-height:1.6;">
-                            ${_tv202_25.caution}
-                        </div>
-                    </div>
                 </div>
-            ` : '';  // [V203.4] TOP VERDICT 내 '🎴 카드 근거' 박스 제거 — 5계층 cardEvidence와 중복 → 단일화
+            ` : '';  // [V203.13] TOP VERDICT에서 caution 제거 — RISK 블록이 담당 — 5계층 cardEvidence와 중복 → 단일화
 
             // ★ [V202.28 사장님 D안] 5계층 박스 → ★ 강한 버튼 ★ 형식 ★
             //   사장님 진단: "+ 깊이 분석 (5계층 PRO)" 직관성 부족 — 유저 안 누름
@@ -13389,7 +13381,7 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
                 verdictSub  = ov24.boxes.final.pivot      || '';
             } else if (isStock && tv) {
                 verdictText = tv.signal  || '';
-                verdictSub  = tv.caution || '';
+                verdictSub  = '';  // ★ [V203.13] caution 제거 — RISK 블록이 담당
             }
             const verdictHTML = verdictText ? `
                 <div style="${boxBase} background:linear-gradient(135deg,rgba(241,196,15,0.10),rgba(231,76,60,0.06)); border:2px solid rgba(241,196,15,0.45); border-radius:12px;">
@@ -14737,7 +14729,7 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
             </div>`;
         })()}
         <div style="line-height: 1.8; color: rgba(255,255,255,0.95); font-size: 0.96rem; margin-bottom: 20px;">${formatChunk(oracleContent)}</div>
-        ${typeof _coreInsightHTML !== 'undefined' ? _coreInsightHTML : ''}
+        ${(typeof _coreInsightHTML !== 'undefined' && !_suppressGeminiCoreInsight) ? _coreInsightHTML : ''}
         ${!isFinanceQuery ? (() => {
             const qRaw2 = (document.getElementById('seed-input')?.value || '').toLowerCase();
             // [V24.14] LOVE_SUBTYPE 전달 — 도메인별 적합 메시지 출력
@@ -14767,9 +14759,10 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
 
             if (isLoveQuery) {
                 // 💘 연애 전용 블록 — 투자 용어 완전 배제
-                // [V20.10] 5계층 데이터 있으면 우선 표시 (Decision/Mind/Action/Timing/Risk/Rules/🔥)
-                const investData = window._serverMetrics ? _mapServerMetricsToInvestData(window._serverMetrics, cards) : null;
-                const layer5HTML = investData ? _render5LayerBlock(investData, { isSell: false, domain: 'love', title: '제우스 연애 신탁' }) : null;
+                // ★ [V203.13] 연애 layer5HTML 비활성화 — 7블록(_renderZeus7Block)으로 대체
+                //   구 상대마음/관계리스크/다음행동 출력 완전 차단
+                const investData = null; // love 도메인에서 투자 데이터 불필요
+                const layer5HTML = null; // _render5LayerBlock 연애 호출 차단
 
                 // [V25.24] Oracle V25.24 데이터가 있으면 최우선 사용 (6박스 + PRO)
                 const v25_24Oracle = (window._serverMetrics && window._serverMetrics.oracleV25_24)
