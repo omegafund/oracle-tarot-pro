@@ -1866,48 +1866,107 @@ const MESSAGE_POOL = {
 // [V22.7] intent 파라미터 추가 — 부동산/주식에서 매수/매도 의도별 메시지 차별화
 //   사장님 진단: 매수 의도인데 카드만 BUY면 "급매 진입 적기" 출력 → 다른 영역과 모순
 //   해결: intent 받아서 매수/매도 의도별로 메시지 풀 다르게 사용
-// [V203.10] buildCriticalInterpretation — 카드 고유 언어 기반 WHY 생성
-//   기존: 9개 고정 템플릿 (카드 무관) → signal(BUY/SELL/HOLD)만 반영
-//   개선: CARD_MEANING[card].flow 직접 인용 → 78×78×78 고유 조합
-//         역방향 카드 보정 (flow 앞에 "역방향으로" 접두어)
-//         VERDICT 방향 일치 강제 (signal×intent → 결론 방향)
+// [V203.10-B] buildCriticalInterpretation — 문제→전환→결론 서사 구조
+//   기존 착시: 카드명만 다르고 문장 구조 동일 (47만 조합이지만 체감은 같음)
+//   개선: 포지션 역할별 서사 — 과거=문제/배경, 현재=전환/상황, 미래=결론/행동요구
+//   핵심: 카드 signal의 의미를 포지션 동사로 해석
+//     과거: "만들었다 / 남겼다 / 소진했다 / 쌓았다"
+//     현재: "작동하고 있다 / 형성하고 있다 / 억제하고 있다"
+//     미래: "요구한다 / 열린다 / 닫힌다 / 결정된다"
 function buildCriticalInterpretation(cards, revFlags, domain, intent) {
   const rf = revFlags || [false, false, false];
 
-  // ── 카드 고유 flow 추출 (역방향 보정 포함)
-  function _cardFlow(card, isRev) {
-    if (!card) return '에너지 탐색';
-    const name = typeof card === 'string' ? card : (card.name || '');
-    const m = CARD_MEANING[name];
-    if (!m) return '에너지 탐색';
-    // 역방향: flow 앞에 "내면화된" 또는 "억제된" 접두어
-    return isRev ? `내면화된 ${m.flow}` : m.flow;
+  // ── 카드명 추출
+  function _name(card, isRev) {
+    const n = typeof card === 'string' ? card : (card?.name || '');
+    return isRev ? `${n} 역방향` : n;
   }
 
-  // ── 카드 표시명 (역방향 표시)
-  function _cardName(card, isRev) {
-    const name = typeof card === 'string' ? card : (card?.name || '');
-    return isRev ? `${name} 역방향` : name;
+  // ── 포지션별 역할 서사 생성 (flow + signal + 포지션 동사)
+  //    과거: 어떤 에너지/문제가 흐름을 만들었는가
+  //    현재: 지금 어떤 전환이 일어나고 있는가
+  //    미래: 무엇이 요구되는가 / 어떤 결론이 오는가
+  function _pastNarrative(card, isRev, domain) {
+    const n = typeof card === 'string' ? card : (card?.name || '');
+    const m = CARD_MEANING[n] || { flow: '에너지 탐색', signal: '' };
+    const flow = isRev ? `내면화된 ${m.flow}` : m.flow;
+    const dec  = getFinalDecision(card, isRev);
+    if (domain === 'love') {
+      if (dec === 'BUY')  return `과거에는 ${flow}의 에너지가 관계의 기반을 만들어왔습니다.`;
+      if (dec === 'SELL') return `과거에는 ${flow}의 흐름이 관계 안에 거리감을 남겼습니다.`;
+      return `과거에는 ${flow}의 흐름 속에서 관계의 방향이 탐색되고 있었습니다.`;
+    } else {
+      if (dec === 'BUY')  return `과거 흐름은 ${flow}의 에너지가 진입 기반을 쌓아왔습니다.`;
+      if (dec === 'SELL') return `과거 흐름은 ${flow}의 에너지가 포지션 에너지를 소진시켰습니다.`;
+      return `과거 흐름은 ${flow}의 에너지 속에서 방향성을 탐색해왔습니다.`;
+    }
   }
 
-  const past    = cards[0], present = cards[1], future  = cards[2];
-  const pastFlow    = _cardFlow(past,    rf[0]);
-  const presentFlow = _cardFlow(present, rf[1]);
-  const futureFlow  = _cardFlow(future,  rf[2]);
-  const pastName    = _cardName(past,    rf[0]);
-  const presentName = _cardName(present, rf[1]);
-  const futureName  = _cardName(future,  rf[2]);
+  function _presentNarrative(card, isRev, domain) {
+    const n = typeof card === 'string' ? card : (card?.name || '');
+    const m = CARD_MEANING[n] || { flow: '에너지 탐색', signal: '' };
+    const flow = isRev ? `내면화된 ${m.flow}` : m.flow;
+    const dec  = getFinalDecision(card, isRev);
+    if (domain === 'love') {
+      if (dec === 'BUY')  return `지금은 ${flow}의 결이 관계를 앞으로 밀고 있습니다.`;
+      if (dec === 'SELL') return `지금은 ${flow}의 흐름이 두 사람 사이를 억제하고 있습니다.`;
+      return `지금은 ${flow}의 흐름이 관계의 방향을 탐색하는 전환점에 있습니다.`;
+    } else {
+      if (dec === 'BUY')  return `현재는 ${flow}의 에너지가 시장 흐름을 주도하고 있습니다.`;
+      if (dec === 'SELL') return `현재는 ${flow}의 에너지가 시장 압력을 형성하고 있습니다.`;
+      return `현재는 ${flow}의 에너지 속에서 방향 전환이 진행 중입니다.`;
+    }
+  }
 
-  // ── 3카드 BUY/HOLD/SELL 다수결 (기존 로직 유지)
+  function _futureNarrative(card, isRev, domain, signal) {
+    const n = typeof card === 'string' ? card : (card?.name || '');
+    const m = CARD_MEANING[n] || { flow: '에너지 탐색', signal: '' };
+    const flow = isRev ? `내면화된 ${m.flow}` : m.flow;
+    const dec  = getFinalDecision(card, isRev);
+    if (domain === 'love') {
+      if (dec === 'BUY')  return `앞으로는 ${flow}의 에너지가 관계의 다음 단계를 열어줄 것입니다.`;
+      if (dec === 'SELL') return `앞으로는 ${flow}의 흐름이 관계 재정립을 요구하게 됩니다.`;
+      return `앞으로는 ${flow}의 흐름 속에서 관계의 윤곽이 결정될 것입니다.`;
+    } else {
+      if (dec === 'BUY')  return `앞으로는 ${flow}의 에너지가 상승 방향을 열어갈 것입니다.`;
+      if (dec === 'SELL') return `앞으로는 ${flow}의 흐름이 정리 결단을 요구하게 됩니다.`;
+      return `앞으로는 ${flow}의 흐름이 명확한 방향 결정을 요구합니다.`;
+    }
+  }
+
+  // ── 3카드 BUY/HOLD/SELL 다수결
   const decisions = cards.map((c, i) => getFinalDecision(c, rf[i]));
   const counts = { BUY: 0, HOLD: 0, SELL: 0 };
   decisions.forEach(d => counts[d]++);
   let signal;
-  if (counts.SELL >= 2)        signal = 'SELL';
-  else if (counts.BUY >= 2)    signal = 'BUY';
+  if (counts.SELL >= 2)            signal = 'SELL';
+  else if (counts.BUY >= 2)        signal = 'BUY';
   else if (counts.SELL > counts.BUY) signal = 'SELL';
   else if (counts.BUY > counts.SELL) signal = 'BUY';
   else signal = 'HOLD';
+
+  // ── VERDICT 방향 일치 결론
+  function _keyInsight(domain, intent, signal) {
+    if (domain === 'love') {
+      if (signal === 'BUY')  return '카드 흐름이 관계 진전에 우호적인 방향을 가리킵니다';
+      if (signal === 'SELL') return '카드 흐름이 거리 조절과 재정립을 가리킵니다';
+      return '카드 흐름이 자연스러운 흐름 유지를 가리킵니다';
+    }
+    if (domain === 'stock' || domain === 'crypto') {
+      if (intent === 'sell') {
+        if (signal === 'SELL') return '카드 3장이 단계적 정리 흐름을 가리킵니다';
+        if (signal === 'BUY')  return '카드 흐름이 보유 유지에 우호적이나 정점 점검이 필요합니다';
+        return '카드 3장이 신호 확인 후 분할 익절을 가리킵니다';
+      } else {
+        if (signal === 'BUY')  return '카드 3장이 분할 진입에 우호적인 흐름을 가리킵니다';
+        if (signal === 'SELL') return '카드 3장이 진입 보류와 신호 확인을 가리킵니다';
+        return '카드 3장이 확인 후 단계적 접근을 가리킵니다';
+      }
+    }
+    if (signal === 'BUY')  return '카드 흐름이 새로운 시도와 확장을 가리킵니다';
+    if (signal === 'SELL') return '카드 흐름이 정리와 내면 회복을 가리킵니다';
+    return '카드 흐름이 자기 기준 정립 후 행동을 가리킵니다';
+  }
 
   // ── 면책
   const disclaimer = (domain === 'stock' || domain === 'crypto')
@@ -1916,74 +1975,11 @@ function buildCriticalInterpretation(cards, revFlags, domain, intent) {
     ? '※ 본 신탁은 부동산 흐름 해석을 위한 참고 콘텐츠입니다. 실제 계약 및 투자 결정은 전문가 상담과 함께 신중히 판단하시기 바랍니다.'
     : '※ 본 신탁은 흐름 해석을 돕기 위한 참고 콘텐츠입니다. 개인 관계 및 중요한 결정은 실제 상황을 기준으로 신중히 판단하시기 바랍니다.';
 
-  // ════════════════════════════════════════════════════
-  // [연애 도메인] — 카드 고유 flow 인과 문장 조립
-  // ════════════════════════════════════════════════════
-  if (domain === 'love') {
-    // 결론 방향: signal × intent 매핑
-    let loveConclusion;
-    if (signal === 'BUY') {
-      loveConclusion = '카드 흐름이 관계 진전에 우호적인 방향을 가리킵니다';
-    } else if (signal === 'SELL') {
-      loveConclusion = '카드 흐름이 거리 조절과 내면 정리를 가리킵니다';
-    } else {
-      loveConclusion = '카드 흐름이 확인 후 자연스러운 접근을 가리킵니다';
-    }
-    const line1 = `${pastName}이/가 ${pastFlow}을/를 형성했기 때문에 관계의 초기 흐름이 그 방향으로 시작됐습니다.`;
-    const line2 = `${presentName}이/가 ${presentFlow} 에너지를 가리키고 있어 현재 두 사람의 감정 결이 그 흐름 안에 있습니다.`;
-    const line3 = `${futureName}이/가 ${futureFlow}을/를 향하기 때문에 관계의 다음 단계 방향이 결정되고 있습니다.`;
-    const keyLine = `👉 핵심: "${loveConclusion}"`;
-    return `${line1}
-${line2}
-${line3}
-${keyLine}
-
-${disclaimer}`;
-  }
-
-  // ════════════════════════════════════════════════════
-  // [투자/부동산/일반 도메인] — 카드 고유 flow 인과 문장 조립
-  // ════════════════════════════════════════════════════
-
-  // VERDICT 방향 일치 결론 (signal × intent)
-  let keyInsight;
-  if (domain === 'stock' || domain === 'crypto') {
-    if (intent === 'sell') {
-      if (signal === 'SELL')
-        keyInsight = '카드 3장이 단계적 정리 흐름을 가리킵니다';
-      else if (signal === 'BUY')
-        keyInsight = '카드 흐름이 보유 유지에 우호적이나 정점 점검이 필요합니다';
-      else
-        keyInsight = '카드 3장이 신호 확인 후 분할 익절을 가리킵니다';
-    } else {
-      if (signal === 'BUY')
-        keyInsight = '카드 3장이 분할 진입에 우호적인 흐름을 가리킵니다';
-      else if (signal === 'SELL')
-        keyInsight = '카드 3장이 진입 보류와 신호 확인을 가리킵니다';
-      else
-        keyInsight = '카드 3장이 확인 후 단계적 접근을 가리킵니다';
-    }
-  } else if (domain === 'realestate') {
-    if (signal === 'BUY')
-      keyInsight = '카드 흐름이 진입·매수에 우호적인 방향을 가리킵니다';
-    else if (signal === 'SELL')
-      keyInsight = '카드 흐름이 매도·정리 시점 점검을 가리킵니다';
-    else
-      keyInsight = '카드 흐름이 신호 확인 후 결정을 가리킵니다';
-  } else {
-    if (signal === 'BUY')
-      keyInsight = '카드 흐름이 새로운 시도와 확장을 가리킵니다';
-    else if (signal === 'SELL')
-      keyInsight = '카드 흐름이 정리와 내면 회복을 가리킵니다';
-    else
-      keyInsight = '카드 흐름이 자기 기준 정립 후 행동을 가리킵니다';
-  }
-
-  // 인과 문장 조립 (카드명 직접 인용)
-  const line1 = `${pastName}이/가 ${pastFlow}을/를 가리켰기 때문에 현재 흐름이 그 에너지에서 시작됐습니다.`;
-  const line2 = `${presentName}이/가 ${presentFlow} 흐름 속에 있어 지금의 시장·심리 방향이 형성되고 있습니다.`;
-  const line3 = `${futureName}이/가 ${futureFlow}을/를 향하기 때문에 앞으로의 흐름 방향이 결정되고 있습니다.`;
-  const keyLine = `👉 핵심: "${keyInsight}"`;
+  const past = cards[0], present = cards[1], future = cards[2];
+  const line1 = _pastNarrative(past,    rf[0], domain);
+  const line2 = _presentNarrative(present, rf[1], domain);
+  const line3 = _futureNarrative(future,  rf[2], domain, signal);
+  const keyLine = `👉 핵심: "${_keyInsight(domain, intent, signal)}"`;
 
   return `${line1}
 ${line2}
