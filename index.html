@@ -13389,11 +13389,15 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
                 verdictText = tv.signal  || '';
                 verdictSub  = '';  // ★ [V203.13] caution 제거 — RISK 블록이 담당
             }
-            // [V203.9] VERDICT = 판정 한 줄만 — pivot(분기점 경고)은 RISK 박스로 이동
+            // [V203.9] VERDICT = 판정 한 줄 + 에너지 강도(투자만)
+            const _energyBar = (isStock && tv && tv.energy)
+                ? `<div style="margin-top:8px; font-size:0.82rem; color:rgba(255,220,100,0.85); text-align:center; letter-spacing:0.05em;">⚡ 에너지 강도 &nbsp;<b style="color:#FFD970; font-size:0.95rem;">${tv.energy}</b></div>`
+                : '';
             const verdictHTML = verdictText ? `
                 <div style="${boxBase} background:linear-gradient(135deg,rgba(241,196,15,0.10),rgba(231,76,60,0.06)); border:2px solid rgba(241,196,15,0.45); border-radius:12px;">
                     <div style="${labelBase} color:#F1C40F; text-align:center;">🎯 신탁 결론 &nbsp;<span style="font-size:0.68rem; opacity:0.7;">TOP VERDICT</span></div>
                     <div style="font-size:1.0rem; color:#fff; font-weight:800; text-align:center; line-height:1.6;">👉 ${verdictText}</div>
+                    ${_energyBar}
                 </div>` : '';
 
             // ── ④ TIMING — 언제?
