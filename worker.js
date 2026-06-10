@@ -3072,51 +3072,60 @@ const TOP_VERDICT_MATRIX = {
   wait_buy: {
     signal:  '🟡 검증 단계 — 분할 접근 유효',
     action:  '거래량 확인 후 1차 진입',
-    caution: '추격 진입 시 변동성 확대 가능'
+    caution: '추격 진입 시 변동성 확대 가능',
+    energy:  '★★★☆☆'
   },
   verified: {
     signal:  '🟢 진입 조건 충족 — 분할 접근 유효',
     action:  '1차 진입 후 신호 굳어지면 보강',
-    caution: '추격 매수 시 평균 단가 부담 가능'
+    caution: '추격 매수 시 평균 단가 부담 가능',
+    energy:  '★★★★☆'
   },
   limited: {
     signal:  '🟡 제한적 시도 구간 — 소액 테스트 유효',
     action:  '신호 검증 후 분할 진입 검토',
-    caution: '본격 진입 시 변동성 노출 가능'
+    caution: '본격 진입 시 변동성 노출 가능',
+    energy:  '★★☆☆☆'
   },
   active: {
     signal:  '🟢 진입 흐름 형성 — 단계적 매수 유효',
     action:  '거래량 동반 시 분할 진입',
-    caution: '일괄 매수 시 단가 노출 확대 가능'
+    caution: '일괄 매수 시 단가 노출 확대 가능',
+    energy:  '★★★★☆'
   },
   split: {
     signal:  '🟢 분할 진입 적기 — 단계적 접근 유효',
     action:  '시장 신호 점검 후 단계별 매수',
-    caution: '한 번에 비중 확대 시 변동성 노출 가능'
+    caution: '한 번에 비중 확대 시 변동성 노출 가능',
+    energy:  '★★★★☆'
   },
 
   // ─── 주식 매도 (SELL) ───
   wait_sell: {
     signal:  '🟡 보유 점검 — 단계적 정리 검토',
     action:  '신호 확인 후 비중 조절',
-    caution: '호가 미확인 청산 시 손실 확대 가능'
+    caution: '호가 미확인 청산 시 손실 확대 가능',
+    energy:  '★★★☆☆'
   },
   sell_active: {
     signal:  '🔴 청산 흐름 — 분할 정리 유효',
     action:  '익절 단계별 비중 축소',
-    caution: '일괄 청산 시 평균 단가 손실 가능'
+    caution: '일괄 청산 시 평균 단가 손실 가능',
+    energy:  '★★★★☆'
   },
 
   // ─── 코인 (CRYPTO) ───
   crypto_buy: {
     signal:  '🟢 진입 흐름 — 분할 접근 유효',
     action:  '24시간 변동성 점검 후 분할 진입',
-    caution: '일괄 진입 시 단기 변동성 노출 가능'
+    caution: '일괄 진입 시 단기 변동성 노출 가능',
+    energy:  '★★★★☆'
   },
   crypto_sell: {
     signal:  '🔴 청산 흐름 — 분할 정리 유효',
     action:  '거래소 호가 점검 후 단계적 청산',
-    caution: '일괄 청산 시 슬리피지 노출 가능'
+    caution: '일괄 청산 시 슬리피지 노출 가능',
+    energy:  '★★★★☆'
   }
 };
 

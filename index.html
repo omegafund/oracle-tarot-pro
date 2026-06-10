@@ -13389,11 +13389,11 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
                 verdictText = tv.signal  || '';
                 verdictSub  = '';  // ★ [V203.13] caution 제거 — RISK 블록이 담당
             }
+            // [V203.9] VERDICT = 판정 한 줄만 — pivot(분기점 경고)은 RISK 박스로 이동
             const verdictHTML = verdictText ? `
                 <div style="${boxBase} background:linear-gradient(135deg,rgba(241,196,15,0.10),rgba(231,76,60,0.06)); border:2px solid rgba(241,196,15,0.45); border-radius:12px;">
                     <div style="${labelBase} color:#F1C40F; text-align:center;">🎯 신탁 결론 &nbsp;<span style="font-size:0.68rem; opacity:0.7;">TOP VERDICT</span></div>
-                    <div style="font-size:1.0rem; color:#fff; font-weight:800; text-align:center; margin-bottom:${verdictSub ? '8px' : '0'}; line-height:1.6;">👉 ${verdictText}</div>
-                    ${verdictSub ? `<div style="font-size:0.84rem; color:rgba(255,220,100,0.85); text-align:center; font-style:italic;">${verdictSub}</div>` : ''}
+                    <div style="font-size:1.0rem; color:#fff; font-weight:800; text-align:center; line-height:1.6;">👉 ${verdictText}</div>
                 </div>` : '';
 
             // ── ④ TIMING — 언제?
@@ -13436,6 +13436,7 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
                     <div style="${labelBase} color:#F39C12;">⚠️ 이것만 조심 &nbsp;<span style="font-size:0.68rem; opacity:0.7;">RISK</span></div>
                     <div style="${bodyBase}">
                         ${items.map(r => `<div style="margin-bottom:6px; padding-left:6px; border-left:2px solid rgba(243,156,18,0.4);">▸ ${r}</div>`).join('')}
+                        ${verdictSub ? `<div style="margin-top:10px; padding-top:8px; border-top:1px solid rgba(243,156,18,0.2); font-size:0.82rem; color:rgba(255,220,100,0.8); font-style:italic; text-align:center;">${verdictSub}</div>` : ''}
                     </div>
                 </div>`;
                 }
