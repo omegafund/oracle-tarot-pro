@@ -13366,23 +13366,32 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
 
             // ── ① TOP VERDICT — 결론 한 줄 (CORE 앞으로 이동)
             // [V203.10] 연애: loveSubType 직접 매핑 — scoreCategory 의존 제거
-            const _LOVE_VERDICT_MAP = {
-                thumb:         '🟡 가능성 탐색 구간',
-                crush:         '🟡 신호 관찰 구간',
-                contact:       '🟡 접근 가능 구간',
-                reunion:       '🟠 재연결 탐색 구간',
-                breakup:       '🔴 정리 흐름',
-                marriage:      '🟢 결속 진입 구간',
-                compatibility: '🟢 궁합 확인 구간',
-                mindread:      '🟡 상대 심리 탐색 구간',
-                general:       null
+            // [V203.10] 연애 VERDICT: loveSubType 기본값 + scoreCategory 2단 보정
+            //   기본값: subType별 중립 매핑
+            //   보정: scoreCategory=advance → 진전, close → 정리
+            //   효과: Queen of Wands + Judgement 같은 강한 카드 조합 반영
+            const _LOVE_VERDICT_BASE = {
+                thumb:         { advance:'🟢 관계 진전 가능', maintain:'🟡 가능성 탐색 구간', close:'🔴 거리 조절 필요' },
+                crush:         { advance:'🟢 고백 가능 구간', maintain:'🟡 신호 관찰 구간',   close:'🔴 감정 정리 필요' },
+                contact:       { advance:'🟢 적극 접근 가능', maintain:'🟡 접근 가능 구간',   close:'🔴 연락 자제 구간' },
+                reunion:       { advance:'🟢 재연결 가능',    maintain:'🟠 재연결 탐색 구간', close:'🔴 재회 보류 구간' },
+                breakup:       { advance:'🟠 관계 재정립 가능', maintain:'🟠 정리 진행 구간', close:'🔴 정리 흐름' },
+                marriage:      { advance:'🟢 결속 진입 구간', maintain:'🟡 합의 탐색 구간',   close:'🔴 결정 보류 구간' },
+                compatibility: { advance:'🟢 높은 궁합 흐름', maintain:'🟡 궁합 확인 구간',   close:'🟡 차이 점검 필요' },
+                mindread:      { advance:'🟢 상대 마음 열림', maintain:'🟡 상대 심리 탐색 구간', close:'🔴 감정 닫힘 구간' },
+                general:       { advance:'🟢 관계 진전 가능', maintain:'🟡 흐름 관찰 구간',   close:'🔴 내면 정리 필요' }
             };
             let verdictText = '';
             let verdictSub  = '';
             if (isLove && ov24 && ov24.boxes && ov24.boxes.final) {
-                const _subType = sm.loveSubType || ov24.subtype || 'general';
-                const _mapped  = _LOVE_VERDICT_MAP[_subType];
-                verdictText = _mapped || ov24.boxes.final.finalState || '';
+                const _subType  = sm.loveSubType || ov24.subtype || 'general';
+                const _scoreCat = ov24.scoreCategory || 'maintain';
+                const _baseMap  = _LOVE_VERDICT_BASE[_subType] || _LOVE_VERDICT_BASE.general;
+                // scoreCategory → advance/maintain/close 정규화
+                const _cat = (_scoreCat === 'advance') ? 'advance'
+                           : (_scoreCat === 'close' || _scoreCat === 'realign') ? 'close'
+                           : 'maintain';
+                verdictText = _baseMap[_cat] || ov24.boxes.final.finalState || '';
                 verdictSub  = ov24.boxes.final.pivot || '';
             } else if (isStock && tv) {
                 verdictText = tv.signal || '';
