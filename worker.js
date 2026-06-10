@@ -965,6 +965,113 @@ function cardMeaning(cleanName) {
 }
 
 // ══════════════════════════════════════════════════════════════════
+// [V203.11] CARD_TAG — 카드별 3개 태그 (WHY 다중 템플릿 + RISK 카드 기반화)
+//   설계 원칙: 78장 role_past/present/future 수작업 대신
+//     → 태그 3개 × 다중 템플릿 생성기 = 체감 다양성 대폭 향상
+//     → RISK도 카드 태그에서 직접 추출 (scoreCategory 고정 패턴 탈피)
+// ══════════════════════════════════════════════════════════════════
+const CARD_TAG = {
+  // 메이저 아르카나
+  "The Fool":           ["무모한 시작","리스크 무시","준비 부족"],
+  "The Magician":       ["강한 실행력","의지","타이밍 포착"],
+  "The High Priestess": ["직관","관망","숨겨진 흐름"],
+  "The Empress":        ["풍요","확장","성장 에너지"],
+  "The Emperor":        ["지배력","안정 구조","통제"],
+  "The Hierophant":     ["보수적 접근","전통","변화 저항"],
+  "The Lovers":         ["선택의 기로","분기점","가치관 충돌"],
+  "The Chariot":        ["돌파","전진","강한 모멘텀"],
+  "Strength":           ["인내","꾸준함","장기 보유 에너지"],
+  "The Hermit":         ["고독한 탐색","내면 점검","관망"],
+  "Wheel of Fortune":   ["전환점","순환","추세 변화"],
+  "Justice":            ["균형","공정한 결과","리스크 수익 균형"],
+  "The Hanged Man":     ["정체","결정 미룸","관점 전환 필요"],
+  "Death":              ["종결","전환","새로운 시작"],
+  "Temperance":         ["절제","분산","과도한 비중 위험"],
+  "The Devil":          ["집착","욕심","하락 함정"],
+  "The Tower":          ["급격한 붕괴","충격","포지션 점검 시급"],
+  "The Star":           ["회복","희망","저점 통과"],
+  "The Moon":           ["착시","불안","정보 모호함"],
+  "The Sun":            ["명확성","성과","확신 에너지"],
+  "Judgement":          ["각성","재평가","새 흐름 시작"],
+  "The World":          ["완성","통합","익절 고려"],
+  // Wands
+  "Ace of Wands":       ["새 출발","반등 시도","초기 열정"],
+  "Two of Wands":       ["계획 단계","관망","전략 수립"],
+  "Three of Wands":     ["확장","장기 시야","원거리 기회"],
+  "Four of Wands":      ["단기 목표 달성","안정","익절 타이밍"],
+  "Five of Wands":      ["경쟁","혼란","방향성 불명확"],
+  "Six of Wands":       ["승리","상승 모멘텀","추세 추종"],
+  "Seven of Wands":     ["저항","방어","매도 압력 돌파"],
+  "Eight of Wands":     ["급속 전개","빠른 진입 필요","단기 과열"],
+  "Nine of Wands":      ["마지막 버티기","상승 피로","경계"],
+  "Ten of Wands":       ["과부하","과열","비중 축소 고려"],
+  "Page of Wands":      ["탐색","소규모 테스트","새 기회"],
+  "Knight of Wands":    ["돌진","강한 모멘텀","단기 과열 주의"],
+  "Queen of Wands":     ["자신감","장악력","확신의 진입"],
+  "King of Wands":      ["리더십","확고한 방향","장기 보유"],
+  // Cups
+  "Ace of Cups":        ["감성 전환","긍정 흐름","감정 과잉 주의"],
+  "Two of Cups":        ["조화","균형 진입","파트너십"],
+  "Three of Cups":      ["단기 성과","축하","수익 실현"],
+  "Four of Cups":       ["권태","관심 저하","기회 간과"],
+  "Five of Cups":       ["상실","후회","손실 집착"],
+  "Six of Cups":        ["과거 집착","향수","현실 직시 필요"],
+  "Seven of Cups":      ["환상","욕망 과잉","비현실적 기대"],
+  "Eight of Cups":      ["포기","이탈","더 나은 것 탐색"],
+  "Nine of Cups":       ["만족","단기 목표 달성","익절 고려"],
+  "Ten of Cups":        ["완성","감정 충족","장기 보유 에너지"],
+  "Page of Cups":       ["감성 신호","직관 탐색","초기 탐색"],
+  "Knight of Cups":     ["감성 접근","로맨틱 흐름","과도한 낙관"],
+  "Queen of Cups":      ["직관력","공감","감성 주도"],
+  "King of Cups":       ["감정 통제","평정심","장기 관망"],
+  // Swords
+  "Ace of Swords":      ["결단","명확성","돌파"],
+  "Two of Swords":      ["교착","결정 회피","정보 부족"],
+  "Three of Swords":    ["상처","충격","급락 리스크"],
+  "Four of Swords":     ["휴식","관망","에너지 재충전"],
+  "Five of Swords":     ["자존심 싸움","상처","갈등 잔재"],
+  "Six of Swords":      ["이탈","전환","불안정 탈출"],
+  "Seven of Swords":    ["의심","은폐","정보 불균형"],
+  "Eight of Swords":    ["제약","구속","선택지 제한"],
+  "Nine of Swords":     ["불안","과도한 걱정","심리적 압박"],
+  "Ten of Swords":      ["바닥 확인","종결","더 이상 하락 없음"],
+  "Page of Swords":     ["정보 수집","경계","초기 신호"],
+  "Knight of Swords":   ["빠른 결단","공격적 접근","무모한 진입"],
+  "Queen of Swords":    ["냉철한 판단","이성적 접근","솔직함"],
+  "King of Swords":     ["명확한 기준","논리","단호한 결정"],
+  // Pentacles
+  "Ace of Pentacles":   ["새로운 기회","실질적 이득","초기 진입"],
+  "Two of Pentacles":   ["균형 유지","분산","유동적 대응"],
+  "Three of Pentacles": ["협력","기술 숙련","단계적 성과"],
+  "Four of Pentacles":  ["보수적 보유","변화 저항","현금 보유"],
+  "Five of Pentacles":  ["손실","어려움","회복 필요"],
+  "Six of Pentacles":   ["균형 잡힌 흐름","호의 교환","분배"],
+  "Seven of Pentacles": ["인내","장기 투자","성과 평가"],
+  "Eight of Pentacles": ["꾸준한 노력","기술 향상","단계적 성과"],
+  "Nine of Pentacles":  ["독립","자립","안정적 성과"],
+  "Ten of Pentacles":   ["부의 완성","장기 안정","세대 전승"],
+  "Page of Pentacles":  ["학습","준비","소규모 테스트"],
+  "Knight of Pentacles":["꾸준함","안정적 접근","느린 진행"],
+  "Queen of Pentacles": ["실용적 판단","안정적 관리","현실 중심"],
+  "King of Pentacles":  ["확실한 성과","재정 지배력","중장기 보유"]
+};
+// 역방향 태그 보정 — 긍정 카드의 역방향은 에너지 차단
+const REVERSED_TAG_PREFIX = {
+  "BUY":  "억제된",   // 긍정 카드 역방향
+  "SELL": "심화된",   // 부정 카드 역방향
+  "HOLD": "내면화된"  // 중립 카드 역방향
+};
+function getCardTags(card, isReversed) {
+  const name = typeof card === 'string' ? card : (card?.name || '');
+  const tags = CARD_TAG[name] || ['에너지 흐름', '방향 탐색', '변화'];
+  if (!isReversed) return tags;
+  // 역방향: 첫 태그 앞에 "억제된/심화된/내면화된" 접두어
+  const dec = getFinalDecision(card, true);
+  const prefix = REVERSED_TAG_PREFIX[dec] || '내면화된';
+  return [`${prefix} ${tags[0]}`, tags[1], tags[2]];
+}
+
+// ══════════════════════════════════════════════════════════════════
 // 🎯 [V22.0] CARD_DECISION_MAP — 78장 BUY/HOLD/SELL 매핑
 //   사장님 작성 (정통 타로 + 투자 판단 융합)
 //   기준: 정방향 / 매수 판단 관점
@@ -1866,72 +1973,27 @@ const MESSAGE_POOL = {
 // [V22.7] intent 파라미터 추가 — 부동산/주식에서 매수/매도 의도별 메시지 차별화
 //   사장님 진단: 매수 의도인데 카드만 BUY면 "급매 진입 적기" 출력 → 다른 영역과 모순
 //   해결: intent 받아서 매수/매도 의도별로 메시지 풀 다르게 사용
-// [V203.10-B] buildCriticalInterpretation — 문제→전환→결론 서사 구조
-//   기존 착시: 카드명만 다르고 문장 구조 동일 (47만 조합이지만 체감은 같음)
-//   개선: 포지션 역할별 서사 — 과거=문제/배경, 현재=전환/상황, 미래=결론/행동요구
-//   핵심: 카드 signal의 의미를 포지션 동사로 해석
-//     과거: "만들었다 / 남겼다 / 소진했다 / 쌓았다"
-//     현재: "작동하고 있다 / 형성하고 있다 / 억제하고 있다"
-//     미래: "요구한다 / 열린다 / 닫힌다 / 결정된다"
+// [V203.11] buildCriticalInterpretation — CARD_TAG + 다중 템플릿 생성기
+//   V203.10 문제: "현재는 ${flow}의 에너지가 시장 압력을 형성하고 있습니다" 반복
+//   해결:
+//     1. CARD_TAG — 카드별 3개 태그 (flow 직접 출력 대신 태그 조합)
+//     2. 다중 템플릿 — 포지션별 5종 템플릿, 카드 해시로 선택 (매번 다른 문장)
+//     3. CARD_RISK — 현재+미래 카드 태그에서 RISK 직접 추출 (scoreCategory 탈피)
 function buildCriticalInterpretation(cards, revFlags, domain, intent) {
   const rf = revFlags || [false, false, false];
 
   // ── 카드명 추출
-  function _name(card, isRev) {
-    const n = typeof card === 'string' ? card : (card?.name || '');
+  function _name(c, isRev) {
+    const n = typeof c === 'string' ? c : (c?.name || '');
     return isRev ? `${n} 역방향` : n;
   }
 
-  // ── 포지션별 역할 서사 생성 (flow + signal + 포지션 동사)
-  //    과거: 어떤 에너지/문제가 흐름을 만들었는가
-  //    현재: 지금 어떤 전환이 일어나고 있는가
-  //    미래: 무엇이 요구되는가 / 어떤 결론이 오는가
-  function _pastNarrative(card, isRev, domain) {
+  // ── 카드 해시 (포지션 × 카드명 → 템플릿 선택 시드)
+  function _hash(card, pos) {
     const n = typeof card === 'string' ? card : (card?.name || '');
-    const m = CARD_MEANING[n] || { flow: '에너지 탐색', signal: '' };
-    const flow = isRev ? `내면화된 ${m.flow}` : m.flow;
-    const dec  = getFinalDecision(card, isRev);
-    if (domain === 'love') {
-      if (dec === 'BUY')  return `과거에는 ${flow}의 에너지가 관계의 기반을 만들어왔습니다.`;
-      if (dec === 'SELL') return `과거에는 ${flow}의 흐름이 관계 안에 거리감을 남겼습니다.`;
-      return `과거에는 ${flow}의 흐름 속에서 관계의 방향이 탐색되고 있었습니다.`;
-    } else {
-      if (dec === 'BUY')  return `과거 흐름은 ${flow}의 에너지가 진입 기반을 쌓아왔습니다.`;
-      if (dec === 'SELL') return `과거 흐름은 ${flow}의 에너지가 포지션 에너지를 소진시켰습니다.`;
-      return `과거 흐름은 ${flow}의 에너지 속에서 방향성을 탐색해왔습니다.`;
-    }
-  }
-
-  function _presentNarrative(card, isRev, domain) {
-    const n = typeof card === 'string' ? card : (card?.name || '');
-    const m = CARD_MEANING[n] || { flow: '에너지 탐색', signal: '' };
-    const flow = isRev ? `내면화된 ${m.flow}` : m.flow;
-    const dec  = getFinalDecision(card, isRev);
-    if (domain === 'love') {
-      if (dec === 'BUY')  return `지금은 ${flow}의 결이 관계를 앞으로 밀고 있습니다.`;
-      if (dec === 'SELL') return `지금은 ${flow}의 흐름이 두 사람 사이를 억제하고 있습니다.`;
-      return `지금은 ${flow}의 흐름이 관계의 방향을 탐색하는 전환점에 있습니다.`;
-    } else {
-      if (dec === 'BUY')  return `현재는 ${flow}의 에너지가 시장 흐름을 주도하고 있습니다.`;
-      if (dec === 'SELL') return `현재는 ${flow}의 에너지가 시장 압력을 형성하고 있습니다.`;
-      return `현재는 ${flow}의 에너지 속에서 방향 전환이 진행 중입니다.`;
-    }
-  }
-
-  function _futureNarrative(card, isRev, domain, signal) {
-    const n = typeof card === 'string' ? card : (card?.name || '');
-    const m = CARD_MEANING[n] || { flow: '에너지 탐색', signal: '' };
-    const flow = isRev ? `내면화된 ${m.flow}` : m.flow;
-    const dec  = getFinalDecision(card, isRev);
-    if (domain === 'love') {
-      if (dec === 'BUY')  return `앞으로는 ${flow}의 에너지가 관계의 다음 단계를 열어줄 것입니다.`;
-      if (dec === 'SELL') return `앞으로는 ${flow}의 흐름이 관계 재정립을 요구하게 됩니다.`;
-      return `앞으로는 ${flow}의 흐름 속에서 관계의 윤곽이 결정될 것입니다.`;
-    } else {
-      if (dec === 'BUY')  return `앞으로는 ${flow}의 에너지가 상승 방향을 열어갈 것입니다.`;
-      if (dec === 'SELL') return `앞으로는 ${flow}의 흐름이 정리 결단을 요구하게 됩니다.`;
-      return `앞으로는 ${flow}의 흐름이 명확한 방향 결정을 요구합니다.`;
-    }
+    let h = pos * 31;
+    for (let i = 0; i < n.length; i++) h = ((h << 5) - h + n.charCodeAt(i)) | 0;
+    return Math.abs(h);
   }
 
   // ── 3카드 BUY/HOLD/SELL 다수결
@@ -1944,6 +2006,84 @@ function buildCriticalInterpretation(cards, revFlags, domain, intent) {
   else if (counts.SELL > counts.BUY) signal = 'SELL';
   else if (counts.BUY > counts.SELL) signal = 'BUY';
   else signal = 'HOLD';
+
+  const past = cards[0], present = cards[1], future = cards[2];
+  const pastTags    = getCardTags(past,    rf[0]);
+  const presentTags = getCardTags(present, rf[1]);
+  const futureTags  = getCardTags(future,  rf[2]);
+  const pastDec    = getFinalDecision(past,    rf[0]);
+  const presentDec = getFinalDecision(present, rf[1]);
+  const futureDec  = getFinalDecision(future,  rf[2]);
+
+  // ── 포지션별 다중 템플릿 (각 5종, 해시로 선택)
+  // 태그 [0]=핵심 태그, [1]=보조 태그, [2]=위험/결과 태그
+
+  function _pastLine(tags, dec, hash, domain) {
+    const t0 = tags[0], t1 = tags[1];
+    const templates = (domain === 'love') ? [
+      `과거에는 ${t0}의 흐름이 관계의 기반을 형성했습니다.`,
+      `과거 관계는 ${t0}의 에너지 속에서 시작됐습니다.`,
+      `${t0}의 흐름이 두 사람의 관계 초기를 규정했습니다.`,
+      `관계는 ${t0}를 경험하며 현재 흐름의 토대를 만들었습니다.`,
+      `과거의 ${t0} 에너지가 지금의 관계 방향에 영향을 남겼습니다.`
+    ] : [
+      `과거 흐름은 ${t0}의 에너지가 포지션의 기반을 결정했습니다.`,
+      `${t0}의 흐름이 지나온 투자 경로를 만들었습니다.`,
+      `과거에는 ${t0} 에너지가 시장 방향을 이끌었습니다.`,
+      `${t0}와 ${t1}의 흐름 속에서 현재 포지션이 형성됐습니다.`,
+      `과거 시장은 ${t0}의 국면을 지나왔습니다.`
+    ];
+    return templates[hash % templates.length];
+  }
+
+  function _presentLine(tags, dec, hash, domain) {
+    const t0 = tags[0], t1 = tags[1];
+    const templates = (domain === 'love') ? [
+      `지금은 ${t0}의 결이 관계를 지배하고 있습니다.`,
+      `현재 두 사람 사이에는 ${t0}의 에너지가 작동하고 있습니다.`,
+      `${t0}가 지금 관계의 핵심 변수가 되고 있습니다.`,
+      `관계는 현재 ${t0}와 ${t1} 사이에서 방향을 잡고 있습니다.`,
+      `지금 이 순간 ${t0}의 흐름이 두 사람의 결을 만들고 있습니다.`
+    ] : [
+      `현재는 ${t0}가 시장 심리의 중심에 있습니다.`,
+      `지금 시장에는 ${t0}의 에너지가 우세합니다.`,
+      `${t0}와 ${t1}이 현재 흐름을 규정하고 있습니다.`,
+      `시장 참여자들 사이에서 ${t0}의 심리가 지배적입니다.`,
+      `현재 흐름의 핵심은 ${t0}에 있습니다.`
+    ];
+    return templates[hash % templates.length];
+  }
+
+  function _futureLine(tags, dec, hash, domain, signal) {
+    const t0 = tags[0], t2 = tags[2];
+    const isPos = (dec === 'BUY');
+    const templates = (domain === 'love') ? (isPos ? [
+      `앞으로는 ${t0}의 에너지가 관계의 다음 단계를 열어줄 것입니다.`,
+      `${t0}의 흐름이 관계 진전의 계기가 될 것입니다.`,
+      `관계는 ${t0}를 통해 더 명확한 방향을 갖게 됩니다.`,
+      `다가오는 ${t0} 에너지가 두 사람의 거리를 좁혀줄 것입니다.`,
+      `앞으로 ${t0}의 흐름이 관계를 한 단계 끌어올릴 것입니다.`
+    ] : [
+      `앞으로는 ${t0}의 흐름이 관계 재정립을 요구하게 됩니다.`,
+      `${t0}의 에너지가 관계의 전환을 요구하는 구간이 옵니다.`,
+      `다가오는 흐름은 ${t0}를 직면해야 하는 시점입니다.`,
+      `관계는 ${t0}를 넘어서는 과정이 필요하게 됩니다.`,
+      `앞으로 ${t0}의 과제가 두 사람에게 주어집니다.`
+    ]) : (isPos ? [
+      `앞으로는 ${t0}의 에너지가 상승 방향을 열어갈 것입니다.`,
+      `${t0}의 흐름이 다음 매수 기회를 만들어갈 것입니다.`,
+      `다가오는 ${t0} 에너지가 포지션 확대 기회를 형성합니다.`,
+      `시장은 ${t0}를 통해 긍정적 방향을 열어갈 것입니다.`,
+      `앞으로 ${t0}의 흐름이 명확한 진입 신호를 만들어냅니다.`
+    ] : [
+      `앞으로는 ${t0}의 흐름이 정리 결단을 요구하게 됩니다.`,
+      `${t0}의 에너지가 포지션 재평가를 요구하는 구간입니다.`,
+      `다가오는 ${t0} 국면이 손익 기준 점검을 요구합니다.`,
+      `시장은 ${t0}를 통해 방향 전환 신호를 보낼 것입니다.`,
+      `앞으로 ${t0}의 흐름이 명확한 출구 시점을 만들어냅니다.`
+    ]);
+    return templates[hash % templates.length];
+  }
 
   // ── VERDICT 방향 일치 결론
   function _keyInsight(domain, intent, signal) {
@@ -1975,10 +2115,13 @@ function buildCriticalInterpretation(cards, revFlags, domain, intent) {
     ? '※ 본 신탁은 부동산 흐름 해석을 위한 참고 콘텐츠입니다. 실제 계약 및 투자 결정은 전문가 상담과 함께 신중히 판단하시기 바랍니다.'
     : '※ 본 신탁은 흐름 해석을 돕기 위한 참고 콘텐츠입니다. 개인 관계 및 중요한 결정은 실제 상황을 기준으로 신중히 판단하시기 바랍니다.';
 
-  const past = cards[0], present = cards[1], future = cards[2];
-  const line1 = _pastNarrative(past,    rf[0], domain);
-  const line2 = _presentNarrative(present, rf[1], domain);
-  const line3 = _futureNarrative(future,  rf[2], domain, signal);
+  const h0 = _hash(past,    0);
+  const h1 = _hash(present, 1);
+  const h2 = _hash(future,  2);
+
+  const line1 = _pastLine(pastTags,       pastDec,    h0, domain);
+  const line2 = _presentLine(presentTags, presentDec, h1, domain);
+  const line3 = _futureLine(futureTags,   futureDec,  h2, domain, signal);
   const keyLine = `👉 핵심: "${_keyInsight(domain, intent, signal)}"`;
 
   return `${line1}
@@ -1987,6 +2130,33 @@ ${line3}
 ${keyLine}
 
 ${disclaimer}`;
+}
+
+// [V203.11] buildCardRisk — 현재+미래 카드 태그 기반 RISK 생성
+//   기존: scoreCategory 고정 텍스트 → "과거 감정 재소환" 매번 반복
+//   개선: 현재카드 위험태그 + 미래카드 위험태그 → 카드 조합별 고유 RISK
+function buildCardRisk(presentCard, futureCard, presentRev, futureRev, domain) {
+  const pTags = getCardTags(presentCard, presentRev);
+  const fTags = getCardTags(futureCard,  futureRev);
+
+  // 위험 태그: 각 카드의 태그[2](위험/결과 태그) 또는 태그[1] 사용
+  const pRisk = pTags[2] || pTags[1] || pTags[0];
+  const fRisk = fTags[0] || fTags[1];
+
+  // 중복 방지 — 두 태그가 같으면 fTags[1] 사용
+  const risk2 = (fRisk === pRisk) ? (fTags[1] || fTags[2]) : fRisk;
+
+  if (domain === 'love') {
+    return [
+      `${pRisk} — 관계 흐름을 방해하는 핵심 변수`,
+      `${risk2} — 이 점을 간과하면 다음 단계가 막힐 수 있습니다`
+    ];
+  } else {
+    return [
+      `${pRisk} — 현재 시장의 주요 리스크`,
+      `${risk2} — 이 흐름을 무시하면 포지션 손실이 확대될 수 있습니다`
+    ];
+  }
 }
 
 
@@ -11561,9 +11731,15 @@ function buildStockMetrics({ totalScore, riskScore, cleanCards, isLeverage, quer
   if (hasMidstreamObstacle) riskCautions.push("현재 카드 정체 신호 — 단기 변동성 확대 가능성");
   if (totalScore <= -3) riskCautions.push("하락 압력 — 급반등 후 재하락 패턴이 나타날 수 있는 흐름");
   if (reversedCount >= 2) riskCautions.push("다수 역방향 — 진입 시점에 대한 신중한 판단이 도움이 될 수 있습니다");
-  if (riskCautions.length < 3) {
-    riskCautions.push("고점 추격은 추가 리스크로 이어질 수 있는 구간으로 해석됩니다");
-    riskCautions.push("수익 미실현 상태에서의 장기 보유는 변동성 노출을 확대할 가능성이 있습니다");
+  // [V203.11] 카드 기반 RISK 보완 — 고정 텍스트 대신 현재+미래 카드 태그 사용
+  if (riskCautions.length < 2) {
+    try {
+      const _cRisks = buildCardRisk(cleanCards[1], cleanCards[2], revFlags[1], revFlags[2], _domain || 'stock');
+      if (_cRisks && _cRisks[0] && !riskCautions.includes(_cRisks[0])) riskCautions.push(_cRisks[0]);
+      if (_cRisks && _cRisks[1] && !riskCautions.includes(_cRisks[1])) riskCautions.push(_cRisks[1]);
+    } catch(e) {
+      riskCautions.push("고점 추격은 추가 리스크로 이어질 수 있는 구간으로 해석됩니다");
+    }
   }
   const finalRiskCautions = riskCautions.slice(0, 3);
 
@@ -13892,8 +14068,21 @@ function buildLoveRisk(content, loveSubType, cards, prompt, reversedFlags) {
     } catch (e) { /* 안전 */ }
   }
   
+  // [V203.11] 카드 기반 RISK — scoreCategory 고정값 대체
+  //   기존: content.risk_1 = "과거 감정 재소환" (매번 동일)
+  //   개선: 현재+미래 카드 태그에서 고유 위험 요소 추출
+  let _cardRisk1 = content.risk_1;
+  let _cardRisk2 = content.risk_2;
+  if (cards && cards.length >= 3) {
+    try {
+      const _cardRisks = buildCardRisk(cards[1], cards[2], (reversedFlags||[])[1], (reversedFlags||[])[2], 'love');
+      if (_cardRisks && _cardRisks[0]) _cardRisk1 = _cardRisks[0];
+      if (_cardRisks && _cardRisks[1]) _cardRisk2 = _cardRisks[1];
+    } catch(e) { /* 안전: 기존값 유지 */ }
+  }
+
   return {
-    risk1: content.risk_1, risk2: content.risk_2,
+    risk1: _cardRisk1, risk2: _cardRisk2,
     riskProgression: content.risk_progression,
     triggerCondition: content.trigger_condition, collapseType: content.collapse_type,
     coreKey: riskKey_text,
