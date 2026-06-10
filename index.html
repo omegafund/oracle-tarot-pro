@@ -13396,8 +13396,40 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
             } else if (isStock && tv) {
                 verdictText = tv.signal || '';
             }
-            const _energyBar = (isStock && tv && tv.energy)
-                ? `<div style="margin-top:8px; font-size:0.82rem; color:rgba(255,220,100,0.85); text-align:center; letter-spacing:0.05em;">⚡ 에너지 강도 &nbsp;<b style="color:#FFD970; font-size:0.95rem;">${tv.energy}</b></div>`
+            // [V203.12] 에너지 강도 숫자형 바 — 투자=주황-노랑, 연애=핑크-보라
+            //   투자: tv.energyScore (0~100) 또는 tv.energy 별점 → 수치 변환
+            //   연애: sm.loveScore (0~100) 또는 ov24.totalScore 정규화
+            function _buildEnergyBar(score, domain) {
+                const pct   = Math.min(100, Math.max(0, score));
+                const filled = Math.round(pct / 10);
+                const empty  = 10 - filled;
+                const bar    = '█'.repeat(filled) + '░'.repeat(empty);
+                const isLoveDom = (domain === 'love');
+                const color1 = isLoveDom ? 'rgba(255,107,157,1)'  : 'rgba(241,196,15,1)';
+                const color2 = isLoveDom ? 'rgba(155,89,182,1)'   : 'rgba(230,126,34,1)';
+                const icon   = isLoveDom ? '💫' : '⚡';
+                const label  = isLoveDom ? '관계 에너지' : '에너지 강도';
+                return `<div style="margin-top:9px; display:flex; align-items:center; justify-content:center; gap:8px; font-size:0.8rem;">
+                    <span style="color:rgba(255,255,255,0.6); letter-spacing:0.05em;">${icon} ${label}</span>
+                    <span style="background:linear-gradient(90deg,${color1},${color2}); -webkit-background-clip:text; -webkit-text-fill-color:transparent; font-size:0.78rem; letter-spacing:0.03em; font-weight:700;">${bar}</span>
+                    <b style="color:rgba(255,255,255,0.9); font-size:0.88rem; min-width:24px;">${pct}</b>
+                </div>`;
+            }
+            // 에너지 점수 계산
+            let _energyScore = 0;
+            if (isStock && tv) {
+                // tv.energy 별점 → 수치 (★=20점)
+                const _starCount = (tv.energy || '').split('★').length - 1;
+                _energyScore = _starCount * 20;
+                // energyScore 직접 값이 있으면 우선
+                if (tv.energyScore) _energyScore = tv.energyScore;
+            } else if (isLove && ov24) {
+                // totalScore(−10~+10) → 0~100 정규화
+                const _raw = ov24.totalScore || 0;
+                _energyScore = Math.round((_raw + 10) / 20 * 100);
+            }
+            const _energyBar = (_energyScore > 0)
+                ? _buildEnergyBar(_energyScore, domain)
                 : '';
             const verdictHTML = verdictText ? `
                 <div style="${boxBase} background:linear-gradient(135deg,rgba(241,196,15,0.10),rgba(231,76,60,0.06)); border:2px solid rgba(241,196,15,0.45); border-radius:12px;">

@@ -23935,8 +23935,9 @@ ${metrics.cryptoSubtype === 'crypto_buy' ? `
                 })
               });
 
-              // 일시적 오류(503/429)면 재시도 — 점증 대기(2초, 4초, 8초)
-              if ((r.status === 503 || r.status === 429) && attempt < maxRetries) {
+              // [V203.12] 일시적 오류(502/503/429)면 재시도 — 점증 대기(2초, 4초, 8초)
+              //   502: Gemini 서버 과부하(Bad Gateway) 추가
+              if ((r.status === 502 || r.status === 503 || r.status === 429) && attempt < maxRetries) {
                 lastError = await r.text();
                 await new Promise(rs => setTimeout(rs, 2000 * Math.pow(2, attempt)));
                 continue;
