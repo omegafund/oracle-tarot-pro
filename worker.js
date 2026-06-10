@@ -22518,14 +22518,20 @@ export default {
           } else if (stockSubType === 'crypto_sell') {
             // [V25.38] 코인 매도 — 명시적 sell intent
             stockIntent = 'sell';
-          } else if (stockSubType === 'short') {
-            // [V203.12] 주식 단타 — tradingStyle 마킹
+          } else if (stockSubType === 'short'
+            || (!stockSubType && /단타|단기매수|당일|초단|데이트레|day.?trad/i.test(prompt))) {
+            // [V203.13] 주식 단타 — 버튼 또는 자연어 키워드 감지
+            stockSubType = 'short';
             stockIntent = 'buy';
-          } else if (stockSubType === 'scalping') {
-            // [V25.38] 코인 스캘핑 — 단기 매수 intent (분/시간 단위)
+          } else if (stockSubType === 'scalping'
+            || (!stockSubType && /스캘핑|scalping|초단타|분봉|1분|5분/i.test(prompt))) {
+            // [V203.13] 코인 스캘핑 — 버튼 또는 자연어 키워드 감지
+            stockSubType = 'scalping';
             stockIntent = 'buy';
-          } else if (stockSubType === 'holding') {
-            // [V25.38] 코인 홀딩 — 장기 매수 intent (주/월 단위)
+          } else if (stockSubType === 'holding'
+            || (!stockSubType && /홀딩|holding|장투|장기보유|dca|적립/i.test(prompt))) {
+            // [V203.13] 코인 홀딩 — 버튼 또는 자연어 키워드 감지
+            stockSubType = 'holding';
             stockIntent = 'buy';
           } else if (stockSubType === 'crypto_risk') {
             // [V25.38] 코인 리스크 체크 — 보유 점검 intent (sell 톤 활용)
