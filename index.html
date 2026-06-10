@@ -13013,20 +13013,18 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
                             ${_tv202_25.action}
                         </div>
                     </div>
-                    ${(() => {
-                        // [V203.12] 투자 에너지 강도 바 — 기존 VERDICT 박스에 직접 주입
-                        //   위치: 실행 박스 아래, VERDICT 박스 닫기 전
-                        //   점수: tv.energy 별점 → 수치 (★1개=20점)
-                        const _sc = (_tv202_25.energy || '').split('★').length - 1;
-                        const _pct = Math.min(100, Math.max(0, _sc * 20));
-                        if (_pct <= 0) return '';
-                        const _filled = Math.round(_pct / 10);
-                        const _bar = '█'.repeat(_filled) + '░'.repeat(10 - _filled);
-                        return \`<div style="margin-top:10px; padding-top:8px; border-top:1px solid rgba(241,196,15,0.2); display:flex; align-items:center; justify-content:center; gap:8px; font-size:0.8rem;">
-                            <span style="color:rgba(255,255,255,0.6); letter-spacing:0.05em;">⚡ 에너지 강도</span>
-                            <span style="background:linear-gradient(90deg,rgba(241,196,15,1),rgba(230,126,34,1)); -webkit-background-clip:text; -webkit-text-fill-color:transparent; font-size:0.78rem; font-weight:700;">\${_bar}</span>
-                            <b style="color:rgba(255,255,255,0.9); font-size:0.88rem; min-width:24px;">\${_pct}</b>
-                        </div>\`;
+                    ${(function(){
+                        // [V203.12] 투자 에너지 강도 바 (IIFE — 백틱 충돌 방지)
+                        var _sc2 = (_tv202_25.energy || '').split('★').length - 1;
+                        var _pct2 = Math.min(100, Math.max(0, _sc2 * 20));
+                        if (_pct2 <= 0) return '';
+                        var _filled2 = Math.round(_pct2 / 10);
+                        var _bar2 = '█'.repeat(_filled2) + '░'.repeat(10 - _filled2);
+                        return '<div style="margin-top:10px; padding-top:8px; border-top:1px solid rgba(241,196,15,0.2); display:flex; align-items:center; justify-content:center; gap:8px; font-size:0.8rem;">'
+                             + '<span style="color:rgba(255,255,255,0.6); letter-spacing:0.05em;">&#x26A1; 에너지 강도</span>'
+                             + '<span style="color:rgba(241,196,15,0.9); font-size:0.78rem; font-weight:700;">' + _bar2 + '</span>'
+                             + '<b style="color:rgba(255,255,255,0.9); font-size:0.88rem; min-width:24px;">' + _pct2 + '</b>'
+                             + '</div>';
                     })()}
                 </div>
             ` : '';  // [V203.13] TOP VERDICT에서 caution 제거 — RISK 블록이 담당 — 5계층 cardEvidence와 중복 → 단일화
