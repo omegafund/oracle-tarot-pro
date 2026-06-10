@@ -13355,10 +13355,15 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
         function _renderZeus7Block(d, domain) {
             const isLove  = domain === 'love';
             const isStock = domain === 'stock' || domain === 'crypto';
-            const sm      = window._serverMetrics || {};
-            const layers  = d.layers || d._server?.layers || {};
-            const ov24    = sm.oracleV25_24 || null;
-            const tv      = sm.topVerdict   || null;
+            // [V203.12] sm 폴백 체인: d._server → d 직접 → window._serverMetrics
+            //   투자 렌더링 시점에 window._serverMetrics가 미설정일 수 있음 → d에서 직접 읽기
+            const _smSrc  = d._server || d || {};
+            const sm      = (window._serverMetrics && window._serverMetrics.queryType)
+                          ? window._serverMetrics
+                          : (_smSrc.queryType ? _smSrc : (window._serverMetrics || {}));
+            const layers  = d.layers || d._server?.layers || sm.layers || {};
+            const ov24    = sm.oracleV25_24 || d.oracleV25_24 || null;
+            const tv      = sm.topVerdict   || d.topVerdict   || d._server?.topVerdict || null;
 
             const boxBase  = 'margin-bottom:14px; border-radius:10px; padding:14px 16px; line-height:1.85;';
             const labelBase = 'font-size:0.78rem; font-weight:900; letter-spacing:0.12em; margin-bottom:8px;';
