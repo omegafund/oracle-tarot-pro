@@ -13426,10 +13426,29 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
                 </div>` : '';
 
             // ── ③ NEXT STEP — TIMING + RISK + ACTION 통합
+            // [V203.10-B] VERDICT↔TIMING 방향 일치 가드
+            //   문제: VERDICT=진전인데 TIMING="거리두기 권장" 모순 가능
+            //   해결: verdictText 방향으로 모순 키워드 감지 시 TIMING 첫 줄 덮어쓰기
+            const _isAdvanceVerdict = isLove && verdictText && (
+                verdictText.includes('🟢') || verdictText.includes('진전') || verdictText.includes('가능')
+            );
+            const _isCloseVerdict = isLove && verdictText && (
+                verdictText.includes('🔴') || verdictText.includes('정리') || verdictText.includes('거리')
+            );
+            const _CONFLICT_KEYWORDS_ADVANCE = ['거리두기', '연락 타이밍이 아닙', '자제', '보류'];
+            const _CONFLICT_KEYWORDS_CLOSE   = ['지금이 가장 좋은', '지금이 연락 타이밍', '적극'];
+
             let _timingLines = [];
             if (isLove && ov24?.boxes?.timing) {
                 const tm = ov24.boxes.timing;
-                if (tm.timingNow)      _timingLines.push(`👉 ${tm.timingNow}`);
+                let _timingNow = tm.timingNow || '';
+                // 방향 충돌 감지 시 덮어쓰기
+                if (_isAdvanceVerdict && _CONFLICT_KEYWORDS_ADVANCE.some(k => _timingNow.includes(k))) {
+                    _timingNow = '자연스러운 흐름 속에서 접근 가능한 단계입니다';
+                } else if (_isCloseVerdict && _CONFLICT_KEYWORDS_CLOSE.some(k => _timingNow.includes(k))) {
+                    _timingNow = '지금은 거리를 두며 흐름을 살피는 것이 적절합니다';
+                }
+                if (_timingNow)        _timingLines.push(`👉 ${_timingNow}`);
                 if (tm.timingNext)     _timingLines.push(`👉 ${tm.timingNext}`);
                 if (tm.shortTerm)      _timingLines.push(`🟢 단기: ${tm.shortTerm}`);
                 if (tm.midTerm)        _timingLines.push(`🟡 중기: ${tm.midTerm}`);
