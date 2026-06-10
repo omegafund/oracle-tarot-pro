@@ -21862,8 +21862,8 @@ export default {
         if (_shieldResult instanceof Response) return _shieldResult;
         // ══════════════════════════════════════════════════════════════
 
-        // [V2.6] gemini-2.0-flash 사용 — 2.5-flash 503(과부하) 빈발로 변경, 무료 한도 더 높음
-        const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${env.GEMINI_API_KEY}`;
+        // [V203.9] gemini-2.5-flash 복귀 — 2.0-flash deprecated(404) 확인, Tier1 유료 키로 503 무관
+        const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${env.GEMINI_API_KEY}`;
 
         const txt = (prompt || "").toLowerCase();
         const leverageKeywords = ["레버리지","3배","2배","인버스"];
