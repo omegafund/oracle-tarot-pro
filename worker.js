@@ -1866,165 +1866,131 @@ const MESSAGE_POOL = {
 // [V22.7] intent 파라미터 추가 — 부동산/주식에서 매수/매도 의도별 메시지 차별화
 //   사장님 진단: 매수 의도인데 카드만 BUY면 "급매 진입 적기" 출력 → 다른 영역과 모순
 //   해결: intent 받아서 매수/매도 의도별로 메시지 풀 다르게 사용
+// [V203.10] buildCriticalInterpretation — 카드 고유 언어 기반 WHY 생성
+//   기존: 9개 고정 템플릿 (카드 무관) → signal(BUY/SELL/HOLD)만 반영
+//   개선: CARD_MEANING[card].flow 직접 인용 → 78×78×78 고유 조합
+//         역방향 카드 보정 (flow 앞에 "역방향으로" 접두어)
+//         VERDICT 방향 일치 강제 (signal×intent → 결론 방향)
 function buildCriticalInterpretation(cards, revFlags, domain, intent) {
-  // 3카드의 BUY/HOLD/SELL 종합
-  const decisions = cards.map((c, i) => getFinalDecision(c, revFlags[i]));
+  const rf = revFlags || [false, false, false];
 
-  // 다수결 (BUY/HOLD/SELL 중 가장 많은 것)
+  // ── 카드 고유 flow 추출 (역방향 보정 포함)
+  function _cardFlow(card, isRev) {
+    if (!card) return '에너지 탐색';
+    const name = typeof card === 'string' ? card : (card.name || '');
+    const m = CARD_MEANING[name];
+    if (!m) return '에너지 탐색';
+    // 역방향: flow 앞에 "내면화된" 또는 "억제된" 접두어
+    return isRev ? `내면화된 ${m.flow}` : m.flow;
+  }
+
+  // ── 카드 표시명 (역방향 표시)
+  function _cardName(card, isRev) {
+    const name = typeof card === 'string' ? card : (card?.name || '');
+    return isRev ? `${name} 역방향` : name;
+  }
+
+  const past    = cards[0], present = cards[1], future  = cards[2];
+  const pastFlow    = _cardFlow(past,    rf[0]);
+  const presentFlow = _cardFlow(present, rf[1]);
+  const futureFlow  = _cardFlow(future,  rf[2]);
+  const pastName    = _cardName(past,    rf[0]);
+  const presentName = _cardName(present, rf[1]);
+  const futureName  = _cardName(future,  rf[2]);
+
+  // ── 3카드 BUY/HOLD/SELL 다수결 (기존 로직 유지)
+  const decisions = cards.map((c, i) => getFinalDecision(c, rf[i]));
   const counts = { BUY: 0, HOLD: 0, SELL: 0 };
   decisions.forEach(d => counts[d]++);
-
   let signal;
-  if (counts.SELL >= 2) signal = "SELL";
-  else if (counts.BUY >= 2) signal = "BUY";
-  else if (counts.SELL > counts.BUY) signal = "SELL";
-  else if (counts.BUY > counts.SELL) signal = "BUY";
-  else signal = "HOLD";
+  if (counts.SELL >= 2)        signal = 'SELL';
+  else if (counts.BUY >= 2)    signal = 'BUY';
+  else if (counts.SELL > counts.BUY) signal = 'SELL';
+  else if (counts.BUY > counts.SELL) signal = 'BUY';
+  else signal = 'HOLD';
 
-  // ════════════════════════════════════════════════════════
-  // [V25.11] 연애 도메인 — 사장님 인간 중심 해석체 (조기 분기)
-  //   사장님 진단: "분석 결과 전달" → "사람이 읽는 관계 해석"
-  //   변환 원칙:
-  //     • '구간/시사/해석' 같은 분석 용어 제거
-  //     • 👉 화살표 제거 (투자 분석 느낌)
-  //     • '함께 만들어가는' '계기' 따뜻한 표현
-  //     • 판단→유도→명령 → 제안 형태
-  //     • 4단락 자연 흐름 (현재 → 변화 → 가능성 → 권유)
-  // ════════════════════════════════════════════════════════
-  if (domain === "love") {
-    // ═══════════════════════════════════════════════════════
-    // [V25.15] 사장님 최종 배포용 안 — 3줄 압축 + 👉 핵심 라인
-    //   사장님 진단: V25.11 4단락 → 3줄 핵심 압축
-    //   변환 원칙:
-    //     ① "감정 깊이" → "방향 일치"
-    //     ② "함께 만들어가는" → "기준 정립 / 합의 우선"
-    //     ③ 👉 핵심: 한 줄 강조 (사장님 시그니처)
-    //     ④ 7섹션 레이어 구조의 Top Summary 역할
-    // ═══════════════════════════════════════════════════════
-    const isMarriage = (intent === "marriage");
-    let loveText;
+  // ── 면책
+  const disclaimer = (domain === 'stock' || domain === 'crypto')
+    ? '※ 본 신탁은 흐름 해석을 돕기 위한 참고 콘텐츠입니다. 투자 판단과 결과에 대한 책임은 사용자 본인에게 있습니다.'
+    : domain === 'realestate'
+    ? '※ 본 신탁은 부동산 흐름 해석을 위한 참고 콘텐츠입니다. 실제 계약 및 투자 결정은 전문가 상담과 함께 신중히 판단하시기 바랍니다.'
+    : '※ 본 신탁은 흐름 해석을 돕기 위한 참고 콘텐츠입니다. 개인 관계 및 중요한 결정은 실제 상황을 기준으로 신중히 판단하시기 바랍니다.';
 
-    if (signal === "BUY") {
-      loveText = isMarriage
-        ? `현재 카드 흐름은 관계 확장 가능성과 함께, 내면적 감정 점검과 방향 정리가 필요한 구간으로 해석됩니다. 외형적 진행보다 관계의 '기준 정립'이 우선되는 흐름입니다.\n\n👉 결론: "감정의 깊이보다 방향의 일치가 중요합니다"`
-        : `현재 카드 흐름은 관계 진전 가능성과 함께, 서로의 진심을 확인하는 과정이 필요한 구간으로 해석됩니다. 즉각적 표현보다 관계의 '방향성 점검'이 우선되는 흐름입니다.\n\n👉 결론: "감정 표현보다 진심의 합치가 중요합니다"`;
-    } else if (signal === "SELL") {
-      loveText = isMarriage
-        ? `현재 카드 흐름은 결혼 결정 앞에서 미뤄둔 의문과 감정 정리가 필요한 구간으로 해석됩니다. 형식적 진행보다 관계의 '본질적 합의'가 우선되는 흐름입니다.\n\n👉 결론: "결혼의 형식보다 두 분의 합의가 먼저입니다"`
-        : `현재 카드 흐름은 관계 안에 쌓인 거리감과 감정 정리가 필요한 구간으로 해석됩니다. 무리한 지속보다 관계의 '재정립 시점'이 우선되는 흐름입니다.\n\n👉 결론: "관계 유지보다 진심의 정리가 먼저입니다"`;
+  // ════════════════════════════════════════════════════
+  // [연애 도메인] — 카드 고유 flow 인과 문장 조립
+  // ════════════════════════════════════════════════════
+  if (domain === 'love') {
+    // 결론 방향: signal × intent 매핑
+    let loveConclusion;
+    if (signal === 'BUY') {
+      loveConclusion = '카드 흐름이 관계 진전에 우호적인 방향을 가리킵니다';
+    } else if (signal === 'SELL') {
+      loveConclusion = '카드 흐름이 거리 조절과 내면 정리를 가리킵니다';
     } else {
-      // HOLD
-      loveText = isMarriage
-        ? `현재 카드 흐름은 결혼 결정 앞에서 가치관과 미래 인식의 일치 점검이 필요한 구간으로 해석됩니다. 한쪽 결단보다 두 분의 '본질 합의'가 우선되는 흐름입니다.\n\n👉 결론: "한쪽 결정보다 두 분의 합치가 핵심입니다"`
-        : `현재 카드 흐름은 관계 깊이를 위한 관찰과 진심 확인의 시기로 해석됩니다. 결과 재촉보다 관계의 '자연스러운 흐름'이 우선되는 시점입니다.\n\n👉 결론: "결과보다 흐름의 자연스러움이 중요합니다"`;
+      loveConclusion = '카드 흐름이 확인 후 자연스러운 접근을 가리킵니다';
     }
+    const line1 = `${pastName}이/가 ${pastFlow}을/를 형성했기 때문에 관계의 초기 흐름이 그 방향으로 시작됐습니다.`;
+    const line2 = `${presentName}이/가 ${presentFlow} 에너지를 가리키고 있어 현재 두 사람의 감정 결이 그 흐름 안에 있습니다.`;
+    const line3 = `${futureName}이/가 ${futureFlow}을/를 향하기 때문에 관계의 다음 단계 방향이 결정되고 있습니다.`;
+    const keyLine = `👉 핵심: "${loveConclusion}"`;
+    return `${line1}
+${line2}
+${line3}
+${keyLine}
 
-    // 면책 — V25.14.2 안 그대로 (관계 도메인 적합)
-    const loveDisclaimer = `※ 본 신탁은 흐름 해석을 돕기 위한 참고 콘텐츠입니다. 개인 관계 및 중요한 결정은 실제 상황을 기준으로 신중히 판단하시기 바랍니다.`;
-
-    return `${loveText}\n\n${loveDisclaimer}`;
+${disclaimer}`;
   }
-  // ════════════════════════════════════════════════════════
-  // [V25.15] 사장님 최종 배포용 안 — 4도메인 통일 구조
-  //   원칙: 2줄 본문 + 👉 핵심 라인 + 도메인별 면책
-  //   • 1줄: 현재 흐름 해석 (방향성 명시)
-  //   • 2줄: 행동 전략 (기준 정립 톤)
-  //   • 👉 핵심: 한 줄 강조 (사장님 시그니처)
-  //   사장님 톤: "기준 정립 / 방향 일치 / 신중한 판단"
-  // ════════════════════════════════════════════════════════
 
-  let para1, para2, keyInsight;
+  // ════════════════════════════════════════════════════
+  // [투자/부동산/일반 도메인] — 카드 고유 flow 인과 문장 조립
+  // ════════════════════════════════════════════════════
 
-  if (domain === "realestate") {
-    if (intent === "sell") {
-      if (signal === "SELL") {
-        para1 = `현재 흐름은 강한 매도 우위보다 호가 협상 여지가 있는 균형 구간으로 해석됩니다.`;
-        para2 = `지금은 호가 집착보다 시장 반응을 살피며 조건을 유연하게 운용하는 전략이 더 적합한 흐름입니다.`;
-        keyInsight = `"단기 호가보다 시장 흐름의 일치가 중요합니다"`;
-      } else if (signal === "BUY") {
-        para1 = `현재 흐름은 매도자에게 우호적인 시장 구조로 해석됩니다.`;
-        para2 = `지금은 시즌의 흐름을 활용해 호가를 견고하게 유지하는 접근이 더 적합한 흐름입니다.`;
-        keyInsight = `"시즌 활용과 매도 기준 정립이 핵심입니다"`;
-      } else {
-        // [V25.38] 결론 충돌 차단 — 매도 KEEP 시에도 매도 톤 유지
-        //   (이전: 무방향 어휘 → 위쪽 박스 결론과 불일치)
-        para1 = `현재 흐름은 매도자에게 시장 신호 점검이 필요한 균형 구간으로 해석됩니다.`;
-        para2 = `지금은 호가 집착보다 시장 반응 점검과 매도 시점 조율이 더 적합한 흐름입니다.`;
-        keyInsight = `"매도 시점 조율과 시장 신호 점검이 핵심입니다"`;
-      }
+  // VERDICT 방향 일치 결론 (signal × intent)
+  let keyInsight;
+  if (domain === 'stock' || domain === 'crypto') {
+    if (intent === 'sell') {
+      if (signal === 'SELL')
+        keyInsight = '카드 3장이 단계적 정리 흐름을 가리킵니다';
+      else if (signal === 'BUY')
+        keyInsight = '카드 흐름이 보유 유지에 우호적이나 정점 점검이 필요합니다';
+      else
+        keyInsight = '카드 3장이 신호 확인 후 분할 익절을 가리킵니다';
     } else {
-      if (signal === "SELL") {
-        para1 = `현재 흐름은 추가 가격 조정 여지가 남아 있는 구간으로 해석됩니다.`;
-        para2 = `지금은 충동 진입보다 저점 신호를 확인한 뒤 접근하는 전략이 더 적합한 흐름입니다.`;
-        keyInsight = `"가격보다 진입 기준의 명확화가 중요합니다"`;
-      } else if (signal === "BUY") {
-        para1 = `현재 흐름은 매수자에게 우호적인 진입 기회가 열려 있는 구간으로 해석됩니다.`;
-        para2 = `지금은 성급한 계약보다 조건이 유리한 매물을 선별적으로 탐색하는 전략이 더 적합한 흐름입니다.`;
-        keyInsight = `"외부 분위기보다 자신의 자금 계획이 우선입니다"`;
-      } else {
-        para1 = `현재 흐름은 명확한 상승 또는 하락보다 시장 방향을 탐색하는 균형 구간으로 해석됩니다.`;
-        para2 = `지금은 즉각 결단보다 데이터 수집과 명확한 신호 대기가 안정적인 선택입니다.`;
-        keyInsight = `"즉각 결단보다 명확한 신호의 확인이 먼저입니다"`;
-      }
+      if (signal === 'BUY')
+        keyInsight = '카드 3장이 분할 진입에 우호적인 흐름을 가리킵니다';
+      else if (signal === 'SELL')
+        keyInsight = '카드 3장이 진입 보류와 신호 확인을 가리킵니다';
+      else
+        keyInsight = '카드 3장이 확인 후 단계적 접근을 가리킵니다';
     }
-  } else if (domain === "general") {
-    // 운세 일반 — 흐름·자기 기준 톤
-    if (signal === "SELL") {
-      para1 = `현재 흐름은 정체와 정리가 함께 나타나는 전환 구간으로 해석됩니다.`;
-      para2 = `지금은 결과를 재촉하기보다 흐름의 정리 시간을 갖는 접근이 더 적합한 시점입니다.`;
-      keyInsight = `"결과보다 자기 정리의 시간이 우선입니다"`;
-    } else if (signal === "BUY") {
-      para1 = `현재 흐름은 새로운 가능성이 열리는 확장 구간으로 해석됩니다.`;
-      para2 = `지금은 망설이기보다 작은 선택을 통해 흐름을 만드는 접근이 더 적합한 시점입니다.`;
-      keyInsight = `"망설임보다 작은 선택의 실행이 흐름을 만듭니다"`;
-    } else {
-      para1 = `현재 흐름은 방향성을 탐색하며 작은 선택이 의미를 가지는 구간으로 해석됩니다.`;
-      para2 = `지금은 한쪽으로 치우치기보다 자신의 기준을 정리하며 흐름을 살피는 접근이 안정적인 선택입니다.`;
-      keyInsight = `"주변 의견보다 자신의 기준과 가치관이 흐름을 안정시킵니다"`;
-    }
+  } else if (domain === 'realestate') {
+    if (signal === 'BUY')
+      keyInsight = '카드 흐름이 진입·매수에 우호적인 방향을 가리킵니다';
+    else if (signal === 'SELL')
+      keyInsight = '카드 흐름이 매도·정리 시점 점검을 가리킵니다';
+    else
+      keyInsight = '카드 흐름이 신호 확인 후 결정을 가리킵니다';
   } else {
-    // stock / crypto
-    if (intent === "sell") {
-      if (signal === "SELL") {
-        para1 = `현재 흐름은 추세 지속보다 흐름 재평가가 우선되는 구간으로 해석됩니다.`;
-        para2 = `지금은 무대응보다 포지션 일부를 점진적으로 조정하는 전략이 더 적합한 흐름입니다.`;
-        keyInsight = `"버티기보다 흐름 재평가의 단계적 대응이 핵심입니다"`;
-      } else if (signal === "BUY") {
-        para1 = `현재 흐름은 추세가 아직 유효하나 정점을 살펴야 하는 구간으로 해석됩니다.`;
-        para2 = `지금은 성급한 일괄 정리보다 핵심 보유 유지와 분할 익절 준비가 더 적합한 흐름입니다.`;
-        keyInsight = `"일괄 정리보다 단계적 익절의 기준이 중요합니다"`;
-      } else {
-        para1 = `현재 흐름은 명확한 방향보다 신호 검증이 우선되는 구간으로 해석됩니다.`;
-        para2 = `지금은 한쪽 결단보다 단계적 정리와 신호 검증이 안정적인 선택입니다.`;
-        keyInsight = `"한쪽 결단보다 신호 검증의 단계가 먼저입니다"`;
-      }
-    } else {
-      if (signal === "SELL") {
-        para1 = `현재 흐름은 진입보다 관망이 우선되는 구간으로 해석됩니다.`;
-        para2 = `지금은 무리한 진입보다 객관적 신호 확인 후 대응하는 전략이 더 적합한 흐름입니다.`;
-        keyInsight = `"점수보다 카드 본질의 신호 확인이 먼저입니다"`;
-      } else if (signal === "BUY") {
-        para1 = `현재 흐름은 분할 진입 흐름이 유효한 구간으로 해석됩니다.`;
-        para2 = `지금은 일괄 진입보다 분할 접근으로 추세를 따라가는 전략이 더 적합한 흐름입니다.`;
-        keyInsight = `"일괄 진입보다 분할 접근의 기준이 안정적입니다"`;
-      } else {
-        para1 = `현재 흐름은 신호 검증이 우선되는 균형 구간으로 해석됩니다.`;
-        para2 = `지금은 즉각 행동보다 신호 검증 후 단계적으로 대응하는 접근이 안정적인 선택입니다.`;
-        keyInsight = `"즉각 행동보다 신호 검증의 단계가 먼저입니다"`;
-      }
-    }
+    if (signal === 'BUY')
+      keyInsight = '카드 흐름이 새로운 시도와 확장을 가리킵니다';
+    else if (signal === 'SELL')
+      keyInsight = '카드 흐름이 정리와 내면 회복을 가리킵니다';
+    else
+      keyInsight = '카드 흐름이 자기 기준 정립 후 행동을 가리킵니다';
   }
 
-  // ─ 면책 (도메인별 차별화 — 사장님 V25.14.2 안 보존) ─
-  const disclaimer = (domain === "stock" || domain === "crypto")
-    ? `※ 본 신탁은 흐름 해석을 돕기 위한 참고 콘텐츠입니다. 투자 판단과 결과에 대한 책임은 사용자 본인에게 있습니다.`
-    : domain === "realestate"
-    ? `※ 본 신탁은 부동산 흐름 해석을 위한 참고 콘텐츠입니다. 실제 계약 및 투자 결정은 전문가 상담과 함께 신중히 판단하시기 바랍니다.`
-    : domain === "general"
-    ? `※ 본 신탁은 흐름 해석을 돕기 위한 참고 콘텐츠입니다. 중요한 결정은 개인 상황을 기준으로 신중히 판단하시기 바랍니다.`
-    : `※ 본 신탁은 흐름에 대한 참고 콘텐츠입니다. 실제 판단은 본인의 상황을 기준으로 신중히 판단하시기 바랍니다.`;
+  // 인과 문장 조립 (카드명 직접 인용)
+  const line1 = `${pastName}이/가 ${pastFlow}을/를 가리켰기 때문에 현재 흐름이 그 에너지에서 시작됐습니다.`;
+  const line2 = `${presentName}이/가 ${presentFlow} 흐름 속에 있어 지금의 시장·심리 방향이 형성되고 있습니다.`;
+  const line3 = `${futureName}이/가 ${futureFlow}을/를 향하기 때문에 앞으로의 흐름 방향이 결정되고 있습니다.`;
+  const keyLine = `👉 핵심: "${keyInsight}"`;
 
-  return `${para1} ${para2}\n\n👉 결론: ${keyInsight}\n\n${disclaimer}`;
+  return `${line1}
+${line2}
+${line3}
+${keyLine}
+
+${disclaimer}`;
 }
 
 
