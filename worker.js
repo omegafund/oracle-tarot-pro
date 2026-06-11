@@ -14557,11 +14557,52 @@ function buildLoveTiming(content, numerologyText, cards, loveSubType, prompt, re
     } catch (e) { /* 안전 */ }
   }
   
-  // [V203.13] reunion 서브타입 — timingNow를 "1주 거리두기" → 재회 관점으로 오버라이드
-  //   문제: "헤어진 지영이와 재회할 수 있을까?" 질문에 "최소 1주 거리두기" 출력 (썸 언어)
-  //   해결: reunion이면 타이밍 언어를 재회 가능성 중심으로 교체
-  let _timingNow = content.timing_now;
+  // [V203.13] timingNow/Next — let 선언 (다양화 블록 앞에 위치해야 함)
+  let _timingNow  = content.timing_now;
   let _timingNext = content.timing_next;
+
+  // timingNow/Next 다양화 — 카드 해시 기반 표현 다양화
+  //   문제: close 카테고리 → "최소 1주 거리 두기" / maintain → "2~3일 후 자연스러운 접근" 고정 반복
+  if (cards && cards.length >= 2) {
+    const _ck = (cards[0]?.name||cards[0]||'') + (cards[1]?.name||cards[1]||'');
+    let _ch = 0;
+    for (let i = 0; i < _ck.length; i++) _ch = ((_ch << 5) - _ch + _ck.charCodeAt(i)) | 0;
+    const _ci = Math.abs(_ch) % 4;
+
+    // scoreCategory별 timingNow 4종
+    const _NOW_ADVANCE = [
+      '지금이 가장 좋은 타이밍입니다',
+      '오늘~내일 사이가 유리한 흐름입니다',
+      '지금 자연스럽게 다가가는 것이 적합합니다',
+      '현재 흐름이 접근에 열려 있는 구간입니다'
+    ];
+    const _NOW_MAINTAIN = [
+      '지금은 부드러운 접근이 가능한 단계입니다',
+      '조심스럽지만 연락이 가능한 시점입니다',
+      '서두르지 않으면 자연스럽게 이어질 수 있습니다',
+      '지금 흐름에서 조심스러운 시도가 가능합니다'
+    ];
+    const _NOW_CLOSE = [
+      '지금은 연락보다 거리를 두는 것이 유리합니다',
+      '상대가 스스로 정리할 공간이 필요한 시점입니다',
+      '지금 연락은 오히려 거리감을 키울 수 있습니다',
+      '잠시 물러서는 것이 관계를 지키는 방법입니다'
+    ];
+    const _NOW_REALIGN = [
+      '지금은 접근보다 내면 정리가 먼저입니다',
+      '방향을 바꾸기 전 스스로를 돌아볼 시점입니다',
+      '새로운 방식으로 접근하기 전 준비가 필요합니다',
+      '지금은 관계보다 자기 회복에 집중해야 합니다'
+    ];
+
+    const _cat = content.timing_now;
+    if (_cat && _cat.includes('가장 좋은')) _timingNow = _NOW_ADVANCE[_ci];
+    else if (_cat && (_cat.includes('부드러운') || _cat.includes('조심스러운'))) _timingNow = _NOW_MAINTAIN[_ci];
+    else if (_cat && (_cat.includes('타이밍이 아닙') || _cat.includes('거리 두기'))) _timingNow = _NOW_CLOSE[_ci];
+    else if (_cat && _cat.includes('당분간')) _timingNow = _NOW_REALIGN[_ci];
+  }
+
+  // reunion 서브타입 — 재회 관점으로 추가 오버라이드
   if (loveSubType === 'reunion') {
     const _REUNION_TIMING = [
       '지금은 상대가 감정을 정리하는 시간이 필요합니다',
@@ -23205,6 +23246,11 @@ The Devil 예시:
 - "유저님의 진입 에너지는~" ❌
 - "유저님 내면이~" ❌
 - 닉네임 2회 이상 반복 ❌
+- ━━━━━━━━ 구분선 출력 ❌ (시스템 프롬프트의 구분선을 응답에 그대로 복사 절대 금지)
+- "제우스의 신탁", "ZEUS ORACLE" 헤더 텍스트 출력 ❌ (UI가 자동 표시)
+- "주식 실전 매도/매수 신탁", "📈 주식 실전" 섹션 헤더 ❌
+- "[종목명]에 대한 신탁은 다음과 같습니다" 도입부 ❌
+- 응답 시작 전 인사말·도입부 어떤 것도 ❌ — 바로 "과거"부터 시작
 
 🎯 드라마틱한 표현은 자유롭게 사용하라:
 - 카드 이미지 묘사 (질주하는 기사, 눈보라 속 방랑자 등)
@@ -24383,7 +24429,24 @@ ${metrics.cryptoSubtype === 'crypto_buy' ? `
           let _streamOk = false;
           try {
             const geminiJson = await geminiResponse.json();
-            const geminiText = geminiJson?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+            let geminiText = geminiJson?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+            // [V203.13] Gemini가 시스템 구분선/헤더를 응답에 포함시키는 버그 필터링
+            //   증상: "━━━━ 제우스의 신탁 ZEUS ORACLE 두산중공업에 대한 신탁은 다음과 같습니다 ━━━━"
+            //   원인: masterPrompt의 ━━━━ 구분선을 Gemini가 응답에 모방 출력
+            geminiText = geminiText
+              .replace(/━+[\s\S]*?━+\s*
+?/g, '')           // ━━━ 블록 전체 제거
+              .replace(/제우스의 신탁\s*
+?ZEUS\s*ORACLE\s*
+?/gi, '')  // 헤더 제거
+              .replace(/[^
+]*에 대한 신탁은 다음과 같습니다[^
+]*
+?/g, '') // 도입부 제거
+              .replace(/📈\s*주식 실전 (매도|매수) 신탁[^
+]*
+?/g, '') // 섹션 헤더 제거
+              .trim();
             const textPayload = JSON.stringify({ _type: 'text', text: geminiText });
             await writer.write(encoder.encode(`data: ${textPayload}\n\n`));
             await writer.write(encoder.encode(`data: [DONE]\n\n`));
