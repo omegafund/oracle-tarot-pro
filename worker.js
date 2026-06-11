@@ -1297,11 +1297,46 @@ function getCardSentence(card, isReversed, position, promptText) {
 
   if (pool && pool[position]) {
     const sentences = pool[position];
-    const base = sentences[idx % sentences.length];
-    return isReversed ? `역방향 에너지로, ${base}` : base;
+    // [V203.13] 역방향: 정방향 문장을 부정/반전 접두어 없이 별도 해석
+    //   기존: "역방향 에너지로, 꾸준한 노력이 쌓였던 때였습니다" (정방향 의미 그대로)
+    //   개선: 역방향 = 에너지가 막히거나 지연/왜곡된 상태 → 다른 문장 인덱스 사용
+    if (isReversed) {
+      // 역방향은 pool에서 다른 인덱스 선택 (정방향과 겹치지 않게)
+      const revIdx = (idx + Math.floor(sentences.length / 2)) % sentences.length;
+      const revBase = sentences[revIdx];
+      // 역방향 의미 변환: "~됐습니다" → "~이 지연되거나 막혔습니다" 형태
+      return revBase.replace(/됐습니다\.$/, '이 막히거나 지연됐습니다.')
+                    .replace(/었습니다\.$/, '이 왜곡됐습니다.')
+                    .replace(/있습니다\.$/, '이 억제되고 있습니다.')
+                    .replace(/니다\.$/, '이 역행하고 있습니다.');
+    }
+    return sentences[idx % sentences.length];
   }
 
-  // 폴백: CARD_TAG 기반 자동 생성 (조사 문제 방지 — tags[0] 직접 삽입 대신 문장 패턴 사용)
+  // [V203.13] 폴백 1: CARD_LOVE_PHRASE 역방향 의미 우선 활용 (연애 도메인)
+  //   High Priestess 역방향 → "숨겨진 거리감" (CARD_LOVE_PHRASE.reversed 활용)
+  const _lovePhrase = CARD_LOVE_PHRASE && CARD_LOVE_PHRASE[typeof card === 'string' ? card : (card?.name||'')];
+  if (_lovePhrase && isReversed && _lovePhrase.reversed) {
+    const _revMeaning = _lovePhrase.reversed;
+    const _revTemplates = {
+      past:    [`과거에는 ${_revMeaning}의 흐름이 관계에 영향을 미쳤습니다.`,
+                `${_revMeaning}의 에너지가 초기 관계 방향을 형성했습니다.`,
+                `과거 ${_revMeaning}의 흐름 속에서 관계가 시작됐습니다.`,
+                `${_revMeaning}이 지나온 관계의 기반에 남아 있습니다.`],
+      present: [`지금은 ${_revMeaning}의 에너지가 관계를 지배하고 있습니다.`,
+                `현재 ${_revMeaning}의 흐름이 두 사람 사이를 규정합니다.`,
+                `${_revMeaning}이 현재 관계의 핵심 변수입니다.`,
+                `지금 이 순간 ${_revMeaning}의 에너지가 작동하고 있습니다.`],
+      future:  [`앞으로 ${_revMeaning}의 흐름을 직면해야 하는 시점이 옵니다.`,
+                `${_revMeaning}을 해소하는 것이 다음 단계의 핵심이 됩니다.`,
+                `앞으로 ${_revMeaning}의 과제가 관계 방향을 결정합니다.`,
+                `${_revMeaning}을 넘어서는 것이 관계 진전의 조건입니다.`]
+    };
+    const _rArr = _revTemplates[position] || _revTemplates.present;
+    return _rArr[idx % _rArr.length];
+  }
+
+  // 폴백 2: CARD_TAG 기반 자동 생성 (조사 문제 방지 — tags[0] 직접 삽입 대신 문장 패턴 사용)
   const tags = getCardTags(card, isReversed);
   const t0 = tags[0];
   const t1 = tags[1] || t0;
@@ -2422,14 +2457,50 @@ function buildCriticalInterpretation(cards, revFlags, domain, intent, subType) {
       return '카드 흐름이 홀딩 유지와 관망을 가리킵니다';
     }
     if (domain === 'stock' || domain === 'crypto') {
+      // [V203.13] "카드 3장이 ~ 가리킵니다" 반복 패턴 제거 — 카드 해시로 다양화
+      const _pastName = typeof cards[0] === 'string' ? cards[0] : (cards[0]?.name || '');
+      let _h = 0;
+      for (let i = 0; i < _pastName.length; i++) _h = ((_h << 5) - _h + _pastName.charCodeAt(i)) | 0;
+      const _v = Math.abs(_h) % 4;
+
       if (intent === 'sell') {
-        if (signal === 'SELL') return '카드 3장이 단계적 정리 흐름을 가리킵니다';
-        if (signal === 'BUY')  return '카드 흐름이 보유 유지에 우호적이나 정점 점검이 필요합니다';
-        return '카드 3장이 신호 확인 후 분할 익절을 가리킵니다';
+        const _sellInsights = [
+          '현재 카드 흐름은 단계적 비중 축소를 시사합니다',
+          '카드 조합이 정리 구간 진입을 가리키고 있습니다',
+          '에너지 흐름상 포지션 점검이 우선입니다',
+          '카드 방향이 단계적 익절 전략과 일치합니다'
+        ];
+        const _holdInsights = [
+          '카드 흐름이 보유 유지에 우호적이나 정점 경계가 필요합니다',
+          '현재 흐름은 유지와 관망 사이의 판단을 요구합니다',
+          '카드 조합이 성급한 청산보다 신호 확인을 권합니다',
+          '에너지 방향이 보유 유지 쪽에 무게를 두고 있습니다'
+        ];
+        if (signal === 'SELL') return _sellInsights[_v];
+        if (signal === 'BUY')  return _holdInsights[_v];
+        return ['신호 확인 후 분할 익절이 안정적인 흐름입니다',
+                '카드 흐름이 성급한 전량 청산보다 단계적 접근을 가리킵니다',
+                '현재 에너지는 일부 비중 축소와 관망을 동시에 권합니다',
+                '카드 조합이 익절 기준 재설정을 시사합니다'][_v];
       } else {
-        if (signal === 'BUY')  return '카드 3장이 분할 진입에 우호적인 흐름을 가리킵니다';
-        if (signal === 'SELL') return '카드 3장이 진입 보류와 신호 확인을 가리킵니다';
-        return '카드 3장이 확인 후 단계적 접근을 가리킵니다';
+        const _buyInsights = [
+          '현재 카드 에너지가 분할 진입에 우호적입니다',
+          '카드 흐름이 단계적 진입 전략과 방향이 일치합니다',
+          '에너지 방향이 점진적 매수 접근을 지지합니다',
+          '카드 조합이 신중한 분할 진입 구간임을 시사합니다'
+        ];
+        const _waitInsights = [
+          '현재 카드 흐름은 신호 확인이 먼저임을 가리킵니다',
+          '카드 조합이 진입 전 추가 검증을 요구합니다',
+          '에너지 방향이 서두르지 않는 관망을 권하고 있습니다',
+          '카드 흐름이 확인 후 단계적 접근을 지지합니다'
+        ];
+        if (signal === 'BUY')  return _buyInsights[_v];
+        if (signal === 'SELL') return _waitInsights[_v];
+        return ['카드 에너지가 확인 후 소량 테스트 진입을 가리킵니다',
+                '흐름 방향이 명확해지기 전 분할 접근이 적합합니다',
+                '카드 조합이 섣부른 전량 진입보다 단계적 접근을 권합니다',
+                '현재 에너지는 검증 후 진입 전략과 방향이 맞습니다'][_v];
       }
     }
     if (signal === 'BUY')  return '카드 흐름이 새로운 시도와 확장을 가리킵니다';
@@ -14453,12 +14524,38 @@ function buildLoveTiming(content, numerologyText, cards, loveSubType, prompt, re
     } catch (e) { /* 안전 */ }
   }
   
+  // [V203.13] reunion 서브타입 — timingNow를 "1주 거리두기" → 재회 관점으로 오버라이드
+  //   문제: "헤어진 지영이와 재회할 수 있을까?" 질문에 "최소 1주 거리두기" 출력 (썸 언어)
+  //   해결: reunion이면 타이밍 언어를 재회 가능성 중심으로 교체
+  let _timingNow = content.timing_now;
+  let _timingNext = content.timing_next;
+  if (loveSubType === 'reunion') {
+    const _REUNION_TIMING = [
+      '지금은 상대가 감정을 정리하는 시간이 필요합니다',
+      '지금 당장의 재접촉보다 관계 원인 파악이 먼저입니다',
+      '상대의 감정 흐름을 살피며 자연스러운 기회를 기다리는 시점입니다',
+      '지금은 연락보다 상대가 스스로 돌아볼 공간을 주는 것이 중요합니다'
+    ];
+    const _REUNION_NEXT = [
+      '상대의 반응 신호가 포착될 때 자연스럽게 접근하는 것이 유리합니다',
+      '관계 원인이 정리된 후 진정성 있는 접근이 더 효과적입니다',
+      '서두르지 않으면 흐름이 스스로 기회를 만들어줄 수 있습니다',
+      '상대가 먼저 신호를 보낼 때까지 여유를 갖는 것이 재회 확률을 높입니다'
+    ];
+    const cardKey = (cards?.[0]?.name || '') + (cards?.[1]?.name || '');
+    let h = 0;
+    for (let i = 0; i < cardKey.length; i++) h = ((h << 5) - h + cardKey.charCodeAt(i)) | 0;
+    const _ri = Math.abs(h) % _REUNION_TIMING.length;
+    _timingNow  = _REUNION_TIMING[_ri];
+    _timingNext = _REUNION_NEXT[_ri];
+  }
+
   return {
     shortTerm: content.short_term, shortFlow: content.short_flow,
     midTerm: content.mid_term, midFlow: content.mid_flow,
     longTerm: content.long_term, longFlow: content.long_flow,
     criticalTiming: critTiming,
-    timingNow: content.timing_now, timingNext: content.timing_next,
+    timingNow: _timingNow, timingNext: _timingNext,
     numerology: numerologyText || '안정적인 시간대',
     coreKey: timingKey_text
   };
