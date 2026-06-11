@@ -22948,7 +22948,7 @@ export default {
         // ══════════════════════════════════════════════════════════════
 
         // [V203.9] gemini-2.5-flash 복귀 — 2.0-flash deprecated(404) 확인, Tier1 유료 키로 503 무관
-        const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${env.GEMINI_API_KEY}`;
+        const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:streamGenerateContent?alt=sse&key=${env.GEMINI_API_KEY}`;
 
         const txt = (prompt || "").toLowerCase();
         const leverageKeywords = ["레버리지","3배","2배","인버스"];
@@ -24762,23 +24762,38 @@ ${metrics.cryptoSubtype === 'crypto_buy' ? `
         (async () => {
           let _streamOk = false;
           try {
-            const geminiJson = await geminiResponse.json();
-            let geminiText = geminiJson?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+            // [V203.14] streamGenerateContent SSE → 청크 수신 → 전체 텍스트 조립 후 단일 이벤트 전송
+            //   과거 generateContent(JSON) 방식은 빈 응답 반환 빈발 → 무한 로딩
+            //   streamGenerateContent는 구글 권고 방식 — 503/빈 응답 안정성 높음
+            const sseReader = geminiResponse.body.getReader();
+            const sseDecoder = new TextDecoder();
+            let sseBuffer = '';
+            let geminiText = '';
 
-            // [V203.14] 빈 응답 감지 — candidates 없거나 text 빈 경우 폴백 처리
-            //   증상: geminiText = '' → fullText 누적 안 됨 → 클라이언트 로딩에서 멈춤
-            //   원인: 안전 필터, 빈 응답, API 오류 등
-            if (!geminiText || geminiText.trim().length < 10) {
-              const _finishReason = geminiJson?.candidates?.[0]?.finishReason || 'UNKNOWN';
-              const _fallback = `신탁의 에너지가 일시적으로 흐려지고 있습니다. (${_finishReason})\n잠시 후 다시 시도해주세요.`;
-              const textPayload = JSON.stringify({ _type: 'text', text: _fallback });
-              await writer.write(encoder.encode(`data: ${textPayload}\n\n`));
-              await writer.write(encoder.encode(`data: [DONE]\n\n`));
-              _streamOk = true;
-              return;
+            while (true) {
+              const { done, value } = await sseReader.read();
+              if (done) break;
+              sseBuffer += sseDecoder.decode(value, { stream: true });
+              const sseLines = sseBuffer.split('\n');
+              sseBuffer = sseLines.pop();
+              for (const sseLine of sseLines) {
+                if (!sseLine.startsWith('data: ')) continue;
+                const sseData = sseLine.slice(6).trim();
+                if (sseData === '[DONE]') break;
+                try {
+                  const sseJson = JSON.parse(sseData);
+                  const chunk = sseJson?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+                  if (chunk) geminiText += chunk;
+                } catch(_) {}
+              }
             }
 
-            // [V203.13] Gemini가 시스템 구분선/헤더를 응답에 포함시키는 버그 필터링
+            // 빈 응답 폴백
+            if (!geminiText || geminiText.trim().length < 10) {
+              geminiText = '신탁의 에너지가 일시적으로 흐려지고 있습니다.\n잠시 후 다시 시도해주세요.';
+            }
+
+            // [V203.13] 구분선/헤더 필터링
             geminiText = geminiText
               .replace(/\u2501+[\u2501\s]+/g, ' ')
               .replace(/제우스의 신탁[^\n]*ZEUS[^\n]*ORACLE[^\n]*/gi, '')
@@ -24790,10 +24805,9 @@ ${metrics.cryptoSubtype === 'crypto_buy' ? `
             await writer.write(encoder.encode(`data: ${textPayload}\n\n`));
             await writer.write(encoder.encode(`data: [DONE]\n\n`));
             _streamOk = true;
-            // ✅ 완료 → 사용량 확정 차감
             await commitZeusUsage(env, _shieldResult);
           } catch (e) {
-            // [V203.14] catch에서도 [DONE] 전송 — 클라이언트 무한 로딩 방지
+            // catch에서도 [DONE] 전송 — 클라이언트 무한 로딩 방지
             try {
               const _errMsg = '신탁 연결 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.';
               await writer.write(encoder.encode(`data: ${JSON.stringify({ _type: 'text', text: _errMsg })}\n\n`));
