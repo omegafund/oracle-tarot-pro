@@ -9547,20 +9547,24 @@ function buildStoryBridge(sajuData, v54DeepInsight, v54EnergyGuide) {
     ? v54DeepInsight.psychePattern
     : null;
 
-  // 3) 용신 실천 힌트 — v54EnergyGuide.direction 우선, 없으면 오행별 기본값
-  const practiceHint = (v54EnergyGuide && v54EnergyGuide.direction)
-    ? v54EnergyGuide.direction
-    : { '수': '멈추고 방향을 재정비하는 것', '목': '새 흐름에 첫 발을 내딛는 것',
+  // 3) 용신 실천 힌트 — [V203.14] 긴 문장(direction)과 짧은 구(기본값) 분리 처리
+  //   버그: direction이 "…중요합니다" 긴 문장일 때 "이 가장 자연스러운 방향입니다" 붙어 비문
+  const _shortHint = { '수': '멈추고 방향을 재정비하는 것', '목': '새 흐름에 첫 발을 내딛는 것',
         '화': '연결하고 표현하는 것', '토': '기반을 다지고 중심을 잡는 것',
         '금': '불필요한 것을 덜어내고 결단하는 것' }[yongEl] || '흐름을 정돈하는 것';
+  const _longDirection = (v54EnergyGuide && v54EnergyGuide.direction) ? v54EnergyGuide.direction : null;
 
-  // 4) 서사 조립: 시기 → 내면 흐름 → 실천
+  // 4) 서사 조립: 시기 → 실천
+  //   [V203.14] psycheLayer 삽입 제거 — "🌟 심리 작동 패턴" 섹션에서 동일 텍스트 별도 노출되어 중복
   let bridge = `지금 명식은 ${phaseNarrative}에 접어든 구간입니다.\n`;
   bridge += `${phaseAdvice}.\n\n`;
-  if (psycheLayer) {
-    bridge += `${psycheLayer}\n\n`;
+  if (_longDirection) {
+    // 긴 문장: 자연스럽게 도입만 붙임 (조사 결합 X)
+    bridge += `이 시기에 ${elName} 기운을 실생활에서 활용한다면 —\n${_longDirection}`;
+  } else {
+    // 짧은 구: 조사 결합 가능
+    bridge += `이 시기에 ${elName} 기운을 실생활에서 활용한다면,\n${_shortHint}이 가장 자연스러운 방향입니다.`;
   }
-  bridge += `이 시기에 ${elName} 기운을 실생활에서 활용한다면,\n${practiceHint}이 가장 자연스러운 방향입니다.`;
 
   return bridge;
 }
