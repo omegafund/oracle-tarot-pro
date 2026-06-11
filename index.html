@@ -8219,10 +8219,9 @@ console.log('══════════════════════�
                                      style="${revFlags[i] ? 'transform: rotate(180deg);' : ''}"
                                      onerror="this.onerror=null;this.src='${BASE_URL}back.jpg'">
                                 <div class="result-card-label">${card.name}</div>
-                                ${revFlags[i] ? '<div style="margin-top:3px; display:inline-block; background:rgba(231,76,60,0.85); color:#fff; font-size:0.62rem; font-weight:800; padding:2px 7px; border-radius:10px; letter-spacing:0.05em;">역방향</div>' : ''}
                             </div>
+                            ${revFlags[i] ? '<div style="margin-top:3px;text-align:center;"><span style="background:rgba(192,57,43,0.9);color:#fff;font-size:0.6rem;font-weight:900;padding:2px 8px;border-radius:8px;letter-spacing:0.1em;">REVERSED</span></div>' : ''}
                             <div class="result-position-label">${positions[i]}</div>
-                        </div>`).join('');
                 }
                 const rv = document.getElementById('result-view');
                 if (rv) {
@@ -8561,10 +8560,9 @@ function showResultView(question, streamPromise) {
                      style="${revFlags[i] ? 'transform: rotate(180deg);' : ''}"
                      onerror="this.onerror=null;this.src='${BASE_URL}back.jpg'">
                 <div class="result-card-label">${card.name}</div>
-            ${revFlags[i] ? '<div style="margin-top:3px; display:inline-block; background:rgba(231,76,60,0.85); color:#fff; font-size:0.62rem; font-weight:800; padding:2px 7px; border-radius:10px; letter-spacing:0.05em;">역방향</div>' : ''}
             </div>
+            ${revFlags[i] ? '<div style="margin-top:3px;text-align:center;"><span style="background:rgba(192,57,43,0.9);color:#fff;font-size:0.6rem;font-weight:900;padding:2px 8px;border-radius:8px;letter-spacing:0.1em;">REVERSED</span></div>' : ''}
             <div class="result-position-label">${positions[i]}</div>
-        </div>`).join('');
 
     const rv = document.getElementById('result-view');
     rv.style.display = 'flex';
