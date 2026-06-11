@@ -20491,18 +20491,16 @@ function renderSajuResult(data) {
                     <span style="color:#E8C766; font-size:0.92rem; font-weight:800;">🌳 당신 안에 가장 강한 기운</span>
                 </div>
 
-                <!-- 일주 물상 — 도입문구 방식 (소제목 삭제) -->
-                <div style="color:rgba(255,255,255,0.92); font-size:0.85rem; line-height:1.7; margin-bottom:12px;">
-    <span style="color:#FFE08A; font-weight:700;">당신을 한마디로 그리면, </span>${text.coreNarrative?.essence || text.dayEssence}
-</div>
-
-<div style="color:rgba(255,255,255,0.88); font-size:0.82rem; line-height:1.75; margin-bottom:12px; border-left:2px solid rgba(255,224,138,0.4); padding-left:10px;">
-    ${text.coreNarrative?.behavior || text.balancePhrase}
-</div>
-
-<div style="color:rgba(255,255,255,0.85); font-size:0.82rem; line-height:1.75; margin-bottom:12px; border-left:2px solid rgba(255,224,138,0.25); padding-left:10px;">
-    ${text.coreNarrative?.relationship || text.strengthPhrase}
-</div>
+                <!-- [V203.14] 일주/오행/신강신약 3문단 — 통일 스타일 (좌측 정렬, 일관된 보더) -->
+                <div style="color:rgba(255,255,255,0.92); font-size:0.84rem; line-height:1.75; margin-bottom:12px; text-align:left; word-break:keep-all;">
+                    <span style="color:#FFE08A; font-weight:700;">당신을 한마디로 그리면, </span>${text.coreNarrative?.essence || text.dayEssence}
+                </div>
+                <div style="color:rgba(255,255,255,0.88); font-size:0.84rem; line-height:1.75; margin-bottom:12px; border-left:2px solid rgba(255,224,138,0.35); padding-left:10px; text-align:left; word-break:keep-all;">
+                    ${text.coreNarrative?.behavior || text.balancePhrase}
+                </div>
+                <div style="color:rgba(255,255,255,0.85); font-size:0.84rem; line-height:1.75; margin-bottom:12px; border-left:2px solid rgba(255,224,138,0.35); padding-left:10px; text-align:left; word-break:keep-all;">
+                    ${text.coreNarrative?.relationship || text.strengthPhrase}
+                </div>
                 <!-- C-1: 본질 결 → 골드 말풍선 (도입문구 = 제목, 소제목 삭제) -->
                 ${text.deepInsight && text.deepInsight.essenceCore ? (() => {
                     const _id = 'ztess_' + Math.random().toString(36).slice(2,7);
@@ -20519,9 +20517,9 @@ function renderSajuResult(data) {
                 </div>`;
                 })() : ''}
 
-                <!-- 오행 균형 — 도입문구 방식 -->
-                <div style="color:rgba(255,255,255,0.92); font-size:0.85rem; line-height:1.7; margin-bottom:12px;">
-                    <span style="color:#FFE08A; font-weight:700;">당신의 에너지 균형은 </span>${text.balancePhrase}
+                <!-- [V203.14] 오행 균형 — 인라인 한 줄, 마침표 추가 -->
+                <div style="color:rgba(255,255,255,0.85); font-size:0.82rem; line-height:1.6; margin-bottom:8px; text-align:left; word-break:keep-all;">
+                    <span style="color:#FFE08A; font-weight:700;">당신의 에너지 균형 — </span>${text.balancePhrase}
                 </div>
 
                 <!-- C-1: 에너지 작동 방식 → 골드 말풍선 -->
@@ -20635,8 +20633,10 @@ ${_oracle.storyBridge ? `
                             </span>
                         </div>
                         ${_v54_psyche ? `
-                        <div style="color:rgba(255,255,255,0.88); font-size:0.82rem; line-height:1.75; white-space:pre-line; padding:4px 0;">
-                            ${_v54_psyche}
+                        <div style="color:rgba(255,255,255,0.88); font-size:0.84rem; line-height:1.75; padding:4px 0; text-align:left; word-break:keep-all;">
+                            ${_v54_psyche.split('\n\n').map(para => para.trim()).filter(Boolean).map(para =>
+                                '<p style="margin:0 0 10px 0;">' + para.replace(/\n/g, ' ') + '</p>'
+                            ).join('')}
                         </div>
                         ` : `
                         ${_v46_signals.signals.map(sig => {
@@ -21922,7 +21922,24 @@ ${cleanContent}
                     console.log('[V200.7.5] 워커 응답 버전:', v._meta.version, v._cached ? '(cached)' : '');
                     // ❌ 사용자 화면에 노출 안 함 (사장님 명령)
                 }
-                
+
+                // [V203.14] 운명의 한 문장 — 사주 결과 맨 마지막
+                const _destPhrase = v.pro?.destinyPhrase || v.destinyPhrase || null;
+                if (_destPhrase) {
+                    html += `
+                    <div style="margin:24px 0 8px; padding:20px 18px;
+                                background:linear-gradient(135deg, rgba(201,162,39,0.12), rgba(201,162,39,0.04));
+                                border:1.5px solid rgba(201,162,39,0.5);
+                                border-radius:14px; text-align:center;">
+                        <div style="color:rgba(232,199,102,0.7); font-size:0.72rem; font-weight:800;
+                                    letter-spacing:0.15em; margin-bottom:12px;">✦ 운명의 한 문장 ✦</div>
+                        <div style="color:rgba(255,255,255,0.92); font-size:0.88rem; line-height:1.8;
+                                    font-weight:500; word-break:keep-all; text-align:left;">
+                            ${_destPhrase}
+                        </div>
+                    </div>`;
+                }
+
                 return html;
             })() : ''}
 
