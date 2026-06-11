@@ -17153,6 +17153,14 @@ async function runSajuOracle() {
         return;
     }
     window.isProcessing = true;
+    // [V203.14] 안전 타이머 — 60초 후 isProcessing 강제 해제 (무한잠금 방지)
+    const _sajuProcessingTimer = setTimeout(() => {
+        if (window.isProcessing) {
+            window.isProcessing = false;
+            hideSajuLoadingScreen();
+            console.warn('[V203.14] isProcessing 강제 해제 (60초 타임아웃)');
+        }
+    }, 60000);
     
     const calendar = document.querySelector('input[name="sajuCalendar"]:checked')?.value || 'solar';
     const year = parseInt(document.getElementById('sajuYear').value);
@@ -17432,8 +17440,13 @@ async function runSajuOracle() {
             console.warn('사주 입력 저장 실패 (localStorage 미지원?):', e);
         }
 
+        // [V203.14] 사주 fetch 타임아웃 — 90초 (Gemini 포함 충분한 시간)
+        const _sajuController = new AbortController();
+        const _sajuTimeout = setTimeout(() => _sajuController.abort(), 90000);
+        
         const response = await fetch(`${SAJU_API}/saju/oracle`, {
             method: 'POST',
+            signal: _sajuController.signal,
             headers: { 
                 'Content-Type': 'application/json',
                 'Accept': 'application/json'  // [V31 #125] JSON 명시 요구
@@ -17454,6 +17467,7 @@ async function runSajuOracle() {
             })
         });
 
+        clearTimeout(_sajuTimeout); // 타임아웃 해제
         // ★★★ [V202.3 결함 ② 수정] 사용자 입력값 보존 ★★★
         //   사장님 라이브 결함: "남/여 양력음력 1975.06.05 06:25 표시 안 됨"
         //   원인: window._sajuInput 미저장 → 결과 렌더링 시 입력값 못 찾음
