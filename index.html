@@ -17153,14 +17153,6 @@ async function runSajuOracle() {
         return;
     }
     window.isProcessing = true;
-    // [V203.14] 안전 타이머 — 60초 후 isProcessing 강제 해제 (무한잠금 방지)
-    const _sajuProcessingTimer = setTimeout(() => {
-        if (window.isProcessing) {
-            window.isProcessing = false;
-            hideSajuLoadingScreen();
-            console.warn('[V203.14] isProcessing 강제 해제 (60초 타임아웃)');
-        }
-    }, 60000);
     
     const calendar = document.querySelector('input[name="sajuCalendar"]:checked')?.value || 'solar';
     const year = parseInt(document.getElementById('sajuYear').value);
@@ -17440,13 +17432,8 @@ async function runSajuOracle() {
             console.warn('사주 입력 저장 실패 (localStorage 미지원?):', e);
         }
 
-        // [V203.14] 사주 fetch 타임아웃 — 90초 (Gemini 포함 충분한 시간)
-        const _sajuController = new AbortController();
-        const _sajuTimeout = setTimeout(() => _sajuController.abort(), 90000);
-        
         const response = await fetch(`${SAJU_API}/saju/oracle`, {
             method: 'POST',
-            signal: _sajuController.signal,
             headers: { 
                 'Content-Type': 'application/json',
                 'Accept': 'application/json'  // [V31 #125] JSON 명시 요구
@@ -17467,7 +17454,6 @@ async function runSajuOracle() {
             })
         });
 
-        clearTimeout(_sajuTimeout); // 타임아웃 해제
         // ★★★ [V202.3 결함 ② 수정] 사용자 입력값 보존 ★★★
         //   사장님 라이브 결함: "남/여 양력음력 1975.06.05 06:25 표시 안 됨"
         //   원인: window._sajuInput 미저장 → 결과 렌더링 시 입력값 못 찾음
@@ -20507,47 +20493,44 @@ function renderSajuResult(data) {
                     <span style="color:#E8C766; font-size:0.92rem; font-weight:800;">🌳 당신 안에 가장 강한 기운</span>
                 </div>
 
-                <!-- [V203.14] 일주/오행/신강신약 3문단 — 통일 스타일 (좌측 정렬, 일관된 보더) -->
-                <div style="color:rgba(255,255,255,0.92); font-size:0.84rem; line-height:1.75; margin-bottom:12px; border-left:2px solid rgba(255,224,138,0.35); padding-left:10px; text-align:left; word-break:keep-all;">
-                    <span style="color:#FFE08A; font-weight:700;">당신을 한마디로 그리면, </span>${text.coreNarrative?.essence || text.dayEssence}
-                </div>
-                <div style="color:rgba(255,255,255,0.88); font-size:0.84rem; line-height:1.75; margin-bottom:12px; border-left:2px solid rgba(255,224,138,0.35); padding-left:10px; text-align:left; word-break:keep-all;">
-                    ${text.coreNarrative?.behavior || text.balancePhrase}
-                </div>
-                <div style="color:rgba(255,255,255,0.85); font-size:0.84rem; line-height:1.75; margin-bottom:12px; border-left:2px solid rgba(255,224,138,0.35); padding-left:10px; text-align:left; word-break:keep-all;">
-                    ${text.coreNarrative?.relationship || text.strengthPhrase}
-                </div>
+                <!-- 일주 물상 — 도입문구 방식 (소제목 삭제) -->
+                <div style="color:rgba(255,255,255,0.92); font-size:0.85rem; line-height:1.7; margin-bottom:12px;">
+    <span style="color:#FFE08A; font-weight:700;">당신을 한마디로 그리면, </span>${text.coreNarrative?.essence || text.dayEssence}
+</div>
+
+<div style="color:rgba(255,255,255,0.88); font-size:0.82rem; line-height:1.75; margin-bottom:12px; border-left:2px solid rgba(255,224,138,0.4); padding-left:10px;">
+    ${text.coreNarrative?.behavior || text.balancePhrase}
+</div>
+
+<div style="color:rgba(255,255,255,0.85); font-size:0.82rem; line-height:1.75; margin-bottom:12px; border-left:2px solid rgba(255,224,138,0.25); padding-left:10px;">
+    ${text.coreNarrative?.relationship || text.strengthPhrase}
+</div>
                 <!-- C-1: 본질 결 → 골드 말풍선 (도입문구 = 제목, 소제목 삭제) -->
                 ${text.deepInsight && text.deepInsight.essenceCore ? (() => {
                     const _id = 'ztess_' + Math.random().toString(36).slice(2,7);
                     const _full = text.narrativeBlocks?.identity || text.deepInsight.essenceCore;
-                    // [V203.14] 중복 차단 — 상단 블록과 같은 텍스트면 아코디언 숨김
-                    //   원인: Gemini 서사 실패 시 상단(coreNarrative.essence)과 폴백(essenceCore)이 동일
-                    const _upper1 = text.coreNarrative?.essence || text.dayEssence || '';
-                    if (_full && _upper1 && _full.slice(0, 30) === _upper1.slice(0, 30)) return '';
+                    const _head = _full.length > 40 ? _full.slice(0, 38) + '…' : _full;
                     return `
                 <div class="zt-pro-bub" style="margin-bottom:12px;">
-                    <div class="zt-pro-tit" style="line-height:1.6;">🔮 당신이 원래 그런 사람인 이유</div>
+                    <div class="zt-pro-tit" style="line-height:1.6;">🔮 당신이 원래 그런 사람인 이유</div><div style="font-size:0.78rem;color:rgba(232,199,102,0.7);margin:-2px 0 6px 0;padding-left:2px;border-left:2px solid rgba(232,199,102,0.4);padding-left:8px;">${_head}</div>
                     <div class="zt-pro-more" onclick="var d=document.getElementById('${_id}');var o=d.classList.toggle('open');this.innerHTML=(o?'▲ 접기':'▼ 숨은 이야기 보기');">▼ 숨은 이야기 보기</div>
                     <div class="zt-pro-deep" id="${_id}">${_full}</div>
                 </div>`;
                 })() : ''}
 
-                <!-- [V203.14] 오행 균형 — 인라인 한 줄, 마침표 추가 -->
-                <div style="color:rgba(255,255,255,0.85); font-size:0.82rem; line-height:1.6; margin-bottom:8px; text-align:left; word-break:keep-all;">
-                    <span style="color:#FFE08A; font-weight:700;">당신의 에너지 균형 — </span>${text.balancePhrase}
+                <!-- 오행 균형 — 도입문구 방식 -->
+                <div style="color:rgba(255,255,255,0.92); font-size:0.85rem; line-height:1.7; margin-bottom:12px;">
+                    <span style="color:#FFE08A; font-weight:700;">당신의 에너지 균형은 </span>${text.balancePhrase}
                 </div>
 
                 <!-- C-1: 에너지 작동 방식 → 골드 말풍선 -->
                 ${text.deepInsight && text.deepInsight.energyOperation ? (() => {
                     const _id = 'zteng_' + Math.random().toString(36).slice(2,7);
                     const _full = text.narrativeBlocks?.lifePattern || text.deepInsight.energyOperation;
-                    // [V203.14] 중복 차단 — 상단 블록과 같은 텍스트면 아코디언 숨김
-                    const _upper2 = text.coreNarrative?.behavior || text.balancePhrase || '';
-                    if (_full && _upper2 && _full.slice(0, 30) === _upper2.slice(0, 30)) return '';
+                    const _head = _full.length > 40 ? _full.slice(0, 38) + '…' : _full;
                     return `
                 <div class="zt-pro-bub" style="margin-bottom:12px;">
-                    <div class="zt-pro-tit" style="line-height:1.6;">🌊 평생 반복되는 숙제</div>
+                    <div class="zt-pro-tit" style="line-height:1.6;">🌊 평생 반복되는 숙제</div><div style="font-size:0.78rem;color:rgba(232,199,102,0.7);margin:-2px 0 6px 0;padding-left:8px;border-left:2px solid rgba(232,199,102,0.4);">${_head}</div>
                     <div class="zt-pro-more" onclick="var d=document.getElementById('${_id}');var o=d.classList.toggle('open');this.innerHTML=(o?'▲ 접기':'▼ 숨은 이야기 보기');">▼ 숨은 이야기 보기</div>
                     <div class="zt-pro-deep" id="${_id}">${_full}</div>
                 </div>`;
@@ -20572,12 +20555,10 @@ function renderSajuResult(data) {
                 ${text.deepInsight && text.deepInsight.relationOperation ? (() => {
                     const _id = 'ztrel_' + Math.random().toString(36).slice(2,7);
                     const _full = text.narrativeBlocks?.relationship || text.deepInsight.relationOperation;
-                    // [V203.14] 중복 차단 — 상단 블록과 같은 텍스트면 아코디언 숨김
-                    const _upper3 = text.coreNarrative?.relationship || text.strengthPhrase || '';
-                    if (_full && _upper3 && _full.slice(0, 30) === _upper3.slice(0, 30)) return '';
+                    const _head = _full.length > 40 ? _full.slice(0, 38) + '…' : _full;
                     return `
                 <div class="zt-pro-bub" style="margin:12px 0;">
-                    <div class="zt-pro-tit" style="line-height:1.6;">🪞 사람들이 당신을 오해하는 이유</div>
+                    <div class="zt-pro-tit" style="line-height:1.6;">🪞 사람들이 당신을 오해하는 이유</div><div style="font-size:0.78rem;color:rgba(232,199,102,0.7);margin:-2px 0 6px 0;padding-left:8px;border-left:2px solid rgba(232,199,102,0.4);">${_head}</div>
                     <div class="zt-pro-more" onclick="var d=document.getElementById('${_id}');var o=d.classList.toggle('open');this.innerHTML=(o?'▲ 접기':'▼ 숨은 이야기 보기');">▼ 숨은 이야기 보기</div>
                     <div class="zt-pro-deep" id="${_id}">${_full}</div>
                 </div>`;
@@ -20649,10 +20630,8 @@ ${_oracle.storyBridge ? `
                             </span>
                         </div>
                         ${_v54_psyche ? `
-                        <div style="color:rgba(255,255,255,0.88); font-size:0.84rem; line-height:1.75; padding:4px 0; text-align:left; word-break:keep-all;">
-                            ${_v54_psyche.split('\n\n').map(para => para.trim()).filter(Boolean).map(para =>
-                                '<p style="margin:0 0 10px 0;">' + para.replace(/\n/g, ' ') + '</p>'
-                            ).join('')}
+                        <div style="color:rgba(255,255,255,0.88); font-size:0.82rem; line-height:1.75; white-space:pre-line; padding:4px 0;">
+                            ${_v54_psyche}
                         </div>
                         ` : `
                         ${_v46_signals.signals.map(sig => {
@@ -21938,28 +21917,7 @@ ${cleanContent}
                     console.log('[V200.7.5] 워커 응답 버전:', v._meta.version, v._cached ? '(cached)' : '');
                     // ❌ 사용자 화면에 노출 안 함 (사장님 명령)
                 }
-
-                // [V203.14] 운명의 한 문장 — 사주 결과 맨 마지막
-                // [V203.14] 운명의 한 문장 경로: data.pro (worker응답 직접), v.pro (v184_5 하위)
-                const _destPhrase = (data && data.pro && data.pro.destinyPhrase)
-                    || (v && v.pro && v.pro.destinyPhrase)
-                    || (v && v.destinyPhrase)
-                    || null;
-                if (_destPhrase) {
-                    html += `
-                    <div style="margin:24px 0 8px; padding:20px 18px;
-                                background:linear-gradient(135deg, rgba(201,162,39,0.12), rgba(201,162,39,0.04));
-                                border:1.5px solid rgba(201,162,39,0.5);
-                                border-radius:14px; text-align:center;">
-                        <div style="color:rgba(232,199,102,0.7); font-size:0.72rem; font-weight:800;
-                                    letter-spacing:0.15em; margin-bottom:12px;">✦ 운명의 한 문장 ✦</div>
-                        <div style="color:rgba(255,255,255,0.92); font-size:0.88rem; line-height:1.8;
-                                    font-weight:500; word-break:keep-all; text-align:left;">
-                            ${_destPhrase}
-                        </div>
-                    </div>`;
-                }
-
+                
                 return html;
             })() : ''}
 
