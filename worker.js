@@ -24745,7 +24745,21 @@ ${metrics.cryptoSubtype === 'crypto_buy' ? `
         //   하위 호환: 구 클라이언트는 _type 체크 없이도 JSON.parse 시
         //             chunk 접근에 실패 → catch(_){} 로 조용히 무시됨
         // ══════════════════════════════════════════════════════════════
-        const metricsPayload = { _type: "metrics", data: metrics };
+        // [V203.14] metrics 크기 제한 — 연애 metrics는 oracleV25_24 박스 포함으로 용량 큼
+        //   너무 크면 SSE 첫 이벤트 실패 → 연애 점사 안 나옴 현상
+        //   해결: metrics에서 불필요한 대용량 필드 제거 후 전송
+        let _metricsForSSE = metrics;
+        try {
+          const _raw = JSON.stringify(metrics);
+          if (_raw.length > 50000) {
+            // 대용량일 때 불필요 필드 제거 (클라이언트가 실제 사용 안 하는 것)
+            _metricsForSSE = Object.assign({}, metrics);
+            delete _metricsForSSE.zeusCardBodies;  // 카드 본문 — 클라이언트 미사용
+            delete _metricsForSSE.cardNarrative;   // 카드 서사 — 클라이언트 미사용
+            delete _metricsForSSE.cardDimensions;  // 5차원 — 클라이언트 미사용
+          }
+        } catch(_) { _metricsForSSE = metrics; }
+        const metricsPayload = { _type: "metrics", data: _metricsForSSE };
         const metricsSSE     = `data: ${JSON.stringify(metricsPayload)}\n\n`;
 
         const encoder = new TextEncoder();
