@@ -2907,7 +2907,7 @@ async function classifyByLLM(prompt, apiKey) {
   const _llmTimer = setTimeout(() => _llmController.abort(), 4000);
   try {
     // [V2.5] gemini-2.5-flash 유지 — Tier 1 키 사용 시 충분한 한도
-    const classifierUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:streamGenerateContent?alt=sse&key=${apiKey}`;
+    const classifierUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
     const res = await fetch(classifierUrl, {
       method: 'POST',
       signal: _llmController.signal,
@@ -24639,35 +24639,30 @@ ${metrics.cryptoSubtype === 'crypto_buy' ? `
         (async () => {
           let _streamOk = false;
           try {
-            // [V203.14] streamGenerateContent SSE → 청크 수신 → 전체 텍스트 조립 후 단일 이벤트 전송
-            //   과거 generateContent(JSON) 방식은 빈 응답 반환 빈발 → 무한 로딩
-            //   streamGenerateContent는 구글 권고 방식 — 503/빈 응답 안정성 높음
-            const sseReader = geminiResponse.body.getReader();
-            const sseDecoder = new TextDecoder();
-            let sseBuffer = '';
-            let geminiText = '';
+            // [V203.14] generateContent JSON 방식 — 안정성 우선
+            const geminiJson = await geminiResponse.json();
+            let geminiText = geminiJson?.candidates?.[0]?.content?.parts?.[0]?.text || '';
 
-            while (true) {
-              const { done, value } = await sseReader.read();
-              if (done) break;
-              sseBuffer += sseDecoder.decode(value, { stream: true });
-              const sseLines = sseBuffer.split('\n');
-              sseBuffer = sseLines.pop();
-              for (const sseLine of sseLines) {
-                if (!sseLine.startsWith('data: ')) continue;
-                const sseData = sseLine.slice(6).trim();
-                if (sseData === '[DONE]') break;
-                try {
-                  const sseJson = JSON.parse(sseData);
-                  const chunk = sseJson?.candidates?.[0]?.content?.parts?.[0]?.text || '';
-                  if (chunk) geminiText += chunk;
-                } catch(_) {}
-              }
-            }
-
-            // 빈 응답 폴백
+            // 빈 응답 시 재시도 1회
             if (!geminiText || geminiText.trim().length < 10) {
-              geminiText = '신탁의 에너지가 일시적으로 흐려지고 있습니다.\n잠시 후 다시 시도해주세요.';
+              const _retryR = await fetch(geminiUrl, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  contents: [{ parts: [{ text: masterPrompt }] }],
+                  generationConfig: { temperature: 0.75, topP: 0.95, topK: 40, maxOutputTokens: 8192 },
+                  safetySettings: [
+                    { category: "HARM_CATEGORY_HARASSMENT",        threshold: "BLOCK_NONE" },
+                    { category: "HARM_CATEGORY_HATE_SPEECH",       threshold: "BLOCK_NONE" },
+                    { category: "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold: "BLOCK_NONE" },
+                    { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_NONE" }
+                  ]
+                })
+              });
+              if (_retryR.ok) {
+                const _retryJson = await _retryR.json();
+                geminiText = _retryJson?.candidates?.[0]?.content?.parts?.[0]?.text || geminiText;
+              }
             }
 
             // [V203.13] 구분선/헤더 필터링
