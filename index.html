@@ -20492,7 +20492,7 @@ function renderSajuResult(data) {
                 </div>
 
                 <!-- [V203.14] 일주/오행/신강신약 3문단 — 통일 스타일 (좌측 정렬, 일관된 보더) -->
-                <div style="color:rgba(255,255,255,0.92); font-size:0.84rem; line-height:1.75; margin-bottom:12px; text-align:left; word-break:keep-all;">
+                <div style="color:rgba(255,255,255,0.92); font-size:0.84rem; line-height:1.75; margin-bottom:12px; border-left:2px solid rgba(255,224,138,0.35); padding-left:10px; text-align:left; word-break:keep-all;">
                     <span style="color:#FFE08A; font-weight:700;">당신을 한마디로 그리면, </span>${text.coreNarrative?.essence || text.dayEssence}
                 </div>
                 <div style="color:rgba(255,255,255,0.88); font-size:0.84rem; line-height:1.75; margin-bottom:12px; border-left:2px solid rgba(255,224,138,0.35); padding-left:10px; text-align:left; word-break:keep-all;">
@@ -21924,7 +21924,11 @@ ${cleanContent}
                 }
 
                 // [V203.14] 운명의 한 문장 — 사주 결과 맨 마지막
-                const _destPhrase = v.pro?.destinyPhrase || v.destinyPhrase || null;
+                // [V203.14] 운명의 한 문장 경로: data.pro (worker응답 직접), v.pro (v184_5 하위)
+                const _destPhrase = (data && data.pro && data.pro.destinyPhrase)
+                    || (v && v.pro && v.pro.destinyPhrase)
+                    || (v && v.destinyPhrase)
+                    || null;
                 if (_destPhrase) {
                     html += `
                     <div style="margin:24px 0 8px; padding:20px 18px;
