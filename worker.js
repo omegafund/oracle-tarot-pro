@@ -1061,6 +1061,46 @@ function getCardTone(card) {
   return CARD_TONE[name] || { tone: '에너지 흐름', strength: 2 };
 }
 
+// ══════════════════════════════════════════════════════════════════
+// [V203.14] SAJU_DESTINY_PHRASE — 운명의 한 문장
+//   설계: 최강오행 × 용신 조합 25가지 → 명식 고유 핵심 메시지
+//   위치: 사주 결과 맨 마지막 (사용자가 기억하는 단 한 줄)
+// ══════════════════════════════════════════════════════════════════
+const SAJU_DESTINY_PHRASE = {
+  // 최강오행_용신 조합 (5×5=25)
+  목_화: "당신은 성장의 에너지를 품고 있습니다. 그 힘이 빛나는 순간은 표현하고 연결할 때입니다.",
+  목_토: "당신의 유연함은 강점입니다. 그 유연함이 결실이 되려면 하나의 중심을 잡아야 합니다.",
+  목_금: "당신은 새 방향을 잘 찾습니다. 그러나 선택의 순간, 결단이 운을 가릅니다.",
+  목_수: "당신의 감수성은 깊습니다. 그 깊이가 행동으로 이어질 때 인생이 열립니다.",
+  목_목: "당신은 스스로 방향을 만드는 사람입니다. 단, 혼자 달리다 지치지 않도록 속도를 조절하세요.",
+  화_화: "당신의 열정은 주변을 밝힙니다. 그 에너지를 지속시키는 것이 인생의 핵심 과제입니다.",
+  화_토: "당신은 빠르게 움직입니다. 그 속도가 결실이 되려면 기반을 먼저 다져야 합니다.",
+  화_금: "당신의 직관은 예리합니다. 그 직관을 냉철한 판단과 결합할 때 운이 열립니다.",
+  화_수: "당신은 감정과 논리 사이에서 균형을 찾는 사람입니다. 깊이 생각하는 것이 당신의 무기입니다.",
+  화_목: "당신의 성장은 멈추지 않습니다. 새로운 도전에서 가장 빛납니다.",
+  토_화: "당신은 안정 속에서 더 큰 가능성을 봅니다. 표현하는 용기가 그 가능성을 현실로 만듭니다.",
+  토_토: "당신은 신뢰받는 중심입니다. 단, 변화를 두려워하지 않을 때 더 큰 그림이 보입니다.",
+  토_금: "당신은 판단력이 뛰어납니다. 필요 없는 것을 덜어낼 때 진짜 강점이 살아납니다.",
+  토_수: "당신은 깊이 있는 사람입니다. 생각을 행동으로 연결하는 한 발자국이 인생을 바꿉니다.",
+  토_목: "당신의 안정은 성장의 기반입니다. 새로운 방향을 두려워하지 않을 때 운이 확장됩니다.",
+  금_화: "당신은 정확한 사람입니다. 따뜻한 연결이 더해질 때 당신의 능력이 완성됩니다.",
+  금_토: "당신의 결단력은 강점입니다. 그 힘이 오래가려면 기반을 먼저 다져야 합니다.",
+  금_금: "당신은 명확함을 추구합니다. 단, 완벽함을 내려놓을 때 더 많은 기회가 열립니다.",
+  금_수: "당신은 분석력이 뛰어납니다. 그 분석이 직관과 만날 때 인생의 전환점이 옵니다.",
+  금_목: "당신은 새로운 가능성을 발견합니다. 그 가능성을 실행으로 옮기는 것이 과제입니다.",
+  수_화: "당신은 생각으로 세상을 이해하는 사람입니다. 인생의 전환점은 생각이 아니라 표현에서 열립니다.",
+  수_토: "당신의 통찰은 깊습니다. 그 통찰이 땅에 뿌리내릴 때 진짜 결실이 됩니다.",
+  수_금: "당신은 흐름을 읽는 능력이 있습니다. 결단하는 용기가 그 능력을 완성합니다.",
+  수_수: "당신의 직관과 감수성은 탁월합니다. 단, 행동 없는 통찰은 운을 열지 못합니다.",
+  수_목: "당신은 깊이 있게 생각하고 유연하게 적응합니다. 그 힘을 믿고 한 발 먼저 움직이세요."
+};
+
+function getSajuDestinyPhrase(dominantElement, yongshinElement) {
+  const key = `${dominantElement}_${yongshinElement}`;
+  return SAJU_DESTINY_PHRASE[key] || 
+    `당신의 ${dominantElement}(${dominantElement}) 에너지와 ${yongshinElement}(${yongshinElement}) 기운이 만나는 곳에 당신만의 길이 있습니다.`;
+}
+
 // [V203.13] 카드 3장 signalStrength 평균으로 에너지 점수 계산
 //   0~5 → 0~100 정규화 (평균 strength * 20)
 function calcCardEnergyScore(cards, revFlags) {
@@ -9556,15 +9596,16 @@ function buildStoryBridge(sajuData, v54DeepInsight, v54EnergyGuide) {
 
   // 4) 서사 조립: 시기 → 실천
   //   [V203.14] psycheLayer 삽입 제거 — "🌟 심리 작동 패턴" 섹션에서 동일 텍스트 별도 노출되어 중복
-  let bridge = `지금 명식은 ${phaseNarrative}에 접어든 구간입니다.\n`;
-  bridge += `${phaseAdvice}.\n\n`;
+  // [V203.14] bridge 단락 구성 — \n(단일)→공백, \n\n(단락)→유지
+  const _line1 = `지금 명식은 ${phaseNarrative}에 접어든 구간입니다.`;
+  const _line2 = `${phaseAdvice}.`;
+  let _line3 = '';
   if (_longDirection) {
-    // 긴 문장: 자연스럽게 도입만 붙임 (조사 결합 X)
-    bridge += `이 시기에 ${elName} 기운을 실생활에서 활용한다면 —\n${_longDirection}`;
+    _line3 = `이 시기에 ${elName} 기운을 실생활에서 활용한다면, ${_longDirection}`;
   } else {
-    // 짧은 구: 조사 결합 가능
-    bridge += `이 시기에 ${elName} 기운을 실생활에서 활용한다면,\n${_shortHint}이 가장 자연스러운 방향입니다.`;
+    _line3 = `이 시기에 ${elName} 기운을 실생활에서 활용한다면, ${_shortHint}이 가장 자연스러운 방향입니다.`;
   }
+  let bridge = `${_line1} ${_line2}\n\n${_line3}`;
 
   return bridge;
 }
@@ -10190,6 +10231,17 @@ function v31GeneratePro(sajuData, judgeResult, tier = 'free') {
       content: `매년 세운 + 매월 월운 정밀 분석은 Phase 2에서 제공됩니다.\n\n현재 평생권 혜택:\n▸ 모든 사주 PRO 콘텐츠 평생 사용\n▸ 신규 기능 자동 업그레이드 (대운/세운/월운/궁합)`
     };
   }
+
+
+  // [V203.14] 운명의 한 문장 — 최강오행 × 용신 조합
+  try {
+    var _domElDP = Object.entries(elements || {}).sort(function(a,b){return b[1]-a[1];})[0];
+    var _domElKey = _domElDP ? _domElDP[0] : "";
+    var _yongElKey = (yongshin && yongshin.element) || "";
+    if (_domElKey && _yongElKey && typeof getSajuDestinyPhrase === "function") {
+      proContent.destinyPhrase = getSajuDestinyPhrase(_domElKey, _yongElKey);
+    }
+  } catch(e) { /* 안전 */ }
 
   return proContent;
 }
