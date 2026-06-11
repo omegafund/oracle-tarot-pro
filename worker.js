@@ -1479,23 +1479,17 @@ function getCardSentence(card, isReversed, position, promptText) {
       const revIdx = (idx + Math.floor(sentences.length / 2)) % sentences.length;
       const revBase = sentences[revIdx];
       // 역방향 의미 변환: "~됐습니다" → "~이 지연되거나 막혔습니다" 형태
-      // [V203.14] 역방향 문장 변환 — "만들어냅니다" 같은 경우 "냅이 역행" 버그 수정
-      //   기존: /니다\.$/ → "납니다." = "납" + "이 역행" = "납이 역행"
-      //   수정: 완전한 어미 패턴으로 교체
-      return revBase.replace(/됩니다\.$/, '되기 어려운 상태입니다.')
-                    .replace(/됐습니다\.$/, '이 막히거나 지연됐습니다.')
-                    .replace(/었습니다\.$/, '이 약화되고 있습니다.')
+      return revBase.replace(/됐습니다\.$/, '이 막히거나 지연됐습니다.')
+                    .replace(/었습니다\.$/, '이 왜곡됐습니다.')
                     .replace(/있습니다\.$/, '이 억제되고 있습니다.')
-                    .replace(/합니다\.$/, '하기 어려운 흐름입니다.')
-                    .replace(/집니다\.$/, '지기 어려운 구간입니다.')
-                    .replace(/니다\.$/, '는 흐름이 역전되고 있습니다.');
+                    .replace(/니다\.$/, '이 역행하고 있습니다.');
     }
     return sentences[idx % sentences.length];
   }
 
-  // [V203.14] 폴백 1: CARD_LOVE_PHRASE 역방향 — 연애 도메인 한정
-  //   투자에서 "감정 폭발의 에너지가 초기 관계 방향을 형성" 섞임 버그 수정
-  const _lovePhrase = (domain === 'love') && CARD_LOVE_PHRASE && CARD_LOVE_PHRASE[typeof card === 'string' ? card : (card?.name||'')];
+  // [V203.13] 폴백 1: CARD_LOVE_PHRASE 역방향 의미 우선 활용 (연애 도메인)
+  //   High Priestess 역방향 → "숨겨진 거리감" (CARD_LOVE_PHRASE.reversed 활용)
+  const _lovePhrase = CARD_LOVE_PHRASE && CARD_LOVE_PHRASE[typeof card === 'string' ? card : (card?.name||'')];
   if (_lovePhrase && isReversed && _lovePhrase.reversed) {
     const _revMeaning = _lovePhrase.reversed;
     const _revTemplates = {
