@@ -8218,7 +8218,8 @@ console.log('══════════════════════�
                                 <img src="${BASE_URL}${card.file}" alt="${card.name}"
                                      style="${revFlags[i] ? 'transform: rotate(180deg);' : ''}"
                                      onerror="this.onerror=null;this.src='${BASE_URL}back.jpg'">
-                                <div class="result-card-label">${card.name}${revFlags[i] ? ' ⟲' : ''}</div>
+                                <div class="result-card-label">${card.name}</div>
+                                ${revFlags[i] ? '<div style="margin-top:3px; display:inline-block; background:rgba(231,76,60,0.85); color:#fff; font-size:0.62rem; font-weight:800; padding:2px 7px; border-radius:10px; letter-spacing:0.05em;">역방향</div>' : ''}
                             </div>
                             <div class="result-position-label">${positions[i]}</div>
                         </div>`).join('');
@@ -8559,7 +8560,8 @@ function showResultView(question, streamPromise) {
                 <img src="${BASE_URL}${card.file}" alt="${card.name}"
                      style="${revFlags[i] ? 'transform: rotate(180deg);' : ''}"
                      onerror="this.onerror=null;this.src='${BASE_URL}back.jpg'">
-                <div class="result-card-label">${card.name}${revFlags[i] ? ' ⟲' : ''}</div>
+                <div class="result-card-label">${card.name}</div>
+            ${revFlags[i] ? '<div style="margin-top:3px; display:inline-block; background:rgba(231,76,60,0.85); color:#fff; font-size:0.62rem; font-weight:800; padding:2px 7px; border-radius:10px; letter-spacing:0.05em;">역방향</div>' : ''}
             </div>
             <div class="result-position-label">${positions[i]}</div>
         </div>`).join('');
@@ -13022,7 +13024,7 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
                         var _bar2 = '█'.repeat(_filled2) + '░'.repeat(10 - _filled2);
                         return '<div style="margin-top:10px; padding-top:8px; border-top:1px solid rgba(241,196,15,0.2); display:flex; align-items:center; justify-content:center; gap:8px; font-size:0.8rem;">'
                              + '<span style="color:rgba(255,255,255,0.6); letter-spacing:0.05em;">&#x26A1; 에너지 강도</span>'
-                             + '<span style="color:rgba(241,196,15,0.9); font-size:0.78rem; font-weight:700;">' + _bar2 + '</span>'
+                             + '<span style="color:rgba(46,204,113,0.95); font-size:0.78rem; font-weight:700;">' + _bar2 + '</span>'
                              + '<b style="color:rgba(255,255,255,0.9); font-size:0.88rem; min-width:24px;">' + _pct2 + '</b>'
                              + '</div>';
                     })()}
