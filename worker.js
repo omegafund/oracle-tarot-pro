@@ -24764,15 +24764,28 @@ ${metrics.cryptoSubtype === 'crypto_buy' ? `
           try {
             const geminiJson = await geminiResponse.json();
             let geminiText = geminiJson?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+
+            // [V203.14] 빈 응답 감지 — candidates 없거나 text 빈 경우 폴백 처리
+            //   증상: geminiText = '' → fullText 누적 안 됨 → 클라이언트 로딩에서 멈춤
+            //   원인: 안전 필터, 빈 응답, API 오류 등
+            if (!geminiText || geminiText.trim().length < 10) {
+              const _finishReason = geminiJson?.candidates?.[0]?.finishReason || 'UNKNOWN';
+              const _fallback = `신탁의 에너지가 일시적으로 흐려지고 있습니다. (${_finishReason})\n잠시 후 다시 시도해주세요.`;
+              const textPayload = JSON.stringify({ _type: 'text', text: _fallback });
+              await writer.write(encoder.encode(`data: ${textPayload}\n\n`));
+              await writer.write(encoder.encode(`data: [DONE]\n\n`));
+              _streamOk = true;
+              return;
+            }
+
             // [V203.13] Gemini가 시스템 구분선/헤더를 응답에 포함시키는 버그 필터링
-            //   증상: "━━━━ 제우스의 신탁 ZEUS ORACLE 두산중공업에 대한 신탁은 다음과 같습니다 ━━━━"
-            //   원인: masterPrompt의 ━━━━ 구분선을 Gemini가 응답에 모방 출력
             geminiText = geminiText
               .replace(/\u2501+[\u2501\s]+/g, ' ')
               .replace(/제우스의 신탁[^\n]*ZEUS[^\n]*ORACLE[^\n]*/gi, '')
               .replace(/[^\n]*에 대한 신탁은 다음과 같습니다[^\n]*/g, '')
               .replace(/[^\n]*주식 실전 (매도|매수) 신탁[^\n]*/g, '')
               .trim();
+
             const textPayload = JSON.stringify({ _type: 'text', text: geminiText });
             await writer.write(encoder.encode(`data: ${textPayload}\n\n`));
             await writer.write(encoder.encode(`data: [DONE]\n\n`));
@@ -24780,7 +24793,12 @@ ${metrics.cryptoSubtype === 'crypto_buy' ? `
             // ✅ 완료 → 사용량 확정 차감
             await commitZeusUsage(env, _shieldResult);
           } catch (e) {
-            // 오류 — 조용히 종료
+            // [V203.14] catch에서도 [DONE] 전송 — 클라이언트 무한 로딩 방지
+            try {
+              const _errMsg = '신탁 연결 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.';
+              await writer.write(encoder.encode(`data: ${JSON.stringify({ _type: 'text', text: _errMsg })}\n\n`));
+              await writer.write(encoder.encode(`data: [DONE]\n\n`));
+            } catch(_) {}
           } finally {
             if (!_streamOk) {
               // ❌ 실패 → 사용량 롤백
