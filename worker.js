@@ -2907,7 +2907,7 @@ async function classifyByLLM(prompt, apiKey) {
   const _llmTimer = setTimeout(() => _llmController.abort(), 4000);
   try {
     // [V2.5] gemini-2.5-flash 유지 — Tier 1 키 사용 시 충분한 한도
-    const classifierUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
+    const classifierUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
     const res = await fetch(classifierUrl, {
       method: 'POST',
       signal: _llmController.signal,
@@ -9403,7 +9403,7 @@ async function callGeminiForSajuNarrative(ctx, geminiApiKey) {
 핵심 회복 행동: ${currentFlow.yongsinAdvice}`;
 
   try {
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiApiKey}`;
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiApiKey}`;
     const res = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
