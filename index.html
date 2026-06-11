@@ -8800,9 +8800,11 @@ async function renderStream(fetchPromise, cards) {
 
         let buffer   = '';
         let fullText = '';
+        let _sseComplete = false;  // [V203.14] [DONE] 수신 플래그
 
         // ── SSE 스트리밍 수신 — 전체 텍스트 누적
         while (true) {
+            if (_sseComplete) break;  // [V203.14] [DONE] 받으면 outer 루프도 탈출
             const { done, value } = await reader.read();
             if (done) break;
 
@@ -8813,7 +8815,7 @@ async function renderStream(fetchPromise, cards) {
             for (const line of lines) {
                 if (!line.startsWith('data: ')) continue;
                 const jsonStr = line.slice(6).trim();
-                if (jsonStr === '[DONE]') break;  // [V203.14] DONE 수신 시 루프 종료 (continue → break)
+                if (jsonStr === '[DONE]') { _sseComplete = true; break; }  // [V203.14] outer도 탈출
                 try {
                     const parsed = JSON.parse(jsonStr);
 
