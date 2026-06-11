@@ -14863,6 +14863,37 @@ function buildLoveTiming(content, numerologyText, cards, loveSubType, prompt, re
     _timingNext = _REUNION_NEXT[_ri];
   }
 
+  // [V203.13] contextType 필터 — 서브타입별 금지 문구 교체
+  //   문제: "최소 1주 거리두기"가 재회/이별 질문에도 동일하게 나옴
+  //   해결: subType 기반으로 어색한 문구 자동 교체
+  const _CONTEXT_FILTER = {
+    reunion: {
+      // "거리두기", "연락 금지" → 재회 맥락으로 교체
+      blocked: ['거리 두기 권장', '연락 타이밍이 아닙니다', '최소 1주', '연락 자제'],
+      nowFallback: '재접촉 타이밍보다 관계 원인 파악이 먼저입니다',
+      nextFallback: '상대의 감정 신호가 포착될 때 자연스럽게 접근하는 것이 유리합니다'
+    },
+    breakup: {
+      // "연락하세요", "오늘 연락" → 이별 맥락에 맞게 교체
+      blocked: ['지금이 연락 타이밍', '오늘 안부', '바로 연락'],
+      nowFallback: '감정 정리가 선행되어야 하는 시점입니다',
+      nextFallback: '충분한 시간이 지난 후 자연스러운 접점을 찾는 것이 맞습니다'
+    },
+    crush: {
+      // 이별 관련 문구 금지
+      blocked: ['거리 두기 2주', '연락 완전 차단', '1~2개월 자기 회복'],
+      nowFallback: '자연스러운 접근이 가능한 시점입니다',
+      nextFallback: '2~3일 내 가벼운 접촉이 유리합니다'
+    }
+  };
+
+  const _ctx = _CONTEXT_FILTER[loveSubType];
+  if (_ctx) {
+    const _isBlocked = (text) => _ctx.blocked.some(b => text && text.includes(b));
+    if (_isBlocked(_timingNow))  _timingNow  = _ctx.nowFallback;
+    if (_isBlocked(_timingNext)) _timingNext = _ctx.nextFallback;
+  }
+
   return {
     shortTerm: content.short_term, shortFlow: content.short_flow,
     midTerm: content.mid_term, midFlow: content.mid_flow,
