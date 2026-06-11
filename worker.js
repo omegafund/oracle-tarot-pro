@@ -2906,8 +2906,8 @@ async function classifyByLLM(prompt, apiKey) {
   const _llmController = new AbortController();
   const _llmTimer = setTimeout(() => _llmController.abort(), 4000);
   try {
-    // [V2.5] gemini-2.0-flash 유지 — Tier 1 키 사용 시 충분한 한도
-    const classifierUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+    // [V2.5] gemini-2.5-flash 유지 — Tier 1 키 사용 시 충분한 한도
+    const classifierUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
     const res = await fetch(classifierUrl, {
       method: 'POST',
       signal: _llmController.signal,
@@ -9403,7 +9403,7 @@ async function callGeminiForSajuNarrative(ctx, geminiApiKey) {
 핵심 회복 행동: ${currentFlow.yongsinAdvice}`;
 
   try {
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiApiKey}`;
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiApiKey}`;
     const res = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -22824,8 +22824,8 @@ export default {
         if (_shieldResult instanceof Response) return _shieldResult;
         // ══════════════════════════════════════════════════════════════
 
-        // [V203.9] gemini-2.0-flash 복귀 — 2.0-flash deprecated(404) 확인, Tier1 유료 키로 503 무관
-        const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${env.GEMINI_API_KEY}`;
+        // [V203.9] gemini-2.5-flash 복귀 — 2.0-flash deprecated(404) 확인, Tier1 유료 키로 503 무관
+        const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${env.GEMINI_API_KEY}`;
 
         const txt = (prompt || "").toLowerCase();
         const leverageKeywords = ["레버리지","3배","2배","인버스"];
