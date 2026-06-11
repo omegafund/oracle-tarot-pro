@@ -24645,18 +24645,10 @@ ${metrics.cryptoSubtype === 'crypto_buy' ? `
             //   증상: "━━━━ 제우스의 신탁 ZEUS ORACLE 두산중공업에 대한 신탁은 다음과 같습니다 ━━━━"
             //   원인: masterPrompt의 ━━━━ 구분선을 Gemini가 응답에 모방 출력
             geminiText = geminiText
-              .replace(/━+[\s\S]*?━+\s*
-?/g, '')           // ━━━ 블록 전체 제거
-              .replace(/제우스의 신탁\s*
-?ZEUS\s*ORACLE\s*
-?/gi, '')  // 헤더 제거
-              .replace(/[^
-]*에 대한 신탁은 다음과 같습니다[^
-]*
-?/g, '') // 도입부 제거
-              .replace(/📈\s*주식 실전 (매도|매수) 신탁[^
-]*
-?/g, '') // 섹션 헤더 제거
+              .replace(/\u2501+[\u2501\s]+/g, ' ')
+              .replace(/제우스의 신탁[^\n]*ZEUS[^\n]*ORACLE[^\n]*/gi, '')
+              .replace(/[^\n]*에 대한 신탁은 다음과 같습니다[^\n]*/g, '')
+              .replace(/[^\n]*주식 실전 (매도|매수) 신탁[^\n]*/g, '')
               .trim();
             const textPayload = JSON.stringify({ _type: 'text', text: geminiText });
             await writer.write(encoder.encode(`data: ${textPayload}\n\n`));
