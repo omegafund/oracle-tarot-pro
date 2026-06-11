@@ -4281,7 +4281,31 @@
     (function() {
         // overlay 실제 표시됐을 때만 가드 작동 (정상 진입 영향 0)
         if (!window._V31_paidEarlyOverlay) return;
-        
+
+        // [V203.13] 즉시 정리 — 결제 신호 없으면 3초 대기 없이 바로 처리
+        //   문제: PC에서 결제 취소 후 잔류 플래그 → 3초간 빈 화면
+        //   해결: 결제 신호 없으면 즉시 정리 → 사주 바로 진입
+        (function() {
+            try {
+                var _p = new URLSearchParams(window.location.search);
+                var _paid = _p.get('paid') === 'ok';
+                var _saju = _p.get('ctx') === 'saju' || _p.get('plan') === 'saju_basic' || _p.get('plan') === 'saju_premium';
+                var _vt   = /(vt=)/.test(window.location.hash || '');
+                if (!_paid && !_saju && !_vt) {
+                    var _ov = document.getElementById('paidEarlyOverlay');
+                    if (_ov) _ov.remove();
+                    var _st = document.getElementById('paidOverlayStyle');
+                    if (_st) _st.remove();
+                    document.documentElement.style.background = '';
+                    try { localStorage.removeItem('sajuPaymentContext'); } catch(e){}
+                    try { sessionStorage.removeItem('sajuPaymentContext'); } catch(e){}
+                    try { localStorage.removeItem('pendingOracle'); } catch(e){}
+                    window._V31_paidEarlyOverlay = false;
+                }
+            } catch(e) {}
+        })();
+        if (!window._V31_paidEarlyOverlay) return;
+
         setTimeout(function() {
             var overlay = document.getElementById('paidEarlyOverlay');
             if (!overlay) return;  // 정상 분기에서 이미 정리됐음 — 작동 X
@@ -13440,13 +13464,17 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
                 // energyScore 직접 값이 있으면 우선
                 if (tv.energyScore) _energyScore = tv.energyScore;
             } else if (isLove && ov24) {
-                // [V203.12] ov24.score (totalScore의 실제 필드명) → 0~100 정규화
-                //   buildLoveOracleV25_24 반환: { score: totalScore, ... } (totalScore 아님)
-                //   범위: -10~+10 → 0~100
-                const _raw = ov24.score || ov24.totalScore || 0;
-                _energyScore = Math.round((_raw + 10) / 20 * 100);
-                // score=0 (실제 중립)과 미설정(0) 구분 불가 → score 필드가 있으면 신뢰
-                if (_energyScore === 50 && ov24.score === undefined) _energyScore = 0;
+                // [V203.13] 연애도 카드 strength 기반 에너지 계산 (투자와 동일 방식)
+                //   sm.cleanCards가 있으면 CARD_TONE.strength 평균으로 계산
+                //   없으면 ov24.score 정규화로 폴백
+                const _loveCards = sm.cleanCards || [];
+                if (_loveCards.length >= 3 && typeof calcCardEnergyScore === 'function') {
+                    _energyScore = calcCardEnergyScore(_loveCards, sm.reversedFlags || []);
+                } else {
+                    const _raw = ov24.score || ov24.totalScore || 0;
+                    _energyScore = Math.round((_raw + 10) / 20 * 100);
+                    if (_energyScore === 50 && ov24.score === undefined) _energyScore = 0;
+                }
             }
             const _energyBar = (_energyScore > 0)
                 ? _buildEnergyBar(_energyScore, domain)
