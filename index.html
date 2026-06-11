@@ -8222,6 +8222,7 @@ console.log('══════════════════════�
                             </div>
                             ${revFlags[i] ? '<div style="margin-top:3px;text-align:center;"><span style="background:rgba(192,57,43,0.9);color:#fff;font-size:0.6rem;font-weight:900;padding:2px 8px;border-radius:8px;letter-spacing:0.1em;">REVERSED</span></div>' : ''}
                             <div class="result-position-label">${positions[i]}</div>
+                        </div>`).join('');
                 }
                 const rv = document.getElementById('result-view');
                 if (rv) {
@@ -8563,7 +8564,7 @@ function showResultView(question, streamPromise) {
             </div>
             ${revFlags[i] ? '<div style="margin-top:3px;text-align:center;"><span style="background:rgba(192,57,43,0.9);color:#fff;font-size:0.6rem;font-weight:900;padding:2px 8px;border-radius:8px;letter-spacing:0.1em;">REVERSED</span></div>' : ''}
             <div class="result-position-label">${positions[i]}</div>
-
+        </div>`).join('');
     const rv = document.getElementById('result-view');
     rv.style.display = 'flex';
     requestAnimationFrame(() => requestAnimationFrame(() => { rv.style.opacity = '1'; }));
