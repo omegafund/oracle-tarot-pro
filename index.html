@@ -13511,9 +13511,19 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
                 if (dt.statement) _timingLines.push(dt.statement);
                 if (dt.guidance)  _timingLines.push(`👉 ${dt.guidance}`);
             }
-            // [V203.13] 미래카드 기반 타이밍 보정 추가
+            // [V203.13] 미래카드 기반 타이밍 보정 추가 — 연애/투자 공통
             if (isStock && tv && tv.timingMod) {
                 _timingLines.push(`📌 ${tv.timingMod}`);
+            }
+            // [V203.13] 연애: 미래카드 기반 타이밍 보정
+            //   sm.cleanCards[2] = 미래카드 (worker에서 metrics.cleanCards로 전달)
+            if (isLove) {
+                const _loveCards = sm.cleanCards || [];
+                const _loveFuture = _loveCards[2] || null;
+                if (_loveFuture && typeof getTimingModifier === 'function') {
+                    const _loveTMod = getTimingModifier(_loveFuture);
+                    if (_loveTMod) _timingLines.push(`📌 ${_loveTMod}`);
+                }
             }
             let _riskItems = [];
             if (isLove && ov24?.boxes?.risk) {
