@@ -965,6 +965,180 @@ function cardMeaning(cleanName) {
 }
 
 // ══════════════════════════════════════════════════════════════════
+// [V203.13] CARD_TONE — 카드별 분위기 톤 (WHY 자연스러운 문장 생성용)
+//   WHY 폴백 문장의 "완성가 작동" 같은 어색한 조합 방지
+//   tone: 한 단어 분위기 / strength: 0~5 신호 강도 (에너지바 계산용)
+// ══════════════════════════════════════════════════════════════════
+const CARD_TONE = {
+  // 메이저 아르카나
+  "The Fool":           { tone:"새로운 시도",     strength:3 },
+  "The Magician":       { tone:"강한 실행 의지",  strength:4 },
+  "The High Priestess": { tone:"내면의 직관",     strength:2 },
+  "The Empress":        { tone:"풍요로운 성장",   strength:4 },
+  "The Emperor":        { tone:"견고한 안정",     strength:4 },
+  "The Hierophant":     { tone:"보수적 접근",     strength:2 },
+  "The Lovers":         { tone:"선택의 기로",     strength:3 },
+  "The Chariot":        { tone:"강한 돌파 에너지",strength:5 },
+  "Strength":           { tone:"꾸준한 인내",     strength:3 },
+  "The Hermit":         { tone:"내면 탐색·고독",  strength:2 },
+  "Wheel of Fortune":   { tone:"흐름의 전환",     strength:4 },
+  "Justice":            { tone:"균형과 공정",     strength:3 },
+  "The Hanged Man":     { tone:"일시적 정체",     strength:1 },
+  "Death":              { tone:"완전한 전환",     strength:3 },
+  "Temperance":         { tone:"절제와 균형",     strength:2 },
+  "The Devil":          { tone:"집착과 욕심",     strength:1 },
+  "The Tower":          { tone:"급격한 붕괴",     strength:1 },
+  "The Star":           { tone:"희망과 회복",     strength:4 },
+  "The Moon":           { tone:"불확실과 혼란",   strength:1 },
+  "The Sun":            { tone:"확신과 성공",     strength:5 },
+  "Judgement":          { tone:"각성과 재평가",   strength:4 },
+  "The World":          { tone:"완성과 통합",     strength:4 },
+  // Wands
+  "Ace of Wands":       { tone:"새 출발 열정",    strength:4 },
+  "Two of Wands":       { tone:"계획과 관망",     strength:2 },
+  "Three of Wands":     { tone:"확장 준비",       strength:3 },
+  "Four of Wands":      { tone:"단기 안정",       strength:3 },
+  "Five of Wands":      { tone:"경쟁과 혼란",     strength:2 },
+  "Six of Wands":       { tone:"승리 모멘텀",     strength:5 },
+  "Seven of Wands":     { tone:"저항과 방어",     strength:3 },
+  "Eight of Wands":     { tone:"빠른 전개",       strength:4 },
+  "Nine of Wands":      { tone:"마지막 버티기",   strength:2 },
+  "Ten of Wands":       { tone:"과부하 피로",     strength:1 },
+  "Page of Wands":      { tone:"탐색 열정",       strength:3 },
+  "Knight of Wands":    { tone:"돌진 에너지",     strength:4 },
+  "Queen of Wands":     { tone:"자신감 장악력",   strength:4 },
+  "King of Wands":      { tone:"확고한 리더십",   strength:4 },
+  // Cups
+  "Ace of Cups":        { tone:"감성적 새 시작",  strength:4 },
+  "Two of Cups":        { tone:"감정적 조화",     strength:3 },
+  "Three of Cups":      { tone:"단기 성과 기쁨",  strength:4 },
+  "Four of Cups":       { tone:"감정적 권태",     strength:1 },
+  "Five of Cups":       { tone:"상실과 후회",     strength:1 },
+  "Six of Cups":        { tone:"과거 집착 향수",  strength:1 },
+  "Seven of Cups":      { tone:"환상과 과잉 욕망",strength:1 },
+  "Eight of Cups":      { tone:"감정 이탈 포기",  strength:2 },
+  "Nine of Cups":       { tone:"만족 단기 성과",  strength:4 },
+  "Ten of Cups":        { tone:"감정 완성",       strength:4 },
+  "Page of Cups":       { tone:"감성 탐색",       strength:2 },
+  "Knight of Cups":     { tone:"감성적 접근",     strength:3 },
+  "Queen of Cups":      { tone:"직관과 공감",     strength:3 },
+  "King of Cups":       { tone:"감정 통제 평정심",strength:3 },
+  // Swords
+  "Ace of Swords":      { tone:"명확한 결단",     strength:4 },
+  "Two of Swords":      { tone:"결정 교착",       strength:1 },
+  "Three of Swords":    { tone:"충격과 상처",     strength:1 },
+  "Four of Swords":     { tone:"휴식 관망",       strength:2 },
+  "Five of Swords":     { tone:"자존심 충돌",     strength:2 },
+  "Six of Swords":      { tone:"전환 이탈",       strength:2 },
+  "Seven of Swords":    { tone:"의심 정보 불균형",strength:1 },
+  "Eight of Swords":    { tone:"구속 제약",       strength:1 },
+  "Nine of Swords":     { tone:"불안 심리 압박",  strength:1 },
+  "Ten of Swords":      { tone:"바닥 확인 종결",  strength:2 },
+  "Page of Swords":     { tone:"정보 수집 경계",  strength:2 },
+  "Knight of Swords":   { tone:"빠른 결단 돌진",  strength:4 },
+  "Queen of Swords":    { tone:"냉철한 이성",     strength:3 },
+  "King of Swords":     { tone:"명확한 기준",     strength:4 },
+  // Pentacles
+  "Ace of Pentacles":   { tone:"실질적 기회",     strength:4 },
+  "Two of Pentacles":   { tone:"균형 유지",       strength:2 },
+  "Three of Pentacles": { tone:"협력 성과",       strength:3 },
+  "Four of Pentacles":  { tone:"보수적 현금 보유",strength:2 },
+  "Five of Pentacles":  { tone:"손실 어려움",     strength:1 },
+  "Six of Pentacles":   { tone:"균형 교환",       strength:3 },
+  "Seven of Pentacles": { tone:"인내 장기 평가",  strength:2 },
+  "Eight of Pentacles": { tone:"꾸준한 축적",     strength:3 },
+  "Nine of Pentacles":  { tone:"독립 안정",       strength:4 },
+  "Ten of Pentacles":   { tone:"부의 완성",       strength:4 },
+  "Page of Pentacles":  { tone:"학습 준비",       strength:2 },
+  "Knight of Pentacles":{ tone:"신중 안정",       strength:3 },
+  "Queen of Pentacles": { tone:"실용적 관리",     strength:3 },
+  "King of Pentacles":  { tone:"확실한 성과",     strength:5 }
+};
+
+// CARD_TONE 조회 함수
+function getCardTone(card) {
+  const name = typeof card === 'string' ? card : (card?.name || '');
+  return CARD_TONE[name] || { tone: '에너지 흐름', strength: 2 };
+}
+
+// [V203.13] 카드 3장 signalStrength 평균으로 에너지 점수 계산
+//   0~5 → 0~100 정규화 (평균 strength * 20)
+function calcCardEnergyScore(cards, revFlags) {
+  if (!cards || !cards.length) return 50;
+  const rf = revFlags || [];
+  let total = 0;
+  const n = Math.min(3, cards.length);
+  for (let i = 0; i < n; i++) {
+    const t = getCardTone(cards[i]);
+    let s = t.strength;
+    // 역방향: strength 약화 (긍정 카드 역방향 → strength 감소)
+    if (rf[i]) {
+      const dec = getFinalDecision(cards[i], true);
+      if (dec === 'BUY') s = Math.max(1, s - 2);      // 긍정 역방향 → 많이 약화
+      else if (dec === 'SELL') s = Math.min(5, s + 1); // 부정 역방향 → 약간 강화
+    }
+    total += s;
+  }
+  return Math.round((total / n) / 5 * 100);
+}
+
+// [V203.13] 카드 기반 VERDICT 보정 레이어
+//   scoreCategory = 기본 골격, 카드 조합 = 보정치
+//   Queen of Cups 현재카드 → "감정 개입 주의" 보정 추가
+const CARD_VERDICT_MODIFIER = {
+  "Queen of Cups":      { buy:"감정 낙관 과잉 주의", sell:"감정이 매도 판단을 흐릴 수 있음", hold:"직관보다 데이터 확인 필요" },
+  "The Moon":           { buy:"불확실 신호 — 확인 필수", sell:"정보 모호 — 섣부른 청산 주의", hold:"방향 불명확 — 관망 지속" },
+  "Seven of Cups":      { buy:"환상 매수 주의 — 냉정한 검증 필요", sell:"과도한 비관 주의", hold:"비현실적 기대 배제 필요" },
+  "The Devil":          { buy:"욕심이 판단 흐림 — 규모 점검 필요", sell:"손실 집착 주의 — 냉철한 청산 기준 필요", hold:"집착 보유 — 기준 재설정 필요" },
+  "Six of Cups":        { buy:"과거 성공 경험 집착 주의", sell:"매도 타이밍 지연 가능성", hold:"익숙함에 의존한 판단 주의" },
+  "The Hanged Man":     { buy:"진입 타이밍 지연 가능성", sell:"청산 결정 보류 주의", hold:"정체 장기화 주의" },
+  "Five of Swords":     { buy:"불필요한 승부욕 주의", sell:"자존심 때문에 손절 지연 주의", hold:"경쟁 심리가 판단 방해 가능" },
+  "Nine of Swords":     { buy:"불안이 기회 포착 방해 가능", sell:"공포 매도 주의 — 감정 배제 필요", hold:"과도한 걱정이 판단력 저하" },
+  "Ten of Wands":       { buy:"과부하 상태 — 신규 진입 부담 가능", sell:"피로가 청산 결정 지연 가능", hold:"에너지 소진 — 단순화 필요" },
+  "Four of Cups":       { buy:"기회 무관심 주의 — 신호 놓칠 수 있음", sell:"권태로 매도 타이밍 간과 주의", hold:"무관심이 포지션 방치 초래 가능" },
+  "The Tower":          { buy:"급격한 변동성 진입 위험", sell:"급락 리스크 — 즉각 대응 필요", hold:"포지션 유지 위험 — 점검 시급" },
+  "Eight of Cups":      { buy:"이탈 충동이 진입 방해 가능", sell:"성급한 포기 주의", hold:"감정 이탈 — 기준 재확인 필요" }
+};
+
+function getVerdictModifier(presentCard, intent) {
+  const name = typeof presentCard === 'string' ? presentCard : (presentCard?.name || '');
+  const mod = CARD_VERDICT_MODIFIER[name];
+  if (!mod) return null;
+  if (intent === 'sell') return mod.sell;
+  if (intent === 'buy')  return mod.buy;
+  return mod.hold;
+}
+
+// [V203.13] 카드 기반 타이밍 보정 — 미래 카드로 속도감 결정
+const CARD_TIMING_MODIFIER = {
+  "Eight of Wands":     "빠른 전개 가능 — 신호 포착 즉시 대응",
+  "The Chariot":        "강한 추진 에너지 — 타이밍 포착 적기",
+  "Wheel of Fortune":   "흐름 전환점 — 방향 전환 신호 주시",
+  "The Tower":          "급격한 변동 가능 — 즉각 대응 준비",
+  "Knight of Wands":    "빠른 전개 — 단기 모멘텀 활용",
+  "Knight of Swords":   "빠른 결단 요구 — 신호 즉시 행동",
+  "Ace of Swords":      "명확한 전환점 — 결단 타이밍",
+  "Death":              "완전한 전환 — 기존 흐름 마무리",
+  "Judgement":          "재평가 구간 — 새 방향 확정 시점",
+  "The Hanged Man":     "당분간 움직임 적음 — 인내 구간",
+  "Four of Pentacles":  "현상 유지 — 큰 변화 없는 흐름",
+  "Two of Swords":      "결정 유예 구간 — 정보 수집 우선",
+  "Four of Swords":     "휴식 구간 — 에너지 재충전 후 행동",
+  "The Moon":           "불확실 지속 — 명확성 확보까지 대기",
+  "Seven of Cups":      "방향 혼란 — 선택 정리 필요",
+  "The Star":           "회복 흐름 — 점진적 개선 기대",
+  "The Sun":            "명확한 흐름 — 확신 구간",
+  "Six of Wands":       "상승 모멘텀 지속 — 추세 추종 구간",
+  "Three of Wands":     "확장 준비 — 중장기 기회 형성 중",
+  "Two of Wands":       "계획 단계 — 실행 타이밍 탐색 중"
+};
+
+function getTimingModifier(futureCard) {
+  const name = typeof futureCard === 'string' ? futureCard : (futureCard?.name || '');
+  return CARD_TIMING_MODIFIER[name] || null;
+}
+
+// ══════════════════════════════════════════════════════════════════
 // [V203.11] CARD_TAG — 카드별 3개 태그 (WHY 다중 템플릿 + RISK 카드 기반화)
 //   설계 원칙: 78장 role_past/present/future 수작업 대신
 //     → 태그 3개 × 다중 템플릿 생성기 = 체감 다양성 대폭 향상
@@ -3832,13 +4006,38 @@ function buildTopVerdict(metrics) {
     cardBasis = '카드 흐름';
   }
 
+  // [V203.13] 에너지 점수 — CARD_TONE signalStrength 평균 (카드 조합 직접 반영)
+  //   Seven of Pentacles(2)+Queen of Cups(3)+Six of Cups(1) → 평균 2 → 에너지 40
+  //   The Sun(5)+The Star(4)+Ace of Pentacles(4) → 평균 4.3 → 에너지 86
+  const _cardEnergy = (typeof calcCardEnergyScore === 'function' && metrics.cleanCards)
+    ? calcCardEnergyScore(metrics.cleanCards, metrics.reversedFlags || [])
+    : Math.round((metrics.totalScore + 10) / 20 * 100);
+  const _finalEnergy = Math.max(5, Math.min(95, _cardEnergy));
+
+  // [V203.13] VERDICT 보정 레이어 — 현재 카드 특성으로 modifier 추가
+  //   scoreCategory = 기본 골격, 카드 = 보정치
+  //   예: 🟡 검증 단계 + Queen of Cups → "감정이 매도 판단을 흐릴 수 있음"
+  const _presentCard = metrics.cleanCards && metrics.cleanCards[1];
+  const _modifier = (typeof getVerdictModifier === 'function' && _presentCard)
+    ? getVerdictModifier(_presentCard, intent)
+    : null;
+
+  // [V203.13] 타이밍 보정 — 미래 카드 특성으로 타이밍 텍스트 추가
+  const _futureCard = metrics.cleanCards && metrics.cleanCards[2];
+  const _timingMod = (typeof getTimingModifier === 'function' && _futureCard)
+    ? getTimingModifier(_futureCard)
+    : null;
+
   return {
-    signal:    verdict.signal,
-    action:    verdict.action,
-    caution:   verdict.caution,
-    energy:    verdict.energy,   // [V203.12] 에너지 강도 별점 — 클라이언트 바 표시용
-    cardBasis: cardBasis,
-    _scenario: key,
+    signal:      verdict.signal,
+    action:      verdict.action,
+    caution:     verdict.caution,
+    energy:      verdict.energy,
+    energyScore: _finalEnergy,      // [V203.13] 카드 strength 기반 세밀한 점수
+    modifier:    _modifier,         // [V203.13] 현재카드 기반 보정 문구
+    timingMod:   _timingMod,        // [V203.13] 미래카드 기반 타이밍 보정
+    cardBasis:   cardBasis,
+    _scenario:   key,
     _v: 'V202.25'
   };
 }
@@ -12253,16 +12452,28 @@ function buildStockMetrics({ totalScore, riskScore, cleanCards, isLeverage, quer
   if (hasMidstreamObstacle) riskCautions.push("현재 카드 정체 신호 — 단기 변동성 확대 가능성");
   if (totalScore <= -3) riskCautions.push("하락 압력 — 급반등 후 재하락 패턴이 나타날 수 있는 흐름");
   if (reversedCount >= 2) riskCautions.push("다수 역방향 — 진입 시점에 대한 신중한 판단이 도움이 될 수 있습니다");
-  // [V203.12] CARD_RISK_POOL 기반 투자 RISK — 카드별 고유 위험 문구
-  if (riskCautions.length < 2) {
-    try {
-      const _r1 = getCardRisk(cleanCards[1], revFlags[1], false, _domain || 'stock');
-      const _r2 = getCardRisk(cleanCards[2], revFlags[2], true,  _domain || 'stock');
-      if (_r1 && !riskCautions.includes(_r1)) riskCautions.push(_r1);
-      if (_r2 && _r2 !== _r1 && !riskCautions.includes(_r2)) riskCautions.push(_r2);
-    } catch(e) {
-      riskCautions.push("고점 추격은 추가 리스크로 이어질 수 있는 구간으로 해석됩니다");
+  // [V203.13] CARD_RISK_POOL 주 경로 승격 — 카드 기반 RISK 100%
+  //   기존: riskCautions 부족 시에만 폴백으로 사용
+  //   개선: 카드 기반 RISK를 먼저 뽑고, 없으면 기존 템플릿으로 보완
+  try {
+    const _cr1 = getCardRisk(cleanCards[1], revFlags[1], false, _domain || 'stock');
+    const _cr2 = getCardRisk(cleanCards[2], revFlags[2], true,  _domain || 'stock');
+    // 카드 기반 RISK가 있으면 기존 템플릿보다 우선 적용
+    if (_cr1) {
+      // 기존과 중복 없으면 앞에 삽입 (카드 기반이 템플릿보다 앞에 오도록)
+      if (!riskCautions.some(r => r === _cr1)) riskCautions.unshift(_cr1);
     }
+    if (_cr2 && _cr2 !== _cr1) {
+      if (!riskCautions.some(r => r === _cr2)) {
+        // 2번째 카드 RISK는 1번 뒤에 삽입
+        const insertIdx = riskCautions.indexOf(_cr1) + 1;
+        riskCautions.splice(insertIdx, 0, _cr2);
+      }
+    }
+  } catch(e) { /* 안전 */ }
+  // 카드 기반으로도 부족하면 기본 폴백
+  if (riskCautions.length < 1) {
+    riskCautions.push("현재 카드 에너지가 추세 지속성 약화 가능성을 시사합니다");
   }
   const finalRiskCautions = riskCautions.slice(0, 3);
 
