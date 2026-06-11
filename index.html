@@ -20507,10 +20507,13 @@ function renderSajuResult(data) {
                 ${text.deepInsight && text.deepInsight.essenceCore ? (() => {
                     const _id = 'ztess_' + Math.random().toString(36).slice(2,7);
                     const _full = text.narrativeBlocks?.identity || text.deepInsight.essenceCore;
-                    const _head = _full.length > 40 ? _full.slice(0, 38) + '…' : _full;
+                    // [V203.14] 중복 차단 — 상단 블록과 같은 텍스트면 아코디언 숨김
+                    //   원인: Gemini 서사 실패 시 상단(coreNarrative.essence)과 폴백(essenceCore)이 동일
+                    const _upper1 = text.coreNarrative?.essence || text.dayEssence || '';
+                    if (_full && _upper1 && _full.slice(0, 30) === _upper1.slice(0, 30)) return '';
                     return `
                 <div class="zt-pro-bub" style="margin-bottom:12px;">
-                    <div class="zt-pro-tit" style="line-height:1.6;">🔮 당신이 원래 그런 사람인 이유</div><div style="font-size:0.78rem;color:rgba(232,199,102,0.7);margin:-2px 0 6px 0;padding-left:2px;border-left:2px solid rgba(232,199,102,0.4);padding-left:8px;">${_head}</div>
+                    <div class="zt-pro-tit" style="line-height:1.6;">🔮 당신이 원래 그런 사람인 이유</div>
                     <div class="zt-pro-more" onclick="var d=document.getElementById('${_id}');var o=d.classList.toggle('open');this.innerHTML=(o?'▲ 접기':'▼ 숨은 이야기 보기');">▼ 숨은 이야기 보기</div>
                     <div class="zt-pro-deep" id="${_id}">${_full}</div>
                 </div>`;
@@ -20525,10 +20528,12 @@ function renderSajuResult(data) {
                 ${text.deepInsight && text.deepInsight.energyOperation ? (() => {
                     const _id = 'zteng_' + Math.random().toString(36).slice(2,7);
                     const _full = text.narrativeBlocks?.lifePattern || text.deepInsight.energyOperation;
-                    const _head = _full.length > 40 ? _full.slice(0, 38) + '…' : _full;
+                    // [V203.14] 중복 차단 — 상단 블록과 같은 텍스트면 아코디언 숨김
+                    const _upper2 = text.coreNarrative?.behavior || text.balancePhrase || '';
+                    if (_full && _upper2 && _full.slice(0, 30) === _upper2.slice(0, 30)) return '';
                     return `
                 <div class="zt-pro-bub" style="margin-bottom:12px;">
-                    <div class="zt-pro-tit" style="line-height:1.6;">🌊 평생 반복되는 숙제</div><div style="font-size:0.78rem;color:rgba(232,199,102,0.7);margin:-2px 0 6px 0;padding-left:8px;border-left:2px solid rgba(232,199,102,0.4);">${_head}</div>
+                    <div class="zt-pro-tit" style="line-height:1.6;">🌊 평생 반복되는 숙제</div>
                     <div class="zt-pro-more" onclick="var d=document.getElementById('${_id}');var o=d.classList.toggle('open');this.innerHTML=(o?'▲ 접기':'▼ 숨은 이야기 보기');">▼ 숨은 이야기 보기</div>
                     <div class="zt-pro-deep" id="${_id}">${_full}</div>
                 </div>`;
@@ -20553,10 +20558,12 @@ function renderSajuResult(data) {
                 ${text.deepInsight && text.deepInsight.relationOperation ? (() => {
                     const _id = 'ztrel_' + Math.random().toString(36).slice(2,7);
                     const _full = text.narrativeBlocks?.relationship || text.deepInsight.relationOperation;
-                    const _head = _full.length > 40 ? _full.slice(0, 38) + '…' : _full;
+                    // [V203.14] 중복 차단 — 상단 블록과 같은 텍스트면 아코디언 숨김
+                    const _upper3 = text.coreNarrative?.relationship || text.strengthPhrase || '';
+                    if (_full && _upper3 && _full.slice(0, 30) === _upper3.slice(0, 30)) return '';
                     return `
                 <div class="zt-pro-bub" style="margin:12px 0;">
-                    <div class="zt-pro-tit" style="line-height:1.6;">🪞 사람들이 당신을 오해하는 이유</div><div style="font-size:0.78rem;color:rgba(232,199,102,0.7);margin:-2px 0 6px 0;padding-left:8px;border-left:2px solid rgba(232,199,102,0.4);">${_head}</div>
+                    <div class="zt-pro-tit" style="line-height:1.6;">🪞 사람들이 당신을 오해하는 이유</div>
                     <div class="zt-pro-more" onclick="var d=document.getElementById('${_id}');var o=d.classList.toggle('open');this.innerHTML=(o?'▲ 접기':'▼ 숨은 이야기 보기');">▼ 숨은 이야기 보기</div>
                     <div class="zt-pro-deep" id="${_id}">${_full}</div>
                 </div>`;
