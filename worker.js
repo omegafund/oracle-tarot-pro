@@ -24554,7 +24554,7 @@ ${metrics.cryptoSubtype === 'crypto_buy' ? `
                     temperature: 0.75,
                     topP: 0.95,
                     topK: 40,
-                    maxOutputTokens: 2048
+                    maxOutputTokens: 4096
                   },
                   safetySettings: [
                     // [V2.5] 타로앱 특성상 모든 safety filter 완전 해제
