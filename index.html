@@ -13440,13 +13440,17 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
                 // energyScore 직접 값이 있으면 우선
                 if (tv.energyScore) _energyScore = tv.energyScore;
             } else if (isLove && ov24) {
-                // [V203.12] ov24.score (totalScore의 실제 필드명) → 0~100 정규화
-                //   buildLoveOracleV25_24 반환: { score: totalScore, ... } (totalScore 아님)
-                //   범위: -10~+10 → 0~100
-                const _raw = ov24.score || ov24.totalScore || 0;
-                _energyScore = Math.round((_raw + 10) / 20 * 100);
-                // score=0 (실제 중립)과 미설정(0) 구분 불가 → score 필드가 있으면 신뢰
-                if (_energyScore === 50 && ov24.score === undefined) _energyScore = 0;
+                // [V203.13] 연애도 카드 strength 기반 에너지 계산 (투자와 동일 방식)
+                //   sm.cleanCards가 있으면 CARD_TONE.strength 평균으로 계산
+                //   없으면 ov24.score 정규화로 폴백
+                const _loveCards = sm.cleanCards || [];
+                if (_loveCards.length >= 3 && typeof calcCardEnergyScore === 'function') {
+                    _energyScore = calcCardEnergyScore(_loveCards, sm.reversedFlags || []);
+                } else {
+                    const _raw = ov24.score || ov24.totalScore || 0;
+                    _energyScore = Math.round((_raw + 10) / 20 * 100);
+                    if (_energyScore === 50 && ov24.score === undefined) _energyScore = 0;
+                }
             }
             const _energyBar = (_energyScore > 0)
                 ? _buildEnergyBar(_energyScore, domain)
