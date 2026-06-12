@@ -1696,6 +1696,11 @@ function getCardSentence(card, isReversed, position, promptText, domain) {
           return _open + '는 흐름이 역행하고 있습니다.';
         });
       // 있습니다
+      // [V203.17] ~고/~며/~서 있습니다 — 진행형 역행 표현
+      //   버그: "기다리고 있습니다" → "기다리고 이 억제되고 있습니다"
+      //   수정: " 있습니다" 직전의 고/며/서/아/어를 유지하고 뒤만 교체
+      if (/[고며서아어]\s있습니다\.$/.test(revBase))
+        return revBase.replace(/(\s있습니다\.)$/, ' 있는 흐름이 역행하고 있습니다.');
       if (/있습니다\.$/.test(revBase)) return revBase.replace(/있습니다\.$/, '이 억제되고 있습니다.');
       // 명사+입니다 (시점입니다/구간입니다/때입니다 등)
       if (/[가-힣]입니다\.$/.test(revBase)) {
