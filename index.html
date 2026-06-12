@@ -9482,18 +9482,9 @@ async function renderStream(fetchPromise, cards) {
         // 2️⃣ [최종 렌더링] 결제 여부(isPaidUser)에 따라 미래와 지표 노출 결정
         contentEl.innerHTML = renderText(_v181Text, cards, investmentData, isPaidUser, isFinance);
 
-        // [V203.16] 수치 메트릭 박스(리스크%/변동성%/5차원) — 유료 유저만 노출
-        //   무료: 프리미엄 블록(_renderZeus7Block 내부)에서 블러 처리로 대체
-        //   유료: 결제 후 선명하게 노출
-        const _sm = window._serverMetrics;
-        if (_sm && isPaidUser) {
-            const metricsHtml = renderMetrics(_sm);
-            if (metricsHtml) {
-                const metricsWrap = document.createElement('div');
-                metricsWrap.innerHTML = metricsHtml;
-                contentEl.appendChild(metricsWrap);
-            }
-        }
+        // [V203.16] 수치 메트릭 박스 — _renderZeus7Block 내부에서 isPaidUser 분기로 처리
+        //   유료: renderMetrics 선명 노출 / 무료: 블러 처리 프리미엄 블록
+        //   여기서는 제거 (중복 방지)
 
         // [V19 Phase4] 이력 저장 — 중복 저장 방지 플래그
         if (!window._historySaved) {
@@ -13616,7 +13607,13 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
                 { icon: '🎯', label: '익절·매도 시그널',      preview: '익절 구간과 단계적 매도 흐름의 카드 기반 정밀 해석...' },
                 { icon: '⚡', label: '수비학 황금 시간대',    preview: '카드 에너지가 정점에 이르는 정확한 요일·시간대 분석...' },
             ];
-            const premiumHTML = `
+            // [V203.16] 프리미엄 블록 — 유료/무료 분기
+            //   유료: renderMetrics 결과 (리스크%/변동성%/5차원 그래프) 선명하게 노출
+            //   무료: 항목명만 노출, 내용은 blur 처리 → 결제 유도
+            const _isPaid = (typeof isPaidUser !== 'undefined' && isPaidUser);
+            const premiumHTML = _isPaid
+                ? (typeof renderMetrics === 'function' && sm ? (renderMetrics(sm) || '') : '')
+                : `
                 <div style="margin:14px 0; border:1px solid rgba(212,175,55,0.25); border-radius:12px; overflow:hidden;">
                     <div style="padding:10px 14px; background:rgba(212,175,55,0.07); border-bottom:1px solid rgba(212,175,55,0.15); text-align:center;">
                         <span style="color:rgba(212,175,55,0.9); font-size:0.75rem; font-weight:900; letter-spacing:0.12em;">🔒 제우스 심층 ${isLove ? '감정' : '시장'} 분석</span>
