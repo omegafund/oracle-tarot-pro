@@ -1660,9 +1660,10 @@ function getCardSentence(card, isReversed, position, promptText, domain) {
     if (isReversed) {
       const revIdx = (idx + Math.floor(sentences.length / 2)) % sentences.length;
       const revBase = sentences[revIdx];
-      // [V203.14] 역방향 어미 변환 — 유니코드 분해로 ㅂ니다 어간 복원
-      //   버그: /니다.$/ 패턴이 "납니다"→"납이 역행" 처럼 어간 잔류
-      //   수정: if-else 체인으로 연쇄 적용 방지 + ㅂ받침 분리 후 어간 복원
+      // [V203.15] 역방향 어미 변환 — 조사 잔류 버그 수정
+      //   버그1: "토대가 됐습니다" → "토대가 이 지연됐습니다" (조사 잔류)
+      //   버그2: "시점입니다" → "시점이는 에너지" (명사+이+ㅂ니다 오분리)
+      //   수정: 조사 포함 패턴 우선 처리 + 명사+입니다 별도 패턴
       function _decompJong(ch) {
         const c = ch.charCodeAt(0) - 0xAC00;
         if (c < 0) return null;
@@ -1670,15 +1671,34 @@ function getCardSentence(card, isReversed, position, promptText, domain) {
       }
       function _restoreOpen(ch) {
         const d = _decompJong(ch);
-        if (!d || d.jong !== 17) return null; // 받침 ㅂ(17)만 처리
+        if (!d || d.jong !== 17) return null;
         return String.fromCharCode(0xAC00 + (d.cho*21 + d.jung)*28);
       }
+      // 조사+됐/됩니다 → 조사 제거 후 역행 표현
+      if (/[가이을를]\s*됐습니다\.$/.test(revBase))
+        return revBase.replace(/[가이을를]\s*됐습니다\.$/, ' 흐름이 막혀 있습니다.');
+      if (/[가이을를]\s*됩니다\.$/.test(revBase))
+        return revBase.replace(/[가이을를]\s*됩니다\.$/, ' 흐름이 막혀 있습니다.');
+      // 됐/됩니다 단독
       if (/됐습니다\.$/.test(revBase)) return revBase.replace(/됐습니다\.$/, '이 지연됐습니다.');
-      if (/었습니다\.$/.test(revBase)) return revBase.replace(/었습니다\.$/, '이 왜곡됐습니다.');
+      if (/됩니다\.$/.test(revBase))   return revBase.replace(/됩니다\.$/, '이 막혀 있습니다.');
+      // 조사+었/았습니다
+      if (/[가이을를]\s*[었았]습니다\.$/.test(revBase))
+        return revBase.replace(/[가이을를]\s*[었았]습니다\.$/, ' 흐름이 왜곡됐습니다.');
+      if (/[었았]습니다\.$/.test(revBase)) return revBase.replace(/[었았]습니다\.$/, '이 왜곡됐습니다.');
+      // 있습니다
       if (/있습니다\.$/.test(revBase)) return revBase.replace(/있습니다\.$/, '이 억제되고 있습니다.');
+      // 명사+입니다 (시점입니다/구간입니다/때입니다 등)
+      if (/[가-힣]입니다\.$/.test(revBase)) {
+        return revBase.replace(/([가-힣])입니다\.$/, (m, prev) => {
+          const jong = (prev.charCodeAt(0) - 0xAC00) % 28;
+          return prev + (jong > 0 ? '에서 역행이 감지됩니다.' : '에서 역행 중입니다.');
+        });
+      }
+      // ㅂ니다 계열 — 어간 복원
       return revBase.replace(/([가-힣])니다\.$/, (m, bChar) => {
         const open = _restoreOpen(bChar);
-        return open ? open + '는 에너지가 역행하고 있습니다.' : m;
+        return open ? open + '는 흐름이 역행하고 있습니다.' : m;
       });
     }
     return sentences[idx % sentences.length];
@@ -4057,6 +4077,13 @@ const TOP_VERDICT_MATRIX = {
     caution: '추격 진입 시 변동성 확대 가능',
     energy:  '★★★☆☆'
   },
+  // [V203.15] 강한 관망 조합 전용 — Hermit+Temperance+FourSwords 등
+  strong_wait: {
+    signal:  '🔵 관망 우세 — 신규 진입 보류',
+    action:  '신호 명확해질 때까지 대기',
+    caution: '성급한 진입 시 변동성에 노출 가능',
+    energy:  '★★☆☆☆'
+  },
   verified: {
     signal:  '🟢 진입 조건 충족 — 분할 접근 유효',
     action:  '1차 진입 후 신호 굳어지면 보강',
@@ -4235,6 +4262,20 @@ function buildTopVerdict(metrics) {
     else if (_ts >= -1) key = 'holding_hold';
     else                key = 'holding_reduce';
   }
+
+  // [V203.15] 카드 콤보 룰 — 강한 관망/대기 조합 감지 시 verdict 보정
+  //   Hermit + Temperance + Four of Swords = 관망 3중 신호 → 신규 진입 보류
+  const _cards3 = (metrics.cleanCards || []);
+  const _hasHermit      = _cards3.includes('The Hermit');
+  const _hasTemperance  = _cards3.includes('Temperance');
+  const _hasFourSwords  = _cards3.includes('Four of Swords');
+  const _hasHangedMan   = _cards3.includes('The Hanged Man');
+  const _hasMoon        = _cards3.includes('The Moon');
+  const _hasFourCups    = _cards3.includes('Four of Cups');
+  // 관망 3중 조합
+  if (_hasHermit && _hasTemperance && _hasFourSwords) key = 'strong_wait';
+  // 관망 + 불확실 2중 조합
+  else if ((_hasHermit || _hasFourSwords) && (_hasHangedMan || _hasMoon || _hasFourCups)) key = 'strong_wait';
 
   const verdict = TOP_VERDICT_MATRIX[key] || TOP_VERDICT_MATRIX.wait_buy;
 
