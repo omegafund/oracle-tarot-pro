@@ -1471,28 +1471,36 @@ function getCardSentence(card, isReversed, position, promptText, domain) {
 
   if (pool && pool[position]) {
     const sentences = pool[position];
-    // [V203.13] 역방향: 정방향 문장을 부정/반전 접두어 없이 별도 해석
-    //   기존: "역방향 에너지로, 꾸준한 노력이 쌓였던 때였습니다" (정방향 의미 그대로)
-    //   개선: 역방향 = 에너지가 막히거나 지연/왜곡된 상태 → 다른 문장 인덱스 사용
     if (isReversed) {
-      // 역방향은 pool에서 다른 인덱스 선택 (정방향과 겹치지 않게)
       const revIdx = (idx + Math.floor(sentences.length / 2)) % sentences.length;
       const revBase = sentences[revIdx];
-      // 역방향 의미 변환 — 어미 패턴 정밀화 (납니다→납 잔류 버그 수정)
-      return revBase.replace(/됩니다\.$/, '이 막혀 있습니다.')
-                    .replace(/됐습니다\.$/, '이 막히거나 지연됐습니다.')
-                    .replace(/었습니다\.$/, '이 왜곡됐습니다.')
-                    .replace(/있습니다\.$/, '이 억제되고 있습니다.')
-                    .replace(/납니다\.$/, '는 흐름이 지연되고 있습니다.')
-                    .replace(/집니다\.$/, '는 흐름이 역행하고 있습니다.')
-                    .replace(/([가-힣])ㄴ니다\.$/, '$1는 흐름이 역행하고 있습니다.')
-                    .replace(/([가-힣])니다\.$/, '$1는 에너지가 역행하고 있습니다.');
+      // [V203.14] 역방향 어미 변환 — 유니코드 분해로 ㅂ니다 어간 복원
+      //   버그: /니다.$/ 패턴이 "납니다"→"납이 역행" 처럼 어간 잔류
+      //   수정: if-else 체인으로 연쇄 적용 방지 + ㅂ받침 분리 후 어간 복원
+      function _decompJong(ch) {
+        const c = ch.charCodeAt(0) - 0xAC00;
+        if (c < 0) return null;
+        return { cho: Math.floor(c/28/21), jung: Math.floor(c/28)%21, jong: c%28 };
+      }
+      function _restoreOpen(ch) {
+        const d = _decompJong(ch);
+        if (!d || d.jong !== 17) return null; // 받침 ㅂ(17)만 처리
+        return String.fromCharCode(0xAC00 + (d.cho*21 + d.jung)*28);
+      }
+      if (/됐습니다\.$/.test(revBase)) return revBase.replace(/됐습니다\.$/, '이 지연됐습니다.');
+      if (/었습니다\.$/.test(revBase)) return revBase.replace(/었습니다\.$/, '이 왜곡됐습니다.');
+      if (/있습니다\.$/.test(revBase)) return revBase.replace(/있습니다\.$/, '이 억제되고 있습니다.');
+      return revBase.replace(/([가-힣])니다\.$/, (m, bChar) => {
+        const open = _restoreOpen(bChar);
+        return open ? open + '는 에너지가 역행하고 있습니다.' : m;
+      });
     }
     return sentences[idx % sentences.length];
   }
 
-  // [V203.13] 폴백 1: CARD_LOVE_PHRASE 역방향 의미 우선 활용 (연애 도메인)
-  //   High Priestess 역방향 → "숨겨진 거리감" (CARD_LOVE_PHRASE.reversed 활용)
+  // [V203.14] 폴백 1: CARD_LOVE_PHRASE — 연애 도메인 전용 (domain 체크 추가)
+  //   버그: domain 체크 없어 투자 역방향 카드에 연애 문구 반환
+  //   수정: domain === 'love' 조건 추가
   const _lovePhrase = CARD_LOVE_PHRASE && CARD_LOVE_PHRASE[typeof card === 'string' ? card : (card?.name||'')];
   if (_lovePhrase && isReversed && _lovePhrase.reversed && domain === 'love') {
     const _revMeaning = _lovePhrase.reversed;
