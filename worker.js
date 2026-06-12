@@ -2748,6 +2748,14 @@ function sanitizeStockText(text) {
   }
   return text;
 }
+// [V203.14] buildStockFallback — 문장 길이 미달 또는 필터 탈락 시 최후 방어선
+//   목적: 어떤 카드가 오더라도 최소한 투자 언어 유지
+function buildStockFallback(cardName, position) {
+  const name = typeof cardName === 'string' ? cardName : (cardName?.name || '카드');
+  if (position === 'past')    return `${name} 흐름상 기존 추세가 형성된 구간이었습니다.`;
+  if (position === 'present') return `${name} 흐름상 현재 방향성 확인이 필요한 시점입니다.`;
+  return `${name} 흐름상 앞으로 변동성 확대 가능성이 있는 구간입니다.`;
+}
 
 // ══════════════════════════════════════════════════════════════════
 // 🎯 [V22.0] buildCriticalInterpretation — 핵심 해석 동적 생성
@@ -2952,18 +2960,18 @@ function buildCriticalInterpretation(cards, revFlags, domain, intent, subType) {
     ? '※ 본 신탁은 부동산 흐름 해석을 위한 참고 콘텐츠입니다. 실제 계약 및 투자 결정은 전문가 상담과 함께 신중히 판단하시기 바랍니다.'
     : '※ 본 신탁은 흐름 해석을 돕기 위한 참고 콘텐츠입니다. 개인 관계 및 중요한 결정은 실제 상황을 기준으로 신중히 판단하시기 바랍니다.';
 
-  // [V203.14] CARD_SENTENCE_POOL + STOCK_BANNED 필터로 오염 문장 차단
+  // [V203.14] CARD_SENTENCE_POOL + STOCK_BANNED 필터 + buildStockFallback 최후 방어
   const _prompt = (typeof window !== 'undefined' && window._lastPrompt) ? window._lastPrompt : '';
   const _rawL1 = getCardSentence(past,    rf[0], 'past',    _prompt, domain);
   const _rawL2 = getCardSentence(present, rf[1], 'present', _prompt, domain);
   const _rawL3 = getCardSentence(future,  rf[2], 'future',  _prompt, domain);
   const _isStockDomain = (domain === 'stock' || domain === 'crypto' || domain === 'realestate');
-  const line1 = (_isStockDomain && !sanitizeStockText(_rawL1))
-    ? '과거 흐름이 현재 추세의 방향성을 결정했습니다.' : _rawL1;
-  const line2 = (_isStockDomain && !sanitizeStockText(_rawL2))
-    ? '현재 에너지가 단기 흐름의 방향을 좌우하고 있습니다.' : _rawL2;
-  const line3 = (_isStockDomain && !sanitizeStockText(_rawL3))
-    ? '앞으로의 흐름이 진입 타이밍의 기준이 됩니다.' : _rawL3;
+  const line1 = (_isStockDomain && (!sanitizeStockText(_rawL1) || _rawL1.length < 10))
+    ? buildStockFallback(past,    'past')    : _rawL1;
+  const line2 = (_isStockDomain && (!sanitizeStockText(_rawL2) || _rawL2.length < 10))
+    ? buildStockFallback(present, 'present') : _rawL2;
+  const line3 = (_isStockDomain && (!sanitizeStockText(_rawL3) || _rawL3.length < 10))
+    ? buildStockFallback(future,  'future')  : _rawL3;
   const keyLine = `👉 핵심: "${_keyInsight(domain, intent, signal)}"`;
 
   return `${line1}
