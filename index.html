@@ -13451,9 +13451,9 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
                 const color2 = isLoveDom ? 'rgba(155,89,182,1)'   : 'rgba(230,126,34,1)';
                 const icon   = isLoveDom ? '💫' : '⚡';
                 const label  = isLoveDom ? '관계 에너지' : '에너지 강도';
-                return `<div style="margin-top:9px; display:flex; align-items:center; justify-content:center; gap:8px; font-size:0.8rem;">
-                    <span style="color:rgba(255,255,255,0.6); letter-spacing:0.05em;">${icon} ${label}</span>
-                    <span style="background:linear-gradient(90deg,${color1},${color2}); -webkit-background-clip:text; -webkit-text-fill-color:transparent; font-size:0.78rem; letter-spacing:0.03em; font-weight:700;">${bar}</span>
+                return `<div style="margin-top:9px; display:flex; align-items:center; justify-content:center; gap:8px; font-size:0.8rem; white-space:nowrap; flex-wrap:nowrap;">
+                    <span style="color:rgba(255,255,255,0.6); letter-spacing:0.05em; white-space:nowrap;">${icon} ${label}</span>
+                    <span style="background:linear-gradient(90deg,${color1},${color2}); -webkit-background-clip:text; -webkit-text-fill-color:transparent; font-size:0.78rem; letter-spacing:0.03em; font-weight:700; white-space:nowrap;">${bar}</span>
                     <b style="color:rgba(255,255,255,0.9); font-size:0.88rem; min-width:24px;">${pct}</b>
                 </div>`;
             }
