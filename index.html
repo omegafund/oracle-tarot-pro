@@ -9482,9 +9482,11 @@ async function renderStream(fetchPromise, cards) {
         // 2️⃣ [최종 렌더링] 결제 여부(isPaidUser)에 따라 미래와 지표 노출 결정
         contentEl.innerHTML = renderText(_v181Text, cards, investmentData, isPaidUser, isFinance);
 
-        // [V23.4] 수치 메트릭 박스 — 서버 metrics 있을 때 결과 하단에 추가
+        // [V203.16] 수치 메트릭 박스(리스크%/변동성%/5차원) — 유료 유저만 노출
+        //   무료: 프리미엄 블록(_renderZeus7Block 내부)에서 블러 처리로 대체
+        //   유료: 결제 후 선명하게 노출
         const _sm = window._serverMetrics;
-        if (_sm) {
+        if (_sm && isPaidUser) {
             const metricsHtml = renderMetrics(_sm);
             if (metricsHtml) {
                 const metricsWrap = document.createElement('div');
@@ -13580,7 +13582,9 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
                 _actionItems = layers.rules.map(r => ({ text: r, result: null, avoid: false }));
             }
             const _hasNextStep = _timingLines.length || _riskItems.length || _actionItems.length;
-            const nextStepHTML = _hasNextStep ? `
+            // [V203.16] NEXT STEP을 타이밍+주의 / 행동 분리
+            // 프리미엄 블록을 타이밍+주의 뒤, 행동 앞에 삽입
+            const timingRiskHTML = (_timingLines.length || _riskItems.length) ? `
                 <div style="${boxBase} background:rgba(52,152,219,0.05); border:1px solid rgba(52,152,219,0.30); border-radius:10px; padding:16px;">
                     <div style="${labelBase} color:#5DADE2;">📌 다음 단계 &nbsp;<span style="font-size:0.68rem; opacity:0.7;">NEXT STEP</span></div>
                     ${_timingLines.length ? `
@@ -13589,31 +13593,68 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
                         ${_timingLines.map(t => `<div style="font-size:0.87rem; color:rgba(255,255,255,0.9); margin-bottom:3px;">${t}</div>`).join('')}
                     </div>` : ''}
                     ${_riskItems.length ? `
-                    <div style="margin-bottom:10px; padding-top:8px; border-top:1px solid rgba(255,255,255,0.06);">
+                    <div style="padding-top:8px; border-top:1px solid rgba(255,255,255,0.06);">
                         <div style="font-size:0.72rem; color:rgba(243,156,18,0.9); font-weight:800; letter-spacing:0.1em; margin-bottom:5px;">⚠️ 주의</div>
                         ${_riskItems.map(r => `<div style="font-size:0.87rem; color:rgba(255,255,255,0.85); margin-bottom:3px; padding-left:6px; border-left:2px solid rgba(243,156,18,0.4);">▸ ${r}</div>`).join('')}
                         ${verdictSub ? `<div style="margin-top:7px; font-size:0.81rem; color:rgba(255,220,100,0.75); font-style:italic;">${verdictSub}</div>` : ''}
                     </div>` : ''}
-                    ${_actionItems.length ? `
-                    <div style="padding-top:8px; border-top:1px solid rgba(255,255,255,0.06);">
-                        <div style="font-size:0.72rem; color:rgba(46,204,113,0.9); font-weight:800; letter-spacing:0.1em; margin-bottom:5px;">🛡 행동</div>
-                        ${_actionItems.filter(a => !a.avoid).map((a, i) => {
-                            const isNum = /^\d+\./.test((a.text||'').trim());
-                            const txt   = isNum ? (a.text||'').trim().replace(/^\d+\.\s*/,'') : a.text;
-                            const num   = isNum ? (a.text||'').trim().match(/^(\d+)/)?.[1]||(i+1) : i+1;
-                            return `<div style="display:flex; align-items:flex-start; gap:7px; margin-bottom:7px;">
-                                <span style="display:inline-flex; align-items:center; justify-content:center; min-width:18px; height:18px; border-radius:50%; background:#2ecc71; color:#fff; font-size:0.65rem; font-weight:900; margin-top:2px;">${num}</span>
-                                <div><div style="font-size:0.87rem; color:rgba(255,255,255,0.95); font-weight:700; line-height:1.5;">${txt}</div>${a.result?`<div style="font-size:0.78rem; color:rgba(122,209,136,0.85);">⤷ ${a.result}</div>`:''}</div>
-                            </div>`;}).join('')}
-                        ${_actionItems.filter(a => a.avoid).map(a => `
-                        <div style="margin-top:4px; padding:6px 10px; background:rgba(231,76,60,0.06); border-radius:6px; border-left:2px solid rgba(231,76,60,0.4);">
-                            <span style="font-size:0.78rem; color:rgba(255,200,200,0.9); font-weight:700;">✗ 피할 것: ${a.text}</span>
-                            ${a.result ? `<div style="font-size:0.76rem; color:rgba(255,142,114,0.8); margin-top:2px;">⤷ ${a.result}</div>` : ''}
-                        </div>`).join('')}
-                    </div>` : ''}
                 </div>` : '';
 
-            return verdictHTML + coreHTML + nextStepHTML;
+            // [V203.16] 프리미엄 블록 — 블러 처리 (무료 유저 결제 유도)
+            //   위치: NEXT STEP 뒤, 행동 앞
+            //   무료: 항목명+아이콘 노출, 수치/내용은 blur(6px)
+            const _premiumItems = isLove ? [
+                { icon: '❤️', label: '감정 온도',        preview: '상대방의 현재 감정 상태와 온도 변화 흐름 분석...' },
+                { icon: '💭', label: '진심 확률',        preview: '카드 에너지 기반 진심 표현 가능성 정밀 해석...' },
+                { icon: '⚡', label: '연락 타이밍',      preview: '달의 흐름과 카드 에너지가 동조하는 최적 시간대...' },
+                { icon: '⭐', label: '카드 5차원 심리 분석', preview: '카드별 감정/관계/신뢰/변화/불확실성 5축 시각화...' },
+                { icon: '🧿', label: '숨은 감정 변수',   preview: '표면 아래 작동하는 핵심 심리 변수 심층 분석...' },
+            ] : [
+                { icon: '⚠️', label: `리스크 ${sm.riskLevelScore || sm.riskScore || '--'}%`, preview: '현재 포지션 리스크 상세 분석과 손절 시나리오...' },
+                { icon: '📊', label: `변동성 ${sm.volatilityScore || '--'}%`,              preview: '단기 변동성 확대 구간과 대응 전략 분석...' },
+                { icon: '⭐', label: '카드 5차원 영성 분석',  preview: '기본 점수/추세 강도/리스크/변동성/불확실성 시각화...' },
+                { icon: '🎯', label: '익절·매도 시그널',      preview: '익절 구간과 단계적 매도 흐름의 카드 기반 정밀 해석...' },
+                { icon: '⚡', label: '수비학 황금 시간대',    preview: '카드 에너지가 정점에 이르는 정확한 요일·시간대 분석...' },
+            ];
+            const premiumHTML = `
+                <div style="margin:14px 0; border:1px solid rgba(212,175,55,0.25); border-radius:12px; overflow:hidden;">
+                    <div style="padding:10px 14px; background:rgba(212,175,55,0.07); border-bottom:1px solid rgba(212,175,55,0.15); text-align:center;">
+                        <span style="color:rgba(212,175,55,0.9); font-size:0.75rem; font-weight:900; letter-spacing:0.12em;">🔒 제우스 심층 ${isLove ? '감정' : '시장'} 분석</span>
+                    </div>
+                    ${_premiumItems.map(item => `
+                    <div style="padding:10px 14px; border-bottom:1px solid rgba(255,255,255,0.04); display:flex; align-items:center; gap:10px;">
+                        <span style="font-size:1rem; min-width:20px;">${item.icon}</span>
+                        <span style="color:rgba(212,175,55,0.85); font-size:0.84rem; font-weight:800; min-width:100px;">${item.label}</span>
+                        <div style="flex:1; filter:blur(5px); user-select:none; pointer-events:none; color:rgba(255,255,255,0.6); font-size:0.78rem; line-height:1.5; overflow:hidden; max-height:1.5em;">${item.preview}</div>
+                        <span style="color:rgba(255,255,255,0.3); font-size:0.8rem; min-width:16px;">🔒</span>
+                    </div>`).join('')}
+                    <div style="padding:8px 14px; text-align:center; color:rgba(255,255,255,0.4); font-size:0.72rem; font-style:italic;">
+                        ↑ 잠금 해제 후 선명하게 공개됩니다
+                    </div>
+                </div>`;
+
+            // 행동 HTML (분리)
+            const actionHTML = _actionItems.length ? `
+                <div style="${boxBase} background:rgba(46,204,113,0.04); border:1px solid rgba(46,204,113,0.25); border-radius:10px; padding:14px 16px;">
+                    <div style="${labelBase} color:rgba(46,204,113,0.9);">🛡 행동</div>
+                    ${_actionItems.filter(a => !a.avoid).map((a, i) => {
+                        const isNum = /^\d+\./.test((a.text||'').trim());
+                        const txt   = isNum ? (a.text||'').trim().replace(/^\d+\.\s*/,'') : a.text;
+                        const num   = isNum ? (a.text||'').trim().match(/^(\d+)/)?.[1]||(i+1) : i+1;
+                        return `<div style="display:flex; align-items:flex-start; gap:7px; margin-bottom:7px;">
+                            <span style="display:inline-flex; align-items:center; justify-content:center; min-width:18px; height:18px; border-radius:50%; background:#2ecc71; color:#fff; font-size:0.65rem; font-weight:900; margin-top:2px;">${num}</span>
+                            <div><div style="font-size:0.87rem; color:rgba(255,255,255,0.95); font-weight:700; line-height:1.5;">${txt}</div>${a.result?`<div style="font-size:0.78rem; color:rgba(122,209,136,0.85);">⤷ ${a.result}</div>`:''}</div>
+                        </div>`;}).join('')}
+                    ${_actionItems.filter(a => a.avoid).map(a => `
+                    <div style="margin-top:4px; padding:6px 10px; background:rgba(231,76,60,0.06); border-radius:6px; border-left:2px solid rgba(231,76,60,0.4);">
+                        <span style="font-size:0.78rem; color:rgba(255,200,200,0.9); font-weight:700;">✗ 피할 것: ${a.text}</span>
+                        ${a.result ? `<div style="font-size:0.76rem; color:rgba(255,142,114,0.8); margin-top:2px;">⤷ ${a.result}</div>` : ''}
+                    </div>`).join('')}
+                </div>` : '';
+
+            const nextStepHTML = timingRiskHTML; // 하위 호환성
+
+            return verdictHTML + coreHTML + timingRiskHTML + premiumHTML + actionHTML;
         }
 
         function _renderLoveBlockV25_24(_cards, _qRaw, _loveSubType, serverOracle, _fi) {
