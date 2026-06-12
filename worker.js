@@ -24908,19 +24908,10 @@ ${metrics.cryptoSubtype === 'crypto_buy' ? `
                 geminiText = geminiText
                   .replace(/\[WHY_START\][\s\S]*?\[WHY_END\]/g, '')
                   .trim();
-              } else {
-                // [V203.16] WHY 블록 누락 — Gemini 본문 앞 문장들로 폴백
-                //   Gemini가 [WHY_START] 형식을 안 지켰을 때
-                //   본문에서 투자 관련 문장 3개 추출
-                const _fbLines = geminiText.split('\n')
-                  .map(l => l.trim())
-                  .filter(l => l.length > 15 && !l.startsWith('[') && !l.startsWith('━') && !l.startsWith('추세:') && !l.startsWith('행동:') && !l.startsWith('타이밍:') && !l.startsWith('리스크:'));
-                if (_fbLines.length >= 3) {
-                  const _fbText = _fbLines.slice(0, 3).join('\n');
-                  const _fbPayload = JSON.stringify({ _type: 'why', text: _fbText });
-                  await writer.write(encoder.encode(`data: ${_fbPayload}\n\n`));
-                }
               }
+              // [V203.17] WHY 블록 누락 시 폴백 제거
+              //   이유: 본문이 줄바꿈 없이 오면 카드 해석 전체가 WHY에 삽입되는 버그
+              //   → POOL 기반 criticalInterpretation이 이미 metrics에 있으므로 폴백 불필요
             }
 
             const textPayload = JSON.stringify({ _type: 'text', text: geminiText });
