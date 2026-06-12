@@ -4299,7 +4299,8 @@
                     document.documentElement.style.background = '';
                     try { localStorage.removeItem('sajuPaymentContext'); } catch(e){}
                     try { sessionStorage.removeItem('sajuPaymentContext'); } catch(e){}
-                    try { localStorage.removeItem('pendingOracle'); } catch(e){}
+                    // [V203.17] pendingOracle은 즉시 삭제 안 함 — 타이밍 문제로 결제 복원 실패 방지
+                    // try { localStorage.removeItem('pendingOracle'); } catch(e){}
                     window._V31_paidEarlyOverlay = false;
                 }
             } catch(e) {}
@@ -4343,7 +4344,7 @@
             } catch(e) {
                 console.warn('[V200.7.7] flag 청소 예외:', e.message);
             }
-        }, 3000);  // ★ V200.8.7 P3 ★ 7초 → 3초 단축 (모바일 사용자 인내심 한계 + 빠른 자가 복구)
+        }, 10000);  // [V203.17] 3초 → 10초: consume-token(5초) 완료 후 충분한 처리 시간 확보
     })();
     </script>
     
