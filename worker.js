@@ -1459,7 +1459,7 @@ const CARD_SENTENCE_POOL = {
 };
 
 // 문장 선택 함수 — 카드 해시 + 질문 해시 조합
-function getCardSentence(card, isReversed, position, promptText) {
+function getCardSentence(card, isReversed, position, promptText, domain) {
   const name = typeof card === 'string' ? card : (card?.name || '');
   const pool = CARD_SENTENCE_POOL[name];
 
@@ -1489,7 +1489,7 @@ function getCardSentence(card, isReversed, position, promptText) {
 
   // [V203.13] 폴백 1: CARD_LOVE_PHRASE 역방향 의미 우선 활용 (연애 도메인)
   //   High Priestess 역방향 → "숨겨진 거리감" (CARD_LOVE_PHRASE.reversed 활용)
-  const _lovePhrase = CARD_LOVE_PHRASE && CARD_LOVE_PHRASE[typeof card === 'string' ? card : (card?.name||'')];
+  const _lovePhrase = (domain === 'love') && CARD_LOVE_PHRASE && CARD_LOVE_PHRASE[typeof card === 'string' ? card : (card?.name||'')];
   if (_lovePhrase && isReversed && _lovePhrase.reversed) {
     const _revMeaning = _lovePhrase.reversed;
     const _revTemplates = {
@@ -2724,9 +2724,9 @@ function buildCriticalInterpretation(cards, revFlags, domain, intent, subType) {
 
   // [V203.12] CARD_SENTENCE_POOL 우선 사용 — 폴백은 포지션 역할 서사
   const _prompt = (typeof window !== 'undefined' && window._lastPrompt) ? window._lastPrompt : '';
-  const line1 = getCardSentence(past,    rf[0], 'past',    _prompt);
-  const line2 = getCardSentence(present, rf[1], 'present', _prompt);
-  const line3 = getCardSentence(future,  rf[2], 'future',  _prompt);
+  const line1 = getCardSentence(past,    rf[0], 'past',    _prompt, domain);
+  const line2 = getCardSentence(present, rf[1], 'present', _prompt, domain);
+  const line3 = getCardSentence(future,  rf[2], 'future',  _prompt, domain);
   const keyLine = `👉 핵심: "${_keyInsight(domain, intent, signal)}"`;
 
   return `${line1}
