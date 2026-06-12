@@ -1850,8 +1850,33 @@ function getCardRisk(card, isReversed, isFuture, domain) {
     return pool[pos][Math.abs(h) % pool[pos].length];
   }
 
-  // 폴백: CARD_TAG 사용
+  // [V203.15] 폴백: CARD_TAG 사용 — 도메인별 언어 분리
+  //   버그: LOVE POOL 미등록 카드 → CARD_TAG[2] 투자 용어("중장기 보유") → 연애에 노출
+  //   수정: domain=love이면 관계 언어, 그 외 시장 언어 폴백
   const tags = getCardTags(card, isReversed);
+  if (domain === 'love') {
+    // 연애 전용 폴백 — 관계/심리 언어
+    const _loveRiskTemplates = {
+      now: [
+        '서로의 속도 차이가 현재 흐름의 핵심 변수입니다',
+        '표현보다 신호를 통해 가늠하는 구간입니다',
+        '감정의 방향이 아직 확정되지 않은 시점입니다',
+        '상대의 반응을 살피는 신중한 접근이 필요합니다'
+      ],
+      coming: [
+        '자연스러운 흐름을 유지하는 것이 다음 단계의 열쇠입니다',
+        '성급한 확인보다 감정선을 따라가는 것이 중요합니다',
+        '상대의 페이스를 존중하는 접근이 관계를 지탱합니다',
+        '감정이 쌓이는 흐름에 맞춰 자연스럽게 나아가야 합니다'
+      ]
+    };
+    let _lh = 0;
+    const _lname = typeof card === 'string' ? card : (card?.name || '');
+    for (let i = 0; i < _lname.length; i++) _lh = ((_lh << 5) - _lh + _lname.charCodeAt(i)) | 0;
+    const _lpool = _loveRiskTemplates[isFuture ? 'coming' : 'now'];
+    return _lpool[Math.abs(_lh) % _lpool.length];
+  }
+  // 투자 폴백 — 시장 언어
   return isFuture
     ? `${tags[2] || tags[0]} — 다가오는 흐름에서 주의가 필요합니다`
     : `${tags[2] || tags[0]} — 현재 흐름의 핵심 리스크입니다`;
@@ -23334,7 +23359,13 @@ export default {
               '안부','연락처','전화','메시지','답장','반응','태도','자세',
               '의지','확신','각오','다짐','후회','미련','집착','걱정',
               '동향','상황','경향','분위기','느낌','기분','심리','상태',
-              '계획','일정','약속','준비','진행','과정','결과','진척'
+              '계획','일정','약속','준비','진행','과정','결과','진척',
+              // ★★★ [V203.15] 동사형 종결 오추출 차단 ★★★
+              //   "고소영과 썸타는데" → "썸타는데"가 이름으로 추출되는 버그
+              //   동사형 4자 패턴: ~는데/~인데/~는지/~할지/~할까 등
+              '썸타는데','타는데','있는데','없는데','되는데','하는데',
+              '모르는데','싫은데','좋은데','아닌데','인건지','할지를',
+              '궁금한','모르겠','알고싶','알고싶어','좋아하','싫어하'
             ]);
 
             // ★★★ [V202.53.0-AD] 조사 자동 제거 — 라이브 "승희의" 깨짐 결함 차단 ★★★
@@ -24840,7 +24871,7 @@ ${metrics.cryptoSubtype === 'crypto_buy' ? `
                     temperature: 0.75,
                     topP: 0.95,
                     topK: 40,
-                    maxOutputTokens: 6500
+                    maxOutputTokens: 3500
                   },
                   safetySettings: [
                     // [V2.5] 타로앱 특성상 모든 safety filter 완전 해제
