@@ -1682,12 +1682,13 @@ function getCardSentence(card, isReversed, position, promptText, domain) {
       // 됐/됩니다 단독
       if (/됐습니다\.$/.test(revBase)) return revBase.replace(/됐습니다\.$/, '이 지연됐습니다.');
       if (/됩니다\.$/.test(revBase))   return revBase.replace(/됩니다\.$/, '이 막혀 있습니다.');
-      // 조사+었/았/였습니다
+      // 조사+었/았습니다
       if (/[가이을를]\s*[었았였]습니다\.$/.test(revBase))
         return revBase.replace(/[가이을를]\s*[었았였]습니다\.$/, ' 흐름이 왜곡됐습니다.');
-      // [V203.15] 었/았/였/했/됐/왔/갔/났/셨 + 습니다 — ㅅ받침 글자 처리
-      //   버그: '시기였습니다' → /[었았]/ 미매칭 → '습'의 ㅂ받침 분리 → '시기였스는'
-      //   수정: ㅅ받침 글자 목록 명시 + ㅅ 제거 후 어간 복원
+      // [V203.15] 였/했/왔/갔/났/셨 + 습니다 — ㅅ받침 글자 처리
+      //   버그: '시기였습니다' → ㅂ니다 패턴 진입 → '습'의 ㅂ받침 분리 → '시기였스는'
+      //   '였/했/왔/갔/났/셨' 모두 ㅅ받침(20) → 동일 버그 발생
+      //   수정: ㅅ받침 글자 명시 후 ㅅ 제거 → 어간 복원
       if (/[었았였셨했왔갔났]습니다\.$/.test(revBase))
         return revBase.replace(/([었았였셨했왔갔났])습니다\.$/, (m, ch) => {
           const _c = ch.charCodeAt(0) - 0xAC00;
@@ -3027,7 +3028,7 @@ function buildCriticalInterpretation(cards, revFlags, domain, intent, subType) {
     ? buildStockFallback(future,  'future')  : _rawL3;
   const keyLine = `👉 핵심: "${_keyInsight(domain, intent, signal)}"`;
 
-  // [V203.15] 문장 join → \n\n 분리 (연속 붙음 버그 수정)
+  // [V203.15] WHY 문장 join → \n\n 분리 (문장 붙음 버그 수정)
   return [line1, line2, line3].filter(Boolean).join("\n\n") + "\n" + keyLine + "\n\n" + disclaimer;
 }
 
@@ -24875,10 +24876,7 @@ ${metrics.cryptoSubtype === 'crypto_buy' ? `
                     temperature: 0.75,
                     topP: 0.95,
                     topK: 40,
-                    // [V203.15] 도메인별 출력 토큰 분리
-                    //   love: 연애 서사 길어 5000 필요 (잘림 방지)
-                    //   stock/crypto: 투자 언어 간결, 3200 충분
-                    //   기타: 3500
+                    // [V203.15] 도메인별 출력 토큰 분리 (사주는 별도 경로)
                     maxOutputTokens: queryType === 'love' ? 5000
                                    : (queryType === 'stock' || queryType === 'crypto') ? 3200
                                    : 3500
