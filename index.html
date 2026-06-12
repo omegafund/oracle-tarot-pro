@@ -8838,6 +8838,14 @@ async function renderStream(fetchPromise, cards) {
                         continue; // metrics 이벤트는 텍스트 누적에서 제외
                     }
 
+                    // [V203.16] WHY 이벤트 — Gemini가 생성한 투자 핵심 흐름 해석
+                    if (parsed && parsed._type === 'why' && parsed.text) {
+                        if (window._serverMetrics && window._serverMetrics.layers) {
+                            window._serverMetrics.layers.criticalInterpretation = parsed.text;
+                        }
+                        continue;
+                    }
+
                     // [V203.8] generateContent 일반 호출 전환 — {_type:"text"} 이벤트 수신
                     const chunk = (parsed?._type === 'text' && parsed?.text)
                         ? parsed.text
