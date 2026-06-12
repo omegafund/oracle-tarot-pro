@@ -23375,7 +23375,12 @@ export default {
               //   동사형 4자 패턴: ~는데/~인데/~는지/~할지/~할까 등
               '썸타는데','타는데','있는데','없는데','되는데','하는데',
               '모르는데','싫은데','좋은데','아닌데','인건지','할지를',
-              '궁금한','모르겠','알고싶','알고싶어','좋아하','싫어하'
+              '궁금한','모르겠','알고싶','알고싶어','좋아하','싫어하',
+              // [V203.16] 동사 어간 추가 — "어떻게/생각하/바라보" 등 오추출 차단
+              '어떻게','생각하','바라보','느끼는','알아가','다가가',
+              '이어가','만들어','보내고','지내고','연락해','기다려',
+              '힘들어','모르겠','헷갈려','그러면','그렇다','이렇게',
+              '저렇게','어디서','언제부','왜이렇','어떡해','어떻하'
             ]);
 
             // ★★★ [V202.53.0-AD] 조사 자동 제거 — 라이브 "승희의" 깨짐 결함 차단 ★★★
@@ -24880,25 +24885,36 @@ ${metrics.cryptoSubtype === 'crypto_buy' ? `
               .trim();
 
             // [V203.16] WHY 파싱 — 투자 도메인에서만 [WHY_START]...[WHY_END] 추출
-            //   geminiText에서 WHY 블록 분리 → criticalInterpretation 교체용 SSE 전송
-            //   WHY 블록은 본문 렌더링에서 제거 (중복 방지)
+            //   WHY 블록 없으면 Gemini 본문 앞 3문장으로 폴백 (POOL 폴백보다 낫음)
             if (isFinanceQuery) {
               const _whyMatch = geminiText.match(/\[WHY_START\]([\s\S]*?)\[WHY_END\]/);
               if (_whyMatch) {
-                // WHY 텍스트 정제
                 const _whyRaw = _whyMatch[1].trim();
                 const _whyLines = _whyRaw.split('\n')
                   .map(l => l.trim())
-                  .filter(l => l.length > 0)
+                  .filter(l => l.length > 5)
                   .map(l => l.replace(/^(과거|현재|미래|핵심)\s*[:：]\s*/, ''));
-                const _whyText = _whyLines.join('\n');
-                // WHY 이벤트 전송 (metrics 다음, text 이전)
-                const _whyPayload = JSON.stringify({ _type: 'why', text: _whyText });
-                await writer.write(encoder.encode(`data: ${_whyPayload}\n\n`));
-                // 본문에서 WHY 블록 제거
+                // [V203.16] 잘린 응답 감지 — 4줄 미만이면 본문 폴백
+                if (_whyLines.length >= 3) {
+                  const _whyText = _whyLines.join('\n');
+                  const _whyPayload = JSON.stringify({ _type: 'why', text: _whyText });
+                  await writer.write(encoder.encode(`data: ${_whyPayload}\n\n`));
+                }
                 geminiText = geminiText
                   .replace(/\[WHY_START\][\s\S]*?\[WHY_END\]/g, '')
                   .trim();
+              } else {
+                // [V203.16] WHY 블록 누락 — Gemini 본문 앞 문장들로 폴백
+                //   Gemini가 [WHY_START] 형식을 안 지켰을 때
+                //   본문에서 투자 관련 문장 3개 추출
+                const _fbLines = geminiText.split('\n')
+                  .map(l => l.trim())
+                  .filter(l => l.length > 15 && !l.startsWith('[') && !l.startsWith('━') && !l.startsWith('추세:') && !l.startsWith('행동:') && !l.startsWith('타이밍:') && !l.startsWith('리스크:'));
+                if (_fbLines.length >= 3) {
+                  const _fbText = _fbLines.slice(0, 3).join('\n');
+                  const _fbPayload = JSON.stringify({ _type: 'why', text: _fbText });
+                  await writer.write(encoder.encode(`data: ${_fbPayload}\n\n`));
+                }
               }
             }
 
