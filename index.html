@@ -13604,8 +13604,8 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
                 { icon: '⚠️', label: `리스크 ${sm.riskLevelScore || sm.riskScore || '--'}%`, preview: '현재 포지션 리스크 상세 분석과 손절 시나리오...' },
                 { icon: '📊', label: `변동성 ${sm.volatilityScore || '--'}%`,              preview: '단기 변동성 확대 구간과 대응 전략 분석...' },
                 { icon: '⭐', label: '카드 5차원 영성 분석',  preview: '기본 점수/추세 강도/리스크/변동성/불확실성 시각화...' },
-                { icon: '🎯', label: '익절·매도 시그널',      preview: '익절 구간과 단계적 매도 흐름의 카드 기반 정밀 해석...' },
-                { icon: '⚡', label: '수비학 황금 시간대',    preview: '카드 에너지가 정점에 이르는 정확한 요일·시간대 분석...' },
+                { icon: '🎯', label: '흐름 전환 신호',         preview: '카드 에너지 기반 흐름 변화 패턴과 단계적 대응 분석...' },
+                { icon: '⚡', label: '수비학 타이밍 분석',    preview: '카드 에너지 흐름과 수비학 기반 시간대 분석...' },
             ];
             // [V203.16] 프리미엄 블록 — 유료/무료 분기
             //   유료: renderMetrics 결과 (리스크%/변동성%/5차원 그래프) 선명하게 노출
@@ -15632,15 +15632,15 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
                     // 매도 시나리오 — 결제 후 결과: 매도 비중 / 익절 구간 / 손실 한도
                     return [
                         { icon: '📊', title: '5차원 영성 분석', preview: '카드별 base/관계/리스크/변동성/불확실성 점수 시각화...' },
-                        { icon: '🎯', title: '익절·매도 시그널', preview: '익절 구간과 단계적 매도 흐름의 카드 기반 정밀 해석...' },
-                        { icon: '⚡', title: '수비학 황금 시간대', preview: '카드 에너지가 정점에 이르는 정확한 요일·시간대 분석...' }
+                        { icon: '🎯', title: '흐름 정리 신호', preview: '카드 에너지 기반 흐름 정리 패턴과 단계적 대응 분석...' },
+                        { icon: '⚡', title: '수비학 타이밍 분석', preview: '카드 에너지 흐름과 수비학 기반 시간대 분석...' }
                     ];
                 }
                 // 매수 시나리오 — 결제 후 결과: 진입 트리거 / 1차 신호 / 2차 확정
                 return [
                     { icon: '📊', title: '5차원 영성 분석', preview: '카드별 base/관계/리스크/변동성/불확실성 점수 시각화...' },
-                    { icon: '🎯', title: '진입 트리거 시그널', preview: '객관적 신호 충족 시 단계별 비중 조정 흐름과 타이밍...' },
-                    { icon: '⚡', title: '수비학 황금 시간대', preview: '카드 에너지가 정점에 이르는 정확한 요일·시간대 분석...' }
+                    { icon: '🎯', title: '흐름 전환 신호', preview: '카드 에너지 기반 흐름 변화 패턴과 단계적 대응 분석...' },
+                    { icon: '⚡', title: '수비학 타이밍 분석', preview: '카드 에너지 흐름과 수비학 기반 시간대 분석...' }
                 ];
             } else if (_activeDomain === 'realestate') {
                 // [V27.2.C] 부동산 매수/매도 의도 분기 — 약속·결과 일치
