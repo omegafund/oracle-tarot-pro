@@ -23811,6 +23811,18 @@ The Devil 예시:
 행동: ${metrics.action}
 타이밍: ${metrics.finalTimingText}
 리스크: ${metrics.riskLevel}
+
+[WHY_START]
+아래 4문장을 반드시 출력하라. 형식 엄수. 투자 언어만 사용. 감정/심리/연애 표현 절대 금지.
+카드: 과거(${cleanCards[0]}) / 현재(${cleanCards[1]}) / 미래(${cleanCards[2]})
+종목: ${subjectName || '해당 자산'}
+의도: ${intentLabel}
+
+과거: (이 종목/자산의 과거 흐름이 왜 그랬는가 — 수급/추세/시장심리 관점 1문장)
+현재: (지금 시장이 무엇을 하고 있는가 — 가격/거래량/모멘텀 관점 1문장)
+미래: (앞으로 무엇을 확인해야 기회/리스크인가 — 신호/조건 관점 1문장)
+핵심: (지금 취해야 할 전략 한 줄 — 매수/매도/관망 중 하나로 명확히)
+[WHY_END]
 `;
         } else if (queryType === "love") {
           // ★★★ [V202.43 #2 사장님 도돌이 결함 - Gemini 보강] ★★★
@@ -25004,6 +25016,29 @@ ${metrics.cryptoSubtype === 'crypto_buy' ? `
               .replace(/[^\n]*에 대한 신탁은 다음과 같습니다[^\n]*/g, '')
               .replace(/[^\n]*주식 실전 (매도|매수) 신탁[^\n]*/g, '')
               .trim();
+
+            // [V203.16] WHY 파싱 — 투자 도메인에서만 [WHY_START]...[WHY_END] 추출
+            //   geminiText에서 WHY 블록 분리 → criticalInterpretation 교체용 SSE 전송
+            //   WHY 블록은 본문 렌더링에서 제거 (중복 방지)
+            if (isFinanceQuery) {
+              const _whyMatch = geminiText.match(/\[WHY_START\]([\s\S]*?)\[WHY_END\]/);
+              if (_whyMatch) {
+                // WHY 텍스트 정제
+                const _whyRaw = _whyMatch[1].trim();
+                const _whyLines = _whyRaw.split('\n')
+                  .map(l => l.trim())
+                  .filter(l => l.length > 0)
+                  .map(l => l.replace(/^(과거|현재|미래|핵심)\s*[:：]\s*/, ''));
+                const _whyText = _whyLines.join('\n');
+                // WHY 이벤트 전송 (metrics 다음, text 이전)
+                const _whyPayload = JSON.stringify({ _type: 'why', text: _whyText });
+                await writer.write(encoder.encode(`data: ${_whyPayload}\n\n`));
+                // 본문에서 WHY 블록 제거
+                geminiText = geminiText
+                  .replace(/\[WHY_START\][\s\S]*?\[WHY_END\]/g, '')
+                  .trim();
+              }
+            }
 
             const textPayload = JSON.stringify({ _type: 'text', text: geminiText });
             await writer.write(encoder.encode(`data: ${textPayload}\n\n`));
