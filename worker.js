@@ -23575,6 +23575,40 @@ export default {
             const _decisiveTiming = buildDecisiveTiming(metrics);
             if (_decisiveTiming) {
               _topVerdict.decisiveTiming = _decisiveTiming;
+
+              // [V203.16] TIMING-VERDICT 충돌 보정
+              //   문제: topVerdict=🟢(매수) 인데 decisiveTiming=🔴(관망) → 유저 혼란
+              //   원인: decisiveTiming은 수비학 단독, topVerdict는 카드 3장 합산
+              //   해결: topVerdict 방향으로 decisiveTiming signal 보정
+              const _vSignal = _topVerdict.signal || '';
+              const _tSignal = _decisiveTiming.signal || '';
+              const _verdictIsBuy  = _vSignal.includes('🟢') || _vSignal.includes('진입');
+              const _verdictIsSell = _vSignal.includes('🔴') || _vSignal.includes('청산') || _vSignal.includes('정리');
+              const _timingIsContra = (_verdictIsBuy  && _tSignal.includes('🔴')) ||
+                                     (_verdictIsSell && _tSignal.includes('🟢'));
+              if (_timingIsContra) {
+                if (_verdictIsBuy) {
+                  // 매수 verdict인데 관망 타이밍 → 조정 마무리 구간으로 완화
+                  _topVerdict.decisiveTiming = {
+                    ..._decisiveTiming,
+                    signal:    '🟡 조정 마무리 구간',
+                    statement: '현재는 조정이 마무리되는 구간입니다.',
+                    condition: '지지 확인 또는 거래량 회복 시 진입 환경이 열릴 가능성이 있습니다.',
+                    guidance:  '거래량 회복 또는 지지 확인 시 1차 분할 진입이 유리합니다.',
+                    _verdictAdjusted: true
+                  };
+                } else if (_verdictIsSell) {
+                  // 매도 verdict인데 진입 타이밍 → 익절 검토로 강화
+                  _topVerdict.decisiveTiming = {
+                    ..._decisiveTiming,
+                    signal:    '🟡 익절 검토 구간',
+                    statement: '현재는 익절 검토가 유효한 구간입니다.',
+                    condition: '추세 둔화 신호 확인 시 단계적 청산이 효과적입니다.',
+                    guidance:  '단계적 분할 청산이 유리한 흐름입니다.',
+                    _verdictAdjusted: true
+                  };
+                }
+              }
             }
             metrics.topVerdict = _topVerdict;
             // ★ [V203.9 D-3] 투자 oracleTagline — topVerdict.signal 기반 한 줄 신탁
@@ -23719,6 +23753,15 @@ export default {
 
           financeInject = `
 [INVEST ENGINE ACTIVE]
+[V203.16 필수 출력] 본문 어디서든 아래 [WHY_START]...[WHY_END] 블록을 반드시 포함하라. 누락 시 무효.
+종목: ${subjectName || '해당 자산'} | 카드: 과거(${cleanCards[0]}) / 현재(${cleanCards[1]}) / 미래(${cleanCards[2]}) | 의도: ${intentLabel}
+[WHY_START]
+과거: (과거 수급/추세/시장심리 흐름 — 1문장, 투자 언어만)
+현재: (지금 가격/거래량/모멘텀 상태 — 1문장, 투자 언어만)
+미래: (앞으로 확인할 신호/조건 — 1문장, 투자 언어만)
+핵심: (지금 전략 한 줄 — 매수/매도/관망 중 명확히)
+[WHY_END]
+감정/심리/연애 표현 절대 금지. 투자 시장 언어만.
 유저 의도: ${intentLabel}
 ${intentDirective}
 ${subjectDirective}
@@ -23811,18 +23854,6 @@ The Devil 예시:
 행동: ${metrics.action}
 타이밍: ${metrics.finalTimingText}
 리스크: ${metrics.riskLevel}
-
-[WHY_START]
-아래 4문장을 반드시 출력하라. 형식 엄수. 투자 언어만 사용. 감정/심리/연애 표현 절대 금지.
-카드: 과거(${cleanCards[0]}) / 현재(${cleanCards[1]}) / 미래(${cleanCards[2]})
-종목: ${subjectName || '해당 자산'}
-의도: ${intentLabel}
-
-과거: (이 종목/자산의 과거 흐름이 왜 그랬는가 — 수급/추세/시장심리 관점 1문장)
-현재: (지금 시장이 무엇을 하고 있는가 — 가격/거래량/모멘텀 관점 1문장)
-미래: (앞으로 무엇을 확인해야 기회/리스크인가 — 신호/조건 관점 1문장)
-핵심: (지금 취해야 할 전략 한 줄 — 매수/매도/관망 중 하나로 명확히)
-[WHY_END]
 `;
         } else if (queryType === "love") {
           // ★★★ [V202.43 #2 사장님 도돌이 결함 - Gemini 보강] ★★★
