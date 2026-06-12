@@ -1459,7 +1459,7 @@ const CARD_SENTENCE_POOL = {
 };
 
 // 문장 선택 함수 — 카드 해시 + 질문 해시 조합
-function getCardSentence(card, isReversed, position, promptText) {
+function getCardSentence(card, isReversed, position, promptText, domain) {
   const name = typeof card === 'string' ? card : (card?.name || '');
   const pool = CARD_SENTENCE_POOL[name];
 
@@ -1478,11 +1478,15 @@ function getCardSentence(card, isReversed, position, promptText) {
       // 역방향은 pool에서 다른 인덱스 선택 (정방향과 겹치지 않게)
       const revIdx = (idx + Math.floor(sentences.length / 2)) % sentences.length;
       const revBase = sentences[revIdx];
-      // 역방향 의미 변환: "~됐습니다" → "~이 지연되거나 막혔습니다" 형태
-      return revBase.replace(/됐습니다\.$/, '이 막히거나 지연됐습니다.')
+      // 역방향 의미 변환 — 어미 패턴 정밀화 (납니다→납 잔류 버그 수정)
+      return revBase.replace(/됩니다\.$/, '이 막혀 있습니다.')
+                    .replace(/됐습니다\.$/, '이 막히거나 지연됐습니다.')
                     .replace(/었습니다\.$/, '이 왜곡됐습니다.')
                     .replace(/있습니다\.$/, '이 억제되고 있습니다.')
-                    .replace(/니다\.$/, '이 역행하고 있습니다.');
+                    .replace(/납니다\.$/, '는 흐름이 지연되고 있습니다.')
+                    .replace(/집니다\.$/, '는 흐름이 역행하고 있습니다.')
+                    .replace(/([가-힣])ㄴ니다\.$/, '$1는 흐름이 역행하고 있습니다.')
+                    .replace(/([가-힣])니다\.$/, '$1는 에너지가 역행하고 있습니다.');
     }
     return sentences[idx % sentences.length];
   }
@@ -1490,7 +1494,7 @@ function getCardSentence(card, isReversed, position, promptText) {
   // [V203.13] 폴백 1: CARD_LOVE_PHRASE 역방향 의미 우선 활용 (연애 도메인)
   //   High Priestess 역방향 → "숨겨진 거리감" (CARD_LOVE_PHRASE.reversed 활용)
   const _lovePhrase = CARD_LOVE_PHRASE && CARD_LOVE_PHRASE[typeof card === 'string' ? card : (card?.name||'')];
-  if (_lovePhrase && isReversed && _lovePhrase.reversed) {
+  if (_lovePhrase && isReversed && _lovePhrase.reversed && domain === 'love') {
     const _revMeaning = _lovePhrase.reversed;
     const _revTemplates = {
       past:    [`과거에는 ${_revMeaning}의 흐름이 관계에 영향을 미쳤습니다.`,
@@ -2739,9 +2743,9 @@ function buildCriticalInterpretation(cards, revFlags, domain, intent, subType) {
 
   // [V203.12] CARD_SENTENCE_POOL 우선 사용 — 폴백은 포지션 역할 서사
   const _prompt = (typeof window !== 'undefined' && window._lastPrompt) ? window._lastPrompt : '';
-  const line1 = getCardSentence(past,    rf[0], 'past',    _prompt);
-  const line2 = getCardSentence(present, rf[1], 'present', _prompt);
-  const line3 = getCardSentence(future,  rf[2], 'future',  _prompt);
+  const line1 = getCardSentence(past,    rf[0], 'past',    _prompt, domain);
+  const line2 = getCardSentence(present, rf[1], 'present', _prompt, domain);
+  const line3 = getCardSentence(future,  rf[2], 'future',  _prompt, domain);
   const keyLine = `👉 핵심: "${_keyInsight(domain, intent, signal)}"`;
 
   return `${line1}
