@@ -20488,6 +20488,21 @@ function renderSajuResult(data) {
                 <div style="font-size:2.4rem;">☯</div>
                 <h2 style="color:#FFD970; font-size:1.15rem; margin:6px 0; font-weight:900;">${text.title || '사주 신탁'}</h2>
                 <div style="color:#FFE08A; font-size:0.84rem; font-weight:700;">${refineSajuSubtitle(text.subtitle || '')}</div>
+                ${(() => {
+                    // [V203.17] 특수 명식 설명 — 내부 시나리오 → 유저 친화 문장
+                    const _sub = text.subtitle || '';
+                    const _notes = {
+                        '변동 사주': '이 명식은 오행 기운이 다소 변동적인 구조로, 흐름을 먼저 확인하며 접근하는 것이 유리합니다.',
+                        '약화 사주': '이 명식은 일부 기운이 약화된 구조로, 균형을 보완하며 나아가는 것이 중요합니다.',
+                        '정체 사주': '이 명식은 에너지 흐름이 정체된 구간에 있어, 무리한 추진보다 내실을 다지는 것이 효과적입니다.',
+                        '약한 사주': '이 명식은 기운이 낮은 시기로, 무리한 활동보다 보호와 회복에 집중하는 것이 유리합니다.',
+                        '위태 사주': '이 명식은 기운이 매우 불안정한 구조로, 신중한 판단과 전문가 조언이 도움이 됩니다.',
+                    };
+                    const _match = Object.keys(_notes).find(k => _sub.includes(k));
+                    return _match
+                        ? `<div style="margin-top:6px; font-size:0.78rem; color:rgba(255,255,255,0.6); line-height:1.5; max-width:280px; margin-left:auto; margin-right:auto;">${_notes[_match]}</div>`
+                        : '';
+                })()}
                 ${(function() {
                     try {
                         const _input = window._sajuInput || {};
