@@ -14874,7 +14874,7 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
                 `).join('')}
             </div>`;
         })()}
-        <div style="line-height: 1.8; color: rgba(255,255,255,0.95); font-size: 0.96rem; margin-bottom: 20px;">${formatChunk(oracleContent)}</div>
+        <div style="line-height: 1.8; color: rgba(255,255,255,0.95); font-size: 0.96rem; margin-bottom: 20px;">${isFinanceQuery ? '' : formatChunk(oracleContent)}</div>
         ${(typeof _coreInsightHTML !== 'undefined' && !_suppressGeminiCoreInsight) ? _coreInsightHTML : ''}
         ${!isFinanceQuery ? (() => {
             const qRaw2 = (document.getElementById('seed-input')?.value || '').toLowerCase();
@@ -19988,23 +19988,29 @@ function renderSajuResult(data) {
         if (!originalSubtitle) return '사주 흐름 분석';
         
         let refined = originalSubtitle;
-        // ★★★ [V202.10 사장님 명령] '단계별 진행' 표시 ★ 제거 ★ ★★★
-        //   사장님 명령: "이건 우리 내부 로직인데 안 보여"
-        //   해결: '조건 진행' / '조건부 진행' 같은 텍스트가 들어있으면 ★ 제거 ★
-        //         (변환이 아니라 ★ 통째로 비움 ★ — '균형 사주' 만 남김)
+        // ★★★ [V202.10 사장님 명령] 내부 로직 표현 제거 ★★★
+        //   "신중 진행", "조건 진행" 등은 내부 처리 용어 — 유저에게 노출 불가
         const removalPatterns = [
-            /\s*-\s*조건\s*진행/g,
-            /\s*-\s*조건진행/g,
-            /\s*-\s*조건\s*단계/g,
-            /\s*-\s*조건부\s*진행/g,
-            /\s*-\s*단계별\s*진행/g,
+            /\s*[-—]\s*조건\s*진행/g,
+            /\s*[-—]\s*조건진행/g,
+            /\s*[-—]\s*조건\s*단계/g,
+            /\s*[-—]\s*조건부\s*진행/g,
+            /\s*[-—]\s*단계별\s*진행/g,
+            /\s*[-—]\s*신중\s*진행/g,   // [V203.17] 추가
+            /\s*[-—]\s*신중진행/g,       // [V203.17] 추가
+            /\s*[-—]\s*균형\s*유지/g,
+            /\s*[-—]\s*단계\s*진행/g,
+            /\s*[-—]\s*추진\s*흐름/g,
             /\s*·\s*조건\s*진행/g,
             /\s*·\s*조건부\s*진행/g,
             /\s*·\s*단계별\s*진행/g,
+            /\s*·\s*신중\s*진행/g,       // [V203.17] 추가
             /조건\s*진행/g,
             /조건진행/g,
             /조건부\s*진행/g,
-            /단계별\s*진행/g
+            /단계별\s*진행/g,
+            /신중\s*진행/g,              // [V203.17] 추가
+            /신중진행/g,                  // [V203.17] 추가
         ];
         
         for (const pat of removalPatterns) {
@@ -20012,7 +20018,7 @@ function renderSajuResult(data) {
         }
         
         // 끝에 남은 공백·하이픈·중간점 정리
-        refined = refined.replace(/[\s\-·]+$/, '').replace(/^[\s\-·]+/, '').trim();
+        refined = refined.replace(/[\s\-·—]+$/, '').replace(/^[\s\-·—]+/, '').trim();
         
         return refined || '사주 흐름 분석';
     }
