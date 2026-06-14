@@ -25302,8 +25302,14 @@ function extractSubject(prompt, queryType) {
         // ★ V202.23: 시간 부사·질문어 추가 (사장님 결함) ★
         '언제','어떨','어때','좋을'
       ];
-      if (VERBS_OR_KEYWORDS.includes(m2[2])) {
-        // "동국제강 매수" → "동국제강"
+      // [V203.20] 동사 어미 활용형 처리 — "단타하려는데", "추가매수해야하나" 등
+      //   사장님 진단: "엘아지넥스윈 단타하려는데 어때" → "엘아지넥스윈단타하려는데" (15자, 동사 포함)
+      //   원인: m2[2]="단타하려는데"가 VERBS_OR_KEYWORDS에 정확히 일치 안 함(목록엔 "단타"만 있음)
+      //   해결: includes(정확매칭) → startsWith(접두어매칭)로 변경
+      //         "단타하려는데".startsWith("단타") === true → m2[1]만 반환
+      const _m2KeywordMatch = VERBS_OR_KEYWORDS.some(kw => m2[2].startsWith(kw));
+      if (_m2KeywordMatch) {
+        // "동국제강 매수" / "엘아지넥스윈 단타하려는데" → "동국제강" / "엘아지넥스윈"
         return m2[1].trim();
       }
       // 정상 두 단어 종목 — "대한 광통신" → "대한광통신"
