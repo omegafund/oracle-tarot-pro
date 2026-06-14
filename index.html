@@ -14788,8 +14788,10 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
                     _flowLabel17 += (_intent17 === 'sell') ? '매도 흐름 분석' : '매수 흐름 분석';
                     return `
                     <div style="font-size:0.68rem; color:rgba(212,175,55,0.7); letter-spacing:0.25em; margin-bottom:4px;">✦ ZEUS FINAL INVESTMENT ORACLE ✦</div>
-                    <span class="zenith-title-main" style="color:#2ecc71; font-size:1.2rem; font-weight:900; display:block;">제우스의 최종 투자 신탁</span>
-                    <div class="zenith-title-sub" style="color:rgba(46,204,113,0.85); font-size:0.85rem; font-weight:800; letter-spacing:0.15em; margin-top:4px;">${_icon17} ${_flowLabel17}</div>`;
+                    <span class="zenith-title-main" style="color:#2ecc71; font-size:1.2rem; font-weight:900; display:block;">제우스의 최종 투자 신탁</span>`;
+                    // [V203.18] "실전 매수/매도 흐름 분석" 서브헤더 제거
+                    //   원인: Gemini 본문 "주식 실전 투자 신탁" 필터 불완전과 중복되어 두 줄 노출
+                    //   사장님 지시: 서브헤더 자체 삭제, 타이틀+구분선만 유지
                 }
                 const qRawTitle = (document.getElementById('seed-input')?.value || '').toLowerCase();
                 // [V26.11 진짜 결함 Fix 2] 헤더 분기도 ACTIVE_DOMAIN_BAR 우선 체크
