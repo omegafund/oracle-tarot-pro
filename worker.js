@@ -24953,6 +24953,10 @@ ${metrics.cryptoSubtype === 'crypto_buy' ? `
             // [V203.16] WHY 파싱 — 투자 도메인에서만 [WHY_START]...[WHY_END] 추출
             //   WHY 블록 없으면 Gemini 본문 앞 3문장으로 폴백 (POOL 폴백보다 낫음)
             if (isFinanceQuery) {
+              // [V203.18-FIX] subjectName 스코프 버그 수정
+              //   원인: 이 if(isFinanceQuery) 블록은 L23667의 if(isFinanceQuery) 블록과 별개(스트림 핸들러 내부)
+              //   subjectName은 L23667 블록의 const라 여기서 ReferenceError 발생 → catch로 전체 실패
+              const subjectName = extractSubject(prompt, queryType);
               const _whyMatch = geminiText.match(/\[WHY_START\]([\s\S]*?)\[WHY_END\]/);
               if (_whyMatch) {
                 const _whyRaw = _whyMatch[1].trim();
@@ -25000,8 +25004,7 @@ ${metrics.cryptoSubtype === 'crypto_buy' ? `
           } catch (e) {
             // catch에서도 [DONE] 전송 — 클라이언트 무한 로딩 방지
             try {
-              // [V203.18-DEBUG] 실제 에러 메시지 노출 — 원인 파악용 임시
-              const _errMsg = `[DEBUG] ${e?.name || 'Error'}: ${e?.message || String(e)}`;
+              const _errMsg = '신탁 연결 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.';
               await writer.write(encoder.encode(`data: ${JSON.stringify({ _type: 'text', text: _errMsg })}\n\n`));
               await writer.write(encoder.encode(`data: [DONE]\n\n`));
             } catch(_) {}
