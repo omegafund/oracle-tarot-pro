@@ -823,6 +823,21 @@ function calcScore(cardNames, key) {
   return count > 0 ? Math.round(sum / count) : 50;
 }
 
+// [V203.19] 투자 전용 — 자산군별 리스크/변동성 보정
+//   사장님 검증: 코인은 동일 카드 조합이라도 자산 특성상 기본 변동성/리스크가 높음
+//   주식/ETF는 calcScore 그대로, 코인만 multiplier 적용
+//   ⚠️ calcScore 자체는 변경 없음 — 사주/연애 등 기존 호출 영향 0%
+const ASSET_RISK_VOL_MULTIPLIER = {
+  crypto: { risk: 1.20, vol: 1.35 },
+  stock:  { risk: 1.0,  vol: 1.0  },
+};
+function calcInvestScore(cardNames, key, queryType) {
+  const base = calcScore(cardNames, key);
+  const mult = ASSET_RISK_VOL_MULTIPLIER[queryType] || ASSET_RISK_VOL_MULTIPLIER.stock;
+  const adjusted = base * (mult[key] || 1.0);
+  return Math.round(Math.min(100, adjusted));
+}
+
 // ══════════════════════════════════════════════════════════════════
 // [V25.14] getCardDimensions — 카드별 5차원 영성 점수 추출
 //   사장님이 1년간 손수 입력한 CARD_SCORE_MULTI 데이터 활용
@@ -13006,14 +13021,14 @@ function buildStockMetrics({ totalScore, riskScore, cleanCards, isLeverage, quer
       trend: finalTrend,
       action: finalAction,
       riskLevel: finalRisk,
-      riskLevelScore: calcScore(cleanCards, 'risk'),
+      riskLevelScore: calcInvestScore(cleanCards, 'risk', queryType),
       entryStrategy, exitStrategy,
       finalTimingText: _blockDecision.timingNote || '조건 충족 시 진입',
       entryTimingText: '조건 충족 시',
       exitTimingText:  '-',
       totalScore, riskScore,
       // [V23.4] BLOCK 경로에서도 수치 메트릭 제공
-      volatilityScore: calcScore(cleanCards, 'vol'),
+      volatilityScore: calcInvestScore(cleanCards, 'vol', queryType),
       // [V25.14] 5차원 영성 레이더 차트 데이터 (Claude 2순위)
       //   사장님 1년 작업 CARD_SCORE_MULTI 시각화용 — 결과 화면에 차트로
       cardDimensions: buildCardDimensionsArray(cleanCards, revFlags),
@@ -13233,7 +13248,7 @@ function buildStockMetrics({ totalScore, riskScore, cleanCards, isLeverage, quer
     action: _uncOverride ? _uncOverride.decisionStrategy : finalAction,
     // [V24.3] 리스크 라벨 — 게이트 발동 시 riskGate.riskLabelKo 사용 (보통 디폴트 차단)
     riskLevel: _uncOverride ? riskGate.riskLabelKo : finalRisk,
-    riskLevelScore: calcScore(cleanCards, 'risk'),
+    riskLevelScore: calcInvestScore(cleanCards, 'risk', queryType),
     entryStrategy, exitStrategy,
     finalTimingText: _uncOverride ? _uncOverride.timingNote : timingDetail,
     entryTimingText: _uncOverride ? '트리거 충족 시' : (entryTimingText || '-'),
@@ -13243,7 +13258,7 @@ function buildStockMetrics({ totalScore, riskScore, cleanCards, isLeverage, quer
     uncertaintyScore: uncGate.sum,
     uncertaintyLevel: uncGate.level,
     // [V23.4] 변동성 수치 (사장님 설계)
-    volatilityScore: calcScore(cleanCards, 'vol'),
+    volatilityScore: calcInvestScore(cleanCards, 'vol', queryType),
     // [V25.14] 5차원 영성 레이더 차트 데이터 (Claude 2순위)
     //   사장님 1년 작업 CARD_SCORE_MULTI 시각화용
     cardDimensions: buildCardDimensionsArray(cleanCards, revFlags),
@@ -25005,7 +25020,12 @@ ${metrics.cryptoSubtype === 'crypto_buy' ? `
                   });
                 // [V203.16] 잘린 응답 감지 — 4줄 미만이면 본문 폴백
                 if (_whyLines.length >= 3) {
-                  const _whyText = _whyLines.join('\n');
+                  // [V203.19] "👉 핵심:" 이 같은 줄에 붙어 나오는 문제 — 줄바꿈 강제 분리
+                  //   예: "...있습니다. 👉 핵심: ..." → "...있습니다.\n👉 핵심: ..."
+                  const _whyText = _whyLines
+                    .map(l => l.replace(/\s*👉\s*핵심\s*:/g, '\n👉 핵심:'))
+                    .join('\n')
+                    .replace(/\n{2,}/g, '\n'); // 중복 개행 정리
                   const _whyPayload = JSON.stringify({ _type: 'why', text: _whyText });
                   await writer.write(encoder.encode(`data: ${_whyPayload}\n\n`));
                 }
