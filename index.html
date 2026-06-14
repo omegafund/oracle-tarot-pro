@@ -14777,6 +14777,8 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
                     const _sm17 = window._serverMetrics || {};
                     const _intent17 = _sm17.stockIntent || 'buy';
                     const _subType17 = _sm17.stockSubType || '';
+                    const _isCrypto17 = (_sm17.type === 'crypto' || _sm17.queryType === 'crypto');
+                    const _icon17 = _isCrypto17 ? '🪙' : '📈';
                     let _flowLabel17 = '실전 ';
                     if (_subType17 === 'short' || _subType17 === 'scalping') {
                         _flowLabel17 += '단타 ';
@@ -14787,7 +14789,7 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
                     return `
                     <div style="font-size:0.68rem; color:rgba(212,175,55,0.7); letter-spacing:0.25em; margin-bottom:4px;">✦ ZEUS FINAL INVESTMENT ORACLE ✦</div>
                     <span class="zenith-title-main" style="color:#2ecc71; font-size:1.2rem; font-weight:900; display:block;">제우스의 최종 투자 신탁</span>
-                    <div class="zenith-title-sub" style="color:rgba(46,204,113,0.85); font-size:0.85rem; font-weight:800; letter-spacing:0.15em; margin-top:4px;">📈 ${_flowLabel17}</div>`;
+                    <div class="zenith-title-sub" style="color:rgba(46,204,113,0.85); font-size:0.85rem; font-weight:800; letter-spacing:0.15em; margin-top:4px;">${_icon17} ${_flowLabel17}</div>`;
                 }
                 const qRawTitle = (document.getElementById('seed-input')?.value || '').toLowerCase();
                 // [V26.11 진짜 결함 Fix 2] 헤더 분기도 ACTIVE_DOMAIN_BAR 우선 체크
