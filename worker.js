@@ -24925,6 +24925,11 @@ ${metrics.cryptoSubtype === 'crypto_buy' ? `
             geminiText = geminiText
               .replace(/\u2501+[\u2501\s]+/g, ' ')
               .replace(/제우스의 신탁[^\n]*ZEUS[^\n]*ORACLE[^\n]*/gi, '')
+              // [V203.18] "제우스의 최종 OO 신탁" + 그 다음 줄 "ZEUS ... ORACLE" — 핵심 필터
+              //   진짜 원인: Gemini가 "제우스의 최종 투자 신탁\nZEUS INVESTMENT ORACLE" 출력
+              //   기존 패턴은 "제우스의 신탁...ZEUS...ORACLE"만 잡아서 "최종 X 신탁"은 누락
+              .replace(/제우스의\s*최종\s*[가-힣]*\s*신탁\s*\n?\s*ZEUS[^\n]*ORACLE[^\n]*/gi, '')
+              .replace(/^[^\n]*제우스의\s*최종\s*[가-힣]*\s*신탁[^\n]*\n?/gm, '')
               .replace(/[^\n]*에 대한 신탁은 다음과 같습니다[^\n]*/g, '')
               .replace(/[^\n]*(주식|코인)\s*실전\s*(매도|매수|투자|단타|중장기)?\s*신탁[^\n]*/g, '')
               // [V203.17] 보조 패턴 — "실전 OOO 신탁" 단독 출현 (주식/코인 키워드 없이)
