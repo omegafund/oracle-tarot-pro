@@ -25000,7 +25000,8 @@ ${metrics.cryptoSubtype === 'crypto_buy' ? `
           } catch (e) {
             // catch에서도 [DONE] 전송 — 클라이언트 무한 로딩 방지
             try {
-              const _errMsg = '신탁 연결 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.';
+              // [V203.18-DEBUG] 실제 에러 메시지 노출 — 원인 파악용 임시
+              const _errMsg = `[DEBUG] ${e?.name || 'Error'}: ${e?.message || String(e)}`;
               await writer.write(encoder.encode(`data: ${JSON.stringify({ _type: 'text', text: _errMsg })}\n\n`));
               await writer.write(encoder.encode(`data: [DONE]\n\n`));
             } catch(_) {}
