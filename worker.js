@@ -823,21 +823,6 @@ function calcScore(cardNames, key) {
   return count > 0 ? Math.round(sum / count) : 50;
 }
 
-// [V203.19] 투자 전용 — 자산군별 리스크/변동성 보정
-//   사장님 검증: 코인은 동일 카드 조합이라도 자산 특성상 기본 변동성/리스크가 높음
-//   주식/ETF는 calcScore 그대로, 코인만 multiplier 적용
-//   ⚠️ calcScore 자체는 변경 없음 — 사주/연애 등 기존 호출 영향 0%
-const ASSET_RISK_VOL_MULTIPLIER = {
-  crypto: { risk: 1.20, vol: 1.35 },
-  stock:  { risk: 1.0,  vol: 1.0  },
-};
-function calcInvestScore(cardNames, key, queryType) {
-  const base = calcScore(cardNames, key);
-  const mult = ASSET_RISK_VOL_MULTIPLIER[queryType] || ASSET_RISK_VOL_MULTIPLIER.stock;
-  const adjusted = base * (mult[key] || 1.0);
-  return Math.round(Math.min(100, adjusted));
-}
-
 // ══════════════════════════════════════════════════════════════════
 // [V25.14] getCardDimensions — 카드별 5차원 영성 점수 추출
 //   사장님이 1년간 손수 입력한 CARD_SCORE_MULTI 데이터 활용
@@ -13021,14 +13006,14 @@ function buildStockMetrics({ totalScore, riskScore, cleanCards, isLeverage, quer
       trend: finalTrend,
       action: finalAction,
       riskLevel: finalRisk,
-      riskLevelScore: calcInvestScore(cleanCards, 'risk', queryType),
+      riskLevelScore: calcScore(cleanCards, 'risk'),
       entryStrategy, exitStrategy,
       finalTimingText: _blockDecision.timingNote || '조건 충족 시 진입',
       entryTimingText: '조건 충족 시',
       exitTimingText:  '-',
       totalScore, riskScore,
       // [V23.4] BLOCK 경로에서도 수치 메트릭 제공
-      volatilityScore: calcInvestScore(cleanCards, 'vol', queryType),
+      volatilityScore: calcScore(cleanCards, 'vol'),
       // [V25.14] 5차원 영성 레이더 차트 데이터 (Claude 2순위)
       //   사장님 1년 작업 CARD_SCORE_MULTI 시각화용 — 결과 화면에 차트로
       cardDimensions: buildCardDimensionsArray(cleanCards, revFlags),
@@ -13248,7 +13233,7 @@ function buildStockMetrics({ totalScore, riskScore, cleanCards, isLeverage, quer
     action: _uncOverride ? _uncOverride.decisionStrategy : finalAction,
     // [V24.3] 리스크 라벨 — 게이트 발동 시 riskGate.riskLabelKo 사용 (보통 디폴트 차단)
     riskLevel: _uncOverride ? riskGate.riskLabelKo : finalRisk,
-    riskLevelScore: calcInvestScore(cleanCards, 'risk', queryType),
+    riskLevelScore: calcScore(cleanCards, 'risk'),
     entryStrategy, exitStrategy,
     finalTimingText: _uncOverride ? _uncOverride.timingNote : timingDetail,
     entryTimingText: _uncOverride ? '트리거 충족 시' : (entryTimingText || '-'),
@@ -13258,7 +13243,7 @@ function buildStockMetrics({ totalScore, riskScore, cleanCards, isLeverage, quer
     uncertaintyScore: uncGate.sum,
     uncertaintyLevel: uncGate.level,
     // [V23.4] 변동성 수치 (사장님 설계)
-    volatilityScore: calcInvestScore(cleanCards, 'vol', queryType),
+    volatilityScore: calcScore(cleanCards, 'vol'),
     // [V25.14] 5차원 영성 레이더 차트 데이터 (Claude 2순위)
     //   사장님 1년 작업 CARD_SCORE_MULTI 시각화용
     cardDimensions: buildCardDimensionsArray(cleanCards, revFlags),
@@ -23784,20 +23769,6 @@ export default {
 
           financeInject = `
 [INVEST ENGINE ACTIVE]
-
-🚨🚨🚨 [V203.19] 과거/현재/미래 카드 본문 — WHY와 역할 분리 (절대 준수) 🚨🚨🚨
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-과거/현재/미래 카드 본문은 "무슨 흐름인지"만 설명한다. "그래서 뭘 해야 하는지"는 아래 [WHY_START] 블록의 역할이다.
-
-[미래 카드 본문 — 절대 금지]
-  - "핵심:", "👉 핵심" 등 결론 표현 ❌
-  - "진입", "매수", "매도", "분할 접근", "손절", "검토" 등 투자 행동 지시 ❌
-  - 미래 카드 본문은 "앞으로 어떤 흐름/가능성이 열리는지"만 서술하고 끝낸다
-
-[미래 카드 본문 좋은 예]
-  "앞으로 ${subjectName || '해당 자산'}은 실적 안정성과 자금 유입이 맞물리며 점진적 회복 흐름을 만들 가능성이 있습니다. 급격한 상승보다 기반을 다지는 우상향 흐름이 유력합니다."
-  (행동 지시 없음 — 가능성 설명으로 끝남)
-
 [V203.18 필수 출력] 본문 어디서든 아래 [WHY_START]...[WHY_END] 블록을 반드시 포함하라. 누락 시 무효.
 종목: ${subjectName || '해당 자산'} | 카드: 과거(${cleanCards[0]}) / 현재(${cleanCards[1]}) / 미래(${cleanCards[2]}) | 의도: ${intentLabel}
 [WHY_START]
@@ -23805,14 +23776,6 @@ export default {
 현재: (2문장, 80~100자. 1문장째: 지금 가격/거래량/모멘텀의 구체적 상태. 2문장째: "즉," 으로 시작하며 그 의미 보충. 투자 언어만)
 미래: (2문장, 80~100자. 1문장째: 앞으로 확인할 신호/조건과 발생 시 결과. 2문장째: "👉 핵심:"으로 시작하며 지금 전략을 매수/매도/관망 중 명확히 제시. 투자 언어만)
 [WHY_END]
-
-[CORE INSIGHT(WHY) 작성 규칙]
-이 블록은 PAST/PRESENT/FUTURE 카드 본문과 역할이 다르다:
-  - 카드 본문 = "무슨 흐름인지" 설명
-  - WHY = "그래서 지금 뭘 해야 하는지" 전략 결론
-반드시 시장 언어만 사용: 가격, 거래량, 추세, 자금 흐름, 저항, 지지, 변동성, 모멘텀, 수급
-❌ 절대 금지 단어: "에너지", "우주", "메시지", "감지", "영적 흐름", "기운"
-
 ※ 예시 형식 (분량/톤 참고용, 내용은 카드에 맞게 재구성):
 과거에는 기존 상승 흐름이 힘을 잃으며 방향 전환이 늦어지는 구간이 이어졌습니다. 이 과정에서 매수 타이밍을 잡으려는 자금은 있었지만 확실한 주도세가 형성되지 못했습니다.
 현재는 거래량과 가격 움직임 모두 둔화되며 시장의 관망 심리가 강해진 상태입니다. 즉, 아직 큰 방향성을 결정할 만큼 힘이 모이지 않은 구간입니다.
@@ -25020,12 +24983,7 @@ ${metrics.cryptoSubtype === 'crypto_buy' ? `
                   });
                 // [V203.16] 잘린 응답 감지 — 4줄 미만이면 본문 폴백
                 if (_whyLines.length >= 3) {
-                  // [V203.19] "👉 핵심:" 이 같은 줄에 붙어 나오는 문제 — 줄바꿈 강제 분리
-                  //   예: "...있습니다. 👉 핵심: ..." → "...있습니다.\n👉 핵심: ..."
-                  const _whyText = _whyLines
-                    .map(l => l.replace(/\s*👉\s*핵심\s*:/g, '\n👉 핵심:'))
-                    .join('\n')
-                    .replace(/\n{2,}/g, '\n'); // 중복 개행 정리
+                  const _whyText = _whyLines.join('\n');
                   const _whyPayload = JSON.stringify({ _type: 'why', text: _whyText });
                   await writer.write(encoder.encode(`data: ${_whyPayload}\n\n`));
                 }
