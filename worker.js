@@ -24805,9 +24805,9 @@ ${metrics.cryptoSubtype === 'crypto_buy' ? `
                     temperature: 0.75,
                     topP: 0.95,
                     topK: 40,
-                    // [V203.15] 도메인별 출력 토큰 — love 잘림 방지용 여유값 유지
+                    // [V203.18] 도메인별 출력 토큰 — 투자 미래카드 잘림 방지 위해 5000→6500
                     maxOutputTokens: queryType === 'love' ? 6500
-                                   : (queryType === 'stock' || queryType === 'crypto') ? 5000
+                                   : (queryType === 'stock' || queryType === 'crypto') ? 6500
                                    : 5500
                   },
                   safetySettings: [
