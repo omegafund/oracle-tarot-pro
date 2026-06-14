@@ -12999,6 +12999,9 @@ function buildStockMetrics({ totalScore, riskScore, cleanCards, isLeverage, quer
       // [V25.31 F-2] type 필드 — 클라이언트 도메인 식별용 (5차원 라벨 매핑)
       type: queryType,
       queryType,
+      // [V203.17] 동적 타이틀용 — 매수/매도/단타/스캘핑/홀딩 구분
+      stockIntent: intent || 'buy',
+      stockSubType: stockSubType || '',
       executionMode: _execMode,
       trend: finalTrend,
       action: finalAction,
