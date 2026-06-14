@@ -24892,7 +24892,7 @@ ${metrics.cryptoSubtype === 'crypto_buy' ? `
               .replace(/\u2501+[\u2501\s]+/g, ' ')
               .replace(/제우스의 신탁[^\n]*ZEUS[^\n]*ORACLE[^\n]*/gi, '')
               .replace(/[^\n]*에 대한 신탁은 다음과 같습니다[^\n]*/g, '')
-              .replace(/[^\n]*주식 실전 (매도|매수) 신탁[^\n]*/g, '')
+              .replace(/[^\n]*(주식|코인)\s*실전\s*(매도|매수|투자|단타|중장기)?\s*신탁[^\n]*/g, '')
               .trim();
 
             // [V203.16] WHY 파싱 — 투자 도메인에서만 [WHY_START]...[WHY_END] 추출
