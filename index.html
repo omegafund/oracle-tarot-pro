@@ -2394,6 +2394,7 @@
             margin-bottom: 14px;
             padding-bottom: 8px;
             border-bottom: 1px solid rgba(46,204,113,0.4);
+            text-align: center;
         }
         .zenith-title-main {
             font-size: 1.2rem;
@@ -14772,9 +14773,21 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
                 // [V18.2] 3도메인 타이틀 분기
                 // ★ [V202.26] realestate 분기 ★ 제거 ★ — V202.0 부동산 통합
                 if (isFinanceQuery) {
+                    // [V203.17] 동적 서브헤더 — 의도(매수/매도)+서브타입(단타/스캘핑/홀딩)에 맞춘 분석명
+                    const _sm17 = window._serverMetrics || {};
+                    const _intent17 = _sm17.stockIntent || 'buy';
+                    const _subType17 = _sm17.stockSubType || '';
+                    let _flowLabel17 = '실전 ';
+                    if (_subType17 === 'short' || _subType17 === 'scalping') {
+                        _flowLabel17 += '단타 ';
+                    } else if (_subType17 === 'holding') {
+                        _flowLabel17 += '중장기 ';
+                    }
+                    _flowLabel17 += (_intent17 === 'sell') ? '매도 흐름 분석' : '매수 흐름 분석';
                     return `
+                    <div style="font-size:0.68rem; color:rgba(212,175,55,0.7); letter-spacing:0.25em; margin-bottom:4px;">✦ ZEUS FINAL INVESTMENT ORACLE ✦</div>
                     <span class="zenith-title-main" style="color:#2ecc71; font-size:1.2rem; font-weight:900; display:block;">제우스의 최종 투자 신탁</span>
-                    <div class="zenith-title-sub" style="color:rgba(46,204,113,0.85); font-size:0.85rem; font-weight:800; letter-spacing:0.2em;">ZEUS INVESTMENT ORACLE</div>`;
+                    <div class="zenith-title-sub" style="color:rgba(46,204,113,0.85); font-size:0.85rem; font-weight:800; letter-spacing:0.15em; margin-top:4px;">📈 ${_flowLabel17}</div>`;
                 }
                 const qRawTitle = (document.getElementById('seed-input')?.value || '').toLowerCase();
                 // [V26.11 진짜 결함 Fix 2] 헤더 분기도 ACTIVE_DOMAIN_BAR 우선 체크
