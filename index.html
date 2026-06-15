@@ -8748,7 +8748,27 @@ async function renderStream(fetchPromise, cards) {
         console.warn('[V202.21] 스크롤 고정 중 오류 (무시):', scrollErr);
     }
 
-    const loadingMessages = [
+    // [V203.23] 도메인별 로딩 메시지 — 실제 점사 단계를 따라가는 구체적 연출
+    const _ldDomain = window._queryType || CURRENT_MODE || '';
+    const _ldIsFinance = (_ldDomain === 'stock' || _ldDomain === 'crypto');
+    const _ldIsLove = (_ldDomain === 'love');
+    const loadingMessages = _ldIsFinance ? [
+        '🃏 과거의 카드를 펼치는 중...',
+        '📊 시장 흐름을 교차 분석하는 중...',
+        '🎯 진입·청산 신호를 계산하는 중...',
+        '⚡ 리스크와 변동성을 측정하는 중...',
+        '🧠 핵심 전략을 도출하는 중...',
+        '📜 제우스의 최종 신탁을 새기는 중...',
+        '✦ 운명의 문이 열리고 있습니다...'
+    ] : _ldIsLove ? [
+        '🃏 과거의 카드를 펼치는 중...',
+        '💞 두 사람의 인연을 읽는 중...',
+        '🌙 감정의 흐름을 해독하는 중...',
+        '🔮 관계의 전환점을 짚는 중...',
+        '🧠 마음의 방향을 도출하는 중...',
+        '📜 제우스의 사랑 신탁을 새기는 중...',
+        '✦ 운명의 문이 열리고 있습니다...'
+    ] : [
         '✨ 천상의 기운을 감지하는 중...',
         '🔮 운명의 카드를 해독하는 중...',
         '🌌 신탁의 언어로 번역하는 중...',
@@ -8776,16 +8796,43 @@ async function renderStream(fetchPromise, cards) {
     loadingEl.textContent = loadingMessages[0];
     progressBar.style.width = '5%';
 
+    // [V203.23] 메시지 순환 — 마지막 메시지 도달 후에도 "마무리" 문구로 계속 교체 (멈춤 방지)
+    const _tailMessages = [
+        '📜 신탁을 마지막으로 다듬는 중...',
+        '✦ 운명의 문이 열리고 있습니다...',
+        '🔮 곧 신탁이 완성됩니다...'
+    ];
+    let _tailIdx = 0;
     const loadingTimer = setInterval(() => {
-        msgIdx = Math.min(msgIdx + 1, loadingMessages.length - 1);
-        loadingEl.textContent = loadingMessages[msgIdx];
-        progressVal = Math.min(progressVal + 14, 90);
+        if (msgIdx < loadingMessages.length - 1) {
+            msgIdx++;
+            loadingEl.textContent = loadingMessages[msgIdx];
+        } else {
+            // 마지막 메시지 이후 — tail 문구 순환 (절대 멈추지 않음)
+            loadingEl.textContent = _tailMessages[_tailIdx % _tailMessages.length];
+            _tailIdx++;
+        }
+        // 진행바 — 85%까지는 빠르게, 이후 99%까지 미세 전진 (멈춘 것처럼 안 보이게)
+        if (progressVal < 85) {
+            progressVal = Math.min(progressVal + 12, 85);
+        } else {
+            progressVal = Math.min(progressVal + 1.5, 99);
+        }
         progressBar.style.width = progressVal + '%';
-    }, 2800);
+    }, 1600);
+
+    // [V203.23] 진행바 미세 전진 — 별도 타이머로 0.4초마다 0.3%씩 (항상 살아있는 느낌)
+    const _microTimer = setInterval(() => {
+        if (progressVal < 99) {
+            progressVal = Math.min(progressVal + 0.3, 99);
+            progressBar.style.width = progressVal + '%';
+        }
+    }, 400);
 
     try {
         const response = await fetchPromise;
         clearInterval(loadingTimer);
+        clearInterval(_microTimer);
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
 
         const reader  = response.body.getReader();
@@ -9622,6 +9669,7 @@ async function renderStream(fetchPromise, cards) {
     } catch (error) {
         // 🚨 통신 장애 발생 시 긴급 복구 로직
         clearInterval(loadingTimer);
+        clearInterval(_microTimer);
         loadingEl.style.display    = 'none';
         progressWrap.style.display = 'none';
         if (wisdomEl) wisdomEl.style.display = 'none';
