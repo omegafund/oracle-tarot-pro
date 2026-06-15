@@ -8748,8 +8748,12 @@ async function renderStream(fetchPromise, cards) {
         console.warn('[V202.21] 스크롤 고정 중 오류 (무시):', scrollErr);
     }
 
-    // [V203.23] 도메인별 로딩 메시지 — 실제 점사 단계를 따라가는 구체적 연출
-    const _ldDomain = window._queryType || CURRENT_MODE || '';
+    // [V203.25] 도메인 판별 — 명시 도메인(resolveActiveDomain) 우선, classifyQuery는 폴백
+    //   원인: window._queryType(자연어 분류)이 투자/연애를 못 맞히면 else(구버전)로 빠짐
+    //   해결: 사용자가 명시 선택한 도메인(resolveActiveDomain)을 1순위로 사용
+    let _ldDomain = '';
+    try { _ldDomain = resolveActiveDomain() || ''; } catch(e) {}
+    if (!_ldDomain) _ldDomain = window._queryType || CURRENT_MODE || '';
     const _ldIsFinance = (_ldDomain === 'stock' || _ldDomain === 'crypto');
     const _ldIsLove = (_ldDomain === 'love');
     const loadingMessages = _ldIsFinance ? [
