@@ -8753,21 +8753,21 @@ async function renderStream(fetchPromise, cards) {
     const _ldIsFinance = (_ldDomain === 'stock' || _ldDomain === 'crypto');
     const _ldIsLove = (_ldDomain === 'love');
     const loadingMessages = _ldIsFinance ? [
-        '🃏 과거의 카드를 펼치는 중...',
-        '📊 시장 흐름을 교차 분석하는 중...',
-        '🎯 진입·청산 신호를 계산하는 중...',
-        '⚡ 리스크와 변동성을 측정하는 중...',
-        '🧠 핵심 전략을 도출하는 중...',
-        '📜 제우스의 최종 신탁을 새기는 중...',
-        '✦ 운명의 문이 열리고 있습니다...'
+        '🃏 운명의 세 카드를 펼치는 중...',
+        '⚡ 제우스의 시선으로 시장 흐름을 읽는 중...',
+        '📊 매수·매도 신호를 가려내는 중...',
+        '🛡 리스크와 변동성을 계산하는 중...',
+        '🎯 진입과 청산의 때를 헤아리는 중...',
+        '📜 최종 투자 신탁을 새기는 중...',
+        '✦ 신탁의 문이 열립니다...'
     ] : _ldIsLove ? [
-        '🃏 과거의 카드를 펼치는 중...',
-        '💞 두 사람의 인연을 읽는 중...',
-        '🌙 감정의 흐름을 해독하는 중...',
-        '🔮 관계의 전환점을 짚는 중...',
-        '🧠 마음의 방향을 도출하는 중...',
-        '📜 제우스의 사랑 신탁을 새기는 중...',
-        '✦ 운명의 문이 열리고 있습니다...'
+        '🃏 운명의 세 카드를 펼치는 중...',
+        '⚡ 제우스의 시선으로 인연의 흐름을 살피는 중...',
+        '💞 두 사람의 마음을 잇는 중...',
+        '🌙 감정의 결을 더듬는 중...',
+        '🧭 관계가 향할 방향을 헤아리는 중...',
+        '📜 최종 사랑의 신탁을 새기는 중...',
+        '✦ 신탁의 문이 열립니다...'
     ] : [
         '✨ 천상의 기운을 감지하는 중...',
         '🔮 운명의 카드를 해독하는 중...',
@@ -8798,9 +8798,9 @@ async function renderStream(fetchPromise, cards) {
 
     // [V203.23] 메시지 순환 — 마지막 메시지 도달 후에도 "마무리" 문구로 계속 교체 (멈춤 방지)
     const _tailMessages = [
-        '📜 신탁을 마지막으로 다듬는 중...',
-        '✦ 운명의 문이 열리고 있습니다...',
-        '🔮 곧 신탁이 완성됩니다...'
+        '📜 신탁의 마지막 문장을 다듬는 중...',
+        '✦ 신탁의 문이 열리고 있습니다...',
+        '🔮 곧 신탁이 모습을 드러냅니다...'
     ];
     let _tailIdx = 0;
     const loadingTimer = setInterval(() => {
@@ -8814,12 +8814,12 @@ async function renderStream(fetchPromise, cards) {
         }
         // 진행바 — 85%까지는 빠르게, 이후 99%까지 미세 전진 (멈춘 것처럼 안 보이게)
         if (progressVal < 85) {
-            progressVal = Math.min(progressVal + 12, 85);
+            progressVal = Math.min(progressVal + 11, 85);
         } else {
             progressVal = Math.min(progressVal + 1.5, 99);
         }
         progressBar.style.width = progressVal + '%';
-    }, 1600);
+    }, 2200);
 
     // [V203.23] 진행바 미세 전진 — 별도 타이머로 0.4초마다 0.3%씩 (항상 살아있는 느낌)
     const _microTimer = setInterval(() => {
