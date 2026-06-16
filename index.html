@@ -22891,6 +22891,7 @@ async function zeusClaimSubmit(plan) {
     // 2. 서버 요청
     try {
         const API_BASE = 'https://tarot-api.omegafund01.workers.dev';
+        console.log('[PREMIUM] start — claim-payment 요청', { plan });
         const res = await fetch(API_BASE + '/claim-payment', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -22902,8 +22903,10 @@ async function zeusClaimSubmit(plan) {
                 tossClicked
             })
         });
+        console.log('[PREMIUM] response status', res.status);
 
         const data = await res.json();
+        console.log('[PREMIUM] data.ok', data && data.ok);
 
         if (!data.ok) {
             // 서버 측 거부 — 친절한 안내
