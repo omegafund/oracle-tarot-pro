@@ -1807,6 +1807,17 @@
             background: linear-gradient(135deg, rgba(212,175,55,0.18), rgba(255,200,80,0.08));
             border-color: rgba(212,175,55,0.7);
         }
+        /* [V203.28] 연애운 전용 로즈골드 강조 — 메인 엔트리 시각 차별화 */
+        .sub-btn.love-featured {
+            background: linear-gradient(135deg, rgba(255,79,163,0.22), rgba(255,160,200,0.10));
+            border-color: rgba(255,79,163,0.75);
+            color: #fff;
+            box-shadow: 0 0 14px rgba(255,79,163,0.25);
+        }
+        .sub-btn.love-featured:hover, .sub-btn.love-featured.active {
+            background: linear-gradient(135deg, rgba(255,79,163,0.32), rgba(255,160,200,0.16));
+            border-color: rgba(255,79,163,0.95);
+        }
         .subtype-back {
             display: block;
             margin: 12px auto 0;
@@ -2037,6 +2048,16 @@
         .sub-btn.featured {
             background: linear-gradient(135deg, rgba(212,175,55,0.18), rgba(255,200,80,0.08));
             border-color: rgba(212,175,55,0.7);
+        }
+        .sub-btn.love-featured {
+            background: linear-gradient(135deg, rgba(255,79,163,0.22), rgba(255,160,200,0.10));
+            border-color: rgba(255,79,163,0.75);
+            color: #fff;
+            box-shadow: 0 0 14px rgba(255,79,163,0.25);
+        }
+        .sub-btn.love-featured:hover, .sub-btn.love-featured.active {
+            background: linear-gradient(135deg, rgba(255,79,163,0.32), rgba(255,160,200,0.16));
+            border-color: rgba(255,79,163,0.95);
         }
         .subtype-back {
             display: block;
@@ -6274,33 +6295,33 @@ const CATEGORY_CONFIG = {
         label: '💘 연애·관계운',
         prompt: '어떤 관계를 보시겠습니까?',
         subtypes: [
-            { type: 'compatibility', icon: '💞', label: '궁합',     featured: true,
+            { type: 'general',       icon: '💗', label: '연애운',   loveFeatured: true,
+              hint: '전반적인 연애 흐름과 친밀도, 관계의 방향성을 점사합니다',
+              placeholder: '예: 나의 내일 연애운은?' },
+            { type: 'compatibility', icon: '💞', label: '궁합',
               hint: '두 사람의 본질적 호환성을 점사합니다',
               placeholder: '예: 김민수 이지은 궁합 봐주세요' },
-            { type: 'marriage',      icon: '💍', label: '결혼',
-              hint: '결혼 진행에 대한 본질적 합의·타이밍을 점사합니다',
-              placeholder: '예: 박지훈 김서연 결혼하면 잘살까요?' },
+            { type: 'mindread',      icon: '🔮', label: '상대 마음',
+              hint: '상대의 진심과 본심을 점사합니다',
+              placeholder: '예: 그 사람이 나를 어떻게 생각하는지 궁금해요' },
             { type: 'thumb',         icon: '💫', label: '썸',
               hint: '썸 단계의 진전 가능성과 타이밍을 점사합니다',
               placeholder: '예: 회사 동기랑 썸 타는데 어떻게 될까요?' },
             { type: 'crush',         icon: '💕', label: '짝사랑',
               hint: '짝사랑 상대의 마음과 진전 가능성을 점사합니다',
               placeholder: '예: 짝사랑하는 사람 마음 알 수 있을까요?' },
-            { type: 'mindread',      icon: '🔮', label: '상대 마음',
-              hint: '상대의 진심과 본심을 점사합니다',
-              placeholder: '예: 그 사람이 나를 어떻게 생각하는지 궁금해요' },
             { type: 'reunion',       icon: '💑', label: '재회',
               hint: '재회 가능성과 시도 타이밍을 점사합니다',
               placeholder: '예: 헤어진 사람 다시 만날 수 있을까요?' },
             { type: 'contact',       icon: '📱', label: '연락',
               hint: '연락 시점과 상대 반응을 점사합니다',
               placeholder: '예: 지금 연락해도 괜찮을까요?' },
+            { type: 'marriage',      icon: '💍', label: '결혼',
+              hint: '결혼 진행에 대한 본질적 합의·타이밍을 점사합니다',
+              placeholder: '예: 박지훈 김서연 결혼하면 잘살까요?' },
             { type: 'breakup',       icon: '💔', label: '이별',
               hint: '관계 정리·회복 흐름을 점사합니다',
-              placeholder: '예: 헤어지는 게 맞을까요?' },
-            { type: 'general',       icon: '💗', label: '연애운',
-              hint: '전반적인 연애 흐름을 점사합니다',
-              placeholder: '예: 나의 내일 연애운은?' }
+              placeholder: '예: 헤어지는 게 맞을까요?' }
         ]
     },
     stock: {
@@ -6510,7 +6531,7 @@ function selectCategory(catKey, btnEl) {
             ? `<span class="sub-badge sub-badge-free">FREE</span>`
             : `<span class="sub-badge sub-badge-pro">PRO</span>`;
         return `
-        <button class="sub-btn${s.featured ? ' featured' : ''}"
+        <button class="sub-btn${s.loveFeatured ? ' love-featured' : (s.featured ? ' featured' : '')}"
                 data-subtype="${s.type}"
                 data-is-pro="${!_isFree}"
                 onclick="selectSubtype('${catKey}','${s.type}', this, ${JSON.stringify(s.placeholder).replace(/"/g, '&quot;')})">
