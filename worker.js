@@ -24985,7 +24985,7 @@ ${metrics.cryptoSubtype === 'crypto_buy' ? `
                     topK: 40,
                     // [V203.25] 연애는 프롬프트가 길어(상대심리+거리감+감정선+타이밍) 잘림 발생 → 6200 분리
                     //   투자/코인은 짧아 5000 유지(로딩 속도)
-                    maxOutputTokens: queryType === 'love' ? 6200
+                    maxOutputTokens: queryType === 'love' ? 7000
                                    : (queryType === 'stock' || queryType === 'crypto') ? 5000
                                    : 5500
                   },
