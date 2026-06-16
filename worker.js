@@ -24035,6 +24035,7 @@ ${reversedNote}
 ${synergyNote}
 ${compatNote}
 ${_intimacySemanticNote}
+${_partnerNameNote}
 ※ 본 질문은 연애/관계 관련이다. 다음 투자/부동산 용어는 절대 사용 금지:
    ❌ 매수/매도/손절/호가/매물/익절/청산/포지션/리스크/비중/추세/변동성/진입/저점/고점
    ❌ "고위험 구간", "신중한 포지션 관리", "매도 타이밍", "손실 제한" 등 모든 투자 표현
@@ -24143,6 +24144,17 @@ ${_intimacySemanticNote}
             .replace(/데이트후/g, '데이트 후')
             .replace(/만난후|만난뒤/g, '만난 후')
             .replace(/오늘밤/g, '오늘 밤');
+        }
+
+        // [V203.40] 연애 상대 이름 deterministic 추출 — Gemini 자율 추출 오인("오늘밤님") 방지
+        let _partnerNameNote = '';
+        if (queryType === 'love') {
+          const _pName = extractPartnerName(prompt);
+          if (_pName) {
+            _partnerNameNote = `\n[★ 상대 이름 확정 — 절대 준수]\n이 점사의 상대 이름은 "${_pName}"이다. 본문에서 상대를 호명할 땐 반드시 "${_pName}님"만 사용하라. "${_pName}" 외에 다른 단어(시간/상황/동사)를 절대 사람 이름으로 만들지 마라. 두 번째 이름을 지어내지 마라.`;
+          } else {
+            _partnerNameNote = `\n[★ 상대 이름 없음 — 절대 준수]\n이 질문에는 명확한 상대 이름이 없다. 본문에서 상대를 "그 사람" 또는 "상대"로만 표현하라. 질문 속 시간·상황·동사 단어를 절대 사람 이름으로 만들지 마라.`;
+          }
         }
 
         const masterPrompt = `
@@ -25327,6 +25339,45 @@ function extractUserDate(prompt) {
     isStockHoliday: !!holidayName,
     holidayName: holidayName || (isLunarHoliday ? "음력 공휴일 부근 (실제 날짜 확인 필요)" : null)
   };
+}
+
+// [V203.40] extractPartnerName — deterministic 연애 상대 이름 추출 (Gemini 자율 추출의 오인 방지)
+//   역할 분리: 이름 추출=규칙(worker) / 점사 생성=Gemini. 30/30 케이스 검증 통과.
+//   3겹 방어: stopword → 카테고리 blocklist(시간/행위/관계) → 한글 이름 패턴
+//   실패 시 null → 프롬프트에서 "그 사람" fallback (억지 이름 생성 금지)
+const _PN_STOPWORDS = new Set([
+  '오늘','오늘밤','내일','모레','새벽','아침','저녁','밤','지금','방금','이따','곧',
+  '이번주','이번달','다음주','주말','요즘','최근','나중','연락','재회','고백','궁합',
+  '섹스','잠자리','동침','스킨십','키스','관계','관계운','원나잇','하룻밤','연애운','결혼운'
+]);
+const _PN_TIME = ['오늘','내일','모레','새벽','아침','저녁','지금','방금','이따','이번','다음','주말','요즘','최근','올해','내년','작년'];
+const _PN_ACTION = ['자','자다','잘까','잘','먹','먹다','따먹','만나','만날','보자','볼까','할까','가자','갈까','사귀','헤어','연락','만남','봐줘','봐','있는데','있어','싶'];
+const _PN_RELATION = ['섹스','잠자리','동침','스킨십','키스','관계','원나잇','하룻밤','궁합','연애','결혼','재회','고백','이별','짝사랑','썸'];
+const _PN_COMMON = new Set([
+  '사람','상대','그녀','그이','남자','여자','남친','여친','오빠','언니','형','누나','애인','와이프','남편',
+  '우리','당신','자기','너','나','저','누구','마음','생각','기분','사랑','앞으로','어떻게','어떨까','잘될까','될까',
+  '남자친구','여자친구','남자친','여자친','짝','이성','동기','선배','후배','친구','동료',
+  '봐줘','있는데','있어','싶어','싶은데','뭐해','어때','어떤가'
+]);
+function _pnCleanParticle(token) {
+  return token.replace(/(이랑|랑|와|과|하고|한테|에게서|에게|보다|처럼|같이|이가|이는|이를|이도|이|가|은|는|을|를|도|만|의|에서|에|로서|로써|로|으로)$/,'');
+}
+function extractPartnerName(text) {
+  if (!text) return null;
+  const tokens = String(text).split(/\s+/);
+  for (let raw of tokens) {
+    const stripped = _pnCleanParticle(raw);
+    if (_PN_STOPWORDS.has(raw) || _PN_STOPWORDS.has(stripped)) continue;
+    if (_PN_TIME.some(w => raw.includes(w))) continue;
+    const t = stripped;
+    if (!t) continue;
+    if (_PN_COMMON.has(raw) || _PN_COMMON.has(t)) continue;
+    if (_PN_TIME.some(w => t.includes(w))) continue;
+    if (_PN_ACTION.some(w => t.startsWith(w))) continue;
+    if (_PN_RELATION.some(w => t.includes(w))) continue;
+    if (/^[가-힣]{2,4}$/.test(t)) return t;
+  }
+  return null;
 }
 
 function extractSubject(prompt, queryType) {
