@@ -4124,6 +4124,13 @@ const TOP_VERDICT_MATRIX = {
     caution: '성급한 진입 시 변동성에 노출 가능',
     energy:  '★★☆☆☆'
   },
+  // [V203.26] 미래 부담/과열 카드 전용 — 진입 강등 (Ten of Wands 등)
+  burden_wait: {
+    signal:  '🟠 과열 경계 — 신호 검증 후 접근',
+    action:  '추격 매수 자제, 조정 시 분할 접근',
+    caution: '미래 과열·매물 부담 신호 — 추격 진입 위험',
+    energy:  '★★★☆☆'
+  },
   verified: {
     signal:  '🟢 진입 조건 충족 — 분할 접근 유효',
     action:  '1차 진입 후 신호 굳어지면 보강',
@@ -4316,6 +4323,20 @@ function buildTopVerdict(metrics) {
   if (_hasHermit && _hasTemperance && _hasFourSwords) key = 'strong_wait';
   // 관망 + 불확실 2중 조합
   else if ((_hasHermit || _hasFourSwords) && (_hasHangedMan || _hasMoon || _hasFourCups)) key = 'strong_wait';
+
+  // [V203.26] 미래 카드 부담/과열 계열 → 🟢 진입 강등 (사장님 핵심 룰)
+  //   Ten of Wands(매물 부담), Tower(붕괴), Devil(과열집착), 7 of Swords(불안정) 등이
+  //   미래에 오면 "진입 조건 충족"(🟢)은 오판. 최소 "신호 검증 필요"(🟡)로 강등.
+  const _futCard26 = (metrics.cleanCards && metrics.cleanCards[2]) || '';
+  const _BURDEN_FUTURE = ['Ten of Wands', 'The Tower', 'The Devil', 'Seven of Swords',
+                          'Five of Pentacles', 'Ten of Swords', 'Five of Cups'];
+  const _futureIsBurden = _BURDEN_FUTURE.includes(_futCard26);
+  // 매수 의도 + 미래 부담 카드 + verified/active(🟢 계열) → 관망 강등
+  if (intent !== 'sell' && _futureIsBurden &&
+      (key === 'verified' || key === 'active' || key === 'split' ||
+       key === 'short_breakout' || key === 'scalping_entry' || key === 'holding_accumulate')) {
+    key = 'burden_wait';
+  }
 
   const verdict = TOP_VERDICT_MATRIX[key] || TOP_VERDICT_MATRIX.wait_buy;
 
