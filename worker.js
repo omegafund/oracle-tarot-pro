@@ -5512,6 +5512,30 @@ function enforceIntentV28(metrics) {
     if (metrics.layers.criticalInterpretation && typeof metrics.layers.criticalInterpretation === 'string') {
       metrics.layers.criticalInterpretation = _normalize(metrics.layers.criticalInterpretation);
     }
+
+    // ── [V203.37] 최종 신탁 본문 빈 값 폴백 안전망 ──
+    //   원인: 카드 전부 역방향 등에서 Gemini가 본문(criticalInterpretation) 생성을 스킵 → 빈칸 노출
+    //   해결: 비었으면 worker가 메트릭(trend/action/타이밍)으로 기본 본문을 채움 (절대 빈칸 금지)
+    try {
+      const _crit = metrics.layers && metrics.layers.criticalInterpretation;
+      const _critEmpty = !_crit || (typeof _crit === 'string' && _crit.replace(/\s/g, '').length < 10);
+      if (_critEmpty && (queryType === 'love' || queryType === 'stock' || queryType === 'crypto')) {
+        const _tr = (metrics.trend || '').toString();
+        const _ac = (metrics.action || '').toString();
+        if (queryType === 'love') {
+          metrics.layers = metrics.layers || {};
+          metrics.layers.criticalInterpretation =
+            `지금 두 사람의 관계는 ${_tr || '변화의 흐름'} 속에 있습니다. ` +
+            `과거의 흐름을 지나 현재의 감정을 살피고, 앞으로의 방향을 함께 그려가야 할 시점입니다. ` +
+            `${_ac || '서두르지 말고 서로의 마음을 천천히 확인하는 것'}이 다음 단계의 핵심이 됩니다.`;
+        } else {
+          metrics.layers = metrics.layers || {};
+          metrics.layers.criticalInterpretation =
+            `현재 흐름은 ${_tr || '변동 구간'}으로 해석됩니다. ` +
+            `${_ac || '신호를 확인한 뒤 단계적으로 접근하는 것'}이 유리한 시점입니다.`;
+        }
+      }
+    } catch (e) { /* 폴백 실패해도 본문 정상 — 안전 */ }
     
     // ── 7. finalOracle (제우스 최종 신탁) ──
     if (metrics.finalOracle) {
