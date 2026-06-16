@@ -23505,7 +23505,9 @@ export default {
           //   막지 않고 실용적으로 승화: 입력은 그대로, 내부는 intimacy 모드, 출력은 "🌙 깊은 관계 흐름"
           // [V203.35] 하드 트리거 — 명백히 친밀 전용인 단어만 (오탐 0)
           //   "관계"/"자다" 단독은 제외(잘될까/잘맞을까 오탐 방지) → Gemini 의미분류가 커버
-          const _intimacyKeywords = /섹스|잠자리|스킨십|육체|합궁|몸궁합|동침|살\s*섞|섹슈얼/;
+          // [V203.36] 하드 트리거 — 명백한 친밀 전용 단어 + 20-30대 은어 포함
+          //   "관계"/"자다" 단독은 제외(오탐 방지) → Gemini 의미분류가 커버
+          const _intimacyKeywords = /섹스|잠자리|스킨십|육체|합궁|몸궁합|동침|살\s*섞|섹슈얼|따\s*먹|먹고\s*싶|넘어뜨리|밤\s*보내|원나잇|하룻밤/;
           const _isIntimacyQuery = _intimacyKeywords.test(prompt);
           if (_isIntimacyQuery) {
             finalLoveSubType = 'intimacy';
@@ -24092,7 +24094,13 @@ ${_intimacySemanticNote}
         let _safePrompt = prompt;
         if (queryType === 'love' && /섹스|잠자리|육체|스킨십|합궁|몸궁합|동침|살\s*섞|섹슈얼|성적|야한/.test(prompt)) {
           _safePrompt = prompt
-            // 동사형 우선 — "섹스하고 싶다"가 깨져 이름 오인되던 문제 방지
+            // [V203.36] 은어/거친 표현 우선 순화 — 품위 있는 친밀 표현으로 (생성중단·격 저하 방지)
+            .replace(/따\s*먹고\s*싶|따\s*먹을\s*수|따\s*먹/g, '가까워지고 싶')
+            .replace(/넘어뜨리[고려]?\s*싶|넘어뜨리/g, '가까워지고 싶')
+            .replace(/먹고\s*싶/g, '가까워지고 싶')
+            .replace(/원나잇|하룻밤\s*보내|하룻밤/g, '가까워지는 것')
+            .replace(/밤\s*보내[고려]?\s*싶|밤\s*보내/g, '가까워지고 싶')
+            // 동사형 — "섹스하고 싶다"가 깨져 이름 오인되던 문제 방지
             .replace(/섹스\s*하고\s*싶|섹스하고싶|잠자리\s*하고\s*싶|동침\s*하고\s*싶/g, '가까워지고 싶')
             .replace(/섹스\s*하[고다며자]|섹스할|잠자리\s*하[고다며]|동침\s*하[고다며]/g, '가까워지')
             .replace(/섹스운|섹스/g, '친밀한 관계')
