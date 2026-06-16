@@ -11629,19 +11629,19 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
         'Death': '과거에 한 챕터가 마무리되며 새 흐름이 시작될 준비가 되었습니다.',
         'The Hanged Man': '현재 잠시 멈추어 새 관점을 확보하는 중요한 시간입니다.',
         'The Devil': '집착의 함정을 인식하고 자유로워지는 순간입니다.',
-        'The Sun': '명확한 성공 에너지가 유저님을 비추고 있습니다.',
-        'The World': '목표 달성의 완성 에너지가 흐릅니다.',
+        'The Sun': '명확한 성공의 기운이 밝게 떠오르는 흐름입니다.',
+        'The World': '목표 달성의 완성을 향해 나아가는 흐름입니다.',
         'The Star': '저점을 지나 회복의 희망이 떠오르는 시점입니다.',
         'The Moon': '안개 속에서 직관에 귀 기울일 시간입니다.',
         'The Chariot': '강한 전진 에너지로 목표를 향해 나아가는 흐름입니다.',
         'Judgement': '각성과 재평가의 순간을 맞이하고 있습니다.'
     };
     function getFallbackText(card, role) {
-        if (!card || !card.name) return `${role} 카드의 에너지가 유저님의 흐름에 영향을 주고 있습니다.`;
+        if (!card || !card.name) return `${role}의 흐름은 새로운 국면으로 이어질 가능성을 보여줍니다.`;
         const fb = _CARD_FALLBACK[card.name];
         if (fb) return fb;
-        // 일반 fallback
-        return `${role} 시점에서 ${card.name} 카드의 에너지가 유저님께 메시지를 보내고 있습니다.`;
+        // 일반 fallback — 흐름 중심 (에너지/메시지 표현 금지)
+        return `${role}의 흐름은 새로운 변화의 가능성이 다시 열릴 수 있음을 보여줍니다.`;
     }
 
     let cardTexts = [paragraphs[0] || "", paragraphs[1] || "", paragraphs[2] || ""];
