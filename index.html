@@ -1866,6 +1866,18 @@
             color: #2ecc71;
             border: 1px solid rgba(46, 204, 113, 0.45);
         }
+        /* [V203.29] 가장 인기 배지 — 연애운 메인 엔트리 강조 */
+        .sub-badge-hot {
+            background: linear-gradient(135deg, rgba(255,79,163,0.25), rgba(255,140,190,0.15));
+            color: #FF9ECB;
+            border: 1px solid rgba(255,79,163,0.6);
+            text-shadow: 0 0 5px rgba(255,79,163,0.4);
+            animation: hotPulse 2s ease-in-out infinite;
+        }
+        @keyframes hotPulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
         .sub-badge-pro {
             background: linear-gradient(135deg, rgba(212, 175, 55, 0.22), rgba(241, 196, 15, 0.15));
             color: #FFD970;
@@ -6530,12 +6542,13 @@ function selectCategory(catKey, btnEl) {
         const _badge = _isFree
             ? `<span class="sub-badge sub-badge-free">FREE</span>`
             : `<span class="sub-badge sub-badge-pro">PRO</span>`;
+        const _hotBadge = s.loveFeatured ? `<span class="sub-badge sub-badge-hot">가장 인기</span>` : '';
         return `
         <button class="sub-btn${s.loveFeatured ? ' love-featured' : (s.featured ? ' featured' : '')}"
                 data-subtype="${s.type}"
                 data-is-pro="${!_isFree}"
                 onclick="selectSubtype('${catKey}','${s.type}', this, ${JSON.stringify(s.placeholder).replace(/"/g, '&quot;')})">
-            ${s.icon} ${s.label}${_badge}
+            ${s.icon} ${s.label}${_hotBadge}${_badge}
         </button>`;
     }).join('');
     panel.classList.add('show');
