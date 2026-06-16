@@ -24026,6 +24026,16 @@ The Devil 예시:
 예: "오늘 걔랑 잘까?", "선 넘어도 될까?", "이번에 만나면 분위기 탈까?", "더 가까워져도 될까?" 등.
 이때: ① 추상·신비주의 표현 금지(연애 코치처럼 따뜻하고 현실적으로) ② 노골적 묘사 없이 품위 있게 ③ "친밀함/관계 진전/가까워짐" 같은 부드러운 표현 사용.
 단, "잘될까", "잘 맞을까", "어떻게 될까" 같은 일반 연애 질문은 친밀 흐름으로 과잉 해석하지 말 것.`;
+          // [V203.41] 연애 상대 이름 deterministic 추출 — 반드시 financeInject 사용 전에 정의 (TDZ 크래시 방지)
+          let _partnerNameNote = '';
+          {
+            const _pName = extractPartnerName(prompt);
+            if (_pName) {
+              _partnerNameNote = `\n[★ 상대 이름 확정 — 절대 준수]\n이 점사의 상대 이름은 "${_pName}"이다. 본문에서 상대를 호명할 땐 반드시 "${_pName}님"만 사용하라. "${_pName}" 외에 다른 단어(시간/상황/동사)를 절대 사람 이름으로 만들지 마라. 두 번째 이름을 지어내지 마라.`;
+            } else {
+              _partnerNameNote = `\n[★ 상대 이름 없음 — 절대 준수]\n이 질문에는 명확한 상대 이름이 없다. 본문에서 상대를 "그 사람" 또는 "상대"로만 표현하라. 질문 속 시간·상황·동사 단어를 절대 사람 이름으로 만들지 마라.`;
+            }
+          }
           financeInject = `
 [LOVE ENGINE ACTIVE]
 관계 흐름: ${metrics.trend}
@@ -24144,17 +24154,6 @@ ${_partnerNameNote}
             .replace(/데이트후/g, '데이트 후')
             .replace(/만난후|만난뒤/g, '만난 후')
             .replace(/오늘밤/g, '오늘 밤');
-        }
-
-        // [V203.40] 연애 상대 이름 deterministic 추출 — Gemini 자율 추출 오인("오늘밤님") 방지
-        let _partnerNameNote = '';
-        if (queryType === 'love') {
-          const _pName = extractPartnerName(prompt);
-          if (_pName) {
-            _partnerNameNote = `\n[★ 상대 이름 확정 — 절대 준수]\n이 점사의 상대 이름은 "${_pName}"이다. 본문에서 상대를 호명할 땐 반드시 "${_pName}님"만 사용하라. "${_pName}" 외에 다른 단어(시간/상황/동사)를 절대 사람 이름으로 만들지 마라. 두 번째 이름을 지어내지 마라.`;
-          } else {
-            _partnerNameNote = `\n[★ 상대 이름 없음 — 절대 준수]\n이 질문에는 명확한 상대 이름이 없다. 본문에서 상대를 "그 사람" 또는 "상대"로만 표현하라. 질문 속 시간·상황·동사 단어를 절대 사람 이름으로 만들지 마라.`;
-          }
         }
 
         const masterPrompt = `
