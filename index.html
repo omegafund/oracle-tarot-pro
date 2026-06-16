@@ -5533,18 +5533,7 @@ function parseQuestion(q) {
 }
 
 // 2. 결정론적 시뮬레이션: 질문을 시드로 하여 일관된 시장 데이터 생성
-function marketSim(question) {
-    let s = 0;
-    const qStr = question || "default";
-    for (let i = 0; i < qStr.length; i++) s += qStr.charCodeAt(i);
-    const pseudoRand = () => { s = (s * 1664525 + 1013904223) >>> 0; return s / 0xFFFFFFFF; };
-
-    return {
-        trend: ["up", "down", "sideways"][Math.floor(pseudoRand() * 3)],
-        strength: pseudoRand(),
-        price: (pseudoRand() * 100 + 20).toFixed(2)
-    };
-}    
+/* [V203.33] removed dead fn: marketSim */    
 // ════════════════════════════════════
 //  카드 데이터 m00 ~ m77 (78장)
 // ════════════════════════════════════
@@ -8437,20 +8426,7 @@ function spawnGoldExplosion(slotEl) {
 // ════════════════════════════════════
 //  영성적 싱크로니시티 카드 선택
 // ════════════════════════════════════
-function pickThreeCards(question) {
-    const now = Date.now();
-    let hash = now;
-    for (let i = 0; i < question.length; i++) {
-        hash = ((hash << 5) - hash) + question.charCodeAt(i);
-        hash |= 0;
-    }
-    let s = Math.abs(hash);
-    const rand = () => {
-        s = (s * 1664525 + 1013904223) & 0xffffffff;
-        return (s >>> 0) / 0xffffffff;
-    };
-    return [...CARDS].sort(() => rand() - 0.5).slice(0, 3);
-}
+/* [V203.33] removed dead fn: pickThreeCards */
 
 // ════════════════════════════════════
 //  ① [V18] 병렬실행: 메인 리추얼
@@ -9763,34 +9739,11 @@ async function renderStream(fetchPromise, cards) {
 // ════════════════════════════════════
 // 🔥 투자 판단 엔진 — 전역 함수
 // ════════════════════════════════════
-function analyzeRisk(cards) {
-    let risk = 0;
-    cards.forEach(c => {
-        if (!c) return;
-        const name = c.name || "";
-        if (name.includes("Devil")) risk += 3;
-        if (name.includes("Tower")) risk += 4;
-        if (name.includes("Death")) risk += 2;
-        if (name.includes("Ten of Swords")) risk += 3;
-    });
-    return risk;
-}
+/* [V203.33] removed dead fn: analyzeRisk */
 
-function getInvestmentDecision(risk) {
-    if (risk >= 6) return "회피";
-    if (risk >= 3) return "관망";
-    return "매수 가능";
-}
+/* [V203.33] removed dead fn: getInvestmentDecision */
 
-function applyRiskTrigger(text, risk) {
-    if (risk >= 6) {
-        return text + `\n\n⚠️ 현재 흐름은 강한 붕괴 또는 손실 가능성이 감지됩니다.\n감정적 진입은 매우 위험합니다. 반드시 관망하십시오.\n`;
-    }
-    if (risk >= 3) {
-        return text + `\n\n⚠️ 변동성이 높은 구간입니다.\n확신 없는 진입은 손실로 이어질 수 있습니다.\n`;
-    }
-    return text;
-}
+/* [V203.33] removed dead fn: applyRiskTrigger */
 
 function getNumerologyScore() {
     const now = new Date();
@@ -9898,32 +9851,7 @@ function classifyQuery(question) {
 }
 
 // 질문에서 종목 티커 추출 (Yahoo Finance 심볼 형식)
-function extractTicker(question, queryType) {
-    // ★ [V202.27] realestate 제거 ★ — life/love만 차단
-    if (queryType === 'life' || queryType === 'love') return null;
-    const q = question.toUpperCase();
-    // 한국 주요 종목 매핑
-    const KR_MAP = {
-        '삼성전자':'005930.KS','삼성':'005930.KS','하이닉스':'000660.KS','SK하이닉스':'000660.KS',
-        '카카오':'035720.KS','네이버':'035420.KS','LG에너지':'373220.KS','현대차':'005380.KS',
-        '기아':'000270.KS','포스코':'005490.KS','셀트리온':'068270.KS','티엘비':'317690.KS',
-        '코스피':'^KS11','나스닥':'^IXIC','S&P':'%5EGSPC'
-    };
-    // 코인 심볼 매핑
-    const CRYPTO_MAP = {
-        'BTC':'BTC-USD','비트코인':'BTC-USD','ETH':'ETH-USD','이더리움':'ETH-USD',
-        'XRP':'XRP-USD','리플':'XRP-USD','SOL':'SOL-USD','솔라나':'SOL-USD',
-        'DOGE':'DOGE-USD','도지':'DOGE-USD'
-    };
-    const sourceMap = queryType === 'crypto' ? CRYPTO_MAP : KR_MAP;
-    for (const [keyword, symbol] of Object.entries(sourceMap)) {
-        if (question.includes(keyword) || q.includes(keyword.toUpperCase())) return symbol;
-    }
-    // 직접 입력된 티커 (영문 대문자 2~5자 패턴 + .KS)
-    const direct = question.match(/\b([A-Z]{2,5})\b/);
-    if (direct && queryType === 'stock') return `${direct[1]}.KS`;
-    return null;
-}
+/* [V203.33] removed dead fn: extractTicker */
 
 // ════════════════════════════════════
 // 🔥 Yahoo Finance 실시간 데이터 엔진
@@ -9939,60 +9867,7 @@ function extractTicker(question, queryType) {
 //   return new Response(JSON.stringify(data), {headers: {'Access-Control-Allow-Origin':'*'}});
 // }
 
-async function fetchMarketData(symbol) {
-    if (!symbol) return null;
-    try {
-        const workerUrl = `https://tarot-api.omegafund01.workers.dev/yahoo?symbol=${encodeURIComponent(symbol)}`;
-        const res = await fetch(workerUrl, { signal: AbortSignal.timeout(6000) });
-        if (!res.ok) throw new Error(`Worker HTTP ${res.status}`);
-        const marketData = await res.json();
-
-        // ── 디버그 로그 (운영 시 제거 가능)
-        console.log("marketData:", marketData);
-        console.log("chart:", marketData?.chart);
-        console.log("result:", marketData?.chart?.result);
-        console.log("indicators:", marketData?.chart?.result?.[0]?.indicators);
-
-        // ── 안전 코드 — null 접근 방어
-        const result = marketData?.chart?.result?.[0];
-        if (!result) {
-            console.log("❌ Yahoo 데이터 없음 — 카드 엔진만으로 작동");
-            return null;
-        }
-
-        const closes = result?.indicators?.quote?.[0]?.close;
-        if (!closes || closes.length === 0) {
-            console.log("❌ close 데이터 없음");
-            return null;
-        }
-
-        // null 제거
-        const prices = closes.filter(v => v !== null);
-        if (prices.length < 2) {
-            console.log("❌ 유효 데이터 부족 (최소 2개 필요)");
-            return null;
-        }
-        console.log("✅ 정상 prices:", prices.length + "개");
-
-        const volumes   = result?.indicators?.quote?.[0]?.volume || [];
-        const lastClose = prices[prices.length - 1];
-        const prevClose = prices[prices.length - 2];
-        const changeRate = ((lastClose - prevClose) / prevClose * 100).toFixed(2);
-
-        const rsi      = calcRSI(prices, 14);
-        const ma5      = average(prices.slice(-5));
-        const ma20     = average(prices.slice(-20));
-        const validVols = volumes.filter(v => v !== null && v > 0);
-        const volRatio  = validVols.length >= 10
-            ? (average(validVols.slice(-5)) / average(validVols.slice(-20))).toFixed(2)
-            : "1.00";
-
-        return { lastClose, changeRate, rsi, ma5, ma20, volRatio, symbol };
-    } catch(e) {
-        console.warn('Yahoo 데이터 조회 실패:', e.message);
-        return null; // 실패 시 카드 엔진만으로 정상 작동
-    }
-}
+/* [V203.33] removed dead fn: fetchMarketData */
 
 function calcRSI(prices, period = 14) {
     if (prices.length < period + 1) return 50;
@@ -10016,56 +9891,8 @@ function average(arr) {
 }
 
 // Yahoo 데이터 → 신호 해석
-function interpretMarketData(mkt) {
-    if (!mkt) return null;
-    const signals = [];
-    let marketScore = 0;
-
-    // RSI 해석
-    if (mkt.rsi < 30) {
-        signals.push(`📉 RSI ${mkt.rsi} — 과매도 구간 (반등 에너지 가능성)`);
-        marketScore += 2;
-    } else if (mkt.rsi > 70) {
-        signals.push(`📈 RSI ${mkt.rsi} — 과매수 구간 (조정 가능성 주의)`);
-        marketScore -= 1;
-    } else {
-        signals.push(`⚖️ RSI ${mkt.rsi} — 중립 구간`);
-    }
-
-    // 이동평균 배열 해석
-    if (mkt.ma5 > mkt.ma20) {
-        signals.push(`📈 단기(5일) > 장기(20일) 이평선 — 상승 배열`);
-        marketScore += 2;
-    } else {
-        signals.push(`📉 단기(5일) < 장기(20일) 이평선 — 하락 배열`);
-        marketScore -= 2;
-    }
-
-    // 거래량 해석
-    if (mkt.volRatio > 1.5) {
-        signals.push(`🔥 거래량 평균 대비 ${mkt.volRatio}배 — 강한 수급 유입`);
-        marketScore += 1;
-    } else if (mkt.volRatio < 0.7) {
-        signals.push(`😶 거래량 평균 대비 ${mkt.volRatio}배 — 수급 부재 (방향성 신뢰도 낮음)`);
-        marketScore -= 1;
-    } else {
-        signals.push(`📊 거래량 평균 대비 ${mkt.volRatio}배 — 보통 수준`);
-    }
-
-    // 당일 등락
-    const chg = parseFloat(mkt.changeRate);
-    signals.push(`${chg >= 0 ? '▲' : '▼'} 현재가 ${mkt.lastClose?.toLocaleString()}원 (전일 대비 ${chg >= 0 ? '+' : ''}${chg}%)`);
-
-    return { signals, marketScore, summary: marketScore >= 3 ? '강한 매수 신호' : marketScore >= 1 ? '약한 매수 신호' : marketScore >= -1 ? '중립' : '매도/관망 신호' };
-}
-function analyzeAISentiment(text) {
-    const bull = ['상승','돌파','매수','호재','성장','강세','반등','기회','긍정','확대','증가','회복','저점','급등'];
-    const bear = ['하락','위험','손실','리스크','약세','저항','불안','경계','매도','과열','거품','고점','폭락','급락','붕괴'];
-    let b = 0, s = 0;
-    bull.forEach(k => { b += (text.match(new RegExp(k, 'g')) || []).length; });
-    bear.forEach(k => { s += (text.match(new RegExp(k, 'g')) || []).length; });
-    return { bull: b, bear: s, net: b - s };
-}
+/* [V203.33] removed dead fn: interpretMarketData */
+/* [V203.33] removed dead fn: analyzeAISentiment */
 
 // ════════════════════════════════════
 // 🔥 카드 상태 맵 (31종 — 미등록 카드는 기본값 처리)
@@ -10301,25 +10128,7 @@ function detectRiskGateClient(cards) {
 }
 
 // 하락 시나리오 트리거 (클라이언트) — [V25.9+V25.9.1] 법무 안전 표현 강화
-function buildExitTriggersClient(intent, riskLevel) {
-    if (intent === 'sell') {
-        return [
-            { stage: '하락 가속',  action: '추가 약세와 거래량 강화 시 흐름 재평가가 필요할 수 있습니다' },
-            { stage: '추세 약화',  action: '추세 약세 흐름 시 보유 전략의 본질적 재검토가 고려될 수 있습니다' }
-        ];
-    }
-    if (riskLevel === 'EXTREME' || riskLevel === 'HIGH') {
-        return [
-            { stage: '하락 흐름',   action: '단기 저점 약화 시 신규 진입에 대한 보수적 검토가 도움이 될 수 있습니다' },
-            { stage: '하락 가속',   action: '거래량 동반 약세 시 추가 관망이 하나의 선택지로 해석될 수 있습니다' },
-            { stage: '추세 약화',   action: '추세 약세 흐름 시 다음 점사까지 관망이 고려될 수 있습니다' },
-            { stage: '바닥 신호',   action: '바닥 신호 감지 시 재진입에 대한 검토가 고려될 수 있습니다' }
-        ];
-    }
-    return [
-        { stage: '하락 흐름', action: '단기 저점 약화 시 진입 시점에 대한 신중한 검토가 도움이 될 수 있습니다' }
-    ];
-}
+/* [V203.33] removed dead fn: buildExitTriggersClient */
 
 // ==================================================================
 // 🔥 [V16.5] ZEUS 단일 통합 엔진 (Single Truth Engine)
@@ -10358,38 +10167,7 @@ function analyzeCardsZeus(cards, queryType = 'stock') {
 //   실제로는 호출되지 않습니다 (스택트레이스로 확인 — 호출처 0건).
 //   .mjs 모듈 모드 검증 시 "Identifier already declared" 에러 방지를 위해 이름 변경.
 //   기능 보존 — 두 번째 정의가 더 완전한 시그니처 (power, uncertaintySum 추가)를 가짐.
-function _getFinalDecision_legacy_disabled(score, maxRisk, avgRisk, hasCritical, isVolatile, queryType, intent) {
-    let res = { 
-        trendLabel: "", decision: "", position: "0%", 
-        stop: "-", target: "-", riskLabel: "보통" 
-    };
-
-    const netScore = score;
-
-    // 🔥 강력 상승 (7점 이상)
-    if (netScore >= 7) {
-        res = { trendLabel: "강력 상승 추진력", decision: "적극 분할 매수", position: queryType === 'crypto' ? "20~30%" : "30~50%", stop: queryType === 'crypto' ? "-8%" : "-5%", target: "+15~20%", riskLabel: "낮음" };
-    }
-    // 🔥 상승 구간 (3점 이상)
-    else if (netScore >= 3) {
-        res.trendLabel = isVolatile ? "변동성 동반 상승" : "상승 전환 구간";
-        res.decision   = "분할 매수"; res.position = "10~20%"; res.stop = "-5%"; res.target = "+8~12%"; res.riskLabel = "보통";
-    }
-    // 🔥 약 상승 (1점 이상)
-    else if (netScore >= 1) {
-        res = { trendLabel: "상승 시도 중", decision: "소량 진입", position: "10~20%", stop: "-4%", target: "+6~10%", riskLabel: "보통" };
-    }
-    // 🔥 중립
-    else if (netScore >= -1) {
-        res = { trendLabel: "관망 구간", decision: "대기", position: "0%", stop: "-", target: "-", riskLabel: "보통" };
-    }
-    // 🔥 하락
-    else {
-        res = { trendLabel: "하락 우세", decision: intent === 'buy' ? "진입 금지" : "매도 고려", position: "0%", stop: "-", target: "-", riskLabel: "높음" };
-    }
-
-    return res;
-}
+/* [V203.33] removed dead fn: _getFinalDecision_legacy_disabled */
 
 // 🔥 [V18.5] 중앙 통합 제어 엔진 (이것으로 기존 generateInvestmentData를 덮어쓰세요)
 
@@ -10411,9 +10189,7 @@ function getUnifiedTiming(score, power, type, intent) {
 
 // [비활성화됨 V17] 이 첫 번째 buildInvestmentData 정의는 아래쪽의 두 번째 정의에 의해 덮어써지므로
 // 실제로는 호출되지 않습니다. 실제 사용되는 로직은 아래 완성판(주식/부동산 상세 데이터 포함)으로 통합되었습니다.
-function _buildInvestmentData_legacy_disabled(cards, question) {
-    return null;
-}
+/* [V203.33] removed dead fn: _buildInvestmentData_legacy_disabled */
 
 // ── CARD_DB 조회 헬퍼 — 괄호 제거 후 매칭, 미등록 카드 안전 처리
 function getCardData(cardName) {
@@ -10434,30 +10210,7 @@ function calcCardPower(cards) {
         return sum + d.power;
     }, 0);
 }
-function getComboNote(cardData, queryType) {
-    const has = name => cardData.some(d => d.name.includes(name));
-    if (has("Ten of Swords") && has("Seven of Wands"))
-        return queryType === 'crypto'
-            ? "⚔️ 코인 공포장 — 패닉셀 이후 단기 반등 구간일 수 있습니다."
-            : "⚔️ 주식 급락 후 저점 탐색 — 버티기와 분할 접근이 핵심입니다.";
-    if (has("Ten of Swords"))
-        return queryType === 'crypto'
-            ? "💀 코인 붕괴 에너지 — 추가 하락 리스크가 높습니다."
-            : "💀 하락 충격 구간 — 손절선 점검이 필요합니다.";
-    if (has("The Tower"))
-        return queryType === 'crypto'
-            ? "⚡ 타워 카드: 거래소 해킹·규제 발표 등 외부 충격 경계."
-            : "⚡ 타워 카드: 어닝쇼크·공시 리스크 등 급변 가능성 경계.";
-    if (has("The Sun") || has("The Star"))
-        return queryType === 'crypto'
-            ? "☀️ 코인 시장 심리 회복 신호 — 단, 변동성은 여전히 높음."
-            : "☀️ 주식 상승 에너지 우세 — 긍정적 모멘텀이 감지됩니다.";
-    if (has("Seven of Wands"))
-        return queryType === 'crypto'
-            ? "🛡️ 코인 반등 시도 중이나 매도 압력이 강합니다."
-            : "🛡️ 주가 반등 시도 중이나 상단 저항이 강력합니다.";
-    return "";
-}
+/* [V203.33] removed dead fn: getComboNote */
 
 // ════════════════════════════════════
 // 🔥 카드 점수 기반 타이밍 엔진
@@ -16799,12 +16552,7 @@ function saveZeusNickname() {
 /**
  * 음력 선택 시 경고 표시 (사장님 BEST 기준 적용)
  */
-function _v31SajuCalendarChange(radio) {
-    const warning = document.getElementById('sajuLunarWarning');
-    if (warning) {
-        warning.style.display = radio.value === 'lunar' ? 'block' : 'none';
-    }
-}
+/* [V203.33] removed dead fn: _v31SajuCalendarChange */
 
 /**
  * 사주 입력 모달 표시
@@ -19840,26 +19588,7 @@ window.zeusForceClear = function() {
 /**
  * 사장님이 화면에서 직접 진단할 수 있는 정보 반환
  */
-function getSajuDiagnosticInfo() {
-    const access = getSajuAccessLevel();
-    const paidPlan = localStorage.getItem('sajuPaidPlan') || '(없음)';
-    const expiresAt = parseInt(localStorage.getItem('sajuPaidExpiresAt') || '0', 10);
-    const expiresStr = expiresAt > 0 
-        ? new Date(expiresAt).toLocaleString('ko-KR') 
-        : '(없음)';
-    const stillValid = expiresAt > Date.now();
-    const token = localStorage.getItem('paid_token') || '';
-    const tokenInfo = token ? (token.slice(0, 20) + '... (' + token.length + '자)') : '(없음)';
-    
-    return {
-        access,
-        paidPlan,
-        expiresAt: expiresStr,
-        stillValid,
-        tokenInfo,
-        version: 'V200.2'
-    };
-}
+/* [V203.33] removed dead fn: getSajuDiagnosticInfo */
 
 /**
  * V200.1 단일 사주 렌더 진입점
@@ -23099,9 +22828,7 @@ function zeusClaimCopyAccount(accNum) {
 }
 
 // 토스 송금 버튼 클릭 추적 (이미 있는 토스 링크 onclick과 연동)
-function zeusClaimMarkTossClick() {
-    window._zeusClaimActions.tossClicked = true;
-}
+/* [V203.33] removed dead fn: zeusClaimMarkTossClick */
 
 // [V20.10] 송금 완료 신고 → 자동 토큰 발급
 async function zeusClaimSubmit(plan) {
@@ -25526,24 +25253,7 @@ function reshuffleDeck() {
 }
 
 // ── 셔플 취소 (오버레이 닫고 홈으로)
-function cancelShuffle() {
-    SHUFFLE_STATE.isActive = false;
-    const overlay = document.getElementById('shuffle-overlay');
-    if (overlay) overlay.classList.remove('active');
-    const btn = document.getElementById('ritual-btn');
-    if (btn) {
-        btn.disabled = false;
-        // [V21.0] 글로벌 라벨로 복원
-        btn.innerHTML = `
-            <span style="display:block; font-size:0.92rem; font-weight:900; letter-spacing:0.08em; line-height:1.3;">
-                ✨ Begin Your Reading
-            </span>
-            <span style="display:block; font-size:0.78rem; font-weight:600; opacity:0.85; letter-spacing:0.05em; margin-top:3px;">
-                운명의 카드를 펼치소서
-            </span>
-        `;
-    }
-}
+/* [V203.33] removed dead fn: cancelShuffle */
 </script>
 <div class="shuffle-overlay" id="shuffle-overlay">
     <div class="shuffle-title">✦ 운명의 카드를 뽑으소서 ✦</div>
