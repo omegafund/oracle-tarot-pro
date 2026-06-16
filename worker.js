@@ -23483,6 +23483,15 @@ export default {
 
           // 모드 자동 교정: 버튼(loveSubType) vs 질문 의도 충돌 해결
           let finalLoveSubType = loveSubType;
+
+          // [V203.27] intimacy 숨김 분기 — 섹스/잠자리/관계운 등을 연애 안으로 자연 흡수
+          //   막지 않고 실용적으로 승화: 입력은 그대로, 내부는 intimacy 모드, 출력은 "🌙 깊은 관계 흐름"
+          const _intimacyKeywords = /섹스|섹스운|잠자리|잠자리운|육체|육체관계|스킨십|관계운|합궁|베드|몸궁합|동침|살\s*섞|성적|야한/;
+          const _isIntimacyQuery = _intimacyKeywords.test(prompt);
+          if (_isIntimacyQuery) {
+            finalLoveSubType = 'intimacy';
+          }
+
           // ★★★ [V202.43 #2 사장님 도돌이 결함 근본 수정] ★★★
           //   사장님 진단: "결혼 점사 물었는데 궁합 본문 섞여 나옴"
           //   ★ 도돌이 ★: 옛 작업에서 버튼 분기 완료 보고했으나 ★ 안전망이 변환 강제 ★
@@ -23501,7 +23510,7 @@ export default {
           const _v43_explicitLoveSubTypes = ['marriage', 'breakup', 'reunion', 'crush', 'thumb', 'mindread', 'contact'];
           const _v43_isExplicitLoveIntent = _v43_explicitLoveSubTypes.includes(loveSubType);
           
-          if (loveSubType === 'compatibility' && !hasTargetPerson(prompt)) {
+          if (!_isIntimacyQuery && loveSubType === 'compatibility' && !hasTargetPerson(prompt)) {
             // 궁합 버튼 눌렀지만 질문에 대상이 없음 → 개인 연애운으로 교정
             finalLoveSubType = '';  // 일반 연애운 처리
           }
@@ -23515,7 +23524,7 @@ export default {
           //   원인: 자연어 분류기가 '결혼' 키워드를 보지 않고 두 사람 패턴만 봄
           //   해결: hasTargetPerson 분기 안에서 ★ 결혼/이별/재회 키워드 우선 검사 ★
           //         키워드 발견 시 해당 서브타입으로 분류, 키워드 없을 때만 compatibility 추정
-          if (!finalLoveSubType && !_v43_isExplicitLoveIntent && hasTargetPerson(prompt)) {
+          if (!_isIntimacyQuery && !finalLoveSubType && !_v43_isExplicitLoveIntent && hasTargetPerson(prompt)) {
             // 결혼 키워드 우선 (가장 큰 결제 카테고리)
             if (/결혼|혼인|배우자|예식|예비\s*신부|예비\s*신랑|시집|장가|결합/.test(prompt)) {
               finalLoveSubType = 'marriage';
@@ -23955,7 +23964,8 @@ The Devil 예시:
             'thumb':         `[썸 모드] 본 질문은 ★ 썸타기/모호한 단계 ★ 관련이다. 다음을 반드시 포함하라:\n   1) 두 사람의 거리감 흐름 (좁혀짐/벌어짐)\n   2) 다음 단계 진전을 위한 신호\n   3) 모호함을 명확히 만드는 행동\n   ⚠️ "확정 관계" 표현 금지. 흐름 변화 중심.`,
             'mindread':      `[속마음 모드] 본 질문은 ★ 상대 속마음 ★ 관련이다. 다음을 반드시 포함하라:\n   1) 상대의 현재 감정 흐름 (드러난/숨긴)\n   2) 표현되지 않는 진심의 방향\n   3) 소통으로 확인 가능한 지점\n   ⚠️ "이 사람은 이렇다" 단정 금지. 흐름 해석으로.`,
             'contact':       `[연락 모드] 본 질문은 ★ 연락 빈도/단절 ★ 관련이다. 다음을 반드시 포함하라:\n   1) 연락 흐름의 자연스러움\n   2) 먼저 다가갈 타이밍 vs 기다림\n   3) 연락 방식의 변화 필요\n   ⚠️ "오늘 연락 온다" 시점 예언 금지.`,
-            'compatibility': `[궁합 모드] 본 질문은 두 사람의 "궁합" 분석이다. 아래 3가지를 반드시 포함하라:\n   1) 두 사람의 에너지 성향 (끌림 요소)\n   2) 갈등 포인트 (차이점에서 오는 긴장)\n   3) 관계 발전 방향 (맞춰 나가야 할 지점)`
+            'compatibility': `[궁합 모드] 본 질문은 두 사람의 "궁합" 분석이다. 아래 3가지를 반드시 포함하라:\n   1) 두 사람의 에너지 성향 (끌림 요소)\n   2) 갈등 포인트 (차이점에서 오는 긴장)\n   3) 관계 발전 방향 (맞춰 나가야 할 지점)`,
+            'intimacy':      `[친밀 흐름 모드] 본 질문은 ★ 육체적 친밀감·관계 진전 ★ 관련이다. 막거나 회피하지 말고 성숙하게 다룬다. 다음을 반드시 포함하라:\n   1) 지금 두 사람 사이 끌림·긴장감의 강도 (솔직하게)\n   2) 감정과 욕망의 방향이 일치하는지 (온도차 여부)\n   3) 순간의 선택이 관계에 남길 영향 (후폭풍 또는 깊어짐)\n   4) 진전을 위해 지금 필요한 현실적 행동\n   ⚠️ 추상적·신비주의 표현("우주의 에너지", "영혼의 결합") 절대 금지. 연애 코치처럼 솔직하고 실용적으로.\n   ⚠️ 노골적·외설적 묘사 금지. 품위 있되 직접적으로.\n   ⚠️ "섹스"라는 단어 대신 "친밀함", "관계 진전", "가까워짐" 등 자연스러운 표현 사용.`
           };
           const compatNote = _v43_loveDirectiveMap[_v43_finalLoveType] || '';
           financeInject = `
