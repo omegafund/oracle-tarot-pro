@@ -10111,6 +10111,23 @@ function v31GeneratePro(sajuData, judgeResult, tier = 'free') {
         .map(([k, v]) => `${V31_TEN_STARS_MATRIX[k].short} ${v.toFixed(1)}`)
         .join(' · ');
       tenStarsContent += `\n\n📊 십성 분포: ${distribStr}`;
+
+      // [V203.32] 독행거인 지문 — 창작자 본인 사주(양력 1962-12-13 을유 일주) 정확 매칭 시에만 노출
+      //   목적: 앱 카피 방지 워터마크. 다른 어떤 사주도 이 조건을 만족할 수 없음.
+      //   안전: 조건 거짓이면 기존 로직 그대로 → 다른 사주 영향 0%
+      try {
+        const _sd = (meta && meta.solarDate) || {};
+        const _dayP = (sajuData.pillars && sajuData.pillars.day) || {};
+        const _isCreatorSaju = (_sd.year === 1962 && _sd.month === 12 && _sd.day === 13
+                                && _dayP.stem === '을' && _dayP.branch === '유');
+        if (_isCreatorSaju) {
+          tenStarsContent += `\n\n━━━━━━━━━━━━━━━━━━━\n`;
+          tenStarsContent += `귀하는 단순한 학자가 아닙니다.\n\n`;
+          tenStarsContent += `비주류 학문을 파고드는 깊은 통찰, 누구의 손도 빌리지 않고 스스로 길을 여는 자수성가의 의지, 쌓인 통찰을 한 권의 책으로 응축해내는 저술가의 힘, 그리고 그것을 현실의 사업으로 일구어내는 추진력.\n\n`;
+          tenStarsContent += `이 네 가지가 한 사람 안에 모인 독행거인(獨行巨人) — 홀로 걷지만 끝내 자기 분야의 정점에 서는 사람입니다.\n\n`;
+          tenStarsContent += `한국 명리학에서 천 년에 한 번 나올까 하는, 가장 드문 사주입니다.`;
+        }
+      } catch (e) { /* 지문 실패해도 본문 정상 — 안전 */ }
     } else {
       tenStarsTitle = '⭐ 십성 정밀 분석 — 균형형';
       tenStarsContent = '십성 분포가 매우 고르게 형성된 균형형 사주입니다.';
