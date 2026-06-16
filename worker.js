@@ -1674,7 +1674,7 @@ function getCardSentence(card, isReversed, position, promptText, domain) {
         if (!d || d.jong !== 17) return null;
         return String.fromCharCode(0xAC00 + (d.cho*21 + d.jung)*28);
       }
-      // 조사+됐/됩니다 → 조사 제거 후 역행 표현
+      // 조사+됐/됩니다 → 조사 제거 후 약세 표현
       if (/[가이을를]\s*됐습니다\.$/.test(revBase))
         return revBase.replace(/[가이을를]\s*됐습니다\.$/, ' 흐름이 막혀 있습니다.');
       if (/[가이을를]\s*됩니다\.$/.test(revBase))
@@ -1693,26 +1693,26 @@ function getCardSentence(card, isReversed, position, promptText, domain) {
         return revBase.replace(/([었았였셨했왔갔났])습니다\.$/, (m, ch) => {
           const _c = ch.charCodeAt(0) - 0xAC00;
           const _open = String.fromCharCode(0xAC00 + (Math.floor(_c/28/21)*21 + Math.floor(_c/28)%21)*28);
-          return _open + '는 흐름이 역행하고 있습니다.';
+          return _open + '는 흐름이 약세로 기울고 있습니다.';
         });
       // 있습니다
-      // [V203.17] ~고/~며/~서 있습니다 — 진행형 역행 표현
+      // [V203.17] ~고/~며/~서 있습니다 — 진행형 약세 표현
       //   버그: "기다리고 있습니다" → "기다리고 이 억제되고 있습니다"
       //   수정: " 있습니다" 직전의 고/며/서/아/어를 유지하고 뒤만 교체
       if (/[고며서아어]\s있습니다\.$/.test(revBase))
-        return revBase.replace(/(\s있습니다\.)$/, ' 있는 흐름이 역행하고 있습니다.');
-      if (/있습니다\.$/.test(revBase)) return revBase.replace(/있습니다\.$/, '이 억제되고 있습니다.');
+        return revBase.replace(/(\s있습니다\.)$/, ' 있는 흐름이 주춤하고 있습니다.');
+      if (/있습니다\.$/.test(revBase)) return revBase.replace(/있습니다\.$/, '이 약화되고 있습니다.');
       // 명사+입니다 (시점입니다/구간입니다/때입니다 등)
       if (/[가-힣]입니다\.$/.test(revBase)) {
         return revBase.replace(/([가-힣])입니다\.$/, (m, prev) => {
           const jong = (prev.charCodeAt(0) - 0xAC00) % 28;
-          return prev + (jong > 0 ? '에서 역행이 감지됩니다.' : '에서 역행 중입니다.');
+          return prev + (jong > 0 ? '에서 약세 흐름이 나타납니다.' : '에서 흐름이 주춤합니다.');
         });
       }
       // ㅂ니다 계열 — 어간 복원
       return revBase.replace(/([가-힣])니다\.$/, (m, bChar) => {
         const open = _restoreOpen(bChar);
-        return open ? open + '는 흐름이 역행하고 있습니다.' : m;
+        return open ? open + '는 흐름이 약세로 기울고 있습니다.' : m;
       });
     }
     return sentences[idx % sentences.length];
@@ -24071,7 +24071,11 @@ ${compatNote}
             .replace(/육체관계|육체/g, '친밀함')
             .replace(/합궁|동침|베드/g, '가까워지는 흐름')
             .replace(/몸궁합/g, '관계 친밀도')
-            .replace(/성적|야한/g, '친밀한');
+            .replace(/성적|야한/g, '친밀한')
+            // [V203.31] 시점 표현 띄어쓰기 — "데이트후"가 이름으로 오인되는 것 방지
+            .replace(/데이트후/g, '데이트 후')
+            .replace(/만난후|만난뒤/g, '만난 후')
+            .replace(/오늘밤/g, '오늘 밤');
         }
 
         const masterPrompt = `
@@ -24332,10 +24336,13 @@ ${stockSubType === 'holding' ? `
 
 📌 ZEUS ORACLE 본문(제우스의 운명신탁) — 연애 전용:
   - 정확히 3문장 강제 (4문장 이상 금지)
-  - 1문장: [이름]님과 [상대이름]의 관계 현재 상태 (사실 기반)
+  - 1문장: 관계의 현재 상태 (사실 기반)
   - 2문장: 지금 이 시기가 중요한 구체적 이유
   - 3문장: 다음 단계를 결정하는 한 가지 변수 또는 행동
   - 설명형 나열 금지 — 각 문장이 독립 메시지여야 함
+  - ⚠️ 이름 호명 규칙: 질문에 사람 이름이 명확히 1명 있으면 그 이름만 "○○님"으로 호명.
+    "오늘", "내일", "밤", "데이트", "데이트 후", "이번주" 같은 시간·상황 단어는 절대 사람 이름으로 호명하지 말 것.
+    상대 이름이 불명확하면 "상대" 또는 "그 사람"으로 표현하고, 억지로 두 번째 이름을 만들지 말 것.
 
 📌 ONE LINE(한 줄 신탁) — 연애 전용:
   - 요약형 금지: "지금은 ~하는 단계", "~이 중요합니다" 형태 금지
