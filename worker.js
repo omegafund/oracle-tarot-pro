@@ -5510,6 +5510,12 @@ function enforceIntentV28(metrics) {
     
     // ── [V28.B 확장] layers.criticalInterpretation (결정적 해석) ──
     if (metrics.layers.criticalInterpretation && typeof metrics.layers.criticalInterpretation === 'string') {
+      // [V203.39] Gemini가 본문 뒤에 "ONE LINE ..." 라벨을 이어 쓰는 경우 제거
+      //   ONE LINE은 별도 필드(oracleTagline)로 렌더링되므로 본문에서 잘라냄
+      metrics.layers.criticalInterpretation = metrics.layers.criticalInterpretation
+        .replace(/\s*ONE\s*LINE\s*[:\-—]?\s*.*$/is, '')
+        .replace(/\s*한\s*줄\s*신탁\s*[:\-—]?\s*.*$/s, '')
+        .trim();
       metrics.layers.criticalInterpretation = _normalize(metrics.layers.criticalInterpretation);
     }
 
