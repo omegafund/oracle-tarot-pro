@@ -23598,19 +23598,26 @@ export default {
               //   해결: topVerdict 방향으로 decisiveTiming signal 보정
               const _vSignal = _topVerdict.signal || '';
               const _tSignal = _decisiveTiming.signal || '';
-              const _verdictIsBuy  = _vSignal.includes('🟢') || _vSignal.includes('진입');
-              const _verdictIsSell = _vSignal.includes('🔴') || _vSignal.includes('청산') || _vSignal.includes('정리');
+              // [V203.25] 매수 계열 인식 확대 — 🟢/진입뿐 아니라 🟡검증/분할접근/매수도 포함
+              //   문제: "🟡 검증 단계 — 분할 접근"이 매수로 인식 안 돼 관망 타이밍과 충돌 방치됨
+              const _verdictIsBuy  = _vSignal.includes('🟢') || _vSignal.includes('진입') ||
+                                     _vSignal.includes('검증') || _vSignal.includes('분할 접근') ||
+                                     _vSignal.includes('매수');
+              const _verdictIsSell = _vSignal.includes('🔴') || _vSignal.includes('청산') ||
+                                     _vSignal.includes('정리') || _vSignal.includes('익절') ||
+                                     _vSignal.includes('축소');
               const _timingIsContra = (_verdictIsBuy  && _tSignal.includes('🔴')) ||
                                      (_verdictIsSell && _tSignal.includes('🟢'));
               if (_timingIsContra) {
                 if (_verdictIsBuy) {
-                  // 매수 verdict인데 관망 타이밍 → 조정 마무리 구간으로 완화
+                  // 매수/검증 verdict인데 관망 타이밍 → 변동성 경계 구간으로 정합
+                  //   (강세 모멘텀 카드와 충돌 시 "관망"보다 "변동성 경계"가 정확 — 사장님 지적)
                   _topVerdict.decisiveTiming = {
                     ..._decisiveTiming,
-                    signal:    '🟡 조정 마무리 구간',
-                    statement: '현재는 조정이 마무리되는 구간입니다.',
-                    condition: '지지 확인 또는 거래량 회복 시 진입 환경이 열릴 가능성이 있습니다.',
-                    guidance:  '거래량 회복 또는 지지 확인 시 1차 분할 진입이 유리합니다.',
+                    signal:    '🟡 변동성 경계 구간',
+                    statement: '현재는 진입 기회와 변동성이 함께 커지는 구간입니다.',
+                    condition: '지지 확인 또는 거래량 회복 시 진입 환경이 강화될 가능성이 있습니다.',
+                    guidance:  '신호 확인 후 분할 진입하되 급등 구간 추격은 자제하는 것이 유리합니다.',
                     _verdictAdjusted: true
                   };
                 } else if (_verdictIsSell) {
@@ -24844,8 +24851,9 @@ ${metrics.cryptoSubtype === 'crypto_buy' ? `
                     temperature: 0.75,
                     topP: 0.95,
                     topK: 40,
-                    // [V203.21] 출력 토큰 6500→5000 — WHY/카드 압축 반영, 로딩시간 단축(15초→10초)
-                    maxOutputTokens: queryType === 'love' ? 5000
+                    // [V203.25] 연애는 프롬프트가 길어(상대심리+거리감+감정선+타이밍) 잘림 발생 → 6200 분리
+                    //   투자/코인은 짧아 5000 유지(로딩 속도)
+                    maxOutputTokens: queryType === 'love' ? 6200
                                    : (queryType === 'stock' || queryType === 'crypto') ? 5000
                                    : 5500
                   },
