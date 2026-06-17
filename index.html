@@ -8901,6 +8901,25 @@ async function renderStream(fetchPromise, cards) {
                         continue; // metrics 이벤트는 텍스트 누적에서 제외
                     }
 
+                    // [V203.61] CRISIS — 위기신호/intimacy 차단 응답. renderText(카드 파서) 우회, 단순 안내문 직접 표시
+                    //   원인: V203.53에서 worker가 _type:'crisis'를 보내기 시작했는데 클라이언트 처리가 누락되어
+                    //         카드3장+빈질문창 화면 멈춤 발생 (사장님 실증 보고)
+                    if (parsed && parsed._type === 'crisis' && parsed.text) {
+                        if (typeof cursor !== 'undefined' && cursor && cursor.remove) cursor.remove();
+                        if (contentEl) {
+                            contentEl.innerHTML = `
+                                <div style="text-align:center; padding:40px 20px; color:rgba(255,255,255,0.92); line-height:1.9; font-size:1rem;">
+                                    <div style="font-size:1.8rem; margin-bottom:18px;">🕯️</div>
+                                    ${parsed.text.replace(/\n/g, '<br>')}
+                                </div>`;
+                        }
+                        const holdingMsg = document.getElementById('holding-message');
+                        if (holdingMsg) holdingMsg.style.display = 'none';
+                        const finalBtn = document.getElementById('final-reset-btn');
+                        if (finalBtn) { finalBtn.style.display = 'inline-block'; finalBtn.style.marginTop = '25px'; }
+                        return;
+                    }
+
                     // [V203.16] WHY 이벤트 — Gemini가 생성한 투자 핵심 흐름 해석
                     if (parsed && parsed._type === 'why' && parsed.text) {
                         if (window._serverMetrics && window._serverMetrics.layers) {
