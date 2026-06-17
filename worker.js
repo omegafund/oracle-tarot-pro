@@ -21685,37 +21685,53 @@ async function buildSajuSafeV184_5(input, ctx) {
 // [V60-ZEUS-SHIELD] 초정밀 디도스 차단 및 자산 보호 엔진
 // ════════════════════════════════════════════════════════════════════════════
 
-// [V203.53] 위기 신호 감지 — 영문앱(oracle-tarot-en) 패턴을 한국앱에 적용
-//   목적: 자살/자해/살해 등 명확한 위기 표현이 들어오면 점사 대신 도움 안내로 즉시 전환
-//   보수적 설계: 모호한 표현/일상 은어와 안 겹치는, 명백한 위기 표현만 감지 (오탐 0 우선)
-// [V203.55] CRITICAL FIX — 고정 문자열 매칭이 어미 변형("자살하고파","자살하고싶은데")을 못 잡던 결함
-//   "나 자살하고파", "자살하고싶은데 어떡해" 등이 차단 안 되고 통과한 실제 사례 발견 → 정규식으로 전면 재설계
-//   어간만 고정하고 어미(파/싶다/싶은데/싶어/할거야/할게 등)는 전부 유연하게 매칭
-const CRISIS_SIGNALS_KR = [
-  /자살\s*하[고지]?\s*[파싶]/,           // 자살하고파, 자살하고싶, 자살할
-  /자살\s*할\s*[거게래까]/,              // 자살할거, 자살할게, 자살할래, 자살할까
-  /죽\s*고\s*[파싶]/,                    // 죽고파, 죽고싶
-  /죽\s*어\s*버리\s*고\s*[파싶]/,         // 죽어버리고파/싶
-  /죽\s*어\s*버[리릴]/,                  // 죽어버릴, 죽어버려
-  /죽\s*고\s*싶\s*다/,                   // 죽고싶다
-  /살\s*기\s*싫/,                        // 살기싫
-  /살\s*고\s*싶\s*지\s*않/,              // 살고싶지않
-  /더\s*살\s*이유가?\s*없/,              // 더살이유없
-  /세상\s*을?\s*떠나\s*고?\s*[파싶]/,     // 세상을떠나고싶
-  /자해\s*하[고지]?\s*[파싶]/,           // 자해하고파/싶
-  /자해\s*할\s*[거게래까]/,              // 자해할거, 자해할까
+// [V203.56] 위기 신호 감지 — 3계층 구조 (사장님 설계)
+//   LAYER 0: Context Filter — 비유/농담/오탐 문맥 먼저 제외
+//   LAYER 1: Hard Kill — 명백한 위험 표현, 즉시 차단
+//   LAYER 2: Soft Risk — 애매하지만 위험한 표현, 차단(상담 안내)
+//   배치: intent classify/Gemini 호출/결제 모두보다 먼저. 여기서 막히면 비용 0, 결제 0.
+const CRISIS_SAFE_CONTEXT = [
+  /만큼/, /정도로/, /웃겨?서?/, /웃기/, /농담/, /장난/, /영화/, /드라마/, /게임/, /소설/, /웹툰/
+];
+const CRISIS_HARD_PATTERNS = [
+  /자살\s*하[고지]?\s*[파싶]/,            // 자살하고파, 자살하고싶
+  /자살\s*할\s*[거게래까지]/,             // 자살할거/게/래/까/지
+  /죽\s*고\s*[파싶]/,                     // 죽고파, 죽고싶
+  /죽\s*어\s*버리\s*고\s*[파싶]/,
+  /죽\s*어\s*버[리릴]/,
+  /살\s*기\s*싫/,
+  /살\s*고\s*싶\s*지\s*않/,
+  /더\s*살\s*이유가?\s*없/,
+  /끝\s*내\s*고\s*싶/,                    // 끝내고싶다(목숨/삶 맥락)
+  /목숨\s*을?\s*끊/,
+  /자해\s*하[고지]?\s*[파싶]/,
+  /자해\s*할\s*[거게래까]/,
   /내\s*몸\s*을\s*다치게/,
   /손목\s*을\s*긋/,
-  /목숨\s*을\s*끊/,
-  /죽\s*이\s*고\s*[파싶](?!\s*을?\s*만큼)/,  // 죽이고파/싶 (타살) — "~만큼"(비유) 오탐 방지
+  /죽\s*이\s*고\s*[파싶]/,                // 타살 의도
   /죽\s*여\s*버리[고려]/,
-  /살해\s*하[고지]?\s*[파싶]/
+  /살해\s*하[고지]?\s*[파싶]/,
+  /사라지\s*고\s*싶/,                     // 사라지고싶다 (자살 암시 은유)
+  /오늘\s*끝\s*낼/                        // 오늘 끝낼거다
 ];
+const CRISIS_SOFT_PATTERNS = [
+  /없어지\s*고\s*싶/,
+  /포기\s*하고\s*싶/,
+  /버티기\s*힘들/,
+  /의미가?\s*없/,                         // 사는 의미가 없다
+  /너무\s*힘들/,
+  /다\s*포기/
+];
+
 function detectCrisisSignalKR(prompt) {
   if (!prompt) return false;
-  return CRISIS_SIGNALS_KR.some(re => re.test(prompt));
+  if (CRISIS_SAFE_CONTEXT.some(re => re.test(prompt))) return false;
+  if (CRISIS_HARD_PATTERNS.some(re => re.test(prompt))) return { level: 'hard' };
+  if (CRISIS_SOFT_PATTERNS.some(re => re.test(prompt))) return { level: 'soft' };
+  return false;
 }
 const CRISIS_RESPONSE_KR = "지금 마음에 무겁게 자리한 일이 있으신 것 같습니다. 카드로 풀어내기보다, 곁에 있는 사람에게 또는 전문가에게 그 마음을 나누어 보시면 좋겠습니다. 자살예방상담전화 1393(24시간, 전국 어디서나), 정신건강 상담전화 1577-0199로 연결하실 수 있습니다. 혼자 견디지 않으셔도 됩니다.";
+const CRISIS_RESPONSE_SOFT_KR = "요즘 많이 힘드신 것 같습니다. 지금은 카드 점사보다, 잠시 숨을 돌리고 가까운 사람과 마음을 나누는 게 더 도움이 될 수 있어요. 혼자 견디기 힘들다면 1393(자살예방상담전화)이나 1577-0199(정신건강 상담전화)도 24시간 곁에 있습니다.";
 
 // [V203.53] intimacy 차단 — 이번 세션 누적된 하드 키워드 + 은어 + ~상 패턴 통합
 //   사장님 결정: 연애운/궁합/이별/재회 등은 유지, 섹스/노골적 친밀 질문만 차단
@@ -21763,15 +21779,16 @@ async function handleUltimateZeusShield(request, env, userId, planKey, question)
         }
     }
 
-    // [1.5] CRISIS SIGNAL DETECTION — 최우선, Gemini 호출보다 먼저 (영문앱 패턴 적용)
-    //   명확하고 모호하지 않은 위기 표현만 감지(보수적) — 일상 대화/은어와 겹치지 않게
-    //   감지되면 점사 진행 안 하고 즉시 도움 안내로 대체
+    // [1.5] CRISIS SIGNAL DETECTION — 최우선, Gemini 호출보다 먼저, intent classify보다도 먼저
+    //   3계층(Context Filter→Hard→Soft) 통과 시 점사 진행 안 하고 즉시 도움 안내로 대체
     //   SSE 스트림 형식 — 클라이언트 stream reader가 정상 파싱하도록 (JSON 단발 응답 X)
-    if (detectCrisisSignalKR(question)) {
+    const _crisisResult = detectCrisisSignalKR(question);
+    if (_crisisResult) {
+        const _crisisMsg = _crisisResult.level === 'soft' ? CRISIS_RESPONSE_SOFT_KR : CRISIS_RESPONSE_KR;
         const enc = new TextEncoder();
         const crisisStream = new ReadableStream({
             start(controller) {
-                controller.enqueue(enc.encode(`data: ${JSON.stringify({ _type: 'crisis', text: CRISIS_RESPONSE_KR })}\n\n`));
+                controller.enqueue(enc.encode(`data: ${JSON.stringify({ _type: 'crisis', text: _crisisMsg })}\n\n`));
                 controller.enqueue(enc.encode(`data: [DONE]\n\n`));
                 controller.close();
             }
@@ -22992,9 +23009,18 @@ export default {
       try {
         const body = await request.json();
         const {
-          senderName, plan,
+          senderName, plan, question,
           accountCopied, stayTime, tossClicked
         } = body;
+
+        // [V203.56] 결제 단계 위기신호 이중 안전망 — 사장님 지적: "입력→위기감지→결제" 순서 필수
+        //   question 단계 위기감지가 어떤 이유로든 우회됐을 경우 결제 직전에 한 번 더 차단
+        if (question && detectCrisisSignalKR(question)) {
+          return new Response(JSON.stringify({
+            ok: false, error: "CRISIS_PAYMENT_BLOCKED",
+            message: CRISIS_RESPONSE_KR
+          }), { status: 200, headers: { ...corsHeaders(), "Content-Type": "application/json" } });
+        }
 
         // 1. 입력 검증
         if (!senderName || senderName.length < 2 || senderName.length > 30) {
