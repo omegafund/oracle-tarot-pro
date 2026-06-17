@@ -21685,6 +21685,35 @@ async function buildSajuSafeV184_5(input, ctx) {
 // [V60-ZEUS-SHIELD] 초정밀 디도스 차단 및 자산 보호 엔진
 // ════════════════════════════════════════════════════════════════════════════
 
+// [V203.53] 위기 신호 감지 — 영문앱(oracle-tarot-en) 패턴을 한국앱에 적용
+//   목적: 자살/자해/살해 등 명확한 위기 표현이 들어오면 점사 대신 도움 안내로 즉시 전환
+//   보수적 설계: 모호한 표현/일상 은어와 안 겹치는, 명백한 위기 표현만 감지 (오탐 0 우선)
+const CRISIS_SIGNALS_KR = [
+  '자살하고 싶', '자살할거', '자살할게', '죽고 싶', '죽어버리고 싶', '죽어버릴', '죽고싶다',
+  '살기 싫', '살고 싶지 않', '더 살 이유가 없', '세상을 떠나고 싶',
+  '자해하고 싶', '자해할거', '내몸을 다치게', '손목을 긋', '목숨을 끊',
+  '죽이고 싶어', '죽여버리고 싶', '살해하고 싶'
+];
+function detectCrisisSignalKR(prompt) {
+  if (!prompt) return false;
+  const p = prompt.toLowerCase();
+  return CRISIS_SIGNALS_KR.some(sig => p.includes(sig));
+}
+const CRISIS_RESPONSE_KR = "지금 마음에 무겁게 자리한 일이 있으신 것 같습니다. 카드로 풀어내기보다, 곁에 있는 사람에게 또는 전문가에게 그 마음을 나누어 보시면 좋겠습니다. 자살예방상담전화 1393(24시간, 전국 어디서나), 정신건강 상담전화 1577-0199로 연결하실 수 있습니다. 혼자 견디지 않으셔도 됩니다.";
+
+// [V203.53] intimacy 차단 — 이번 세션 누적된 하드 키워드 + 은어 + ~상 패턴 통합
+//   사장님 결정: 연애운/궁합/이별/재회 등은 유지, 섹스/노골적 친밀 질문만 차단
+const INTIMACY_BLOCK_PATTERN = /섹스|잠자리|스킨십|육체관계|합궁|몸궁합|동침|살\s*섞|섹슈얼|따\s*먹|넘어뜨리[고려]?\s*싶|밤\s*보내[고려]?\s*싶|원나잇|하룻밤|성관계/;
+const _INTIMACY_COMMON_SANG = ['이번상','계약상','형상','사실상','관계상','외관상','일반상','정황상','구조상','법률상','명목상','형식상','내용상'];
+function detectIntimacyBlockKR(prompt) {
+  if (!prompt) return false;
+  if (INTIMACY_BLOCK_PATTERN.test(prompt)) return true;
+  const sangMatch = prompt.match(/([가-힣]{2,4})상\s*(한번|하고\s*싶)/);
+  if (sangMatch && !_INTIMACY_COMMON_SANG.includes(sangMatch[1] + '상')) return true;
+  return false;
+}
+const INTIMACY_RESPONSE_KR = "이런 질문은 점사로 답하기 어렵습니다. 두 분의 관계 흐름이나 호감도, 타이밍이 궁금하시면 연애운으로 다시 물어봐 주세요.";
+
 async function handleUltimateZeusShield(request, env, userId, planKey, question) {
     // [0] GLOBAL EMERGENCY KILL SWITCH
     const KV = env.ZEUS_TAROT_KV;
@@ -21714,6 +21743,45 @@ async function handleUltimateZeusShield(request, env, userId, planKey, question)
                 { status: 400, headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" } });
         }
     }
+
+    // [1.5] CRISIS SIGNAL DETECTION — 최우선, Gemini 호출보다 먼저 (영문앱 패턴 적용)
+    //   명확하고 모호하지 않은 위기 표현만 감지(보수적) — 일상 대화/은어와 겹치지 않게
+    //   감지되면 점사 진행 안 하고 즉시 도움 안내로 대체
+    //   SSE 스트림 형식 — 클라이언트 stream reader가 정상 파싱하도록 (JSON 단발 응답 X)
+    if (detectCrisisSignalKR(question)) {
+        const enc = new TextEncoder();
+        const crisisStream = new ReadableStream({
+            start(controller) {
+                controller.enqueue(enc.encode(`data: ${JSON.stringify({ _type: 'crisis', text: CRISIS_RESPONSE_KR })}\n\n`));
+                controller.enqueue(enc.encode(`data: [DONE]\n\n`));
+                controller.close();
+            }
+        });
+        return new Response(crisisStream, {
+            status: 200,
+            headers: { "Content-Type": "text/event-stream", "Access-Control-Allow-Origin": "*" }
+        });
+    }
+
+    // [1.6] INTIMACY BLOCK — 섹스/은어 질문은 Gemini 호출 안 함, 차단 문구로 즉시 응답
+    //   사장님 결정(2026-06-17): 끝없는 은어 두더지잡기 종료. intimacy 전용은 차단, 일반 연애는 유지.
+    if (detectIntimacyBlockKR(question)) {
+        const enc = new TextEncoder();
+        const blockStream = new ReadableStream({
+            start(controller) {
+                controller.enqueue(enc.encode(`data: ${JSON.stringify({ _type: 'crisis', text: INTIMACY_RESPONSE_KR })}\n\n`));
+                controller.enqueue(enc.encode(`data: [DONE]\n\n`));
+                controller.close();
+            }
+        });
+        return new Response(blockStream, {
+            status: 200,
+            headers: { "Content-Type": "text/event-stream", "Access-Control-Allow-Origin": "*" }
+        });
+    }
+
+
+
 
     // [2] DEVICE FINGERPRINT
     const ip = request.headers.get("cf-connecting-ip") || "unknown";
