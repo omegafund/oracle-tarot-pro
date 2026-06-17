@@ -21762,6 +21762,40 @@ function detectIntimacyBlockKR(prompt) {
 const INTIMACY_RESPONSE_KR = "이런 질문은 점사로 답하기 어렵습니다. 두 분의 관계 흐름이나 호감도, 타이밍이 궁금하시면 연애운으로 다시 물어봐 주세요.";
 
 async function handleUltimateZeusShield(request, env, userId, planKey, question) {
+    // [V203.60] CRITICAL FIX — KV 없으면 fail-open(전체 안전장치 무력화)되던 치명적 결함 발견
+    //   기존 순서: KV체크 → (KV없으면 즉시 일반객체 반환, 위기감지 도달 못함) → 위기감지
+    //   문제: 호출부가 `instanceof Response`만 체크 → 일반객체면 무시하고 통과 → 점사 진행됨
+    //   해결: 위기감지/intimacy차단을 KV 체크보다 먼저, 최우선으로 이동 (KV 상태와 완전 무관하게 항상 실행)
+    if (detectCrisisSignalKR(question)) {
+        const _crisisMsg = (detectCrisisSignalKR(question).level === 'soft') ? CRISIS_RESPONSE_SOFT_KR : CRISIS_RESPONSE_KR;
+        const enc = new TextEncoder();
+        const crisisStream = new ReadableStream({
+            start(controller) {
+                controller.enqueue(enc.encode(`data: ${JSON.stringify({ _type: 'crisis', text: _crisisMsg })}\n\n`));
+                controller.enqueue(enc.encode(`data: [DONE]\n\n`));
+                controller.close();
+            }
+        });
+        return new Response(crisisStream, {
+            status: 200,
+            headers: { "Content-Type": "text/event-stream", "Access-Control-Allow-Origin": "*" }
+        });
+    }
+    if (detectIntimacyBlockKR(question)) {
+        const enc = new TextEncoder();
+        const blockStream = new ReadableStream({
+            start(controller) {
+                controller.enqueue(enc.encode(`data: ${JSON.stringify({ _type: 'crisis', text: INTIMACY_RESPONSE_KR })}\n\n`));
+                controller.enqueue(enc.encode(`data: [DONE]\n\n`));
+                controller.close();
+            }
+        });
+        return new Response(blockStream, {
+            status: 200,
+            headers: { "Content-Type": "text/event-stream", "Access-Control-Allow-Origin": "*" }
+        });
+    }
+
     // [0] GLOBAL EMERGENCY KILL SWITCH
     const KV = env.ZEUS_TAROT_KV;
     if (!KV) return { success: true, isResponse: false, noKV: true };
@@ -21790,46 +21824,6 @@ async function handleUltimateZeusShield(request, env, userId, planKey, question)
                 { status: 400, headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" } });
         }
     }
-
-    // [1.5] CRISIS SIGNAL DETECTION — 최우선, Gemini 호출보다 먼저, intent classify보다도 먼저
-    //   3계층(Context Filter→Hard→Soft) 통과 시 점사 진행 안 하고 즉시 도움 안내로 대체
-    //   SSE 스트림 형식 — 클라이언트 stream reader가 정상 파싱하도록 (JSON 단발 응답 X)
-    const _crisisResult = detectCrisisSignalKR(question);
-    if (_crisisResult) {
-        const _crisisMsg = _crisisResult.level === 'soft' ? CRISIS_RESPONSE_SOFT_KR : CRISIS_RESPONSE_KR;
-        const enc = new TextEncoder();
-        const crisisStream = new ReadableStream({
-            start(controller) {
-                controller.enqueue(enc.encode(`data: ${JSON.stringify({ _type: 'crisis', text: _crisisMsg })}\n\n`));
-                controller.enqueue(enc.encode(`data: [DONE]\n\n`));
-                controller.close();
-            }
-        });
-        return new Response(crisisStream, {
-            status: 200,
-            headers: { "Content-Type": "text/event-stream", "Access-Control-Allow-Origin": "*" }
-        });
-    }
-
-    // [1.6] INTIMACY BLOCK — 섹스/은어 질문은 Gemini 호출 안 함, 차단 문구로 즉시 응답
-    //   사장님 결정(2026-06-17): 끝없는 은어 두더지잡기 종료. intimacy 전용은 차단, 일반 연애는 유지.
-    if (detectIntimacyBlockKR(question)) {
-        const enc = new TextEncoder();
-        const blockStream = new ReadableStream({
-            start(controller) {
-                controller.enqueue(enc.encode(`data: ${JSON.stringify({ _type: 'crisis', text: INTIMACY_RESPONSE_KR })}\n\n`));
-                controller.enqueue(enc.encode(`data: [DONE]\n\n`));
-                controller.close();
-            }
-        });
-        return new Response(blockStream, {
-            status: 200,
-            headers: { "Content-Type": "text/event-stream", "Access-Control-Allow-Origin": "*" }
-        });
-    }
-
-
-
 
     // [2] DEVICE FINGERPRINT
     const ip = request.headers.get("cf-connecting-ip") || "unknown";
