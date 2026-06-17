@@ -24006,6 +24006,9 @@ The Devil 예시:
           //         marriage / breakup / reunion / crush / thumb / mindread / contact / compatibility
           //   효과: 사용자가 누른 버튼대로 ★ 정확한 톤 ★ 본문 생성
           const _v43_finalLoveType = (typeof finalLoveSubType !== 'undefined') ? finalLoveSubType : loveSubType;
+          // [V203.48] 질문 정황 분석 — 서브타입 카테고리(예: "이별모드")만 알고 질문 속 구체 정황을
+          //   놓치는 결함 수정. "헤어지자는데"=상대가 통보/질문자는 받는 입장 같은 사실을 카드 해석에 반영.
+          const _situationNote = `\n[질문 정황 먼저 파악 — 카드 해석보다 우선]\n질문 원문: "${prompt}"\n위 질문에서 다음을 먼저 파악하라: ① 누가 행동을 주도했는가(상대가 통보/제안했는지, 질문자가 망설이는지, 합의된 것인지) ② 질문자가 지금 원하는 것(관계 유지/정리/확인/진전/위로). 카드 해석은 이 정황과 반드시 일치해야 한다. 예: 상대가 이별을 통보했다면 질문자를 "매달리는 쪽"으로 단정하지 말 것 — 받아들이거나 대응하는 입장으로 그릴 것. 정황을 무시한 일반론적 해석은 금지.`;
           const _v43_loveDirectiveMap = {
             'marriage':      `[결혼 모드] 본 질문은 ★ 결혼/약속 ★ 관련이다. 다음을 반드시 포함하라:\n   1) 결혼 결정의 본질적 합의 필요성 (형식보다 본질)\n   2) 두 사람의 가치관·미래관 일치 정도\n   3) 신중한 대화로 의구심 직면\n   ⚠️ "궁합" 표현보다 "결혼 결정/본질 합의" 어휘 우선. 단순 끌림 분석 금지.`,
             'breakup':       `[이별 모드] 본 질문은 ★ 이별·정리 ★ 관련이다. 다음을 반드시 포함하라:\n   1) 관계 정리 흐름의 자연스러움 / 강제성\n   2) 감정 정리 후 회복 가능성\n   3) 이별 결단의 명확성 필요\n   ⚠️ "새 인연" 예언 금지. 정리 과정 자체에 집중.`,
@@ -24034,6 +24037,7 @@ The Devil 예시:
 관계 흐름: ${metrics.trend}
 행동: ${metrics.action}
 타이밍: ${metrics.finalTimingText}
+${_situationNote}
 ${reversedNote}
 ${synergyNote}
 ${compatNote}
