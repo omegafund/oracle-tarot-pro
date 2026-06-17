@@ -23537,7 +23537,12 @@ export default {
           // [V203.36] 하드 트리거 — 명백한 친밀 전용 단어 + 20-30대 은어 포함
           //   "관계"/"자다" 단독은 제외(오탐 방지) → Gemini 의미분류가 커버
           const _intimacyKeywords = /섹스|잠자리|스킨십|육체|합궁|몸궁합|동침|살\s*섞|섹슈얼|따\s*먹|먹고\s*싶|넘어뜨리|밤\s*보내|원나잇|하룻밤/;
-          const _isIntimacyQuery = _intimacyKeywords.test(prompt);
+          // [V203.52] "~상 한번/하고싶다" 패턴 — 이름+일본식 애칭 성적은어("쥬리상 하고싶어") 감지
+          //   화이트리스트로 일반 한자어("계약상/사실상" 등) 오탐 제외
+          const _COMMON_SANG = ['이번상','계약상','형상','사실상','관계상','외관상','일반상','정황상','구조상','법률상','명목상','형식상','내용상'];
+          const _sangMatch = prompt.match(/([가-힣]{2,4})상\s*(한번|하고\s*싶)/);
+          const _isIntimacySang = !!(_sangMatch && !_COMMON_SANG.includes(_sangMatch[1] + '상'));
+          const _isIntimacyQuery = _intimacyKeywords.test(prompt) || _isIntimacySang;
           if (_isIntimacyQuery) {
             finalLoveSubType = 'intimacy';
           }
@@ -24130,8 +24135,15 @@ ${_partnerNameNote}
         // [V203.35] intimacy 순화 — Gemini 생성중단 유발 직접단어만 순화 (나머지는 Gemini 의미분류가 처리)
         //   원본 prompt 보존, Gemini 전달용 사본만 순화 → 본문 잘림/이름 오인 방지
         let _safePrompt = prompt;
-        if (queryType === 'love' && /섹스|잠자리|육체|스킨십|합궁|몸궁합|동침|살\s*섞|섹슈얼|성적|야한/.test(prompt)) {
+        // [V203.52] ~상 패턴도 순화 발동 조건에 포함 (트리거와 동일 조건 재사용)
+        const _sangMatch2 = prompt.match(/([가-힣]{2,4})상\s*(한번|하고\s*싶)/);
+        const _hasSangIntimacy = !!(_sangMatch2 && !['이번상','계약상','형상','사실상','관계상','외관상','일반상','정황상','구조상','법률상','명목상','형식상','내용상'].includes(_sangMatch2[1] + '상'));
+        if (queryType === 'love' && (/섹스|잠자리|육체|스킨십|합궁|몸궁합|동침|살\s*섞|섹슈얼|성적|야한/.test(prompt) || _hasSangIntimacy)) {
           _safePrompt = prompt
+            // [V203.52] ~상 + 한번/하고싶다 → 가까워지고 싶다 (이름은 보존)
+            .replace(/([가-힣]{2,4})상\s*한번\s*하고\s*싶/g, '$1님과 가까워지고 싶')
+            .replace(/([가-힣]{2,4})상\s*한번/g, '$1님과 가까워지')
+            .replace(/([가-힣]{2,4})상\s*하고\s*싶/g, '$1님과 가까워지고 싶')
             // [V203.36] 은어/거친 표현 우선 순화 — 품위 있는 친밀 표현으로 (생성중단·격 저하 방지)
             .replace(/따\s*먹고\s*싶|따\s*먹을\s*수|따\s*먹/g, '가까워지고 싶')
             .replace(/넘어뜨리[고려]?\s*싶|넘어뜨리/g, '가까워지고 싶')
