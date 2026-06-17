@@ -8906,6 +8906,14 @@ async function renderStream(fetchPromise, cards) {
                     //         카드3장+빈질문창 화면 멈춤 발생 (사장님 실증 보고)
                     if (parsed && parsed._type === 'crisis' && parsed.text) {
                         if (typeof cursor !== 'undefined' && cursor && cursor.remove) cursor.remove();
+                        // [V203.63] 카드 슬롯을 차분한 이미지 3개로 교체 (타로 카드명 노출 방지)
+                        const _cardsBox = document.getElementById('result-cards-container');
+                        if (_cardsBox) {
+                            const _comfortEmojis = ['🌞','🕊️','🌳'];
+                            _cardsBox.innerHTML = _comfortEmojis.map(e =>
+                                `<div class="card-item"><div class="card-img-wrap" style="display:flex;align-items:center;justify-content:center;font-size:3.5rem;background:rgba(255,255,255,0.04);border-radius:10px;aspect-ratio:2/3;">${e}</div></div>`
+                            ).join('');
+                        }
                         if (contentEl) {
                             contentEl.innerHTML = `
                                 <div style="text-align:center; padding:40px 20px; color:rgba(255,255,255,0.92); line-height:1.9; font-size:1rem;">
