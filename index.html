@@ -22892,12 +22892,15 @@ async function zeusClaimSubmit(plan) {
     // 2. 서버 요청
     try {
         const API_BASE = 'https://tarot-api.omegafund01.workers.dev';
+        // [V203.56] 결제 직전 위기신호 재검사용 — 원래 질문 동봉 (이중 안전망)
+        const _crisisCheckQuestion = document.getElementById('seed-input')?.value || '';
         console.log('[PREMIUM] start — claim-payment 요청', { plan });
         const res = await fetch(API_BASE + '/claim-payment', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 senderName,
+                question: _crisisCheckQuestion,
                 plan,
                 accountCopied,
                 stayTime,
