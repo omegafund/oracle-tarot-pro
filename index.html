@@ -24858,7 +24858,15 @@ async function confirmPayment() {
         
         // ── 타로 분기 (기존 로직)
         const contentEl = document.getElementById('oracle-content');
-        
+
+        // [V203.44] 결제 후 holding-message 무조건 먼저 숨김 (과거 V23.7 해결책 복원)
+        //   근본원인: holding 숨김이 if(cachedFullText) 안에 갇혀 → 캐시 없으면 "신탁의 실타래" 화면 멈춤
+        //   증상: 결제 후 카드3장+빈질문창+"신탁의 실타래" 화면 정지 (반복 재발 버그)
+        {
+            const _hm = document.getElementById('holding-message');
+            if (_hm) _hm.style.display = 'none';
+        }
+
         if (contentEl && cachedFullText) {
             // [V19.3 버그수정] 연애는 finance 아님
             const isFinance = (CURRENT_MODE === 'stock' || CURRENT_MODE === 'crypto'); /* [V202.27] realestate 제거 */
@@ -24887,6 +24895,25 @@ async function confirmPayment() {
             
             // 4️⃣ ★ V200.7.11 ★ 결과 ★ 시작 ★ 위치로 이동 (푸터 노출 결함 수정)
             contentEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        } else if (contentEl && selectedCards && selectedCards.length === 3) {
+            // [V203.44] cachedFullText 없음 — 카드는 있으니 스트림 재호출 (과거 V23.7 Fix2 복원)
+            //   원인: 스트림 완료 전 결제 클릭 등으로 pendingOracle에 텍스트 미저장
+            const _q = document.getElementById('seed-input')?.value || '신탁을 보여주세요';
+            contentEl.innerHTML = `
+                <div style="text-align:center; padding:32px 0; color:rgba(212,175,55,0.85);">
+                    <div style="font-size:1.5rem; margin-bottom:12px;">⚡</div>
+                    <div style="font-size:0.9rem; letter-spacing:0.05em;">신탁의 실타래를 다시 엮는 중...</div>
+                </div>`;
+            try {
+                const _sp = startStreamFetch(_q, selectedCards);
+                renderStream(_sp, selectedCards);
+            } catch (e) {
+                console.error('[V203.44] 결제 후 재호출 실패:', e);
+                contentEl.innerHTML = `<div style="text-align:center; padding:32px 0; color:rgba(212,175,55,0.85);">결제가 완료되었습니다. 새 질문을 입력해 주세요.</div>`;
+            }
+        } else if (contentEl) {
+            // [V203.44] 카드도 캐시도 없는 극단 케이스 — 안내만
+            contentEl.innerHTML = `<div style="text-align:center; padding:32px 0; color:rgba(212,175,55,0.85);">결제가 완료되었습니다. 새 질문을 입력해 주세요.</div>`;
         }
     }, 1200);
 }
