@@ -9617,7 +9617,7 @@ const CATEGORY_SPEC = [
     jobs:['교사','교수','입시컨설턴트','교육기획자','학원운영자'] },
   { key:'의료', label:'의료', elements:['금','수'], tenstars:['편관','정관'], branchBonus:[],
     jobs:['의사','한의사','약사','간호사','임상병리사'] },
-  { key:'군경', label:'군경/보안', elements:['금','화'], tenstars:['편관'], branchBonus:[],
+  { key:'군경', label:'군경/공직', elements:['금','화'], tenstars:['편관','정관'], branchBonus:[],
     jobs:['군인','경찰','소방관','경호원','보안전문가'] },
   { key:'사업', label:'사업/경영', elements:['토','금'], tenstars:['편재','식신','상관'], branchBonus:[],
     jobs:['사업가','창업가','영업관리자','투자자','프랜차이즈운영자'] },
