@@ -9606,6 +9606,82 @@ function v31GenerateText(sajuData, judgeResult) {
 //     3층 currentFlow: 현재 시기 + 용신 조언
 //   절대 미포함: 오행%, 십성 레이블, 점수 → Gemini 설명충 방지
 // ══════════════════════════════════════════════════════════════════
+// ============================================================
+// [APTITUDE MATRIX] 명식 → 10개 직업군 적성 점수표 (null 없음)
+// 입력: E(오행%, 합100) + T(십성%, 합100) + branches(4지지)
+// ============================================================
+const CATEGORY_SPEC = [
+  { key:'종교철학', label:'종교/철학', elements:['목','화'], tenstars:['정인','편인'], branchBonus:['묘','인','오'],
+    jobs:['종교인','철학상담사','영성코치','명상지도자','인문학강사'] },
+  { key:'교육', label:'교육', elements:['목','토'], tenstars:['정인','편인'], branchBonus:[],
+    jobs:['교사','교수','입시컨설턴트','교육기획자','학원운영자'] },
+  { key:'의료', label:'의료', elements:['금','수'], tenstars:['편관','정관'], branchBonus:[],
+    jobs:['의사','한의사','약사','간호사','임상병리사'] },
+  { key:'군경', label:'군경/보안', elements:['금','화'], tenstars:['편관'], branchBonus:[],
+    jobs:['군인','경찰','소방관','경호원','보안전문가'] },
+  { key:'사업', label:'사업/경영', elements:['토','금'], tenstars:['편재','식신','상관'], branchBonus:[],
+    jobs:['사업가','창업가','영업관리자','투자자','프랜차이즈운영자'] },
+  { key:'부동산', label:'부동산/자산', elements:['토','수'], tenstars:['정재','편재'], branchBonus:[],
+    jobs:['공인중개사','부동산개발','자산관리사','건축시행','부동산투자'] },
+  { key:'예술', label:'예술/창작', elements:['화','목'], tenstars:['식신','상관'], branchBonus:[],
+    jobs:['예술가','디자이너','작가','음악가','공연기획자'] },
+  { key:'법률', label:'법률', elements:['금','토'], tenstars:['정관','편관'], branchBonus:[],
+    jobs:['변호사','법무사','검사','컴플라이언스담당','계약전문가'] },
+  { key:'기술IT', label:'기술/IT', elements:['금','수'], tenstars:['식신','편인'], branchBonus:[],
+    jobs:['개발자','데이터분석가','엔지니어','IT기획자','연구원'] },
+  { key:'상담치유', label:'상담/치유', elements:['수','목'], tenstars:['정인','편인'], branchBonus:[],
+    jobs:['상담사','심리치료사','코치','사회복지사','힐링테라피스트'] },
+];
+
+function inferAptitudeMatrix(sajuData, v31CalcTenStars) {
+  try {
+    if (!sajuData || !sajuData.elements || !sajuData.pillars) return null;
+    const toNum = (v) => typeof v==='number'?v:(typeof v==='string'?(parseFloat(v.replace('%',''))||0):0);
+    const ORDER = ['목','화','토','금','수'];
+    const rawE = {}; ORDER.forEach(k => rawE[k] = toNum(sajuData.elements[k]));
+    const totalE = ORDER.reduce((s,k)=>s+rawE[k],0);
+    if (totalE <= 0) return null;
+    const E = {}; ORDER.forEach(k => E[k] = rawE[k]/totalE*100);
+
+    const tsResult = v31CalcTenStars(sajuData);
+    const dist = (tsResult && tsResult.distribution) || {};
+    const TS_KEYS = ['비견','겁재','식신','상관','편재','정재','편관','정관','편인','정인'];
+    const totalT = TS_KEYS.reduce((s,k)=>s+(dist[k]||0),0);
+    const T = {};
+    TS_KEYS.forEach(k => T[k] = totalT > 0 ? (dist[k]||0)/totalT*100 : 10); // 균등 fallback
+
+    const p = sajuData.pillars;
+    const branches = [p.year,p.month,p.day,p.hour].filter(Boolean).map(x=>x&&x.branch).filter(Boolean);
+    const branchCount = (list) => list.length ? branches.filter(b=>list.includes(b)).length : 0;
+
+    const clip = (v) => Math.max(0, Math.min(100, v));
+    const relE = (el) => clip(E[el] / 20 * 50);   // 오행 평균 20% → 기준 50
+    const relT = (g)  => clip(T[g]  / 10 * 50);   // 십성 평균 10% → 기준 50
+
+    const raw = CATEGORY_SPEC.map(spec => {
+      const comps = [
+        ...spec.elements.map(relE),
+        ...spec.tenstars.map(relT),
+      ];
+      if (spec.branchBonus.length) {
+        comps.push(clip(branchCount(spec.branchBonus) / 4 * 100));
+      }
+      const score = comps.reduce((a,b)=>a+b,0) / comps.length;
+      return { key: spec.key, label: spec.label, jobs: spec.jobs, raw: score };
+    });
+
+    // 0~100 절대값보단 "상대 순위"가 중요 → 30~95로 재스케일(시각적 변별력)
+    const vals = raw.map(r=>r.raw);
+    const min = Math.min(...vals), max = Math.max(...vals);
+    const range = max - min;
+    const scaled = raw.map(r => ({
+      key: r.key, label: r.label, jobs: r.jobs,
+      score: range > 0 ? Math.round(30 + (r.raw-min)/range*65) : 60,
+    })).sort((a,b) => b.score - a.score);
+
+    return scaled;
+  } catch (_) { return null; }
+}
 function inferSoulBlueprint(sajuData) {
   try {
     if (!sajuData || !sajuData.elements || !sajuData.pillars) return null;
@@ -9614,49 +9690,66 @@ function inferSoulBlueprint(sajuData) {
       if (typeof v === 'string') return parseFloat(v.replace('%', '')) || 0;
       return 0;
     };
-    const RAW = {
-      목: toNum(sajuData.elements['목']), 화: toNum(sajuData.elements['화']),
-      토: toNum(sajuData.elements['토']), 금: toNum(sajuData.elements['금']),
-      수: toNum(sajuData.elements['수']),
-    };
-    // [버그수정] elements가 원시 가중합(예: 목2.88)이든 이미 퍼센트(예: 목35)든
-    // 합계 대비 비율로 정규화해서 항상 0~100 스케일로 통일.
-    const total = RAW.목 + RAW.화 + RAW.토 + RAW.금 + RAW.수;
+    const ORDER = ['목','화','토','금','수'];
+    const RAW = {}; ORDER.forEach(k => RAW[k] = toNum(sajuData.elements[k]));
+    const total = ORDER.reduce((s,k) => s + RAW[k], 0);
     if (total <= 0) return null;
-    const E = {
-      목: RAW.목 / total * 100, 화: RAW.화 / total * 100, 토: RAW.토 / total * 100,
-      금: RAW.금 / total * 100, 수: RAW.수 / total * 100,
-    };
+    const E = {}; ORDER.forEach(k => E[k] = RAW[k] / total * 100);
 
     const p = sajuData.pillars;
     const branches = [p.year, p.month, p.day, p.hour].filter(Boolean).map(x => x && x.branch).filter(Boolean);
     const countBranch = (...list) => list.filter(b => branches.includes(b)).length;
-    const strong = (el, th) => E[el] >= th;
-    const BLUEPRINTS = [
-      { when: () => strong('목', 30) && strong('화', 25) && countBranch('묘','인','오') >= 2,
+
+    // 정렬: 값 내림차순, 동률이면 ORDER(목화토금수) 순서 유지 (Array.sort는 안정정렬)
+    const sorted = ORDER.map(k => [k, E[k]]).sort((a,b) => b[1]-a[1]);
+    const [top1, top2] = sorted;
+    const max = sorted[0][1], min = sorted[4][1];
+    const FLAT_GAP = 8; // 1위-5위 격차가 이 안이면 "균형형"
+
+    const PAIR_TABLE = {
+      '목화': { base:'성장과 표현이 함께 타오르는 추진형 리더', fields:['창업','경영','교육','강연','마케팅','콘텐츠'],
+                mission:'아이디어를 현실로 키워 사람들 앞에 내놓는 역할', shadow:'추진력 과잉, 소진, 인정욕구, 일 벌이고 마무리 약함' },
+      '목토': { base:'씨를 심고 끝까지 돌보는 기반형 빌더', fields:['교육','조경/농업','부동산','컨설팅','코칭','조직관리'],
+                mission:'천천히 자라는 것을 기다리며 토대를 만드는 역할', shadow:'느린 변화에 대한 답답함, 과보호, 결단 지연' },
+      '목금': { base:'방향을 정하고 단호하게 쳐내는 개척형 결단가', fields:['엔지니어링','법률','의료','구조조정','경영','전략기획'],
+                mission:'낡은 것을 끊고 새 길을 여는 역할', shadow:'강경함, 충돌, 주변과의 마찰, 융통성 부족' },
+      '목수': { base:'흐름을 읽고 새 길을 설계하는 전략형 기획자', fields:['연구','IT','기획','창작','컨설팅','교육'],
+                mission:'변화의 흐름을 먼저 읽고 새로운 구조를 짜는 역할', shadow:'생각 과잉, 우유부단, 마무리 약함, 산만함' },
+      '화토': { base:'사람을 따뜻하게 품는 정서형 양육자', fields:['교육','상담','돌봄','요식','홍보','HR'],
+                mission:'사람의 마음을 안정시키고 자라게 하는 역할', shadow:'과보호, 자기 소진, 거절 어려움, 감정노동 과부하' },
+      '화금': { base:'감각적으로 표현하고 날카롭게 다듬는 완성형 크리에이터', fields:['디자인','편집','미디어','패션','마케팅','품질관리'],
+                mission:'표현을 다듬어 완성도 높은 결과물로 만드는 역할', shadow:'완벽주의, 비판적 시선, 자기검열, 감정 기복' },
+      '화수': { base:'직관과 통찰로 사람을 끌어당기는 영감형 커뮤니케이터', fields:['상담','코칭','글쓰기','강연','심리','브랜딩'],
+                mission:'느낀 것을 언어로 풀어 사람을 움직이는 역할', shadow:'감정 기복, 몰입과 소진의 반복, 경계 설정 어려움' },
+      '토금': { base:'원칙을 지키며 체계를 다지는 관리형 운영자', fields:['행정','재무','품질관리','법률','제조/생산관리','감사'],
+                mission:'규칙과 기준으로 안정된 시스템을 지키는 역할', shadow:'경직성, 변화 거부, 형식주의, 융통성 부족' },
+      '토수': { base:'묵묵히 흐름을 받아내는 수용형 조정자', fields:['상담','중재','연구','행정','사회복지','교육'],
+                mission:'갈등을 가라앉히고 흐름을 부드럽게 잇는 역할', shadow:'자기주장 약함, 결정 회피, 과도한 인내, 소극성' },
+      '금수': { base:'복잡함을 꿰뚫는 논리적 구조 설계자', fields:['연구','전략','법률','기획','엔지니어링','분석'],
+                mission:'복잡한 것을 꿰뚫고 구조로 정리하는 역할', shadow:'냉정 과잉, 고립, 분석 마비, 정서 단절' },
+    };
+    const BALANCED = { base:'여러 결을 자유롭게 넘나드는 다재형 조정자', fields:['컨설팅','기획','중재','프로젝트 매니지먼트','상담','다영역 융합'],
+                mission:'상황에 맞춰 자신을 유연하게 바꿔가며 균형을 잡는 역할', shadow:'정체성 모호, 결정 지연, 깊이보다 넓이로 흐르기 쉬움' };
+
+    if (max - min < FLAT_GAP) {
+      return { ...BALANCED };
+    }
+
+    const pairKey = ORDER.indexOf(top1[0]) < ORDER.indexOf(top2[0])
+      ? top1[0] + top2[0] : top2[0] + top1[0];
+
+    // [특수 정제] 목화가 1·2위이면서 묘/인/오 지지가 2개 이상 → 사장님 사례 같은 영성형으로 세분화
+    if (pairKey === '목화' && countBranch('묘','인','오') >= 2) {
+      return {
         base: '신념을 사람에게 전하는 영성형 전달자',
         fields: ['종교','철학','상담','교육','영성','치유'],
-        mission: '사람을 깨우고 방향을 주는 역할', shadow: '신념 과열, 독선, 자기 희생, 구원 강박' },
-      { when: () => strong('금', 25) && strong('수', 20),
-        base: '복잡함을 꿰뚫는 논리적 구조 설계자', fields: ['연구','전략','법률','기획','엔지니어링','분석'],
-        mission: '복잡한 것을 꿰뚫고 구조로 정리하는 역할', shadow: '냉정 과잉, 고립, 분석 마비, 정서 단절' },
-      { when: () => strong('화', 30) && strong('목', 20),
-        base: '에너지를 밖으로 퍼뜨리는 표현형 확산자', fields: ['예술','방송','강연','마케팅','공연','교육'],
-        mission: '메시지와 에너지를 밖으로 퍼뜨리는 역할', shadow: '감정 기복, 소진, 인정 갈증, 과시' },
-      { when: () => strong('수', 25) && strong('목', 25),
-        base: '흐름을 읽고 길을 여는 성장형 기획자', fields: ['기획','창작','교육','IT','컨텐츠','코칭'],
-        mission: '흐름을 읽고 새로운 길을 설계하는 역할', shadow: '산만, 마무리 약함, 우유부단, 과잉 사고' },
-      { when: () => strong('토', 25) && (strong('화', 20) || strong('금', 20)),
-        base: '사람과 환경을 지키는 안정형 양육자', fields: ['교육','돌봄','요식','부동산','행정','상담'],
-        mission: '사람과 환경을 안정시키고 지키는 역할', shadow: '변화 회피, 고집, 과보호, 정체' },
-      { when: () => strong('금', 30) && strong('목', 25),
-        base: '낡은 질서를 끊는 개혁형 결단가', fields: ['의료','개혁','구조조정','엔지니어링','경영','법집행'],
-        mission: '낡은 것을 끊고 새 질서를 세우는 역할', shadow: '강경, 충돌, 단절, 무자비' },
-    ];
-    for (const bp of BLUEPRINTS) {
-      try { if (bp.when()) { const { when, ...rest } = bp; return rest; } } catch (_) {}
+        mission: '사람을 깨우고 방향을 주는 역할',
+        shadow: '신념 과열, 독선, 자기 희생, 구원 강박',
+      };
     }
-    return null;
+
+    const entry = PAIR_TABLE[pairKey];
+    return entry ? { ...entry } : null;  // 이론상 항상 존재 (10쌍 전부 정의됨)
   } catch (_) { return null; }
 }
 function buildGeminiSajuContext(sajuData, v54DeepInsight, v54EnergyGuide, proContent) {
@@ -22135,6 +22228,7 @@ export default {
         // ══════════════════════════════════════════════════════════════
         let _narrativeBlocks = null;
         let _soulBlueprintOut = null;
+        let _aptitudeMatrixOut = null;
         let _narrativeDebug = { step: 'init' };
         try {
           if (!env.GEMINI_API_KEY) {
@@ -22163,6 +22257,7 @@ export default {
                 _sajuForCtx, _v54ForCtx, null, result.pro || null
               );
               _soulBlueprintOut = (_geminiCtx && _geminiCtx.soulBlueprint) || null;
+              _aptitudeMatrixOut = inferAptitudeMatrix(_sajuForCtx, v31CalcTenStars);
               _narrativeDebug = { step: 'calling_gemini', hasKey: !!env.GEMINI_API_KEY };
               _narrativeBlocks = await callGeminiForSajuNarrative(_geminiCtx, env.GEMINI_API_KEY);
               _narrativeDebug = {
@@ -22265,6 +22360,7 @@ export default {
           })(),
           narrativeBlocks: _narrativeBlocks,  // ★ [V202.56] Gemini 서사 5블록 (null이면 클라이언트 폴백)
           soulBlueprint: _soulBlueprintOut,   // ★ [SOUL BLUEPRINT] 영혼구조 (null이면 미표시)
+          aptitudeMatrix: _aptitudeMatrixOut, // ★ [APTITUDE MATRIX] 10개 직업군 적성 점수표 (항상 존재, null 없음)
           _narrativeDebug: _narrativeDebug,         // ★ [V202.60] 진단용 (배포 후 제거)
           message: "[V202.56 + V31 Chunk 5 + V31 #184.5 FINAL+ + V200.8.0] TEXT + NARRATIVE + PRO + AUDIT + Tier 1 + Preview 통합 완료"
         }), {
