@@ -9617,7 +9617,7 @@ const CATEGORY_SPEC = [
     jobs:['교사','교수','입시컨설턴트','교육기획자','학원운영자'] },
   { key:'의료', label:'의료', elements:['금','수'], tenstars:['편관','정관'], branchBonus:[],
     jobs:['의사','한의사','약사','간호사','임상병리사'] },
-  { key:'군경', label:'군경/공직', elements:['금','화'], tenstars:['편관','정관'], branchBonus:[],
+  { key:'군경', label:'군경/보안', elements:['금','화'], tenstars:['편관'], branchBonus:[],
     jobs:['군인','경찰','소방관','경호원','보안전문가'] },
   { key:'사업', label:'사업/경영', elements:['토','금'], tenstars:['편재','식신','상관'], branchBonus:[],
     jobs:['사업가','창업가','영업관리자','투자자','프랜차이즈운영자'] },
@@ -25392,6 +25392,13 @@ ${metrics.cryptoSubtype === 'crypto_buy' ? `
 
             // [V203.13] 구분선/헤더 필터링
             geminiText = geminiText
+              // [SECURITY] ONE LINE 레이블 제거 — Gemini가 앞/중간/뒤 어디에 써도 제거
+              //   원인: 프롬프트에 "ONE LINE" 포함 → Gemini가 본문 내 레이블로 출력
+              //   증상: 결과창에 "ONE LINE\n감정의 소용돌이..." 형태로 노출
+              //   해결: 스트리밍 직전 후처리에서 전방향 제거 (앞/중간/뒤 모두)
+              .replace(/^ONE\s*LINE\s*[:\-—]?\s*/im, '')
+              .replace(/\nONE\s*LINE\s*[:\-—]?\s*/ig, '\n')
+              .replace(/ONE\s*LINE\s*[:\-—]?\s*([^\n]+)/ig, '$1')
               .replace(/\u2501+[\u2501\s]+/g, ' ')
               .replace(/제우스의 신탁[^\n]*ZEUS[^\n]*ORACLE[^\n]*/gi, '')
               .replace(/[^\n]*에 대한 신탁은 다음과 같습니다[^\n]*/g, '')
