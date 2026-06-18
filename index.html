@@ -20438,7 +20438,6 @@ function renderSajuResult(data) {
                     <div class="zt-pro-tit" style="line-height:1.6;">🔮 영혼 설계도 (SOUL BLUEPRINT)</div>
                     <div style="margin:6px 0 4px 0;padding:10px 12px;background:rgba(212,175,55,0.08);border:1px solid rgba(232,199,102,0.25);border-radius:8px;font-size:0.82rem;line-height:1.95;">
                         <div style="color:#E8C766;font-weight:700;margin-bottom:6px;">${_sb.base}</div>
-                        <div style="color:rgba(255,255,255,0.88);">🧭 타고난 분야 · <span style="color:#FFE08A;">${_sb.fields.join(' · ')}</span></div>
                         <div style="color:rgba(255,255,255,0.88);">🌟 끌리는 삶의 방향 · ${_sb.mission}</div>
                         <div style="color:rgba(255,255,255,0.65);">🌑 조심할 그림자 · ${_sb.shadow}</div>
                     </div>
@@ -20453,6 +20452,29 @@ function renderSajuResult(data) {
                     <div class="zt-pro-tit" style="line-height:1.6;">🔮 당신이 원래 그런 사람인 이유</div><div style="font-size:0.78rem;color:rgba(232,199,102,0.7);margin:-2px 0 6px 0;padding-left:2px;border-left:2px solid rgba(232,199,102,0.4);padding-left:8px;">${_head}</div>
                     <div class="zt-pro-more" onclick="var d=document.getElementById('${_id}');var o=d.classList.toggle('open');this.innerHTML=(o?'▲ 접기':'▼ 숨은 이야기 보기');">▼ 숨은 이야기 보기</div>
                     <div class="zt-pro-deep" id="${_id}">${_full}</div>
+                </div>`;
+                })() : ''}
+
+                ${data.aptitudeMatrix && data.aptitudeMatrix.length ? (() => {
+                    const _am = data.aptitudeMatrix;
+                    const _amId = 'ztapt_' + Math.random().toString(36).slice(2,7);
+                    const _top4 = _am.slice(0,4);
+                    const _recJobs = [...new Set(_top4.slice(0,3).flatMap(c => c.jobs.slice(0,2)))].slice(0,5);
+                    const _barRow = (c) => `
+                        <div style="display:flex;align-items:center;gap:8px;margin:5px 0;">
+                            <div style="width:78px;font-size:0.78rem;color:rgba(255,255,255,0.85);flex-shrink:0;">${c.label}</div>
+                            <div style="flex:1;height:8px;background:rgba(255,255,255,0.08);border-radius:4px;overflow:hidden;">
+                                <div style="height:100%;width:${c.score}%;background:linear-gradient(90deg,#D4AF37,#E8C766);border-radius:4px;"></div>
+                            </div>
+                            <div style="width:28px;text-align:right;font-size:0.75rem;color:#E8C766;flex-shrink:0;">${c.score}</div>
+                        </div>`;
+                    return `
+                <div class="zt-pro-bub" style="margin-bottom:12px;">
+                    <div class="zt-pro-tit" style="line-height:1.6;">🎯 타고난 적성 지도 (APTITUDE MATRIX)</div>
+                    <div style="margin:8px 0;">${_top4.map(_barRow).join('')}</div>
+                    <div style="font-size:0.8rem;color:rgba(255,255,255,0.85);margin:6px 0 2px 0;"><span style="color:#E8C766;">추천 진로</span> · ${_recJobs.join(' · ')}</div>
+                    <div class="zt-pro-more" onclick="var d=document.getElementById('${_amId}');var o=d.classList.toggle('open');this.innerHTML=(o?'▲ 접기':'▼ 전체 10개 순위 보기');">▼ 전체 10개 순위 보기</div>
+                    <div class="zt-pro-deep" id="${_amId}" style="padding-top:6px;">${_am.map(_barRow).join('')}</div>
                 </div>`;
                 })() : ''}
 
