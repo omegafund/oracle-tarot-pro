@@ -9614,19 +9614,27 @@ function inferSoulBlueprint(sajuData) {
       if (typeof v === 'string') return parseFloat(v.replace('%', '')) || 0;
       return 0;
     };
-    const E = {
+    const RAW = {
       목: toNum(sajuData.elements['목']), 화: toNum(sajuData.elements['화']),
       토: toNum(sajuData.elements['토']), 금: toNum(sajuData.elements['금']),
       수: toNum(sajuData.elements['수']),
     };
+    // [버그수정] elements가 원시 가중합(예: 목2.88)이든 이미 퍼센트(예: 목35)든
+    // 합계 대비 비율로 정규화해서 항상 0~100 스케일로 통일.
+    const total = RAW.목 + RAW.화 + RAW.토 + RAW.금 + RAW.수;
+    if (total <= 0) return null;
+    const E = {
+      목: RAW.목 / total * 100, 화: RAW.화 / total * 100, 토: RAW.토 / total * 100,
+      금: RAW.금 / total * 100, 수: RAW.수 / total * 100,
+    };
+
     const p = sajuData.pillars;
     const branches = [p.year, p.month, p.day, p.hour].filter(Boolean).map(x => x && x.branch).filter(Boolean);
-    const countBranch = (...list) => list.filter(b => branches.includes(b)).length;  // [수정1] 개수 카운트
+    const countBranch = (...list) => list.filter(b => branches.includes(b)).length;
     const strong = (el, th) => E[el] >= th;
     const BLUEPRINTS = [
-      // [수정1] 묘 1개로는 판정 안 함 → 목/화 강세 + (묘·인·오 중 최소 2개)
       { when: () => strong('목', 30) && strong('화', 25) && countBranch('묘','인','오') >= 2,
-        base: '신념을 사람에게 전하는 영성형 전달자',  // [수정2] 더 강한 문구
+        base: '신념을 사람에게 전하는 영성형 전달자',
         fields: ['종교','철학','상담','교육','영성','치유'],
         mission: '사람을 깨우고 방향을 주는 역할', shadow: '신념 과열, 독선, 자기 희생, 구원 강박' },
       { when: () => strong('금', 25) && strong('수', 20),
