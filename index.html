@@ -20431,6 +20431,19 @@ function renderSajuResult(data) {
                 <div style="color:rgba(255,255,255,0.85); font-size:0.84rem; line-height:1.75; margin-bottom:14px; border-left:2px solid rgba(255,224,138,0.35); padding-left:10px; text-align:left; word-break:keep-all;">
                     ${(function(){ const _t3 = text.coreNarrative?.relationship || text.strengthPhrase || ''; const _w3 = _t3.trim().split(/\s+/); if (_w3.length >= 2) { return '<span style="color:#FFE08A; font-weight:700;">' + _w3[0] + ' ' + _w3[1] + '</span> ' + _w3.slice(2).join(' '); } return _t3; })()}
                 </div>
+                ${data.soulBlueprint ? (() => {
+                    const _sb = data.soulBlueprint;
+                    return `
+                <div class="zt-pro-bub" style="margin-bottom:12px;">
+                    <div class="zt-pro-tit" style="line-height:1.6;">🔮 영혼 설계도 (SOUL BLUEPRINT)</div>
+                    <div style="margin:6px 0 4px 0;padding:10px 12px;background:rgba(212,175,55,0.08);border:1px solid rgba(232,199,102,0.25);border-radius:8px;font-size:0.82rem;line-height:1.95;">
+                        <div style="color:#E8C766;font-weight:700;margin-bottom:6px;">${_sb.base}</div>
+                        <div style="color:rgba(255,255,255,0.88);">🧭 타고난 분야 · <span style="color:#FFE08A;">${_sb.fields.join(' · ')}</span></div>
+                        <div style="color:rgba(255,255,255,0.88);">🌟 끌리는 삶의 방향 · ${_sb.mission}</div>
+                        <div style="color:rgba(255,255,255,0.65);">🌑 조심할 그림자 · ${_sb.shadow}</div>
+                    </div>
+                </div>`;
+                })() : ''}
                 ${text.deepInsight && text.deepInsight.essenceCore ? (() => {
                     const _id = 'ztess_' + Math.random().toString(36).slice(2,7);
                     const _full = text.narrativeBlocks?.identity || text.deepInsight.essenceCore;
@@ -20449,7 +20462,7 @@ function renderSajuResult(data) {
                 </div>
 
                 <!-- C-1: 에너지 작동 방식 → 골드 말풍선 -->
-                ${text.deepInsight && text.deepInsight.energyOperation ? (() => {
+                ${false && text.deepInsight && text.deepInsight.energyOperation ? (() => {
                     const _id = 'zteng_' + Math.random().toString(36).slice(2,7);
                     const _full = text.narrativeBlocks?.lifePattern || text.deepInsight.energyOperation;
                     const _head = _full.length > 40 ? _full.slice(0, 38) + '…' : _full;
@@ -20484,6 +20497,17 @@ function renderSajuResult(data) {
                     return `
                 <div class="zt-pro-bub" style="margin:12px 0;">
                     <div class="zt-pro-tit" style="line-height:1.6;">🪞 사람들이 당신을 오해하는 이유</div><div style="font-size:0.78rem;color:rgba(232,199,102,0.7);margin:-2px 0 6px 0;padding-left:8px;border-left:2px solid rgba(232,199,102,0.4);">${_head}</div>
+                    <div class="zt-pro-more" onclick="var d=document.getElementById('${_id}');var o=d.classList.toggle('open');this.innerHTML=(o?'▲ 접기':'▼ 숨은 이야기 보기');">▼ 숨은 이야기 보기</div>
+                    <div class="zt-pro-deep" id="${_id}">${_full}</div>
+                </div>`;
+                })() : ''}
+                ${text.deepInsight && text.deepInsight.energyOperation ? (() => {
+                    const _id = 'ztpsy_' + Math.random().toString(36).slice(2,7);
+                    const _full = text.narrativeBlocks?.lifePattern || text.deepInsight.energyOperation;
+                    const _head = _full.length > 40 ? _full.slice(0, 38) + '…' : _full;
+                    return `
+                <div class="zt-pro-bub" style="margin:12px 0;">
+                    <div class="zt-pro-tit" style="line-height:1.6;">🌟 심리 작동 패턴</div><div style="font-size:0.78rem;color:rgba(232,199,102,0.7);margin:-2px 0 6px 0;padding-left:8px;border-left:2px solid rgba(232,199,102,0.4);">${_head}</div>
                     <div class="zt-pro-more" onclick="var d=document.getElementById('${_id}');var o=d.classList.toggle('open');this.innerHTML=(o?'▲ 접기':'▼ 숨은 이야기 보기');">▼ 숨은 이야기 보기</div>
                     <div class="zt-pro-deep" id="${_id}">${_full}</div>
                 </div>`;
