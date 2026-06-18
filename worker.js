@@ -9606,6 +9606,51 @@ function v31GenerateText(sajuData, judgeResult) {
 //     3층 currentFlow: 현재 시기 + 용신 조언
 //   절대 미포함: 오행%, 십성 레이블, 점수 → Gemini 설명충 방지
 // ══════════════════════════════════════════════════════════════════
+function inferSoulBlueprint(sajuData) {
+  try {
+    if (!sajuData || !sajuData.elements || !sajuData.pillars) return null;
+    const toNum = (v) => {
+      if (typeof v === 'number') return v;
+      if (typeof v === 'string') return parseFloat(v.replace('%', '')) || 0;
+      return 0;
+    };
+    const E = {
+      목: toNum(sajuData.elements['목']), 화: toNum(sajuData.elements['화']),
+      토: toNum(sajuData.elements['토']), 금: toNum(sajuData.elements['금']),
+      수: toNum(sajuData.elements['수']),
+    };
+    const p = sajuData.pillars;
+    const branches = [p.year, p.month, p.day, p.hour].filter(Boolean).map(x => x && x.branch).filter(Boolean);
+    const countBranch = (...list) => list.filter(b => branches.includes(b)).length;  // [수정1] 개수 카운트
+    const strong = (el, th) => E[el] >= th;
+    const BLUEPRINTS = [
+      // [수정1] 묘 1개로는 판정 안 함 → 목/화 강세 + (묘·인·오 중 최소 2개)
+      { when: () => strong('목', 30) && strong('화', 25) && countBranch('묘','인','오') >= 2,
+        base: '신념을 사람에게 전하는 영성형 전달자',  // [수정2] 더 강한 문구
+        fields: ['종교','철학','상담','교육','영성','치유'],
+        mission: '사람을 깨우고 방향을 주는 역할', shadow: '신념 과열, 독선, 자기 희생, 구원 강박' },
+      { when: () => strong('금', 25) && strong('수', 20),
+        base: '복잡함을 꿰뚫는 논리적 구조 설계자', fields: ['연구','전략','법률','기획','엔지니어링','분석'],
+        mission: '복잡한 것을 꿰뚫고 구조로 정리하는 역할', shadow: '냉정 과잉, 고립, 분석 마비, 정서 단절' },
+      { when: () => strong('화', 30) && strong('목', 20),
+        base: '에너지를 밖으로 퍼뜨리는 표현형 확산자', fields: ['예술','방송','강연','마케팅','공연','교육'],
+        mission: '메시지와 에너지를 밖으로 퍼뜨리는 역할', shadow: '감정 기복, 소진, 인정 갈증, 과시' },
+      { when: () => strong('수', 25) && strong('목', 25),
+        base: '흐름을 읽고 길을 여는 성장형 기획자', fields: ['기획','창작','교육','IT','컨텐츠','코칭'],
+        mission: '흐름을 읽고 새로운 길을 설계하는 역할', shadow: '산만, 마무리 약함, 우유부단, 과잉 사고' },
+      { when: () => strong('토', 25) && (strong('화', 20) || strong('금', 20)),
+        base: '사람과 환경을 지키는 안정형 양육자', fields: ['교육','돌봄','요식','부동산','행정','상담'],
+        mission: '사람과 환경을 안정시키고 지키는 역할', shadow: '변화 회피, 고집, 과보호, 정체' },
+      { when: () => strong('금', 30) && strong('목', 25),
+        base: '낡은 질서를 끊는 개혁형 결단가', fields: ['의료','개혁','구조조정','엔지니어링','경영','법집행'],
+        mission: '낡은 것을 끊고 새 질서를 세우는 역할', shadow: '강경, 충돌, 단절, 무자비' },
+    ];
+    for (const bp of BLUEPRINTS) {
+      try { if (bp.when()) { const { when, ...rest } = bp; return rest; } } catch (_) {}
+    }
+    return null;
+  } catch (_) { return null; }
+}
 function buildGeminiSajuContext(sajuData, v54DeepInsight, v54EnergyGuide, proContent) {
   const { meta, elements, strength, pillars } = sajuData;
 
@@ -9721,7 +9766,9 @@ function buildGeminiSajuContext(sajuData, v54DeepInsight, v54EnergyGuide, proCon
     yongsinAdvice: yongAdviceMap[yongEl] || '균형을 회복하는 데 집중하기'
   };
 
-  return { raw, interpreted, currentFlow, _v: 'V202.56' };
+  const soulBlueprint = inferSoulBlueprint(sajuData);
+
+  return { raw, interpreted, currentFlow, soulBlueprint, _v: 'V202.56' };
 }
 
 // ══════════════════════════════════════════════════════════════════
@@ -9738,7 +9785,7 @@ async function callGeminiForSajuNarrative(ctx, geminiApiKey) {
     return null;
   }
 
-  const { raw, interpreted, currentFlow } = ctx;
+  const { raw, interpreted, currentFlow, soulBlueprint } = ctx;
 
   const systemPrompt = `당신은 20년 경력의 역술가입니다.
 아래 사주 해석 정보를 바탕으로 5개 섹션을 작성하세요.
@@ -9767,6 +9814,15 @@ async function callGeminiForSajuNarrative(ctx, geminiApiKey) {
 [현재흐름]
 (3~5문장)`;
 
+  const _soulCtx = soulBlueprint ? `
+
+[타고난 영혼 설계 — 최우선 반영]
+본질: ${soulBlueprint.base}
+타고난 분야: ${soulBlueprint.fields.join(', ')}
+끌리는 삶의 방향: ${soulBlueprint.mission}
+조심할 그림자: ${soulBlueprint.shadow}
+※ [본모습]과 [신탁]을 쓸 때 위 '본질'과 '타고난 분야'를 가장 먼저, 핵심 축으로 녹여라. 직업·소명·역할을 묘사할 땐 ${soulBlueprint.fields.join(', ')} 방향을 우선 고려하라.` : '';
+
   const userPrompt = `해석 정보:
 성향: ${interpreted.identity}
 삶의 반복 패턴: ${interpreted.lifePattern}
@@ -9776,7 +9832,7 @@ async function callGeminiForSajuNarrative(ctx, geminiApiKey) {
 현재 흐름: ${currentFlow.flow}
 현재 시기: ${currentFlow.stage}
 시기 조언: ${currentFlow.stageAdvice}
-핵심 회복 행동: ${currentFlow.yongsinAdvice}`;
+핵심 회복 행동: ${currentFlow.yongsinAdvice}${_soulCtx}`;
 
   try {
     const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiApiKey}`;
@@ -22070,6 +22126,7 @@ export default {
         // ★★★ [V202.60] Gemini 사주 서사 5블록 생성 (진단 로그 추가) ★★★
         // ══════════════════════════════════════════════════════════════
         let _narrativeBlocks = null;
+        let _soulBlueprintOut = null;
         let _narrativeDebug = { step: 'init' };
         try {
           if (!env.GEMINI_API_KEY) {
@@ -22097,6 +22154,7 @@ export default {
               const _geminiCtx = buildGeminiSajuContext(
                 _sajuForCtx, _v54ForCtx, null, result.pro || null
               );
+              _soulBlueprintOut = (_geminiCtx && _geminiCtx.soulBlueprint) || null;
               _narrativeDebug = { step: 'calling_gemini', hasKey: !!env.GEMINI_API_KEY };
               _narrativeBlocks = await callGeminiForSajuNarrative(_geminiCtx, env.GEMINI_API_KEY);
               _narrativeDebug = {
@@ -22198,6 +22256,7 @@ export default {
             }
           })(),
           narrativeBlocks: _narrativeBlocks,  // ★ [V202.56] Gemini 서사 5블록 (null이면 클라이언트 폴백)
+          soulBlueprint: _soulBlueprintOut,   // ★ [SOUL BLUEPRINT] 영혼구조 (null이면 미표시)
           _narrativeDebug: _narrativeDebug,         // ★ [V202.60] 진단용 (배포 후 제거)
           message: "[V202.56 + V31 Chunk 5 + V31 #184.5 FINAL+ + V200.8.0] TEXT + NARRATIVE + PRO + AUDIT + Tier 1 + Preview 통합 완료"
         }), {
