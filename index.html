@@ -20461,20 +20461,20 @@ function renderSajuResult(data) {
                     const _top4 = _am.slice(0,4);
                     const _recJobs = [...new Set(_top4.slice(0,3).flatMap(c => c.jobs.slice(0,2)))].slice(0,5);
                     const _barRow = (c) => `
-                        <div style="display:flex;align-items:center;gap:8px;margin:5px 0;">
-                            <div style="width:78px;font-size:0.78rem;color:rgba(255,255,255,0.85);flex-shrink:0;">${c.label}</div>
-                            <div style="flex:1;height:8px;background:rgba(255,255,255,0.08);border-radius:4px;overflow:hidden;">
-                                <div style="height:100%;width:${c.score}%;background:linear-gradient(90deg,#D4AF37,#E8C766);border-radius:4px;"></div>
+                        <div style="display:flex;align-items:center;gap:8px;margin:6px 0;white-space:normal;">
+                            <div style="width:78px;font-size:0.78rem;color:rgba(255,255,255,0.85);flex-shrink:0;white-space:normal;">${c.label}</div>
+                            <div style="flex:1;height:10px;background:rgba(255,255,255,0.14);border-radius:5px;overflow:hidden;">
+                                <div style="height:100%;width:${c.score}%;background:linear-gradient(90deg,#D4AF37,#FFE08A);border-radius:5px;"></div>
                             </div>
-                            <div style="width:28px;text-align:right;font-size:0.75rem;color:#E8C766;flex-shrink:0;">${c.score}</div>
+                            <div style="width:30px;text-align:right;font-size:0.78rem;font-weight:700;color:#E8C766;flex-shrink:0;white-space:normal;">${c.score}</div>
                         </div>`;
                     return `
                 <div class="zt-pro-bub" style="margin-bottom:12px;">
-                    <div class="zt-pro-tit" style="line-height:1.6;">🎯 타고난 적성 지도 (APTITUDE MATRIX)</div>
-                    <div style="margin:8px 0;">${_top4.map(_barRow).join('')}</div>
-                    <div style="font-size:0.8rem;color:rgba(255,255,255,0.85);margin:6px 0 2px 0;"><span style="color:#E8C766;">추천 진로</span> · ${_recJobs.join(' · ')}</div>
+                    <div class="zt-pro-tit" style="line-height:1.4;">🎯 타고난 적성지도<br><span style="font-size:0.78em;opacity:0.72;letter-spacing:0.04em;">애티투드 매트릭스</span></div>
+                    <div style="margin:10px 0;white-space:normal;">${_top4.map(_barRow).join('')}</div>
+                    <div style="font-size:0.8rem;color:rgba(255,255,255,0.85);margin:6px 0 2px 0;white-space:normal;"><span style="color:#E8C766;">추천 진로</span> · ${_recJobs.join(' · ')}</div>
                     <div class="zt-pro-more" onclick="var d=document.getElementById('${_amId}');var o=d.classList.toggle('open');this.innerHTML=(o?'▲ 접기':'▼ 전체 10개 순위 보기');">▼ 전체 10개 순위 보기</div>
-                    <div class="zt-pro-deep" id="${_amId}" style="padding-top:6px;">${_am.map(_barRow).join('')}</div>
+                    <div class="zt-pro-deep" id="${_amId}" style="padding-top:8px;white-space:normal;">${_am.map(_barRow).join('')}</div>
                 </div>`;
                 })() : ''}
 
