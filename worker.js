@@ -25273,9 +25273,9 @@ ${metrics.cryptoSubtype === 'crypto_buy' ? `
                     temperature: 0.75,
                     topP: 0.95,
                     topK: 40,
-                    // [V203.25] 연애는 프롬프트가 길어(상대심리+거리감+감정선+타이밍) 잘림 발생 → 6200 분리
-                    //   투자/코인은 짧아 5000 유지(로딩 속도)
-                    maxOutputTokens: queryType === 'love' ? 5500
+                    // [V203.25] 연애는 프롬프트가 길어 잘림 발생
+                    // [STABILITY] love 8500→ 카드해석3개+oracle body 모두 수용, 실측 프롬프트 ~13500토큰
+                    maxOutputTokens: queryType === 'love' ? 8500
                                    : (queryType === 'stock' || queryType === 'crypto') ? 5000
                                    : 5500
                   },
