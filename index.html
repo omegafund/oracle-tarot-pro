@@ -15505,8 +15505,14 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
         const _checkSubtype = (typeof FORTUNE_SUBTYPE !== 'undefined' && FORTUNE_SUBTYPE) || '';
         const _isFreeSubtype = (_checkSubtype === 'today' || _checkSubtype === 'general');
         
-        if ((_checkDomain === 'life' || _checkDomain === 'general') && _isFreeSubtype) {
-            // 무료 운세 (오늘/전반) — 즉시 결과 노출, 결제 모달 차단
+        // [FIX] 결제 완료 유저는 free 서브타입이어도 PRO 콘텐츠 보여야 함
+        //   버그: 오늘운세(today/free) 무료 봄 → 유료 탭 클릭 → 990원 결제
+        //         → 복귀 시 여전히 _isFreeSubtype=true → publicSections만 반환
+        //         → 미래카드 한 줄에서 잘리고 '오늘의 운세 신탁'만 노출
+        //   해결: isPaidUser=true면 free 서브타입도 PRO 경로로 분기
+        const _isPaidNow = (typeof isPaidUser !== 'undefined' && isPaidUser);
+        if ((_checkDomain === 'life' || _checkDomain === 'general') && _isFreeSubtype && !_isPaidNow) {
+            // 무료 운세 (오늘/전반) — 미결제 시만 무료 결과. 결제 완료면 PRO로 진행
             return publicSections;
         }
         
