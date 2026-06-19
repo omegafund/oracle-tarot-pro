@@ -11580,6 +11580,13 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
     });
 
     let oracleContent = paragraphs.slice(3).join('\n\n').trim();
+    // [STABILITY] oracleContent 폴백 — slice(3) 빈 경우(HARD block 등 단락 부족)
+    //   원인: HARD block 카드 조합 시 Gemini 단락이 3개 이하 → paragraphs[3] 없음 → 최종신탁 본문 공백
+    //   해결: 비면 미래 단락 이후 텍스트를 직접 추출
+    if (!oracleContent && paragraphs.length >= 3) {
+        const _candidate = paragraphs.slice(2).join('\n\n').replace(/^(미래|FUTURE)[^\n]*\n?/i,'').trim();
+        if (_candidate && _candidate.length > 10) oracleContent = _candidate;
+    }
 
     // [V21.2] 제우스 신탁 박스 본문도 이모지 → 종목명 치환
     if (_subjectName && oracleContent) {
