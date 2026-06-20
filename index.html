@@ -17840,7 +17840,8 @@ function buildSajuChatSequenceV185(data) {
                     const _ly = String(_lunar.year);
                     const _lm = String(_lunar.month).padStart(2, '0');
                     const _ld = String(_lunar.day).padStart(2, '0');
-                    _inputDisplay += ` (음력 ${_ly}.${_lm}.${_ld})`;
+                    const _leapPrefix = _lunar.isLeapMonth ? '윤' : '';
+                    _inputDisplay += ` (음력 ${_ly}.${_leapPrefix}${_lm}.${_ld})`;
                 }
             }
         } catch (e) {}
