@@ -4480,7 +4480,7 @@
             //   목적: success-v55.html이 다른 도메인이라 sajuPendingResult 못 전달
             //   해결: V55 워커에서 sajuInput 직접 fetch + localStorage 저장
             if (urlCtx === 'saju' && !localStorage.getItem('sajuPendingResult')) {
-                var V55_WORKER = 'https://tarot-api-merged.omegafund01.workers.dev';
+                var V55_WORKER = 'https://tarot-api.omegafund01.workers.dev';
                 fetch(V55_WORKER + '/v55/fetch-reading?rid=' + encodeURIComponent(urlRid) + 
                       '&token=' + encodeURIComponent(urlToken))
                     .then(function (r) { return r.json(); })
@@ -5351,7 +5351,7 @@ const WORKER_BASE_URL = 'https://tarot-api.omegafund01.workers.dev';
 //         · sign과 verify 모두 같은 워커 = 같은 SERVER_SECRET = 검증 통과
 //   참고: V54 호출은 WORKER_BASE_URL (tarot-api-merged) 그대로 유지
 // ════════════════════════════════════════════════════════════════════════════
-const WORKER_BASE_URL_V55 = 'https://tarot-api-merged.omegafund01.workers.dev';
+const WORKER_BASE_URL_V55 = 'https://tarot-api.omegafund01.workers.dev';
 
 // [V55-MIGRATION 1.3] V55 정적 페이지 호스팅 도메인 (별도 워커)
 //   사장님 라이브 확인: GitHub Pages(zeustarot.com)에는 /v55/* 없음 → 404
