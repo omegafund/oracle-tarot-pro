@@ -20483,6 +20483,37 @@ function renderSajuResult(data) {
                 </div>`;
                 })() : ''}
 
+                ${data.realityFortune ? (() => {
+                    const _rf = data.realityFortune;
+                    const _rfId = 'ztrf_' + Math.random().toString(36).slice(2,7);
+                    const _bar = (label, val) => `
+                        <div style="display:flex;align-items:center;gap:8px;margin:5px 0;white-space:normal;">
+                            <div style="width:80px;font-size:0.76rem;color:rgba(255,255,255,0.85);flex-shrink:0;">${label}</div>
+                            <div style="flex:1;height:9px;background:rgba(255,255,255,0.14);border-radius:5px;overflow:hidden;">
+                                <div style="height:100%;width:${val}%;background:linear-gradient(90deg,#D4AF37,#FFE08A);border-radius:5px;"></div>
+                            </div>
+                            <div style="width:28px;text-align:right;font-size:0.76rem;font-weight:700;color:#E8C766;flex-shrink:0;">${val}</div>
+                        </div>`;
+                    const _ins = (t) => `<div style="font-size:0.78rem;color:rgba(255,255,255,0.78);margin:4px 0 10px 0;line-height:1.6;white-space:normal;">${t}</div>`;
+                    return `
+                <div class="zt-pro-bub" style="margin-bottom:12px;">
+                    <div class="zt-pro-tit" style="line-height:1.4;">💎 현실복 구조<br><span style="font-size:0.78em;opacity:0.72;letter-spacing:0.04em;">REALITY FORTUNE</span></div>
+                    <div style="margin:10px 0;white-space:normal;">
+                        <div style="color:#FFE08A;font-size:0.84rem;font-weight:700;margin:8px 0 4px 0;">💰 ${_rf.wealth.label} <span style="font-size:0.72rem;opacity:0.7;font-weight:400;">· ${_rf.wealth.pattern}</span></div>
+                        ${_bar('버는 힘', _rf.wealth.earn)}
+                        ${_bar('지키는 힘', _rf.wealth.keep)}
+                        ${_ins(_rf.wealth.insight)}
+                        <div style="color:#FFE08A;font-size:0.84rem;font-weight:700;margin:8px 0 4px 0;">💍 ${_rf.spouse.label} <span style="font-size:0.72rem;opacity:0.7;font-weight:400;">· ${_rf.spouse.palace}</span></div>
+                        ${_bar('인연·안정', _rf.spouse.score)}
+                        ${_ins(_rf.spouse.insight)}
+                        <div style="color:#FFE08A;font-size:0.84rem;font-weight:700;margin:8px 0 4px 0;">👶 ${_rf.child.label}</div>
+                        ${_bar('자식 인연', _rf.child.score)}
+                        ${_ins(_rf.child.insight)}
+                    </div>
+                    <div style="font-size:0.72rem;color:rgba(255,255,255,0.5);margin-top:4px;line-height:1.6;white-space:normal;">※ 명식 구조로 본 경향이며, 정해진 운명이 아닙니다.</div>
+                </div>`;
+                })() : ''}
+
                 ${data.aptitudeMatrix && data.aptitudeMatrix.length ? (() => {
                     const _am = data.aptitudeMatrix;
                     const _amId = 'ztapt_' + Math.random().toString(36).slice(2,7);
