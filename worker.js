@@ -9673,6 +9673,116 @@ function inferAptitudeMatrix(sajuData, v31CalcTenStars) {
     return scaled;
   } catch (_) { return null; }
 }
+// ════════════════════════════════════════════════════════════════════════════════
+// [REALITY FORTUNE] 명식 → 현실복 구조 (재물복/배우자복/자식복)
+//   inferAptitudeMatrix와 동일 패턴: 순수 함수, try/catch, null 가드, 기존 계산값 재사용.
+//   점수는 내부 계산 → 표시는 "유형 라벨 + 1줄 통찰" (운명 단정 회피).
+// ════════════════════════════════════════════════════════════════════════════════
+function inferRealityFortune(sajuData, v31CalcTenStars) {
+  try {
+    if (!sajuData || !sajuData.pillars || !sajuData.meta) return null;
+
+    const clip = (v) => Math.max(0, Math.min(100, Math.round(v)));
+    const p = sajuData.pillars;
+    const gender = (sajuData.meta.gender === '여' || sajuData.meta.gender === 'F' || sajuData.meta.gender === 'female') ? '여' : '남';
+
+    const ts = (typeof v31CalcTenStars === 'function') ? v31CalcTenStars(sajuData) : null;
+    const dist = (ts && ts.distribution) || {};
+    const g = (k) => (dist[k] || 0);
+    const wealth   = g('정재') + g('편재');
+    const food     = g('식신') + g('상관');
+    const officer  = g('정관') + g('편관');
+    const seal     = g('정인') + g('편인');
+    const peer     = g('비견') + g('겁재');
+
+    const strengthType = (sajuData.strength && (sajuData.strength.type || sajuData.strength.result || sajuData.strength.level)) || '';
+    const isStrong = /강|왕|身强|身旺/.test(String(strengthType)) || (sajuData.strength && sajuData.strength.score > 50);
+
+    const branches = [p.year, p.month, p.day, p.hour].filter(Boolean).map(x => x && x.branch).filter(Boolean);
+    const dayBranch = p.day && p.day.branch;
+    const hourBranch = p.hour && p.hour.branch;
+    const hasHour = !!(p.hour && p.hour.branch);
+
+    const CLASH = [["자","오"],["축","미"],["인","신"],["묘","유"],["진","술"],["사","해"]];
+    const isClash = (a, b) => CLASH.some(pr => (pr[0]===a&&pr[1]===b)||(pr[1]===a&&pr[0]===b));
+    const COMBINE = [["자","축"],["인","해"],["묘","술"],["진","유"],["사","신"],["오","미"]];
+    const isCombine = (a, b) => COMBINE.some(pr => (pr[0]===a&&pr[1]===b)||(pr[1]===a&&pr[0]===b));
+    const STORAGE = ["진","술","축","미"];
+    const PEACH = ["자","오","묘","유"];
+
+    const dayClashCount = branches.filter(b => b !== dayBranch && isClash(dayBranch, b)).length;
+    const dayCombineCount = branches.filter(b => b !== dayBranch && isCombine(dayBranch, b)).length;
+    const peachCount = branches.filter(b => PEACH.includes(b)).length;
+    const storageCount = branches.filter(b => STORAGE.includes(b)).length;
+
+    // ① 재물복
+    let earnRaw = 0;
+    earnRaw += wealth > 0 ? 20 : 0;
+    earnRaw += (food > 0 && wealth > 0) ? 30 : 0;
+    earnRaw += clip(wealth * 8);
+    earnRaw += isStrong ? 18 : 0;
+    if (wealth > 4) earnRaw -= 12;
+    if (peer > 3 && wealth > 0) earnRaw -= 18;
+    const earnScore = clip(earnRaw);
+    let keepRaw = 40;
+    keepRaw += storageCount * 15;
+    keepRaw += isStrong ? 15 : -10;
+    keepRaw += (peer > 3) ? -15 : 5;
+    const keepScore = clip(keepRaw);
+    let wealthPattern;
+    if (food > 0 && wealth > 0) wealthPattern = '식상생재형 (만들어 버는 구조)';
+    else if (wealth > 2 && food === 0) wealthPattern = '재성 직접형 (기회·거래로 버는 구조)';
+    else if (wealth === 0) wealthPattern = '비재성형 (재물보다 다른 가치 중심)';
+    else wealthPattern = '균형형';
+    let wealthInsight;
+    if (earnScore >= 75 && keepScore >= 75) wealthInsight = '버는 힘과 지키는 힘이 모두 강합니다. 재물 구조가 탄탄합니다.';
+    else if (earnScore >= keepScore + 15) wealthInsight = '버는 힘이 지키는 힘보다 앞섭니다. 들어온 뒤를 관리하면 강해집니다.';
+    else if (keepScore >= earnScore + 15) wealthInsight = '지키고 모으는 힘이 강합니다. 기회를 만들면 더 커집니다.';
+    else wealthInsight = '버는 힘과 지키는 힘이 균형을 이룹니다.';
+
+    // ② 배우자복
+    const spouseStar = (gender === '남') ? wealth : officer;
+    const spouseStarName = (gender === '남') ? '재성(배우자성)' : '관성(배우자성)';
+    let spouseRaw = 50;
+    spouseRaw += (dayCombineCount > 0) ? 20 : 0;
+    spouseRaw += (spouseStar > 0) ? 20 : -5;
+    spouseRaw -= dayClashCount * 30;
+    spouseRaw += (spouseStar > 4) ? -12 : 0;
+    if (peachCount >= 2) spouseRaw -= 10;
+    const spouseScore = clip(spouseRaw);
+    let palaceState;
+    if (dayClashCount > 0) palaceState = '변동형 (배우자궁에 충 — 관계에 변화·자극)';
+    else if (dayCombineCount > 0) palaceState = '안정형 (배우자궁에 합 — 인연이 머무는 구조)';
+    else palaceState = '중립형';
+    let spouseInsight;
+    if (dayClashCount > 0) spouseInsight = '배우자궁이 움직이는 구조입니다. 안정보다 변화·성장의 인연일 수 있습니다.';
+    else if (dayCombineCount > 0 && spouseStar > 0) spouseInsight = '배우자궁이 안정적이고 인연의 별도 분명합니다.';
+    else if (spouseStar === 0) spouseInsight = '배우자성이 드러나지 않는 구조입니다. 인연은 시기와 환경으로 보완됩니다.';
+    else spouseInsight = '무난한 배우자궁입니다. 관계는 노력으로 단단해집니다.';
+
+    // ③ 자식복
+    let childRaw = 40;
+    childRaw += (food > 0) ? 25 : -5;
+    childRaw += clip(food * 6);
+    childRaw += (food > 0 && seal > 0) ? 10 : 0;
+    if (officer > 3 && food > 0 && food < officer) childRaw -= 18;
+    if (hasHour && hourBranch && branches.filter(b => b!==hourBranch && isClash(hourBranch,b)).length>0) childRaw -= 12;
+    if (!hasHour) childRaw = Math.min(childRaw, 70) - 10;
+    const childScore = clip(childRaw);
+    let childInsight;
+    if (!hasHour) childInsight = '출생 시간이 없어 자녀궁(시주)은 참고만 하세요. 식상 흐름으로 본 경향입니다.';
+    else if (food === 0) childInsight = '식상이 약한 구조입니다. 자식 인연은 시주와 대운 흐름으로 함께 봐야 합니다.';
+    else if (officer > 3 && food < officer) childInsight = '자식의 별이 눌리는 구조입니다. 관계의 거리 조절이 도움이 됩니다.';
+    else childInsight = '자식의 별이 살아 있는 구조입니다. 인연이 자연스럽게 이어집니다.';
+
+    return {
+      wealth: { label:'재물복', earn:earnScore, keep:keepScore, pattern:wealthPattern, insight:wealthInsight },
+      spouse: { label:'배우자복', score:spouseScore, starName:spouseStarName, hasStar:spouseStar>0, palace:palaceState, insight:spouseInsight },
+      child:  { label:'자식복', score:childScore, hasHour:hasHour, insight:childInsight },
+    };
+  } catch (_) { return null; }
+}
+
 function inferSoulBlueprint(sajuData) {
   try {
     if (!sajuData || !sajuData.elements || !sajuData.pillars) return null;
@@ -22237,6 +22347,7 @@ export default {
         let _narrativeBlocks = null;
         let _soulBlueprintOut = null;
         let _aptitudeMatrixOut = null;
+        let _realityFortuneOut = null;
         let _narrativeDebug = { step: 'init' };
         try {
           if (!env.GEMINI_API_KEY) {
@@ -22266,6 +22377,7 @@ export default {
               );
               _soulBlueprintOut = (_geminiCtx && _geminiCtx.soulBlueprint) || null;
               _aptitudeMatrixOut = inferAptitudeMatrix(_sajuForCtx, v31CalcTenStars);
+              _realityFortuneOut = inferRealityFortune(_sajuForCtx, v31CalcTenStars);
               _narrativeDebug = { step: 'calling_gemini', hasKey: !!env.GEMINI_API_KEY };
               _narrativeBlocks = await callGeminiForSajuNarrative(_geminiCtx, env.GEMINI_API_KEY);
               _narrativeDebug = {
@@ -22369,6 +22481,7 @@ export default {
           narrativeBlocks: _narrativeBlocks,  // ★ [V202.56] Gemini 서사 5블록 (null이면 클라이언트 폴백)
           soulBlueprint: _soulBlueprintOut,   // ★ [SOUL BLUEPRINT] 영혼구조 (null이면 미표시)
           aptitudeMatrix: _aptitudeMatrixOut, // ★ [APTITUDE MATRIX] 10개 직업군 적성 점수표 (항상 존재, null 없음)
+          realityFortune: _realityFortuneOut, // ★ [REALITY FORTUNE] 재물복/배우자복/자식복 (null이면 미표시)
           _narrativeDebug: _narrativeDebug,         // ★ [V202.60] 진단용 (배포 후 제거)
           message: "[V202.56 + V31 Chunk 5 + V31 #184.5 FINAL+ + V200.8.0] TEXT + NARRATIVE + PRO + AUDIT + Tier 1 + Preview 통합 완료"
         }), {
