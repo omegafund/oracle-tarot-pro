@@ -1,0 +1,5 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://zeustarot.com/sitemap.xml
+Sitemap: https://zeustarot.com/sitemap.txt
