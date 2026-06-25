@@ -26645,7 +26645,9 @@ export default {
               '어떻게','생각하','바라보','느끼는','알아가','다가가',
               '이어가','만들어','보내고','지내고','연락해','기다려',
               '힘들어','모르겠','헷갈려','그러면','그렇다','이렇게',
-              '저렇게','어디서','언제부','왜이렇','어떡해','어떻하'
+              '저렇게','어디서','언제부','왜이렇','어떡해','어떻하',
+              // ★ 상황어/관계어 — 이름 오인 차단 (소개팅님 버그 방지)
+              '소개팅','미팅','맞선','선',
             ]);
 
             // ★★★ [V202.53.0-AD] 조사 자동 제거 — 라이브 "승희의" 깨짐 결함 차단 ★★★
@@ -26712,6 +26714,36 @@ export default {
           // ★ V202.52.6 ★ 변수는 상위에서 빈 배열로 선언됨 (life/stock/crypto 경로 안전)
           //              여기서는 love 분기 한정 재할당
           _v52_5_extractedNames = extractKoreanNames(prompt);
+
+          // ══════════════════════════════════════════════════════════════
+          // [반고정 호명 시스템] resolveNamePolicy — 단일 진입점
+          //   이름 추출 실패/불확실 → 카테고리별 고정 대체어 사용
+          //   이름 확실히 추출(1~2명) → 엄격한 고정 호명
+          //   extractPartnerName 대체 / 산재된 _partnerNameNote 오버라이드 통합
+          // ══════════════════════════════════════════════════════════════
+          const _GENERIC_TERM = {
+            compatibility: '두 사람', thumb: '두 사람', marriage: '두 사람',
+            lust: '두 사람', intimacy: '두 사람',
+            reunion: '그 사람', breakup: '그 사람', mindread: '그 사람',
+            contact: '그 사람', crush: '그 사람'
+          };
+          const _nameGeneric = _GENERIC_TERM[_v43_finalLoveType] || '그 사람';
+          let _namePolicy;
+          if (_v52_5_extractedNames.length === 2) {
+            const [_np1, _np2] = _v52_5_extractedNames;
+            _namePolicy = { mode: 'named2', n1: _np1, n2: _np2,
+              note: `[이름 고정] 두 사람: "${_np1}님"과 "${_np2}님" 오직 이 형식만.\n` +
+                    `절대 금지: 이름에 다른 단어 결합("${_np1} 소개팅님" 등), ` +
+                    `[USER] 태그 이름 본문 등장, 새 이름 창작.` };
+          } else if (_v52_5_extractedNames.length === 1) {
+            const [_np1] = _v52_5_extractedNames;
+            _namePolicy = { mode: 'named1', n1: _np1,
+              note: `[이름 고정] 상대: "${_np1}님" 오직 이 형식만. 변형·창작 금지.` };
+          } else {
+            _namePolicy = { mode: 'generic',
+              note: `[이름 없음] 상대·주체는 항상 "${_nameGeneric}"으로만 호명. 어떤 이름도 창작 금지.` };
+          }
+
 
 
           // 모드 자동 교정: 버튼(loveSubType) vs 질문 의도 충돌 해결
@@ -27215,57 +27247,14 @@ The Devil 예시:
           };
           let compatNote = _v43_loveDirectiveMap[_v43_finalLoveType] || '';
 
-          // ══════════════════════════════════════════════════════════════
-          // [FIX] compatibility directive 강화 + userName 혼입 차단
-          //   문제1: 기존 directive가 너무 약해 Gemini가 개인 연애운으로 회귀
-          //   문제2: [USER: 뭉월님] 태그가 오라클 본문 주체로 혼입
-          //   해결: 이름 2개 감지 시 강화된 directive로 오버라이드
-          //          - 두 이름을 직접 명시
-          //          - "[USER] 이름 오라클 본문 금지" 명시
-          //          - 1인칭 조언 형식 금지
-          //   구조 변경 없음 — compatNote 텍스트만 교체, masterPrompt 그대로
-          // ══════════════════════════════════════════════════════════════
-          if (_v43_finalLoveType === 'compatibility' && _v52_5_extractedNames && _v52_5_extractedNames.length >= 2) {
-            const _cn1 = _v52_5_extractedNames[0];
-            const _cn2 = _v52_5_extractedNames[1];
-            compatNote = `[궁합 분석 모드 — 두 사람 관계 전용]
-이 점사의 주체: "${_cn1}"과 "${_cn2}" 두 사람.
-
-★ 절대 규칙 (위반 시 무효):
-1. 오라클 본문·카드 해석의 주체는 반드시 "${_cn1}"과 "${_cn2}" 두 사람이어야 한다.
-2. [USER: ...] 태그에 등록된 이름은 질문자(관찰자)이며 점사 주체가 아님 — 오라클 본문에 절대 등장 금지.
-3. "자신을 정리하라" "내면의 기준을 세워라" 등 1인칭 개인 조언 형식 절대 금지.
-4. "${_cn1}"과 "${_cn2}" 두 사람의 에너지 역학을 항상 쌍(雙)으로 서술하라.
-
-카드 해석 필수 요소:
-- 과거: "${_cn1}"과 "${_cn2}"가 함께한 흐름 (한 사람만 주체로 쓰지 말 것)
-- 현재: 두 사람 사이의 긴장·균형·온도차
-- 미래: 이 관계가 향하는 방향
-
-최종신탁 본문 필수 요소:
-1) "${_cn1}"과 "${_cn2}"의 핵심 에너지 충돌 또는 궁합 포인트 (1문장)
-2) 이 관계의 결정적 변수 또는 발전 조건 (1문장)
-※ 두 사람 이름 없이 "두 사람은" 으로만 쓰는 것도 허용`;
-          }
+          // [반고정 호명] 호명은 _namePolicy가 담당 — 여기선 분석 방향만
+          // compatibility directive는 분석 구조 지시만 유지 (이름 지시 제거됨)
           // [V203.43] Gemini 의미 분류 — 1줄 압축 (다이어트: 990자→1줄, 본문 잘림 방지)
           const _intimacySemanticNote = (_v43_finalLoveType === 'intimacy' || _v43_finalLoveType === 'lust') ? '' :
             `\n친밀감·관계 진전·가까워짐에 관한 질문이면 직접 단어가 없어도 따뜻하고 품위 있게 해석하라(노골적 묘사 금지). 단 일반 연애 질문은 과잉 해석 금지.`;
           // [V203.41] 연애 상대 이름 deterministic 추출 — 반드시 financeInject 사용 전에 정의 (TDZ 크래시 방지)
-          let _partnerNameNote = '';
-          {
-            const _pName = extractPartnerName(prompt);
-            _partnerNameNote = _pName
-              ? `\n[이름 고정] 상대 이름="${_pName}" (절대 불변). 호명은 오직 "${_pName}님". 비슷한 발음이나 다른 글자로 변형 금지, 새 이름 창작 금지.`
-              : `\n[이름 없음] 상대는 항상 "그 사람"으로만 호명. 어떤 이름도 창작하지 말 것.`;
-          }
-          // [FIX] 궁합 2인 질문 — _partnerNameNote 오버라이드
-          //   원인: extractPartnerName이 1명만 추출 → "이세훈 소개팅님" 등 조어 생성
-          //   해결: 두 이름 명시 + 결합 금지 지시로 교체
-          if (_v43_finalLoveType === 'compatibility' && _v52_5_extractedNames && _v52_5_extractedNames.length >= 2) {
-            const _pn1 = _v52_5_extractedNames[0];
-            const _pn2 = _v52_5_extractedNames[1];
-            _partnerNameNote = `\n[이름 고정 — 두 사람] 이름1="${_pn1}", 이름2="${_pn2}".\n호명: "${_pn1}님"과 "${_pn2}님" 오직 이 두 형식만.\n절대 금지: 이름에 다른 단어 결합("${_pn1} 소개팅님" "${_pn1} 상대님" 등), [USER] 태그 이름 본문 등장.`;
-          }
+          // [반고정 호명] _partnerNameNote → _namePolicy 통합
+          const _partnerNameNote = '\n' + _namePolicy.note;
           financeInject = `
 [LOVE ENGINE ACTIVE]
 관계 흐름: ${metrics.trend}
@@ -28594,44 +28583,7 @@ function extractUserDate(prompt) {
   };
 }
 
-// [V203.40] extractPartnerName — deterministic 연애 상대 이름 추출 (Gemini 자율 추출의 오인 방지)
-//   역할 분리: 이름 추출=규칙(worker) / 점사 생성=Gemini. 30/30 케이스 검증 통과.
-//   3겹 방어: stopword → 카테고리 blocklist(시간/행위/관계) → 한글 이름 패턴
-//   실패 시 null → 프롬프트에서 "그 사람" fallback (억지 이름 생성 금지)
-const _PN_STOPWORDS = new Set([
-  '오늘','오늘밤','내일','모레','새벽','아침','저녁','밤','지금','방금','이따','곧',
-  '이번주','이번달','다음주','주말','요즘','최근','나중','연락','재회','고백','궁합',
-  '섹스','잠자리','동침','스킨십','키스','관계','관계운','원나잇','하룻밤','연애운','결혼운'
-]);
-const _PN_TIME = ['오늘','내일','모레','새벽','아침','저녁','지금','방금','이따','이번','다음','주말','요즘','최근','올해','내년','작년','데이트'];
-const _PN_ACTION = ['자','자다','잘까','잘','먹','먹다','따먹','만나','만날','보자','볼까','할까','가자','갈까','사귀','헤어','연락','만남','봐줘','봐','있는데','있어','싶'];
-const _PN_RELATION = ['섹스','잠자리','동침','스킨십','키스','관계','원나잇','하룻밤','궁합','연애','결혼','재회','고백','이별','짝사랑','썸'];
-const _PN_COMMON = new Set([
-  '사람','상대','그녀','그이','남자','여자','남친','여친','오빠','언니','형','누나','애인','와이프','남편',
-  '우리','당신','자기','너','나','저','누구','마음','생각','기분','사랑','앞으로','어떻게','어떨까','잘될까','될까',
-  '남자친구','여자친구','남자친','여자친','짝','이성','동기','선배','후배','친구','동료',
-  '봐줘','있는데','있어','싶어','싶은데','뭐해','어때','어떤가'
-]);
-function _pnCleanParticle(token) {
-  return token.replace(/(이랑|랑|와|과|하고|한테|에게서|에게|보다|처럼|같이|이가|이는|이를|이도|이|가|은|는|을|를|일|도|만|의|에서|에|로서|로써|로|으로)$/,'');
-}
-function extractPartnerName(text) {
-  if (!text) return null;
-  const tokens = String(text).split(/\s+/);
-  for (let raw of tokens) {
-    const stripped = _pnCleanParticle(raw);
-    if (_PN_STOPWORDS.has(raw) || _PN_STOPWORDS.has(stripped)) continue;
-    if (_PN_TIME.some(w => raw.includes(w))) continue;
-    const t = stripped;
-    if (!t) continue;
-    if (_PN_COMMON.has(raw) || _PN_COMMON.has(t)) continue;
-    if (_PN_TIME.some(w => t.includes(w))) continue;
-    if (_PN_ACTION.some(w => t.startsWith(w))) continue;
-    if (_PN_RELATION.some(w => t.includes(w))) continue;
-    if (/^[가-힣]{2,4}$/.test(t)) return t;
-  }
-  return null;
-}
+// [반고정 호명 시스템] extractPartnerName + 헬퍼(_PN_*) 전체 제거됨 — _namePolicy로 통합
 
 function extractSubject(prompt, queryType) {
   if (!prompt) return null;
