@@ -27218,7 +27218,12 @@ The Devil 예시:
           //   오라클 본문 주체로 혼입되는 버그 차단
           //   원인: [USER: 뭉월님] + "이세훈 김현지 궁합" 동시 주입 → 오라클에서 뭉월님이 주체로 등장
           //   해결: 두 사람 관계 도메인은 [USER: ] 비워서 Gemini가 질문 속 이름만 사용하도록
-          const _isTwoPersonQuery = ['compatibility','mindread','thumb','reunion','breakup','contact'].includes(_v43_finalLoveType);
+          // 서브타입 기반: 명시적 두 사람 관계 도메인
+          const _isTwoPersonByType = ['compatibility','mindread','thumb','reunion','breakup','contact'].includes(_v43_finalLoveType);
+          // 이름 감지 기반: 일반 연애운이어도 질문에 2개 이름이 추출되면 두 사람 관계 질문
+          //   ex) "수정이랑 민준이 사이 어때?" → _v52_5_extractedNames.length === 2 → userName 비움
+          const _isTwoPersonByNames = (_v52_5_extractedNames && _v52_5_extractedNames.length >= 2);
+          const _isTwoPersonQuery = _isTwoPersonByType || _isTwoPersonByNames;
           const _promptUserName = _isTwoPersonQuery ? '' : (typeof userName !== 'undefined' ? userName : '');
           // [V203.43] Gemini 의미 분류 — 1줄 압축 (다이어트: 990자→1줄, 본문 잘림 방지)
           const _intimacySemanticNote = (_v43_finalLoveType === 'intimacy' || _v43_finalLoveType === 'lust') ? '' :
