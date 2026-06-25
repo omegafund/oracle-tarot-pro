@@ -27258,6 +27258,14 @@ The Devil 예시:
               ? `\n[이름 고정] 상대 이름="${_pName}" (절대 불변). 호명은 오직 "${_pName}님". 비슷한 발음이나 다른 글자로 변형 금지, 새 이름 창작 금지.`
               : `\n[이름 없음] 상대는 항상 "그 사람"으로만 호명. 어떤 이름도 창작하지 말 것.`;
           }
+          // [FIX] 궁합 2인 질문 — _partnerNameNote 오버라이드
+          //   원인: extractPartnerName이 1명만 추출 → "이세훈 소개팅님" 등 조어 생성
+          //   해결: 두 이름 명시 + 결합 금지 지시로 교체
+          if (_v43_finalLoveType === 'compatibility' && _v52_5_extractedNames && _v52_5_extractedNames.length >= 2) {
+            const _pn1 = _v52_5_extractedNames[0];
+            const _pn2 = _v52_5_extractedNames[1];
+            _partnerNameNote = `\n[이름 고정 — 두 사람] 이름1="${_pn1}", 이름2="${_pn2}".\n호명: "${_pn1}님"과 "${_pn2}님" 오직 이 두 형식만.\n절대 금지: 이름에 다른 단어 결합("${_pn1} 소개팅님" "${_pn1} 상대님" 등), [USER] 태그 이름 본문 등장.`;
+          }
           financeInject = `
 [LOVE ENGINE ACTIVE]
 관계 흐름: ${metrics.trend}
