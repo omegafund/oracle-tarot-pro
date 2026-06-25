@@ -27214,6 +27214,12 @@ The Devil 예시:
             'lust':          `[육체적 끌림 모드] 본 질문은 ★ 두 사람의 육체적 끌림, 잠자리, 성적 호감, 몸의 궁합 ★ 에 관한 것이다. 성숙하고 직접적으로 다룬다. 다음을 반드시 포함하라:\n   1) 지금 두 사람 사이 육체적 끌림과 욕망의 강도 (카드 에너지로 읽기)\n   2) 상대가 육체적으로 원하는지, 온도차가 있는지\n   3) 지금 이 흐름이 깊어질지, 일회성으로 끝날지 방향\n   4) 지금 이 선택이 관계 전체에 남길 영향과 현실적 조언\n   ⚠️ 카드 이미지와 상징을 육체적 맥락으로 해석하라. 품위 있되 성적 긴장감은 살릴 것.\n   ⚠️ "친밀함"으로 희석 금지. 에로틱한 긴장감과 분위기로 표현.\n   ⚠️ 신체 부위 직접 언급, 노골적 묘사 금지.`
           };
           const compatNote = _v43_loveDirectiveMap[_v43_finalLoveType] || '';
+          // [FIX] 궁합/속마음/호감 등 두 사람 관계 질문 — userName(질문자 닉네임)이
+          //   오라클 본문 주체로 혼입되는 버그 차단
+          //   원인: [USER: 뭉월님] + "이세훈 김현지 궁합" 동시 주입 → 오라클에서 뭉월님이 주체로 등장
+          //   해결: 두 사람 관계 도메인은 [USER: ] 비워서 Gemini가 질문 속 이름만 사용하도록
+          const _isTwoPersonQuery = ['compatibility','mindread','thumb','reunion','breakup','contact'].includes(_v43_finalLoveType);
+          const _promptUserName = _isTwoPersonQuery ? '' : (typeof userName !== 'undefined' ? userName : '');
           // [V203.43] Gemini 의미 분류 — 1줄 압축 (다이어트: 990자→1줄, 본문 잘림 방지)
           const _intimacySemanticNote = (_v43_finalLoveType === 'intimacy' || _v43_finalLoveType === 'lust') ? '' :
             `\n친밀감·관계 진전·가까워짐에 관한 질문이면 직접 단어가 없어도 따뜻하고 품위 있게 해석하라(노골적 묘사 금지). 단 일반 연애 질문은 과잉 해석 금지.`;
@@ -27370,7 +27376,7 @@ ${_directionDecl}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 ` : ''}${financeInject}
-[USER: ${userName || ""}]
+[USER: ${_promptUserName}]
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 [ROLE: ZEUS ORACLE — ${CURRENT_YEAR}]
