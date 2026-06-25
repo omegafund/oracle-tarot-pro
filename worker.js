@@ -28227,7 +28227,7 @@ ${metrics.cryptoSubtype === 'crypto_buy' ? `
                     // [V203.25] 연애는 프롬프트가 길어 잘림 발생
                     // [STABILITY] love 8500→ 카드해석3개+oracle body 모두 수용, 실측 프롬프트 ~13500토큰
                     maxOutputTokens: queryType === 'love' ? 8500
-                                   : (queryType === 'stock' || queryType === 'crypto') ? 5000
+                                   : (queryType === 'stock' || queryType === 'crypto') ? 7000
                                    : 5500
                   },
                   safetySettings: [
