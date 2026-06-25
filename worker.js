@@ -26715,34 +26715,6 @@ export default {
           //              여기서는 love 분기 한정 재할당
           _v52_5_extractedNames = extractKoreanNames(prompt);
 
-          // ══════════════════════════════════════════════════════════════
-          // [반고정 호명 시스템] resolveNamePolicy — 단일 진입점
-          //   이름 추출 실패/불확실 → 카테고리별 고정 대체어 사용
-          //   이름 확실히 추출(1~2명) → 엄격한 고정 호명
-          //   extractPartnerName 대체 / 산재된 _partnerNameNote 오버라이드 통합
-          // ══════════════════════════════════════════════════════════════
-          const _GENERIC_TERM = {
-            compatibility: '두 사람', thumb: '두 사람', marriage: '두 사람',
-            lust: '두 사람', intimacy: '두 사람',
-            reunion: '그 사람', breakup: '그 사람', mindread: '그 사람',
-            contact: '그 사람', crush: '그 사람'
-          };
-          const _nameGeneric = _GENERIC_TERM[_v43_finalLoveType] || '그 사람';
-          let _namePolicy;
-          if (_v52_5_extractedNames.length === 2) {
-            const [_np1, _np2] = _v52_5_extractedNames;
-            _namePolicy = { mode: 'named2', n1: _np1, n2: _np2,
-              note: `[이름 고정] 두 사람: "${_np1}님"과 "${_np2}님" 오직 이 형식만.\n` +
-                    `절대 금지: 이름에 다른 단어 결합("${_np1} 소개팅님" 등), ` +
-                    `[USER] 태그 이름 본문 등장, 새 이름 창작.` };
-          } else if (_v52_5_extractedNames.length === 1) {
-            const [_np1] = _v52_5_extractedNames;
-            _namePolicy = { mode: 'named1', n1: _np1,
-              note: `[이름 고정] 상대: "${_np1}님" 오직 이 형식만. 변형·창작 금지.` };
-          } else {
-            _namePolicy = { mode: 'generic',
-              note: `[이름 없음] 상대·주체는 항상 "${_nameGeneric}"으로만 호명. 어떤 이름도 창작 금지.` };
-          }
 
 
 
@@ -27230,6 +27202,31 @@ The Devil 예시:
           //         marriage / breakup / reunion / crush / thumb / mindread / contact / compatibility
           //   효과: 사용자가 누른 버튼대로 ★ 정확한 톤 ★ 본문 생성
           const _v43_finalLoveType = (typeof finalLoveSubType !== 'undefined') ? finalLoveSubType : loveSubType;
+
+          // ══════════════════════════════════════════════════════════════
+          // [반고정 호명 시스템] _namePolicy — _v43_finalLoveType 정의 직후 (TDZ 방지)
+          // ══════════════════════════════════════════════════════════════
+          const _GENERIC_TERM = {
+            compatibility: '두 사람', thumb: '두 사람', marriage: '두 사람',
+            lust: '두 사람', intimacy: '두 사람',
+            reunion: '그 사람', breakup: '그 사람', mindread: '그 사람',
+            contact: '그 사람', crush: '그 사람'
+          };
+          const _nameGeneric = _GENERIC_TERM[_v43_finalLoveType] || '그 사람';
+          let _namePolicy;
+          if (_v52_5_extractedNames.length === 2) {
+            const [_np1, _np2] = _v52_5_extractedNames;
+            _namePolicy = { mode: 'named2',
+              note: `[이름 고정] 두 사람: "${_np1}님"과 "${_np2}님" 오직 이 형식만.` +
+                    `\n절대 금지: 이름에 다른 단어 결합("${_np1} 소개팅님" 등), [USER] 태그 이름 본문 등장.` };
+          } else if (_v52_5_extractedNames.length === 1) {
+            const [_np1] = _v52_5_extractedNames;
+            _namePolicy = { mode: 'named1',
+              note: `[이름 고정] 상대: "${_np1}님" 오직 이 형식만. 변형·창작 금지.` };
+          } else {
+            _namePolicy = { mode: 'generic',
+              note: `[이름 없음] 상대·주체는 항상 "${_nameGeneric}"으로만 호명. 어떤 이름도 창작 금지.` };
+          }
           // [V203.48] 질문 정황 분석 — 서브타입 카테고리(예: "이별모드")만 알고 질문 속 구체 정황을
           //   놓치는 결함 수정. "헤어지자는데"=상대가 통보/질문자는 받는 입장 같은 사실을 카드 해석에 반영.
           const _situationNote = `\n질문: "${prompt}" — 누가 주도했는지(상대 통보/합의 등)와 질문자가 원하는 것을 먼저 파악해 일관되게 해석. 일반론 금지.`;
