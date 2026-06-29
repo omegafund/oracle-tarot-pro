@@ -15882,32 +15882,46 @@ async function saveResultAsImage() {
         ctx.beginPath(); ctx.moveTo(30, 316); ctx.lineTo(W-30, 316); ctx.stroke();
 
         // 핵심 메시지 (ZEUS ORACLE 텍스트)
-        const oracleEl = document.querySelector('#oracle-content .zenith-oracle-text, #oracle-content');
+        // [FIX] DOM 셀렉터 대신 cachedFullText 전역 변수 사용
+        //   기존: '#oracle-content .zenith-oracle-text' 셀렉터가 실제 DOM과 불일치 → 빈 공간
+        //   수정: cachedFullText(Gemini 원문) → 단락 추출 → 최종신탁 본문만 표시
         let oracleText = '';
-        if (oracleEl) {
-            const txt = (oracleEl.innerText || oracleEl.textContent || '').trim();
-            // 첫 200자만
-            oracleText = txt.slice(0, 150).replace(/[\n\r]+/g, ' ');
-        }
+        try {
+            const _raw = (typeof cachedFullText !== 'undefined' && cachedFullText) ? cachedFullText : '';
+            if (_raw) {
+                // 단락 분리 후 4번째 이후(최종신탁 본문) 추출, 없으면 전체 마지막 단락
+                const _paras = _raw.split(/\n\n+/).map(p => p.trim()).filter(p => p.length > 10);
+                const _oraclePara = _paras.length >= 4
+                    ? _paras.slice(3).join(' ')
+                    : (_paras[_paras.length - 1] || '');
+                // 카드 라벨(PAST/PRESENT/FUTURE) 제거, 150자 제한
+                oracleText = _oraclePara
+                    .replace(/^(PAST|PRESENT|FUTURE|과거|현재|미래)[·\s]*/gi, '')
+                    .replace(/[\n\r]+/g, ' ')
+                    .trim()
+                    .slice(0, 180);
+            }
+        } catch(_e) {}
+
         if (oracleText) {
             ctx.fillStyle = 'rgba(255,255,255,0.5)';
             ctx.font = '700 8px sans-serif';
             ctx.textAlign = 'center';
             ctx.fillText('✦ 핵심 신탁 ✦', W/2, 330);
-            ctx.fillStyle = 'rgba(255,255,255,0.78)';
+            ctx.fillStyle = 'rgba(255,255,255,0.82)';
             ctx.font = '400 9px sans-serif';
-            // 텍스트 줄바꿈
+            // 텍스트 줄바꿈 (y 한도 450으로 확장)
             const words = oracleText.split(' ');
             let line = '', y = 346;
-            words.forEach(word => {
+            for (const word of words) {
                 const test = line ? line + ' ' + word : word;
                 if (ctx.measureText(test).width > W - 60) {
+                    if (y > 445) break;  // 한도 초과 시 중단
                     ctx.fillText(line, W/2, y);
                     line = word; y += 14;
                 } else { line = test; }
-                if (y > 430) return;
-            });
-            if (line && y <= 430) ctx.fillText(line, W/2, y);
+            }
+            if (line && y <= 450) ctx.fillText(line, W/2, y);
         }
 
         // 하단 워터마크
