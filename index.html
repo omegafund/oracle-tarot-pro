@@ -5249,17 +5249,7 @@
                 </div>
             </div>
             
-            <!-- [V203.13] 이미지 저장 버튼 (공유하기 삭제) -->
-            <div id="share-actions" style="display:none; margin:20px auto 10px; gap:10px; flex-direction:column; max-width:320px;">
-                <button id="btn-save-image" onclick="saveResultAsImage()" style="
-                    background: linear-gradient(135deg, #C9A227, #E8C766);
-                    color:#000; padding:14px 20px; border-radius:12px;
-                    font-weight:900; font-size:1rem; border:none; cursor:pointer;
-                    box-shadow: 0 4px 15px rgba(201,162,39,0.35);
-                    letter-spacing:0.05em;">
-                    📷 신탁 카드 저장
-                </button>
-            </div>
+            <!-- [REMOVED] 신탁 카드 저장 버튼 제거됨 -->
 
             <button id="final-reset-btn" class="reset-btn" onclick="location.reload()" style="display: none; background: var(--gold); color: #000; padding: 12px 35px; border-radius: 30px; font-weight: 900; border: none; cursor: pointer; box-shadow: 0 4px 15px rgba(212,175,55,0.3);">
                 ✦ 새로운 신탁 구하기 ✦
@@ -8307,7 +8297,6 @@ console.log('══════════════════════�
                     const progressWrap = document.getElementById('oracle-progress-wrap');
                     const holdingMsg  = document.getElementById('holding-message');
                     const finalBtn    = document.getElementById('final-reset-btn');
-                    const shareActions = document.getElementById('share-actions');
                     const wisdomEl    = document.getElementById('oracle-wisdom-note');
                     if (loadingEl)   loadingEl.style.display   = 'none';
                     if (progressWrap) progressWrap.style.display = 'none';
@@ -9705,9 +9694,6 @@ async function renderStream(fetchPromise, cards) {
                 finalBtn.style.marginTop = '25px';
             }
             if (holdingMsg) holdingMsg.style.display = 'none';
-            // [V19 Phase3] 공유/저장 버튼 노출
-            const shareActions = document.getElementById('share-actions');
-            if (shareActions) shareActions.style.display = 'flex';
         }
 
         // 4. ★ V200.7.11 사장님 명령 ★ 결과 ★ 시작 ★ 위치로 스크롤 (그래프/카드 보이게)
@@ -15711,266 +15697,7 @@ function expandCard(img) {
 //         3) 공유하기 삭제 → 저장만 깔끔하게
 // ════════════════════════════════════════════════════════════════
 // [V203.13] Canvas 기반 카드형 저장
-async function saveResultAsImage() {
-    const btn = document.getElementById('btn-save-image');
-    if (btn) { btn.disabled = true; btn.textContent = '⏳ 카드 생성 중...'; }
-
-    try {
-        // ── 데이터 수집
-        const sm = window._serverMetrics || {};
-        const cards = window.selectedCards || [];
-        const revFlags = window._reversedFlags || [false,false,false];
-        const domain = window.CURRENT_MODE || 'love';
-        const isStock = (domain === 'stock' || domain === 'crypto');
-
-        // VERDICT 텍스트
-        const tv = sm.topVerdict || null;
-        const ov24 = sm.oracleV25_24 || null;
-        let verdictText = '';
-        if (isStock && tv) verdictText = tv.signal || '';
-        else if (ov24 && ov24.boxes && ov24.boxes.final) verdictText = ov24.boxes.final.finalState || '';
-
-        // 에너지 점수
-        let energyPct = 0;
-        if (isStock && tv && tv.energy) {
-            energyPct = Math.min(100, (tv.energy.split('★').length - 1) * 20);
-        } else if (!isStock && ov24) {
-            const raw = ov24.score || ov24.totalScore || 0;
-            energyPct = Math.round((raw + 10) / 20 * 100);
-        }
-
-        // ── Canvas 생성 (390×520 — 모바일 최적)
-        const W = 390, H = 520;
-        const canvas = document.createElement('canvas');
-        canvas.width = W * 2; canvas.height = H * 2; // 2x 고해상도
-        const ctx = canvas.getContext('2d');
-        ctx.scale(2, 2);
-
-        // 배경
-        const bg = ctx.createLinearGradient(0, 0, 0, H);
-        bg.addColorStop(0, '#0a0a14');
-        bg.addColorStop(1, '#0d0d1a');
-        ctx.fillStyle = bg;
-        ctx.fillRect(0, 0, W, H);
-
-        // 상단 골드 라인
-        ctx.fillStyle = 'rgba(201,162,39,0.5)';
-        ctx.fillRect(0, 0, W, 2);
-
-        // 타이틀
-        ctx.fillStyle = '#C9A227';
-        ctx.font = '700 11px serif';
-        ctx.textAlign = 'center';
-        ctx.letterSpacing = '0.15em';
-        ctx.fillText('✦ ZEUS ORACLE ✦', W/2, 26);
-
-        // 도메인 라벨
-        ctx.fillStyle = 'rgba(255,255,255,0.5)';
-        ctx.font = '500 10px sans-serif';
-        const domainLabel = isStock ? '투자 신탁' : domain === 'fortune' ? '운세 신탁' : '연애 신탁';
-        ctx.fillText(domainLabel, W/2, 42);
-
-        // 구분선
-        ctx.strokeStyle = 'rgba(201,162,39,0.25)';
-        ctx.lineWidth = 1;
-        ctx.beginPath(); ctx.moveTo(30, 52); ctx.lineTo(W-30, 52); ctx.stroke();
-
-        // 카드 3장 (이름만)
-        if (cards.length >= 3) {
-            const positions = ['PAST', 'PRESENT', 'FUTURE'];
-            const posKo = ['과거', '현재', '미래'];
-            const cardX = [W/2 - 110, W/2, W/2 + 110];
-            cards.slice(0,3).forEach((card, i) => {
-                const name = typeof card === 'string' ? card : (card?.name || '');
-                const isRev = revFlags[i];
-                const cx = cardX[i];
-
-                // 카드 박스
-                ctx.fillStyle = 'rgba(255,255,255,0.05)';
-                ctx.beginPath();
-                ctx.roundRect(cx - 46, 62, 92, 130, 6);
-                ctx.fill();
-                ctx.strokeStyle = isRev ? 'rgba(192,57,43,0.7)' : 'rgba(201,162,39,0.35)';
-                ctx.lineWidth = isRev ? 1.5 : 1;
-                ctx.beginPath();
-                ctx.roundRect(cx - 46, 62, 92, 130, 6);
-                ctx.stroke();
-
-                // 카드 이름 (줄바꿈 처리)
-                ctx.fillStyle = isRev ? 'rgba(255,160,140,0.9)' : 'rgba(255,255,255,0.85)';
-                ctx.font = '600 9px sans-serif';
-                ctx.textAlign = 'center';
-                const words = name.split(' ');
-                let line1 = '', line2 = '';
-                words.forEach(w => {
-                    if ((line1 + ' ' + w).trim().length <= 12) line1 = (line1 + ' ' + w).trim();
-                    else line2 = (line2 + ' ' + w).trim();
-                });
-                ctx.fillText(line1, cx, 112);
-                if (line2) ctx.fillText(line2, cx, 124);
-
-                // REVERSED 배지
-                if (isRev) {
-                    ctx.fillStyle = 'rgba(192,57,43,0.85)';
-                    ctx.beginPath();
-                    ctx.roundRect(cx - 28, 136, 56, 14, 4);
-                    ctx.fill();
-                    ctx.fillStyle = '#fff';
-                    ctx.font = '700 7px sans-serif';
-                    ctx.fillText('REVERSED', cx, 146);
-                }
-
-                // 포지션 라벨
-                ctx.fillStyle = '#C9A227';
-                ctx.font = '700 8px sans-serif';
-                ctx.fillText(posKo[i], cx, 206);
-                ctx.fillStyle = 'rgba(255,255,255,0.4)';
-                ctx.font = '500 7px sans-serif';
-                ctx.fillText(positions[i], cx, 216);
-            });
-        }
-
-        // 구분선
-        ctx.strokeStyle = 'rgba(201,162,39,0.2)';
-        ctx.lineWidth = 1;
-        ctx.beginPath(); ctx.moveTo(30, 226); ctx.lineTo(W-30, 226); ctx.stroke();
-
-        // VERDICT
-        if (verdictText) {
-            ctx.fillStyle = 'rgba(241,196,15,0.15)';
-            ctx.beginPath(); ctx.roundRect(20, 234, W-40, 44, 8); ctx.fill();
-            ctx.strokeStyle = 'rgba(241,196,15,0.4)';
-            ctx.lineWidth = 1;
-            ctx.beginPath(); ctx.roundRect(20, 234, W-40, 44, 8); ctx.stroke();
-            ctx.fillStyle = 'rgba(255,255,255,0.55)';
-            ctx.font = '700 8px sans-serif';
-            ctx.textAlign = 'center';
-            ctx.fillText('🎯 신탁 결론', W/2, 249);
-            ctx.fillStyle = '#fff';
-            ctx.font = '800 11px sans-serif';
-            ctx.fillText(verdictText.replace(/🟢|🟡|🔴|🟠|🔥|⚡/g, '').trim(), W/2, 268);
-        }
-
-        // 에너지 바
-        if (energyPct > 0) {
-            const barY = 292;
-            const barLabel = isStock ? '⚡ 에너지 강도' : '💫 관계 에너지';
-            ctx.fillStyle = 'rgba(255,255,255,0.45)';
-            ctx.font = '600 9px sans-serif';
-            ctx.textAlign = 'left';
-            ctx.fillText(barLabel, 30, barY);
-            ctx.fillStyle = 'rgba(255,255,255,0.85)';
-            ctx.font = '800 10px sans-serif';
-            ctx.textAlign = 'right';
-            ctx.fillText(energyPct, W-30, barY);
-            // 바 배경
-            ctx.fillStyle = 'rgba(255,255,255,0.08)';
-            ctx.beginPath(); ctx.roundRect(30, barY+5, W-60, 8, 4); ctx.fill();
-            // 바 채우기
-            const barGrad = ctx.createLinearGradient(30, 0, W-60, 0);
-            if (isStock) { barGrad.addColorStop(0,'#2ecc71'); barGrad.addColorStop(1,'#1abc9c'); }
-            else { barGrad.addColorStop(0,'#ff6b9d'); barGrad.addColorStop(1,'#9b59b6'); }
-            ctx.fillStyle = barGrad;
-            ctx.beginPath();
-            ctx.roundRect(30, barY+5, Math.max(4, (W-60) * energyPct/100), 8, 4);
-            ctx.fill();
-        }
-
-        // 구분선
-        ctx.strokeStyle = 'rgba(201,162,39,0.15)';
-        ctx.lineWidth = 1;
-        ctx.beginPath(); ctx.moveTo(30, 316); ctx.lineTo(W-30, 316); ctx.stroke();
-
-        // 핵심 메시지 (ZEUS ORACLE 텍스트)
-        // [FIX] DOM 셀렉터 대신 cachedFullText 전역 변수 사용
-        //   기존: '#oracle-content .zenith-oracle-text' 셀렉터가 실제 DOM과 불일치 → 빈 공간
-        //   수정: cachedFullText(Gemini 원문) → 단락 추출 → 최종신탁 본문만 표시
-        let oracleText = '';
-        try {
-            const _raw = (typeof cachedFullText !== 'undefined' && cachedFullText) ? cachedFullText : '';
-            if (_raw) {
-                // 단락 분리 후 4번째 이후(최종신탁 본문) 추출, 없으면 전체 마지막 단락
-                const _paras = _raw.split(/\n\n+/).map(p => p.trim()).filter(p => p.length > 10);
-                const _oraclePara = _paras.length >= 4
-                    ? _paras.slice(3).join(' ')
-                    : (_paras[_paras.length - 1] || '');
-                // 카드 라벨(PAST/PRESENT/FUTURE) 제거, 150자 제한
-                oracleText = _oraclePara
-                    .replace(/^(PAST|PRESENT|FUTURE|과거|현재|미래)[·\s]*/gi, '')
-                    .replace(/[\n\r]+/g, ' ')
-                    .trim()
-                    .slice(0, 180);
-            }
-        } catch(_e) {}
-
-        if (oracleText) {
-            ctx.fillStyle = 'rgba(255,255,255,0.5)';
-            ctx.font = '700 8px sans-serif';
-            ctx.textAlign = 'center';
-            ctx.fillText('✦ 핵심 신탁 ✦', W/2, 330);
-            ctx.fillStyle = 'rgba(255,255,255,0.82)';
-            ctx.font = '400 9px sans-serif';
-            // 텍스트 줄바꿈 (y 한도 450으로 확장)
-            const words = oracleText.split(' ');
-            let line = '', y = 346;
-            for (const word of words) {
-                const test = line ? line + ' ' + word : word;
-                if (ctx.measureText(test).width > W - 60) {
-                    if (y > 445) break;  // 한도 초과 시 중단
-                    ctx.fillText(line, W/2, y);
-                    line = word; y += 14;
-                } else { line = test; }
-            }
-            if (line && y <= 450) ctx.fillText(line, W/2, y);
-        }
-
-        // 하단 워터마크
-        ctx.fillStyle = 'rgba(201,162,39,0.25)';
-        ctx.lineWidth = 1;
-        ctx.beginPath(); ctx.moveTo(30, H-40); ctx.lineTo(W-30, H-40); ctx.stroke();
-        ctx.fillStyle = 'rgba(201,162,39,0.55)';
-        ctx.font = '600 9px serif';
-        ctx.textAlign = 'center';
-        ctx.fillText('✦ ZEUS TAROT ✦  zeustarot.com', W/2, H-22);
-
-        // ── 저장
-        const dateStr = new Date().toISOString().slice(0,10).replace(/-/g,'');
-        const fileName = `zeus-oracle-${dateStr}.png`;
-        const dataUrl = canvas.toDataURL('image/png', 0.95);
-        const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-        const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
-
-        if (isIOS) {
-            // iOS: 새 창으로 열기 (길게 눌러 저장)
-            const w = window.open('', '_blank');
-            if (w) {
-                w.document.write(`<html><body style="margin:0;background:#000;">
-                    <p style="color:#fff;text-align:center;padding:10px;font-size:14px;">
-                        이미지를 길게 눌러 저장하세요
-                    </p>
-                    <img src="${dataUrl}" style="width:100%;max-width:390px;display:block;margin:0 auto;">
-                </body></html>`);
-                w.document.close();
-            }
-        } else {
-            // Android/PC: 다운로드
-            const a = document.createElement('a');
-            a.href = dataUrl;
-            a.download = fileName;
-            a.click();
-        }
-
-        if (btn) {
-            btn.textContent = '✅ 저장 완료';
-            setTimeout(() => { btn.disabled = false; btn.textContent = '📷 신탁 카드 저장'; }, 2500);
-        }
-
-    } catch(e) {
-        console.error('이미지 저장 실패:', e);
-        alert('저장에 실패했습니다: ' + e.message);
-        if (btn) { btn.disabled = false; btn.textContent = '📷 신탁 카드 저장'; }
-    }
-}
+// [REMOVED] saveResultAsImage 함수 제거됨
 
 // [V203.13] shareResult 삭제 (공유 기능 제거)
 // 사용자는 저장 후 직접 공유합니다
@@ -25047,10 +24774,6 @@ async function confirmPayment() {
                 finalBtn.style.display = 'inline-block';
                 finalBtn.style.marginTop = '25px';
             }
-            // [V19 Phase3] 공유/저장 버튼 노출
-            const shareActions = document.getElementById('share-actions');
-            if (shareActions) shareActions.style.display = 'flex';
-            
             // 4️⃣ ★ V200.7.11 ★ 결과 ★ 시작 ★ 위치로 이동 (푸터 노출 결함 수정)
             contentEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
         } else if (contentEl && selectedCards && selectedCards.length === 3) {
