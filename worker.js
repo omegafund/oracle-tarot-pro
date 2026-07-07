@@ -26584,6 +26584,19 @@ export default {
             // 자동 감지 (자연어 분석)
             stockIntent = detectStockIntent(prompt);
           }
+          // [HORIZON-FIX v1] 주식: 질문에 명시된 투자 지평(단타/장투)을 버튼 서브타입보다 우선 반영.
+          //   버그: [매수/매도 타이밍] 버튼을 누르면 stockSubType이 buy_timing/sell_timing으로 고정되어,
+          //         사용자가 "단타"라고 입력해도 단타(short) 모드로 안 갔음(일반/스윙 톤으로 출력).
+          //   해결: intent(buy/sell)는 유지하고 지평만 교정. 범위=stock 한정(crypto_* 불변),
+          //         buy_timing/sell_timing/빈값에만 적용.
+          if (queryType === 'stock' &&
+              (stockSubType === 'buy_timing' || stockSubType === 'sell_timing' || !stockSubType)) {
+            if (/단타|단기매수|당일|초단|데이트레|day.?trad/i.test(prompt)) {
+              stockSubType = 'short';
+            } else if (/장투|장기\s*보유|장기\s*투자|홀딩/i.test(prompt)) {
+              stockSubType = 'holding';
+            }
+          }
           metrics = buildStockMetrics({ totalScore, riskScore, cleanCards, isLeverage, queryType, prompt, intent: stockIntent, reversedFlags, stockSubType });
           metrics.stockIntent = stockIntent;  // 클라이언트가 알 수 있도록
           metrics.stockSubType = stockSubType; // [V25.38] 코인 서브타입 식별용
