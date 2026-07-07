@@ -15384,6 +15384,46 @@ function buildLoveActionGuide(content, loveSubType, cards, prompt, reversedFlags
   };
 }
 
+// [DATE-NEUTRALIZE v1] 연애 타이밍 전용 — 구체적 날짜 표현을 관계 흐름 언어로 치환.
+//   목적: 질문이 "다음 주 토요일" 등 특정 날짜여도 어긋나지 않도록 시점을 못박지 않는다.
+//   ⚠️ buildLoveTiming return 에서만 호출 — 사주/투자/운세(buildFortuneTiming 등) 무영향.
+function _loveFlowLabel(s) {
+  if (!s || typeof s !== 'string') return s;
+  const P = [
+    ['오늘~내일 사이가 유리한 흐름입니다','지금 자연스럽게 다가가기 좋은 흐름입니다'],
+    ['오늘~내일 사이가 유리합니다','상대의 반응을 살피며 접근하면 유리합니다'],
+    ['지금이 가장 좋은 타이밍입니다','지금 흐름이 접근에 열려 있습니다'],
+    ['오늘~3일 이내','초반의 부담 없는 접근 구간'],
+    ['오늘~3일','초반의 부담 없는 접근 구간'],
+    ['1~2주','감정이 무르익는 구간'],
+    ['2~3주','관계가 재정의되는 구간'],
+    ['이번 주 후반 또는 다음 주말','감정 교류가 열리는 흐름'],
+    ['다음 주 초반 자연스러운 전환점','자연스러운 감정 전환의 신호'],
+    ['며칠 안 자연스러운 흐름 시점','가까운 흐름 속 자연스러운 시점'],
+    ['이번 주 안정적인 저녁 시간','차분한 교류의 시간'],
+    ['주말 후반 감정 교류 구간','편안한 교류의 시간'],
+    ['주 중반 자연스러운 접점','자연스러운 접점'],
+    ['주 후반 차분한 시간대','차분한 교류의 시간'],
+    ['다음 주 초~중반','관계가 무르익는 흐름'],
+    ['다음 주 중반','관계가 무르익는 흐름'],
+    ['다음 주 초반','관계가 무르익는 흐름'],
+    ['다음 주말','관계가 무르익는 흐름'],
+    ['다음 주','관계가 무르익는 흐름'],
+    ['이번 주 초반','초반의 흐름'],
+    ['이번 주 후반','감정이 깊어지는 구간'],
+    ['이번 주','가까운 흐름 속'],
+    ['주 중반','자연스러운 접점'],
+    ['주 후반','감정이 깊어지는 구간'],
+    ['주말','편안한 교류의 시간'],
+    ['며칠 안','가까운 흐름 속'],
+    ['오늘~내일','지금 흐름에서'],
+    ['오늘','지금'],
+  ];
+  let out = s;
+  for (const [k,v] of P) { if (out.indexOf(k) !== -1) out = out.split(k).join(v); }
+  return out;
+}
+
 function buildLoveTiming(content, numerologyText, cards, loveSubType, prompt, reversedFlags) {
   // [V26.3 결함 4] 카드별 분기점 차별화 — 사장님 진단 안
   //   사장님 진단: 두 화면 모두 동일 분기점 ('이번 주 후반 또는 다음 주말')
@@ -15492,14 +15532,22 @@ function buildLoveTiming(content, numerologyText, cards, loveSubType, prompt, re
     _timingNext = _REUNION_NEXT[_ri];
   }
 
+  // [DATE-NEUTRALIZE v1] 날짜 표현 제거(연애 전용) + timingNow/Next 중복 방지
+  let _tn = _loveFlowLabel(_timingNow);
+  let _tx = _loveFlowLabel(_timingNext);
+  if (_tn && _tx && _tn === _tx) {
+    _tx = '상대의 반응을 살피며 접근하면 유리합니다';
+    if (_tx === _tn) _tx = '서두르지 않으면 흐름이 스스로 기회를 만들어줍니다';
+  }
+
   return {
-    shortTerm: content.short_term, shortFlow: content.short_flow,
-    midTerm: content.mid_term, midFlow: content.mid_flow,
-    longTerm: content.long_term, longFlow: content.long_flow,
-    criticalTiming: critTiming,
-    timingNow: _timingNow, timingNext: _timingNext,
-    numerology: numerologyText || '안정적인 시간대',
-    coreKey: timingKey_text
+    shortTerm: _loveFlowLabel(content.short_term), shortFlow: content.short_flow,
+    midTerm: _loveFlowLabel(content.mid_term), midFlow: content.mid_flow,
+    longTerm: _loveFlowLabel(content.long_term), longFlow: content.long_flow,
+    criticalTiming: _loveFlowLabel(critTiming),
+    timingNow: _tn, timingNext: _tx,
+    numerology: _loveFlowLabel(numerologyText || '안정적인 시간대'),
+    coreKey: _loveFlowLabel(timingKey_text)
   };
 }
 
