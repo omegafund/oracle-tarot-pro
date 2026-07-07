@@ -26757,7 +26757,14 @@ export default {
 
             const _isName = (raw) => {
               const s = stripParticles(raw);
-              return s && s.length >= 2 && s.length <= 4 && !_NOT_NAMES.has(s);
+              if (!s || s.length < 2 || s.length > 4) return false;
+              if (_NOT_NAMES.has(s)) return false;
+              // [NAME-FIX v1] 동사화 접미사(하/해/하려/하는 등) 제거 후 NOT_NAMES면 차단.
+              //   "데이트하/연락하/소개팅하/결혼하" 등 [명사+하] 오추출을 개별 추가 없이 일괄 차단.
+              //   실제 이름(은하/지하 등)은 접두(은/지)가 NOT_NAMES가 아니므로 보존됨.
+              const _vs = s.replace(/(?:하려|하는|하고|하면|해서|했|한|할|하|해)$/, '');
+              if (_vs !== s && _vs.length >= 2 && _NOT_NAMES.has(_vs)) return false;
+              return true;
             };
             // ★ 정규화된 이름 반환 ★ (조사 제거 후)
             const _normalize = (raw) => stripParticles(raw);
