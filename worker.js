@@ -15384,74 +15384,6 @@ function buildLoveActionGuide(content, loveSubType, cards, prompt, reversedFlags
   };
 }
 
-// [DATE-NEUTRALIZE v1] 연애 타이밍 전용 — 구체적 날짜 표현을 관계 흐름 언어로 치환.
-//   목적: 질문이 "다음 주 토요일" 등 특정 날짜여도 어긋나지 않도록 시점을 못박지 않는다.
-//   ⚠️ buildLoveTiming return 에서만 호출 — 사주/투자/운세(buildFortuneTiming 등) 무영향.
-function _loveFlowLabel(s) {
-  if (!s || typeof s !== 'string') return s;
-  const LIT = [
-    ['오늘 저녁 또는 내일 오전','가까운 자연스러운 시점'],
-    ['이번 주 후반 또는 다음 주말','감정 교류가 열리는 흐름'],
-    ['다음 만남 또는 가족 일정 시점','자연스러운 만남의 시점'],
-    ['오늘~내일 사이가 유리한 흐름입니다','지금 자연스럽게 다가가기 좋은 흐름입니다'],
-    ['오늘~내일 사이가 유리합니다','상대의 반응을 살피며 접근하면 유리합니다'],
-    ['지금이 가장 좋은 타이밍입니다','지금 흐름이 접근에 열려 있습니다'],
-    ['2~3일 후 자연스러운 접근 권장','여유를 둔 뒤 자연스러운 접근 권장'],
-    ['2~3일 후 접근이 안정적입니다','여유를 둔 뒤 접근이 안정적입니다'],
-    ['1~2개월 자기 점검 우선','충분한 자기 점검을 우선'],
-    ['1~2개월 자기 회복 우선','충분한 자기 회복을 우선'],
-    ['거리 두기 1주 경과 시점','충분히 거리를 둔 시점'],
-    ['거리 두기 2주 시점','충분히 거리를 둔 시점'],
-    ['점검 1주 경과 시점','충분히 점검한 시점'],
-    ['점검 2주 경과 시점','충분히 점검한 시점'],
-    ['최소 1주 거리 두기 권장','충분히 거리를 두는 것을 권장'],
-    ['최소 1주일 점검 권장','충분히 점검하는 것을 권장'],
-    ['이번 주 안정적인 저녁 시간','차분한 교류의 시간'],
-    ['주말 후반 감정 교류 구간','편안한 교류의 시간'],
-    ['주 중반 자연스러운 접점','자연스러운 접점'],
-    ['주 후반 차분한 시간대','차분한 교류의 시간'],
-    ['며칠 안 자연스러운 흐름 시점','가까운 흐름 속 자연스러운 시점'],
-    ['다음 주 초~중반','관계가 무르익는 흐름'],
-    ['다음 주 중반','관계가 무르익는 흐름'],
-    ['다음 주 초반','관계가 무르익는 흐름'],
-    ['다음 주말','관계가 무르익는 흐름'],
-    ['다음 주','관계가 무르익는 흐름'],
-    ['이번 주 초반','초반의 흐름'],
-    ['이번 주 후반','감정이 깊어지는 구간'],
-    ['이번 주','가까운 흐름 속'],
-  ];
-  const RE = [
-    [/\d+\s*~\s*\d+\s*개월\s*이상/g,'장기적으로 무르익는 흐름'],
-    [/\d+\s*개월\s*이상/g,'장기적으로 무르익는 흐름'],
-    [/\d+\s*~\s*\d+\s*개월/g,'장기적인 흐름'],
-    [/\d+\s*개월/g,'장기적인 흐름'],
-    [/\d+\s*주\s*~\s*\d+\s*주/g,'감정이 무르익는 구간'],
-    [/\d+\s*~\s*\d+\s*주/g,'감정이 무르익는 구간'],
-    [/\d+\s*주일/g,'무르익어 가는 구간'],
-    [/\d+\s*주/g,'무르익어 가는 구간'],
-    [/오늘\s*~\s*\d+\s*일\s*이내/g,'초반의 부담 없는 접근 구간'],
-    [/오늘\s*~\s*\d+\s*일/g,'초반의 부담 없는 접근 구간'],
-    [/\d+\s*~\s*\d+\s*일/g,'초반의 부담 없는 접근 구간'],
-    [/\d+\s*일/g,'초반 흐름'],
-  ];
-  const TAIL = [
-    ['주 중반','자연스러운 접점'],
-    ['주 후반','감정이 깊어지는 구간'],
-    ['주말','편안한 교류의 시간'],
-    ['며칠 안','가까운 흐름 속'],
-    ['며칠','가까운 흐름 속'],
-    ['오늘~내일','지금 흐름에서'],
-    ['모레','가까운 시점'],
-    ['내일','가까운 시점'],
-    ['오늘','지금'],
-  ];
-  let out = s;
-  for (const [k,v] of LIT) if (out.indexOf(k)!==-1) out = out.split(k).join(v);
-  for (const [re,v] of RE) out = out.replace(re,v);
-  for (const [k,v] of TAIL) if (out.indexOf(k)!==-1) out = out.split(k).join(v);
-  return out;
-}
-
 function buildLoveTiming(content, numerologyText, cards, loveSubType, prompt, reversedFlags) {
   // [V26.3 결함 4] 카드별 분기점 차별화 — 사장님 진단 안
   //   사장님 진단: 두 화면 모두 동일 분기점 ('이번 주 후반 또는 다음 주말')
@@ -15560,22 +15492,14 @@ function buildLoveTiming(content, numerologyText, cards, loveSubType, prompt, re
     _timingNext = _REUNION_NEXT[_ri];
   }
 
-  // [DATE-NEUTRALIZE v1] 날짜 표현 제거(연애 전용) + timingNow/Next 중복 방지
-  let _tn = _loveFlowLabel(_timingNow);
-  let _tx = _loveFlowLabel(_timingNext);
-  if (_tn && _tx && _tn === _tx) {
-    _tx = '상대의 반응을 살피며 접근하면 유리합니다';
-    if (_tx === _tn) _tx = '서두르지 않으면 흐름이 스스로 기회를 만들어줍니다';
-  }
-
   return {
-    shortTerm: _loveFlowLabel(content.short_term), shortFlow: content.short_flow,
-    midTerm: _loveFlowLabel(content.mid_term), midFlow: content.mid_flow,
-    longTerm: _loveFlowLabel(content.long_term), longFlow: content.long_flow,
-    criticalTiming: _loveFlowLabel(critTiming),
-    timingNow: _tn, timingNext: _tx,
-    numerology: _loveFlowLabel(numerologyText || '안정적인 시간대'),
-    coreKey: _loveFlowLabel(timingKey_text)
+    shortTerm: content.short_term, shortFlow: content.short_flow,
+    midTerm: content.mid_term, midFlow: content.mid_flow,
+    longTerm: content.long_term, longFlow: content.long_flow,
+    criticalTiming: critTiming,
+    timingNow: _timingNow, timingNext: _timingNext,
+    numerology: numerologyText || '안정적인 시간대',
+    coreKey: timingKey_text
   };
 }
 
@@ -26584,19 +26508,6 @@ export default {
             // 자동 감지 (자연어 분석)
             stockIntent = detectStockIntent(prompt);
           }
-          // [HORIZON-FIX v1] 주식: 질문에 명시된 투자 지평(단타/장투)을 버튼 서브타입보다 우선 반영.
-          //   버그: [매수/매도 타이밍] 버튼을 누르면 stockSubType이 buy_timing/sell_timing으로 고정되어,
-          //         사용자가 "단타"라고 입력해도 단타(short) 모드로 안 갔음(일반/스윙 톤으로 출력).
-          //   해결: intent(buy/sell)는 유지하고 지평만 교정. 범위=stock 한정(crypto_* 불변),
-          //         buy_timing/sell_timing/빈값에만 적용.
-          if (queryType === 'stock' &&
-              (stockSubType === 'buy_timing' || stockSubType === 'sell_timing' || !stockSubType)) {
-            if (/단타|단기매수|당일|초단|데이트레|day.?trad/i.test(prompt)) {
-              stockSubType = 'short';
-            } else if (/장투|장기\s*보유|장기\s*투자|홀딩/i.test(prompt)) {
-              stockSubType = 'holding';
-            }
-          }
           metrics = buildStockMetrics({ totalScore, riskScore, cleanCards, isLeverage, queryType, prompt, intent: stockIntent, reversedFlags, stockSubType });
           metrics.stockIntent = stockIntent;  // 클라이언트가 알 수 있도록
           metrics.stockSubType = stockSubType; // [V25.38] 코인 서브타입 식별용
@@ -26687,146 +26598,124 @@ export default {
           //   안전: 부정 키워드(시간 명사/일반 명사)는 이름 후보에서 제외
           // ════════════════════════════════════════════════════════════════
           function extractKoreanNames(p) {
+            if (!p || typeof p !== 'string') return [];
+
+            // 부정 키워드 — 이름으로 오인되기 쉬운 일반 명사/시간어 차단
             const _NOT_NAMES = new Set([
-              '전남친','전여친','남자친구','여자친구','썸남','썸녀','짝사랑','첫사랑','소울메이트',
-              '남편','아내','와이프','남친','여친','애인','연인','이성친구','동기','선배','후배','친구',
-              '그녀','그가','그를','그의','그분','상대방','상대','오빠','언니','누나','형','동생',
-              '오늘','내일','모레','어제','오늘밤','새벽','아침','점심','저녁','주말','평일','주말에',
-              '이번주','다음주','이번달','다음달','올해','내년','지금','현재','최근','오늘저녁',
-              '회사','학교','대학','대학원','카페','헬스장','집','직장','온라인','장에서',
-              '소개팅','데이트','연락','고백','재회','헤어짐','이별','결혼','동침','잠자리',
-              '키스','섹스','먹버','원나잇','따먹','손잡','손잡고','만나고','이트','나잇',
-              '고싶다','싶다고','싶은데','자고싶','하고싶','하늘','봄','여름','가을','겨울',
-              '마음','진심','감정','관계','사랑','인연','운명','궁합','에너지','만남','행복',
-              '미래','현실','희망','기대','걱정','불안','설렘','연애운','사랑운','결혼운',
-              '사람','진심인지','진심일까','오래갈','소개팅남','나의','나한테','이지','이랑','이와',
-              '이에게','이한테','남이','이트','양이','민이','나고','나잇','고싶','있을까','하는',
+              // 시간
+              '오늘','내일','어제','모레','내년','올해','금년','내달','다음','이번','지난',
+              '이번주','이번달','다음주','다음달','요즘','지금','과거','현재','미래',
+              // 운세 합성어
+              '운세','기운','에너지','타이밍','시점','시기','시간','단계','상태',
+              '연애운','재회운','결혼운','금전운','직장운','건강운','오늘운','내일운',
+              // 관계 일반 명사
+              '관계','감정','마음','상대','자신','우리','두분','두사람',
+              '남자','여자','남친','여친','오빠','언니','형','누나','그이','그녀','상대방',
+              // 1인칭/지시어
+              '나의','내가','내는','자신','본인','너의','너는','그가','그는',
+              // ★ V202.52.5 보강 ★ 1인칭 + 조사
+              '나와','나랑','나하고','나에게','저와','저랑','저하고','저에게',
+              '너와','너랑','너하고','내게','네게',
+              // ★ V202.52.5 보강 ★ 행동 명사/동사
+              '이별','결혼','재회','고백','헤어','사귀','만남','다시','헤어짐',
+              '결별','이혼','연애','사랑','데이트','연락','소통','대화',
+              // ★ V202.52.5 보강 ★ 관계 표현 명사
+              '사람','친구','동료','후배','선배','지인','애인','짝사랑',
+              // 의문/감탄
+              '누구','어떨','어떤','얼마나','정말','진짜','과연','혹시',
+              // 기타 일반
+              '관심','진심','새로','요번','계속','만약','상황','문제','걱정','고민',
+              // ★★★ [V202.53.0-AD] 라이브 결함 "속마음을" 추출 차단 ★★★
+              //   "승희의 속마음을 알고싶어요" 입력 → "속마음을"이 이름으로 추출되던 결함
+              //   해결: 내면/심리 명사 + 추가 일반 명사 차단
+              '속마음','진심','속내','마음속','내심','본심','속생각','속뜻',
+              '의도','의향','뜻','생각','판단','결정','선택',
+              '비밀','거짓','진실','사실','이유','원인','이야기','얘기',
+              '안부','연락처','전화','메시지','답장','반응','태도','자세',
+              '의지','확신','각오','다짐','후회','미련','집착','걱정',
+              '동향','상황','경향','분위기','느낌','기분','심리','상태',
+              '계획','일정','약속','준비','진행','과정','결과','진척',
+              // ★★★ [V203.15] 동사형 종결 오추출 차단 ★★★
+              //   "고소영과 썸타는데" → "썸타는데"가 이름으로 추출되는 버그
+              //   동사형 4자 패턴: ~는데/~인데/~는지/~할지/~할까 등
+              '썸타는데','타는데','있는데','없는데','되는데','하는데',
+              '모르는데','싫은데','좋은데','아닌데','인건지','할지를',
+              '궁금한','모르겠','알고싶','알고싶어','좋아하','싫어하',
+              // [V203.16] 동사 어간 추가 — "어떻게/생각하/바라보" 등 오추출 차단
+              '어떻게','생각하','바라보','느끼는','알아가','다가가',
+              '이어가','만들어','보내고','지내고','연락해','기다려',
+              '힘들어','모르겠','헷갈려','그러면','그렇다','이렇게',
+              '저렇게','어디서','언제부','왜이렇','어떡해','어떻하',
+              // ★ 상황어/관계어 — 이름 오인 차단 (소개팅님 버그 방지)
+              '소개팅','미팅','맞선','선',
+              // ★ 시간+상황 복합어 — "오늘밤"이 이름으로 추출되는 버그 방지
+              '오늘밤','오늘저녁','내일밤','이번주','이번달','지금당장',
+              // ★ 동사-고 형태 — "X와 자고 싶은데"에서 "자고"가 이름으로 추출되는 버그 방지
+              '자고','잘까','자자','잠자','같이자',
+              '가고','갈까','먹고','먹자','보고','볼까',
+              '오고','올까','놀고','살고','만나고','만날까',
             ]);
 
-            const _VERB_RE = /(?:하려|하는데|하고|하면|해도|했는데|했어|할까|하자|하지|싶다고|싶은데|싶어|자고|고싶|을까|ㄹ까|는데|인데|같은데|모르겠|왔는데|갈까|말까|줄까|올까|할지|할게|하게|해줘|해봐|있을|됩니|할수|진심|아닐|맞을|좋을|될까|안될|중인데|있는데|없는데|더라|생각나|보이지|가져도|일까|않아|있어|없어|올지|잘될|따먹|잡을|함께|인지|하는)$/;
+            // ★★★ [V202.53.0-AD] 조사 자동 제거 — 라이브 "승희의" 깨짐 결함 차단 ★★★
+            //   원인: 정규식 [가-힣]{2,4} 가 조사 글자("의","을")까지 캡처
+            //   해결: 추출 후 끝의 조사를 자동 제거 → 순수 이름만 사용
+            //   효과: "승희의" → "승희" / "속마음을" → "속마음" (NOT_NAMES 통과)
+            //   ★ '이'는 한국어 이름의 자연 어미 ("지영이/수연이") → 제거 X
+            const stripParticles = (name) => {
+              if (!name) return name;
+              return name.replace(/(?:의|을|를|가|은|는|에게|에|도|만|랑|와|과)$/, '');
+            };
 
-            function _stripJosa(s) {
-              if (!s) return s;
-              const r1 = s.replace(/(?:이에게서|이에게|이한테서|이한테|이이랑|이랑|이와|이가|이를|이은|이는|에게|한테|가|를|은|는|의|로|으로|님|씨|에서|에게서)$/, '').trim();
-              if (r1 !== s.trim() && r1.length >= 2) return r1;
-              const r2 = s.replace(/(?:와|과|랑|이)$/, '').trim();
-              if (r2 !== s.trim() && r2.length >= 2) return r2;
-              const r3 = s.replace(/(?:야|아)$/, '').trim();
-              if (r3 !== s.trim() && r3.length >= 2) return r3;
-              return s.trim();
+            const _isName = (raw) => {
+              const s = stripParticles(raw);
+              return s && s.length >= 2 && s.length <= 4 && !_NOT_NAMES.has(s);
+            };
+            // ★ 정규화된 이름 반환 ★ (조사 제거 후)
+            const _normalize = (raw) => stripParticles(raw);
+
+            let m;
+
+            // 1순위: '이름1 + 와/과/랑/하고 + 이름2' (조사 결합 — 가장 명확)
+            m = p.match(/([가-힣]{2,4})(?:님|씨)?(?:과|와|이랑|랑|하고)\s+([가-힣]{2,4})(?:님|씨)?/);
+            if (m && _isName(m[1]) && _isName(m[2])) return [_normalize(m[1]), _normalize(m[2])];
+            // 1순위 폴백: 두 번째가 동사/상황어면 첫 번째 이름만 반환 (ex: "미령이와 자고 싶은데")
+            if (m && _isName(m[1]) && !_isName(m[2])) return [_normalize(m[1])];
+
+            // 2순위: '이름1 · 이름2' 또는 '이름1, 이름2' (구분자)
+            m = p.match(/([가-힣]{2,4})\s*[·,\/]\s*([가-힣]{2,4})/);
+            if (m && _isName(m[1]) && _isName(m[2])) return [_normalize(m[1]), _normalize(m[2])];
+
+            // 3순위: '이름1 이름2' (공백 구분 — 가장 흔하지만 잘못된 매칭 위험)
+            //   예: "이소영 최민식 결혼운" → ['이소영', '최민식']
+            //   주의: 부정 키워드 둘 다 통과해야 함
+            m = p.match(/(?:^|[\s,.])([가-힣]{2,4})\s+([가-힣]{2,4})(?:[\s,.은는이가을를과와의랑]|$)/);
+            if (m && _isName(m[1]) && _isName(m[2])) return [_normalize(m[1]), _normalize(m[2])];
+
+            // 4순위: '나/저 + 와/랑/하고 + 이름' (자기 생략형 → 1명)
+            m = p.match(/(?:^|[\s])(?:나|저)(?:와|랑|하고)\s*([가-힣]{2,4})/);
+            if (m && _isName(m[1])) return [_normalize(m[1])];
+
+            // 5순위: '이름 + 님' (호칭형 단일)
+            m = p.match(/([가-힣]{2,4})님(?:과|와|이랑|랑|하고|의|에게|에|이|가)/);
+            if (m && _isName(m[1])) return [_normalize(m[1])];
+
+            // 6순위: '이름(+이/가) + 와/랑/하고 + 동작' (관계형 단일)
+            //   예: "지영이와 이별", "지영이랑 다시", "지영과 결혼"
+            //   ★ V53.0-AD: 첫 그룹에 (?:이|가)? 포함하여 "지영이"가 통째로 캡처되도록 ★
+            m = p.match(/([가-힣]{2,4}(?:이|가)?)(?:와|랑|하고)\s*(?:의|는|이별|다시|만|보|사귀|좋아|싫어|결혼|재회)/);
+            if (m && _isName(m[1])) return [_normalize(m[1])];
+
+            // ★★★ [V202.53.0-AD 신규 7순위] 단일 이름 + 소유격 조사 ★★★
+            //   라이브 결함 "승희의 속마음을 알고싶어요" 케이스에 필요
+            //   '이름(+이) + 의/을/를/은/는/이/가 + 일반 명사' 패턴
+            //   _NOT_NAMES 차단으로 "그의 본심" / "내 의도" 등 일반 명사 오인 방지
+            m = p.match(/(?:^|[\s])([가-힣]{2,4}(?:이|가)?)(?:의|을|를|은|는)\s+([가-힣]{2,4})/);
+            if (m && _isName(m[1]) && _NOT_NAMES.has(stripParticles(m[2]))) {
+              // 두 번째 토큰이 일반 명사일 때만 (속마음/진심/의도 등 NOT_NAMES) 단일 이름 추출
+              return [_normalize(m[1])];
             }
 
-            function _stripHogeok(s) {
-              if (!s || s.length < 3) return s;
-              if (s.endsWith('이')) {
-                const base = s.slice(0, -1);
-                const code = base.charCodeAt(base.length - 1) - 0xAC00;
-                if (code >= 0 && code <= 11171 && (code % 28) !== 0) return base;
-              }
-              return s;
-            }
-
-            function _isValidName(raw) {
-              if (!raw) return null;
-              let s = _stripJosa(raw.trim());
-              s = _stripHogeok(s);
-              if (!s || s.length < 2 || s.length > 5) return null;
-              if (!/^[가-힣]{2,5}$/.test(s)) return null;
-              if (_VERB_RE.test(s) || _VERB_RE.test(raw.trim())) return null;
-              if (_NOT_NAMES.has(s) || _NOT_NAMES.has(raw.trim())) return null;
-              const dv = s.replace(/(?:하려|하는|하고|하면|해서|했|한|할|하|해)$/, '');
-              if (dv !== s && dv.length >= 2 && _NOT_NAMES.has(dv)) return null;
-              return s;
-            }
-
-            // 호격 "이+조사" 토큰 패턴 (단어 단위 체크 — 오추출 방지 핵심)
-            const _HOG_PAT = /^([가-힣]{2,4})이(와|랑|에게|한테|가|를|은|는)$/;
-            // "이름가 동사" 패턴
-            const _GA_PAT  = /^([가-힣]{2,4})가$/;
-            // "이름이 나를/날" 패턴
-            const _I_NAREUL = /^([가-힣]{2,4})이$/;
-
-            function extractKoreanNames(p) {
-              if (!p || typeof p !== 'string') return [];
-              const prompt = p.trim();
-              const found = new Set();
-              const tokens = prompt.split(/\s+/);
-
-              // ─── 1순위: 성씨+이름 (성씨+최소2글자, 이 성씨 제외)
-              let m;
-              // 성씨+이름 패턴: 성씨1자 + 이름2~3자 + (조사|공백|끝)
-              // lookahead로 성씨+이름 뒤가 조사나 경계임을 확인해 오추출 방지
-              const _JOSA_CHARS = new Set(['이','가','을','를','은','는','과','와','랑','에','의','로','님','씨','한','도']);
-              const SURNAME_CHARS = '김박최정강조윤장임한오서신권황안송류전홍고문양손배백허유남심노곽성차주우구임나민유진마길엄채천방공강현함변염여추도소석선설';
-              // 성씨 기반 이름 추출 — 토큰 단위로 체크해 오추출 방지
-              for (const tok of tokens) {
-                if (tok.length < 3) continue;
-                const firstChar = tok[0];
-                if (SURNAME_CHARS.includes(firstChar)) {
-                  // 성씨 + 이름(2~3글자) 형태인지 체크
-                  const nameCandidate = tok.replace(/(?:이에게서|이에게|이한테|이랑|이와|이가|이를|이은|이는|이|에게|한테|가|를|은|는|의|로|으로|님|씨|에서)$/, '');
-                  if (nameCandidate.length >= 3 && /^[가-힣]{3,4}$/.test(nameCandidate)) {
-                    const c = _isValidName(nameCandidate); if (c) found.add(c);
-                  }
-                }
-              }
-              // 이 성씨 — 단어 시작에서만, 최소 3글자(이+이름2글자)
-              for (const tok of tokens) {
-                if (tok.startsWith('이') && tok.length >= 3) {
-                  const rest = tok.replace(/(?:이(?:와|랑|에게|한테|가|를|은|는|가)|님|씨)$/, '');
-                  if (/^이[가-힣]{2,3}$/.test(rest)) {
-                    const c = _isValidName(rest); if (c) found.add(c);
-                  }
-                }
-              }
-
-              // ─── 2순위: 토큰 단위 호격 "지영이와", "서연이랑" 등
-              for (const tok of tokens) {
-                const hm = tok.match(_HOG_PAT);
-                if (hm) { const c = _isValidName(hm[1]); if (c) found.add(c); }
-              }
-
-              // ─── 2B순위: "[이름]이 나를/날/따먹을까" — 인접 두 토큰
-              for (let i = 0; i < tokens.length - 1; i++) {
-                const im = tokens[i].match(_I_NAREUL);
-                if (im) {
-                  const next = tokens[i + 1];
-                  if (/^(?:나를|날|저를|절|우리를|[가-힣]+(?:을까|ㄹ까|할까|올까|갈까|따먹|좋아))/.test(next)) {
-                    const c = _isValidName(im[1]); if (c) found.add(c);
-                  }
-                }
-              }
-
-              // ─── 3순위: "[이름]와/과/랑" 토큰 단위
-              for (const tok of tokens) {
-                const r = tok.replace(/(?:와|과|랑)$/, '');
-                if (r !== tok && r.length >= 2) {
-                  const c = _isValidName(r); if (c) found.add(c);
-                }
-              }
-
-              // ─── 4순위: "[이름]가 할까/올까" — 인접 두 토큰
-              for (let i = 0; i < tokens.length - 1; i++) {
-                const gm = tokens[i].match(_GA_PAT);
-                if (gm) {
-                  const next = tokens[i + 1];
-                  if (/^[가-힣]+(?:할까|올까|줄까|갈까|할지|올지|나를|날|좋아|연락|관심)/.test(next)) {
-                    const c = _isValidName(gm[1]); if (c) found.add(c);
-                  }
-                }
-              }
-
-              // ─── 5순위: "수아와" — 토큰에서 와 제거 (2~3글자)
-              for (const tok of tokens) {
-                if (tok.endsWith('와') && tok.length >= 3 && tok.length <= 4) {
-                  const r = tok.slice(0, -1);
-                  const c = _isValidName(r);
-                  if (c && !found.has(c)) found.add(c);
-                }
-              }
-
-              return [...found];
-            }
+            return [];
           }
 
           // ★ V202.52.5 ★ 이름 추출 실행 — LLM 프롬프트 주입용
