@@ -15384,6 +15384,67 @@ function buildLoveActionGuide(content, loveSubType, cards, prompt, reversedFlags
   };
 }
 
+// ── FREE PREVIEW: dedicated PAST-ONLY interpreter ────────────────
+function _loveFlowLabel(s) {
+  if (!s || typeof s !== 'string') return s;
+  const LIT = [
+    ['오늘 저녁 또는 내일 오전','가까운 자연스러운 시점'],
+    ['이번 주 후반 또는 다음 주말','감정 교류가 열리는 흐름'],
+    ['다음 만남 또는 가족 일정 시점','자연스러운 만남의 시점'],
+    ['오늘~내일 사이가 유리한 흐름입니다','지금 자연스럽게 다가가기 좋은 흐름입니다'],
+    ['오늘~내일 사이가 유리합니다','상대의 반응을 살피며 접근하면 유리합니다'],
+    ['지금이 가장 좋은 타이밍입니다','지금 흐름이 접근에 열려 있습니다'],
+    ['2~3일 후 자연스러운 접근 권장','여유를 둔 뒤 자연스러운 접근 권장'],
+    ['2~3일 후 접근이 안정적입니다','여유를 둔 뒤 접근이 안정적입니다'],
+    ['1~2개월 자기 점검 우선','충분한 자기 점검을 우선'],
+    ['1~2개월 자기 회복 우선','충분한 자기 회복을 우선'],
+    ['거리 두기 1주 경과 시점','충분히 거리를 둔 시점'],
+    ['거리 두기 2주 시점','충분히 거리를 둔 시점'],
+    ['점검 1주 경과 시점','충분히 점검한 시점'],
+    ['점검 2주 경과 시점','충분히 점검한 시점'],
+    ['최소 1주 거리 두기 권장','충분히 거리를 두는 것을 권장'],
+    ['최소 1주일 점검 권장','충분히 점검하는 것을 권장'],
+    ['이번 주 안정적인 저녁 시간','차분한 교류의 시간'],
+    ['주말 후반 감정 교류 구간','편안한 교류의 시간'],
+    ['주 중반 자연스러운 접점','자연스러운 접점'],
+    ['주 후반 차분한 시간대','차분한 교류의 시간'],
+    ['며칠 안 자연스러운 흐름 시점','가까운 흐름 속 자연스러운 시점'],
+    ['다음 주 초~중반','관계가 무르익는 흐름'],
+    ['다음 주 중반','관계가 무르익는 흐름'],
+    ['다음 주 초반','관계가 무르익는 흐름'],
+    ['다음 주말','관계가 무르익는 흐름'],
+    ['다음 주','관계가 무르익는 흐름'],
+    ['이번 주 초반','초반의 흐름'],
+    ['이번 주 후반','감정이 깊어지는 구간'],
+    ['이번 주','가까운 흐름 속'],
+  ];
+  const RE = [
+    [/\d+\s*~\s*\d+\s*개월\s*이상/g,'장기적으로 무르익는 흐름'],
+    [/\d+\s*개월\s*이상/g,'장기적으로 무르익는 흐름'],
+    [/\d+\s*~\s*\d+\s*개월/g,'장기적인 흐름'],
+    [/\d+\s*개월/g,'장기적인 흐름'],
+    [/\d+\s*주\s*~\s*\d+\s*주/g,'감정이 무르익는 구간'],
+    [/\d+\s*~\s*\d+\s*주/g,'감정이 무르익는 구간'],
+    [/\d+\s*주일/g,'무르익어 가는 구간'],
+    [/\d+\s*주/g,'무르익어 가는 구간'],
+    [/오늘\s*~\s*\d+\s*일\s*이내/g,'초반의 부담 없는 접근 구간'],
+    [/오늘\s*~\s*\d+\s*일/g,'초반의 부담 없는 접근 구간'],
+    [/\d+\s*~\s*\d+\s*일/g,'초반의 부담 없는 접근 구간'],
+    [/\d+\s*일/g,'초반 흐름'],
+  ];
+  const TAIL = [
+    ['주 중반','자연스러운 접점'],['주 후반','감정이 깊어지는 구간'],
+    ['주말','편안한 교류의 시간'],['며칠 안','가까운 흐름 속'],
+    ['며칠','가까운 흐름 속'],['오늘~내일','지금 흐름에서'],
+    ['모레','가까운 시점'],['내일','가까운 시점'],['오늘','지금'],
+  ];
+  let out = s;
+  for (const [k,v] of LIT) if (out.indexOf(k)!==-1) out = out.split(k).join(v);
+  for (const [re,v] of RE) out = out.replace(re,v);
+  for (const [k,v] of TAIL) if (out.indexOf(k)!==-1) out = out.split(k).join(v);
+  return out;
+}
+
 function buildLoveTiming(content, numerologyText, cards, loveSubType, prompt, reversedFlags) {
   // [V26.3 결함 4] 카드별 분기점 차별화 — 사장님 진단 안
   //   사장님 진단: 두 화면 모두 동일 분기점 ('이번 주 후반 또는 다음 주말')
@@ -15492,14 +15553,20 @@ function buildLoveTiming(content, numerologyText, cards, loveSubType, prompt, re
     _timingNext = _REUNION_NEXT[_ri];
   }
 
+  let _tn = _loveFlowLabel(_timingNow);
+  let _tx = _loveFlowLabel(_timingNext);
+  if (_tn && _tx && _tn === _tx) {
+    _tx = '상대의 반응을 살피며 접근하면 유리합니다';
+    if (_tx === _tn) _tx = '서두르지 않으면 흐름이 스스로 기회를 만들어줍니다';
+  }
   return {
-    shortTerm: content.short_term, shortFlow: content.short_flow,
-    midTerm: content.mid_term, midFlow: content.mid_flow,
-    longTerm: content.long_term, longFlow: content.long_flow,
-    criticalTiming: critTiming,
-    timingNow: _timingNow, timingNext: _timingNext,
-    numerology: numerologyText || '안정적인 시간대',
-    coreKey: timingKey_text
+    shortTerm: _loveFlowLabel(content.short_term), shortFlow: content.short_flow,
+    midTerm: _loveFlowLabel(content.mid_term), midFlow: content.mid_flow,
+    longTerm: _loveFlowLabel(content.long_term), longFlow: content.long_flow,
+    criticalTiming: _loveFlowLabel(critTiming),
+    timingNow: _tn, timingNext: _tx,
+    numerology: _loveFlowLabel(numerologyText || '안정적인 시간대'),
+    coreKey: _loveFlowLabel(timingKey_text)
   };
 }
 
@@ -26508,6 +26575,15 @@ export default {
             // 자동 감지 (자연어 분석)
             stockIntent = detectStockIntent(prompt);
           }
+          // [HORIZON-FIX v1] 질문에 명시된 지평(단타/장투)을 버튼 서브타입보다 우선 반영
+          if (queryType === 'stock' &&
+              (stockSubType === 'buy_timing' || stockSubType === 'sell_timing' || !stockSubType)) {
+            if (/단타|단기매수|당일|초단|데이트레|day.?trad/i.test(prompt)) {
+              stockSubType = 'short';
+            } else if (/장투|장기\s*보유|장기\s*투자|홀딩/i.test(prompt)) {
+              stockSubType = 'holding';
+            }
+          }
           metrics = buildStockMetrics({ totalScore, riskScore, cleanCards, isLeverage, queryType, prompt, intent: stockIntent, reversedFlags, stockSubType });
           metrics.stockIntent = stockIntent;  // 클라이언트가 알 수 있도록
           metrics.stockSubType = stockSubType; // [V25.38] 코인 서브타입 식별용
@@ -26668,7 +26744,12 @@ export default {
 
             const _isName = (raw) => {
               const s = stripParticles(raw);
-              return s && s.length >= 2 && s.length <= 4 && !_NOT_NAMES.has(s);
+              if (!s || s.length < 2 || s.length > 4) return false;
+              if (_NOT_NAMES.has(s)) return false;
+              // [NAME-FIX v1] 동사화 접미사 제거 후 NOT_NAMES면 차단 (데이트하/연락하 등)
+              const _vs = s.replace(/(?:하려|하는|하고|하면|해서|했|한|할|하|해)$/, '');
+              if (_vs !== s && _vs.length >= 2 && _NOT_NAMES.has(_vs)) return false;
+              return true;
             };
             // ★ 정규화된 이름 반환 ★ (조사 제거 후)
             const _normalize = (raw) => stripParticles(raw);
