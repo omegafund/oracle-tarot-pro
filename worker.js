@@ -26687,144 +26687,146 @@ export default {
           //   안전: 부정 키워드(시간 명사/일반 명사)는 이름 후보에서 제외
           // ════════════════════════════════════════════════════════════════
           function extractKoreanNames(p) {
-            '전남친','전여친','남자친구','여자친구','썸남','썸녀','짝사랑','첫사랑','소울메이트',
-            '남편','아내','와이프','남친','여친','애인','연인','이성친구','동기','선배','후배','친구',
-            '그녀','그가','그를','그의','그분','상대방','상대','오빠','언니','누나','형','동생',
-            '오늘','내일','모레','어제','오늘밤','새벽','아침','점심','저녁','주말','평일','주말에',
-            '이번주','다음주','이번달','다음달','올해','내년','지금','현재','최근','오늘저녁',
-            '회사','학교','대학','대학원','카페','헬스장','집','직장','온라인','장에서',
-            '소개팅','데이트','연락','고백','재회','헤어짐','이별','결혼','동침','잠자리',
-            '키스','섹스','먹버','원나잇','따먹','손잡','손잡고','만나고','이트','나잇',
-            '고싶다','싶다고','싶은데','자고싶','하고싶','하늘','봄','여름','가을','겨울',
-            '마음','진심','감정','관계','사랑','인연','운명','궁합','에너지','만남','행복',
-            '미래','현실','희망','기대','걱정','불안','설렘','연애운','사랑운','결혼운',
-            '사람','진심인지','진심일까','오래갈','소개팅남','나의','나한테','이지','이랑','이와',
-            '이에게','이한테','남이','이트','양이','민이','나고','나잇','고싶','있을까','하는',
-          ]);
-          
-          const _VERB_RE = /(?:하려|하는데|하고|하면|해도|했는데|했어|할까|하자|하지|싶다고|싶은데|싶어|자고|고싶|을까|ㄹ까|는데|인데|같은데|모르겠|왔는데|갈까|말까|줄까|올까|할지|할게|하게|해줘|해봐|있을|됩니|할수|진심|아닐|맞을|좋을|될까|안될|중인데|있는데|없는데|더라|생각나|보이지|가져도|일까|않아|있어|없어|올지|잘될|따먹|잡을|함께|인지|하는)$/;
-          
-          function _stripJosa(s) {
-            if (!s) return s;
-            const r1 = s.replace(/(?:이에게서|이에게|이한테서|이한테|이이랑|이랑|이와|이가|이를|이은|이는|에게|한테|가|를|은|는|의|로|으로|님|씨|에서|에게서)$/, '').trim();
-            if (r1 !== s.trim() && r1.length >= 2) return r1;
-            const r2 = s.replace(/(?:와|과|랑|이)$/, '').trim();
-            if (r2 !== s.trim() && r2.length >= 2) return r2;
-            const r3 = s.replace(/(?:야|아)$/, '').trim();
-            if (r3 !== s.trim() && r3.length >= 2) return r3;
-            return s.trim();
-          }
-          
-          function _stripHogeok(s) {
-            if (!s || s.length < 3) return s;
-            if (s.endsWith('이')) {
-              const base = s.slice(0, -1);
-              const code = base.charCodeAt(base.length - 1) - 0xAC00;
-              if (code >= 0 && code <= 11171 && (code % 28) !== 0) return base;
+            const _NOT_NAMES = new Set([
+              '전남친','전여친','남자친구','여자친구','썸남','썸녀','짝사랑','첫사랑','소울메이트',
+              '남편','아내','와이프','남친','여친','애인','연인','이성친구','동기','선배','후배','친구',
+              '그녀','그가','그를','그의','그분','상대방','상대','오빠','언니','누나','형','동생',
+              '오늘','내일','모레','어제','오늘밤','새벽','아침','점심','저녁','주말','평일','주말에',
+              '이번주','다음주','이번달','다음달','올해','내년','지금','현재','최근','오늘저녁',
+              '회사','학교','대학','대학원','카페','헬스장','집','직장','온라인','장에서',
+              '소개팅','데이트','연락','고백','재회','헤어짐','이별','결혼','동침','잠자리',
+              '키스','섹스','먹버','원나잇','따먹','손잡','손잡고','만나고','이트','나잇',
+              '고싶다','싶다고','싶은데','자고싶','하고싶','하늘','봄','여름','가을','겨울',
+              '마음','진심','감정','관계','사랑','인연','운명','궁합','에너지','만남','행복',
+              '미래','현실','희망','기대','걱정','불안','설렘','연애운','사랑운','결혼운',
+              '사람','진심인지','진심일까','오래갈','소개팅남','나의','나한테','이지','이랑','이와',
+              '이에게','이한테','남이','이트','양이','민이','나고','나잇','고싶','있을까','하는',
+            ]);
+
+            const _VERB_RE = /(?:하려|하는데|하고|하면|해도|했는데|했어|할까|하자|하지|싶다고|싶은데|싶어|자고|고싶|을까|ㄹ까|는데|인데|같은데|모르겠|왔는데|갈까|말까|줄까|올까|할지|할게|하게|해줘|해봐|있을|됩니|할수|진심|아닐|맞을|좋을|될까|안될|중인데|있는데|없는데|더라|생각나|보이지|가져도|일까|않아|있어|없어|올지|잘될|따먹|잡을|함께|인지|하는)$/;
+
+            function _stripJosa(s) {
+              if (!s) return s;
+              const r1 = s.replace(/(?:이에게서|이에게|이한테서|이한테|이이랑|이랑|이와|이가|이를|이은|이는|에게|한테|가|를|은|는|의|로|으로|님|씨|에서|에게서)$/, '').trim();
+              if (r1 !== s.trim() && r1.length >= 2) return r1;
+              const r2 = s.replace(/(?:와|과|랑|이)$/, '').trim();
+              if (r2 !== s.trim() && r2.length >= 2) return r2;
+              const r3 = s.replace(/(?:야|아)$/, '').trim();
+              if (r3 !== s.trim() && r3.length >= 2) return r3;
+              return s.trim();
             }
-            return s;
-          }
-          
-          function _isValidName(raw) {
-            if (!raw) return null;
-            let s = _stripJosa(raw.trim());
-            s = _stripHogeok(s);
-            if (!s || s.length < 2 || s.length > 5) return null;
-            if (!/^[가-힣]{2,5}$/.test(s)) return null;
-            if (_VERB_RE.test(s) || _VERB_RE.test(raw.trim())) return null;
-            if (_NOT_NAMES.has(s) || _NOT_NAMES.has(raw.trim())) return null;
-            const dv = s.replace(/(?:하려|하는|하고|하면|해서|했|한|할|하|해)$/, '');
-            if (dv !== s && dv.length >= 2 && _NOT_NAMES.has(dv)) return null;
-            return s;
-          }
-          
-          // 호격 "이+조사" 토큰 패턴 (단어 단위 체크 — 오추출 방지 핵심)
-          const _HOG_PAT = /^([가-힣]{2,4})이(와|랑|에게|한테|가|를|은|는)$/;
-          // "이름가 동사" 패턴
-          const _GA_PAT  = /^([가-힣]{2,4})가$/;
-          // "이름이 나를/날" 패턴
-          const _I_NAREUL = /^([가-힣]{2,4})이$/;
-          
-          function extractKoreanNames(p) {
-            if (!p || typeof p !== 'string') return [];
-            const prompt = p.trim();
-            const found = new Set();
-            const tokens = prompt.split(/\s+/);
-          
-            // ─── 1순위: 성씨+이름 (성씨+최소2글자, 이 성씨 제외)
-            let m;
-            // 성씨+이름 패턴: 성씨1자 + 이름2~3자 + (조사|공백|끝)
-            // lookahead로 성씨+이름 뒤가 조사나 경계임을 확인해 오추출 방지
-            const _JOSA_CHARS = new Set(['이','가','을','를','은','는','과','와','랑','에','의','로','님','씨','한','도']);
-            const SURNAME_CHARS = '김박최정강조윤장임한오서신권황안송류전홍고문양손배백허유남심노곽성차주우구임나민유진마길엄채천방공강현함변염여추도소석선설';
-            // 성씨 기반 이름 추출 — 토큰 단위로 체크해 오추출 방지
-            for (const tok of tokens) {
-              if (tok.length < 3) continue;
-              const firstChar = tok[0];
-              if (SURNAME_CHARS.includes(firstChar)) {
-                // 성씨 + 이름(2~3글자) 형태인지 체크
-                const nameCandidate = tok.replace(/(?:이에게서|이에게|이한테|이랑|이와|이가|이를|이은|이는|이|에게|한테|가|를|은|는|의|로|으로|님|씨|에서)$/, '');
-                if (nameCandidate.length >= 3 && /^[가-힣]{3,4}$/.test(nameCandidate)) {
-                  const c = _isValidName(nameCandidate); if (c) found.add(c);
+
+            function _stripHogeok(s) {
+              if (!s || s.length < 3) return s;
+              if (s.endsWith('이')) {
+                const base = s.slice(0, -1);
+                const code = base.charCodeAt(base.length - 1) - 0xAC00;
+                if (code >= 0 && code <= 11171 && (code % 28) !== 0) return base;
+              }
+              return s;
+            }
+
+            function _isValidName(raw) {
+              if (!raw) return null;
+              let s = _stripJosa(raw.trim());
+              s = _stripHogeok(s);
+              if (!s || s.length < 2 || s.length > 5) return null;
+              if (!/^[가-힣]{2,5}$/.test(s)) return null;
+              if (_VERB_RE.test(s) || _VERB_RE.test(raw.trim())) return null;
+              if (_NOT_NAMES.has(s) || _NOT_NAMES.has(raw.trim())) return null;
+              const dv = s.replace(/(?:하려|하는|하고|하면|해서|했|한|할|하|해)$/, '');
+              if (dv !== s && dv.length >= 2 && _NOT_NAMES.has(dv)) return null;
+              return s;
+            }
+
+            // 호격 "이+조사" 토큰 패턴 (단어 단위 체크 — 오추출 방지 핵심)
+            const _HOG_PAT = /^([가-힣]{2,4})이(와|랑|에게|한테|가|를|은|는)$/;
+            // "이름가 동사" 패턴
+            const _GA_PAT  = /^([가-힣]{2,4})가$/;
+            // "이름이 나를/날" 패턴
+            const _I_NAREUL = /^([가-힣]{2,4})이$/;
+
+            function extractKoreanNames(p) {
+              if (!p || typeof p !== 'string') return [];
+              const prompt = p.trim();
+              const found = new Set();
+              const tokens = prompt.split(/\s+/);
+
+              // ─── 1순위: 성씨+이름 (성씨+최소2글자, 이 성씨 제외)
+              let m;
+              // 성씨+이름 패턴: 성씨1자 + 이름2~3자 + (조사|공백|끝)
+              // lookahead로 성씨+이름 뒤가 조사나 경계임을 확인해 오추출 방지
+              const _JOSA_CHARS = new Set(['이','가','을','를','은','는','과','와','랑','에','의','로','님','씨','한','도']);
+              const SURNAME_CHARS = '김박최정강조윤장임한오서신권황안송류전홍고문양손배백허유남심노곽성차주우구임나민유진마길엄채천방공강현함변염여추도소석선설';
+              // 성씨 기반 이름 추출 — 토큰 단위로 체크해 오추출 방지
+              for (const tok of tokens) {
+                if (tok.length < 3) continue;
+                const firstChar = tok[0];
+                if (SURNAME_CHARS.includes(firstChar)) {
+                  // 성씨 + 이름(2~3글자) 형태인지 체크
+                  const nameCandidate = tok.replace(/(?:이에게서|이에게|이한테|이랑|이와|이가|이를|이은|이는|이|에게|한테|가|를|은|는|의|로|으로|님|씨|에서)$/, '');
+                  if (nameCandidate.length >= 3 && /^[가-힣]{3,4}$/.test(nameCandidate)) {
+                    const c = _isValidName(nameCandidate); if (c) found.add(c);
+                  }
                 }
               }
-            }
-            // 이 성씨 — 단어 시작에서만, 최소 3글자(이+이름2글자)
-            for (const tok of tokens) {
-              if (tok.startsWith('이') && tok.length >= 3) {
-                const rest = tok.replace(/(?:이(?:와|랑|에게|한테|가|를|은|는|가)|님|씨)$/, '');
-                if (/^이[가-힣]{2,3}$/.test(rest)) {
-                  const c = _isValidName(rest); if (c) found.add(c);
+              // 이 성씨 — 단어 시작에서만, 최소 3글자(이+이름2글자)
+              for (const tok of tokens) {
+                if (tok.startsWith('이') && tok.length >= 3) {
+                  const rest = tok.replace(/(?:이(?:와|랑|에게|한테|가|를|은|는|가)|님|씨)$/, '');
+                  if (/^이[가-힣]{2,3}$/.test(rest)) {
+                    const c = _isValidName(rest); if (c) found.add(c);
+                  }
                 }
               }
-            }
-          
-            // ─── 2순위: 토큰 단위 호격 "지영이와", "서연이랑" 등
-            for (const tok of tokens) {
-              const hm = tok.match(_HOG_PAT);
-              if (hm) { const c = _isValidName(hm[1]); if (c) found.add(c); }
-            }
-          
-            // ─── 2B순위: "[이름]이 나를/날/따먹을까" — 인접 두 토큰
-            for (let i = 0; i < tokens.length - 1; i++) {
-              const im = tokens[i].match(_I_NAREUL);
-              if (im) {
-                const next = tokens[i + 1];
-                if (/^(?:나를|날|저를|절|우리를|[가-힣]+(?:을까|ㄹ까|할까|올까|갈까|따먹|좋아))/.test(next)) {
-                  const c = _isValidName(im[1]); if (c) found.add(c);
+
+              // ─── 2순위: 토큰 단위 호격 "지영이와", "서연이랑" 등
+              for (const tok of tokens) {
+                const hm = tok.match(_HOG_PAT);
+                if (hm) { const c = _isValidName(hm[1]); if (c) found.add(c); }
+              }
+
+              // ─── 2B순위: "[이름]이 나를/날/따먹을까" — 인접 두 토큰
+              for (let i = 0; i < tokens.length - 1; i++) {
+                const im = tokens[i].match(_I_NAREUL);
+                if (im) {
+                  const next = tokens[i + 1];
+                  if (/^(?:나를|날|저를|절|우리를|[가-힣]+(?:을까|ㄹ까|할까|올까|갈까|따먹|좋아))/.test(next)) {
+                    const c = _isValidName(im[1]); if (c) found.add(c);
+                  }
                 }
               }
-            }
-          
-            // ─── 3순위: "[이름]와/과/랑" 토큰 단위
-            for (const tok of tokens) {
-              const r = tok.replace(/(?:와|과|랑)$/, '');
-              if (r !== tok && r.length >= 2) {
-                const c = _isValidName(r); if (c) found.add(c);
-              }
-            }
-          
-            // ─── 4순위: "[이름]가 할까/올까" — 인접 두 토큰
-            for (let i = 0; i < tokens.length - 1; i++) {
-              const gm = tokens[i].match(_GA_PAT);
-              if (gm) {
-                const next = tokens[i + 1];
-                if (/^[가-힣]+(?:할까|올까|줄까|갈까|할지|올지|나를|날|좋아|연락|관심)/.test(next)) {
-                  const c = _isValidName(gm[1]); if (c) found.add(c);
+
+              // ─── 3순위: "[이름]와/과/랑" 토큰 단위
+              for (const tok of tokens) {
+                const r = tok.replace(/(?:와|과|랑)$/, '');
+                if (r !== tok && r.length >= 2) {
+                  const c = _isValidName(r); if (c) found.add(c);
                 }
               }
-            }
-          
-            // ─── 5순위: "수아와" — 토큰에서 와 제거 (2~3글자)
-            for (const tok of tokens) {
-              if (tok.endsWith('와') && tok.length >= 3 && tok.length <= 4) {
-                const r = tok.slice(0, -1);
-                const c = _isValidName(r);
-                if (c && !found.has(c)) found.add(c);
+
+              // ─── 4순위: "[이름]가 할까/올까" — 인접 두 토큰
+              for (let i = 0; i < tokens.length - 1; i++) {
+                const gm = tokens[i].match(_GA_PAT);
+                if (gm) {
+                  const next = tokens[i + 1];
+                  if (/^[가-힣]+(?:할까|올까|줄까|갈까|할지|올지|나를|날|좋아|연락|관심)/.test(next)) {
+                    const c = _isValidName(gm[1]); if (c) found.add(c);
+                  }
+                }
               }
+
+              // ─── 5순위: "수아와" — 토큰에서 와 제거 (2~3글자)
+              for (const tok of tokens) {
+                if (tok.endsWith('와') && tok.length >= 3 && tok.length <= 4) {
+                  const r = tok.slice(0, -1);
+                  const c = _isValidName(r);
+                  if (c && !found.has(c)) found.add(c);
+                }
+              }
+
+              return [...found];
             }
-          
-            return [...found];
           }
 
           // ★ V202.52.5 ★ 이름 추출 실행 — LLM 프롬프트 주입용
