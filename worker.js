@@ -3212,7 +3212,8 @@ async function classifyByLLM(prompt, apiKey) {
   const _llmTimer = setTimeout(() => _llmController.abort(), 4000);
   try {
     // [V2.5] gemini-2.5-flash 유지 — Tier 1 키 사용 시 충분한 한도
-    const classifierUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+    // [v1.0.5] 2.0-flash 종료(404) → 2.5-flash (생각 단계 끔: 단어 하나 응답, 20토큰 한도 유지)
+    const classifierUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
     const res = await fetch(classifierUrl, {
       method: 'POST',
       signal: _llmController.signal,
@@ -3230,7 +3231,7 @@ async function classifyByLLM(prompt, apiKey) {
 
 정답:`
         }] }],
-        generationConfig: { temperature: 0.1, maxOutputTokens: 20, topK: 1 }
+        generationConfig: { temperature: 0.1, maxOutputTokens: 20, topK: 1, thinkingConfig: { thinkingBudget: 0 } }
       })
     });
     if (!res.ok) return null;
@@ -10037,40 +10038,26 @@ async function callGeminiForSajuNarrative(ctx, geminiApiKey) {
 핵심 회복 행동: ${currentFlow.yongsinAdvice}${_soulCtx}`;
 
   try {
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiApiKey}`;
-    const res = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        system_instruction: { parts: [{ text: systemPrompt }] },
-        contents: [{ parts: [{ text: userPrompt }] }],
-        generationConfig: { temperature: 0.85, maxOutputTokens: 1200 }
-      })
+    // [v1.0.5] gemini-2.0-flash 종료(404) → 2.5-flash 교체
+    //   6월 2.5 전환 실패 원인: 2.5의 '생각(thinking)' 토큰이 maxOutputTokens(1200)를 소진 → 본문 비거나 잘림 → 5블록 파싱 실패
+    //   해결: thinkingBudget 0 (생각 단계 끔, 2.0과 동일한 즉답 방식) + 한도 여유 2048 + thought 파트 제외 추출
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiApiKey}`;
+    const _reqBody = JSON.stringify({
+      system_instruction: { parts: [{ text: systemPrompt }] },
+      contents: [{ parts: [{ text: userPrompt }] }],
+      generationConfig: { temperature: 0.85, maxOutputTokens: 2048, thinkingConfig: { thinkingBudget: 0 } }
     });
+    const _extractText = (d) => ((d && d.candidates && d.candidates[0] && d.candidates[0].content && d.candidates[0].content.parts) || [])
+      .filter(p => p && !p.thought && typeof p.text === 'string')
+      .map(p => p.text).join('');
+    const _call = () => fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: _reqBody });
 
-    // 429 Too Many Requests → 1초 후 1회 재시도
-    if (res.status === 429) {
-      console.log('[V202.64 RETRY] 429 — 1초 후 재시도');
+    let res = await _call();
+    // 429(한도)·503(과부하) → 1초 후 1회 재시도  [v1.0.5: 기존 재시도 결과가 버려지던 결함 수정]
+    if (res.status === 429 || res.status === 503) {
+      console.log('[V202.64 RETRY]', res.status, '— 1초 후 재시도');
       await new Promise(r => setTimeout(r, 1000));
-      const res2 = await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          system_instruction: { parts: [{ text: systemPrompt }] },
-          contents: [{ parts: [{ text: userPrompt }] }],
-          generationConfig: { temperature: 0.85, maxOutputTokens: 1200 }
-        })
-      });
-      if (!res2.ok) {
-        console.log('[V202.64 RETRY_FAIL]', res2.status);
-        return null;
-      }
-      const data2 = await res2.json();
-      const raw_text2 = data2?.candidates?.[0]?.content?.parts?.[0]?.text || '';
-      console.log('[V202.64 RETRY_TEXT]', raw_text2.slice(0, 200));
-      if (!raw_text2) return null;
-      // 재시도 성공 시 raw_text를 재할당하고 계속
-      Object.defineProperty(res, '_retryText', { value: raw_text2 });
+      res = await _call();
     }
     if (!res.ok) {
       console.log('[V202.62 GEMINI_HTTP]', res.status, res.statusText);
@@ -10079,9 +10066,9 @@ async function callGeminiForSajuNarrative(ctx, geminiApiKey) {
     const data = await res.json();
     // Gemini 응답 구조 전체 로그 (진단용)
     console.log('[V202.62 GEMINI_RAW]', JSON.stringify(data).slice(0, 500));
-    const raw_text = data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+    const raw_text = _extractText(data);
     if (!raw_text) {
-      console.log('[V202.62 NO_TEXT] candidates:', JSON.stringify(data?.candidates?.map(c=>Object.keys(c))));
+      console.log('[V202.62 NO_TEXT] candidates:', JSON.stringify(data?.candidates?.map(c=>({keys:Object.keys(c), finish:c.finishReason}))));
       return null;
     }
 
