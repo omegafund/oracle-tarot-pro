@@ -3536,7 +3536,7 @@
 }
     </style>
     <!-- [V19 Phase3] 결과창 이미지 캡처용 -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script defer src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <!-- [V19 Phase6] Toss Payments SDK -->
     <script src="https://js.tosspayments.com/v1"></script>
     
@@ -4184,9 +4184,13 @@
             
             var icon = isSajuContext ? '☯' : '✦';
             var title = isSajuContext ? 'PRO 사주 신탁 불러오는 중' : '프리미엄 신탁 불러오는 중';
-            var subtitle = isSajuContext 
-                ? '결제 완료 — 잠시만 기다려주세요<br>곧 정밀 사주 점사가 펼쳐집니다'
-                : '결제 완료 — 잠시만 기다려주세요<br>곧 신탁이 펼쳐집니다';
+            // [v1.0] 대기 화면 진행 단계 표시 — 두 번째 회전을 '다음 단계'로 인지시켜 이탈 방지
+            window._v1Steps = isSajuContext
+                ? ['사주 명식을 계산하는 중…', '풀이를 정성껏 작성하는 중…', '거의 다 되었습니다…']
+                : ['카드의 흐름을 읽는 중…', '신탁을 정성껏 작성하는 중…', '거의 다 되었습니다…'];
+            var subtitle = '<span style="color:#5DD68A;">결제 확인 완료 ✓</span><br>'
+                + '<span id="v1Step">' + window._v1Steps[0] + '</span><br>'
+                + '<span style="font-size:0.74rem;opacity:0.75;">보통 10~30초 걸립니다 · 화면을 닫지 마세요</span>';
             
             // ★ html에 즉시 inline style — DOM 파싱과 동시에 적용 (배경만)
             document.documentElement.style.background = '#0a0612';
@@ -4277,11 +4281,14 @@
                 '  var ov=document.getElementById("paidEarlyOverlay");',
                 '  if(ov && !ov.classList.contains("ready"))ov.classList.add("ready");',
                 '},50);',
-                // ★ V200.8.7 P5 ★ 2초 후 자가 복구 버튼 표시 (사용자 인지)
+                // [v1.0] 진행 단계 문구 전환 (4초 / 12초)
+                'setTimeout(function(){var e=document.getElementById("v1Step");if(e&&window._v1Steps)e.textContent=window._v1Steps[1];},4000);',
+                'setTimeout(function(){var e=document.getElementById("v1Step");if(e&&window._v1Steps)e.textContent=window._v1Steps[2];},12000);',
+                // ★ V200.8.7 P5 ★ 자가 복구 버튼 — [v1.0] 2초→25초 (정상 대기 중 '멈춤' 오인·새로고침 이탈 방지)
                 'setTimeout(function(){',
                 '  var btn=document.getElementById("v87RecoveryBtn");',
                 '  if(btn)btn.classList.add("show");',
-                '},2000);',
+                '},25000);',
                 '\x3C/script>'
             ].join('\n'));
             
