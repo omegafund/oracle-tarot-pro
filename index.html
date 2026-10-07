@@ -5023,7 +5023,7 @@
 
             <!-- 우측: 정보 영역 (가격 제거 — V202.0) -->
             <div class="saju-aux-info">
-                <div class="saju-aux-title">☯ 사주 신탁</div>
+                <div class="saju-aux-title">☯ 사주 보기</div>
                 <div class="saju-aux-divider"></div>
                 <div class="saju-aux-sub">생년월일시 기반 명식 + 대운 분석</div>
 
@@ -5298,7 +5298,7 @@ const PAYMENT_CONFIG = {
 //     - 도메인 자동 감지 (preview/localhost는 무조건 테스트)
 //     - 콘솔에 현재 모드 출력 (디버깅 용이)
 const TOSS_CLIENT_KEY_TEST = 'test_ck_DLJOpm5Qrld55o27nMJ0rPNdxbWn';  // ★ 테스트 키 (공개 가능)
-const TOSS_CLIENT_KEY_LIVE = '';  // ★ 라이브 키 — 1주일 후 토스에서 받아 입력 (예: 'live_ck_xxx')
+const TOSS_CLIENT_KEY_LIVE = 'live_ck_24xLea5zVAkjmpeXqyKx8QAMYNwW';
 
 // 자동 모드 감지 (사장님 V25.22 정신 — 코드 100% 통제)
 const _IS_PREVIEW_OR_LOCAL = (function() {
@@ -25240,7 +25240,7 @@ function reshuffleDeck() {
         
         <!-- 저작권 -->
         <div style="text-align:center; color:#666; font-size: 0.74rem;">
-            © 2026 ZEUS TAROT
+            © 2026 ZEUS TAROT <span id="app-version" style="margin-left:6px; color:#555;">v1.0</span>
         </div>
         
         <!-- ★★★ [V200.2] 결제 잔재 정리 버튼 (사장님 친화적) ★★★ -->
