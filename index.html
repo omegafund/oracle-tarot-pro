@@ -8141,6 +8141,35 @@ console.log('══════════════════════�
     }
     // ═════════════════════════════════════════════════════════
 
+    // ═══ [v1.0.4] 타로 결제 복귀 — 휴대폰 저장분이 없으면 서버 보관본으로 복원 ═══
+    //   원인: 간편결제(앱 전환) 후 새 탭/브라우저로 복귀 → localStorage·sessionStorage 모두 없음 → 홈 복귀
+    //   해결: create-reading 때 보낸 clientState를 fetch-reading(토큰 검증 + 결제확인 건만)으로 회수
+    try {
+        if (!localStorage.getItem('pendingOracle')
+            && !sessionStorage.getItem('pendingOracle')
+            && !window._pendingOracleBackup) {
+            const _pt  = localStorage.getItem('paid_token') || '';
+            const _rid = (params && params.get('rid')) || (_pt.indexOf('V55_') === 0 ? _pt.slice(4) : '');
+            const _tok = (params && params.get('token')) || localStorage.getItem('oracleSessionToken') || '';
+            if (_rid && _tok && _rid.indexOf('sj_') !== 0) {
+                const _ac = new AbortController();
+                const _to = setTimeout(function(){ _ac.abort(); }, 6000);
+                const _r = await fetch(WORKER_BASE_URL_V55 + '/v55/fetch-reading?rid=' + encodeURIComponent(_rid)
+                                       + '&token=' + encodeURIComponent(_tok), { cache: 'no-store', signal: _ac.signal });
+                clearTimeout(_to);
+                const _d = await _r.json();
+                if (_d && typeof _d.clientState === 'string' && _d.clientState) {
+                    localStorage.setItem('pendingOracle', _d.clientState);
+                    console.log('✅ [v1.0.4] 타로 저장분 서버 복원 성공:', _rid);
+                } else {
+                    console.warn('⚠ [v1.0.4] 서버 보관본 없음:', _rid, _d && _d.status);
+                }
+            }
+        }
+    } catch (_e) {
+        console.warn('[v1.0.4] 타로 저장분 서버 복원 실패:', _e && _e.message);
+    }
+
     try {
         // [MOBILE-FIX] pendingOracle 3소스 폴백 (localStorage → sessionStorage → window 메모리)
         const raw = localStorage.getItem('pendingOracle')
@@ -24456,7 +24485,9 @@ async function startTossPayment(planKey, method) {
             sajuInput:   sajuInputForV55,
             queryMode:   (typeof CURRENT_MODE !== 'undefined') ? CURRENT_MODE : 'general',
             loveSubType: (typeof LOVE_SUBTYPE !== 'undefined') ? LOVE_SUBTYPE : null,
-            stockSubType:(typeof STOCK_SUBTYPE !== 'undefined') ? STOCK_SUBTYPE : null
+            stockSubType:(typeof STOCK_SUBTYPE !== 'undefined') ? STOCK_SUBTYPE : null,
+            // [v1.0.4] 타로: 결제 전 상태를 서버에도 보관 (간편결제 앱 전환 후 다른 탭 복귀 대비)
+            clientState: (categoryHint !== 'saju') ? (localStorage.getItem('pendingOracle') || null) : null
         });
         readingId         = v55Result.readingId;
         signedAccessToken = v55Result.signedAccessToken;
@@ -25247,7 +25278,7 @@ function reshuffleDeck() {
         
         <!-- 저작권 -->
         <div style="text-align:center; color:#666; font-size: 0.74rem;">
-            © 2026 ZEUS TAROT <span id="app-version" style="margin-left:6px; color:#555;">v1.0</span>
+            © 2026 ZEUS TAROT <span id="app-version" style="margin-left:6px; color:#555;">v1.0.4</span>
         </div>
         
         <!-- ★★★ [V200.2] 결제 잔재 정리 버튼 (사장님 친화적) ★★★ -->
