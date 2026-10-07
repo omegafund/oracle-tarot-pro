@@ -24600,6 +24600,10 @@ async function handleV55Request(request, env, ctx) {
                 // 카드 (있으면)
                 selectedCards: input.selectedCards || null,
                 
+                // [v1.0.4] 타로 결제 전 클라이언트 상태 (앱 전환 결제 후 복원용 — 결제 확인된 조회에서만 반환)
+                clientState: (typeof input.clientState === 'string' && input.clientState.length <= 200000)
+                    ? input.clientState : null,
+                
                 // 결제
                 amount,
                 paymentVerified: false,
@@ -24768,9 +24772,9 @@ async function handleV55Request(request, env, ctx) {
             // 7. status PAYING → PAID로 전이 가능?
             // (CREATED인 경우 PAYING 거치지 않고 바로 PAID로 — Idempotency 케이스)
             let currentStatus = reading.status;
-            if (currentStatus === STATUS.CREATED) {
-                // 빠른 경로: CREATED → PAYING (가상) → PAID
-                await updateReading(env, readingId, { status: STATUS.PAYING });
+            // [v1.0.3] CREATED → PAYING 전이는 아래 confirmAttempts 기록과 한 번에 저장 (KV 쓰기 2→1)
+            const _v103ToPaying = (currentStatus === STATUS.CREATED);
+            if (_v103ToPaying) {
                 currentStatus = STATUS.PAYING;
             }
             
@@ -24791,9 +24795,9 @@ async function handleV55Request(request, env, ctx) {
                 );
             }
             
-            await updateReading(env, readingId, {
-                confirmAttempts: currentConfirmAttempts + 1
-            });
+            await updateReading(env, readingId, _v103ToPaying
+                ? { status: STATUS.PAYING, confirmAttempts: currentConfirmAttempts + 1 }
+                : { confirmAttempts: currentConfirmAttempts + 1 });
             
             // 8. ★ 토스 결제 검증 ★ (옛 worker.js L20404 패턴)
             console.log(`[V55 confirm-payment] 토스 검증 시작: ${readingId} (${amount}원, attempt ${currentConfirmAttempts + 1})`);
@@ -24821,32 +24825,33 @@ async function handleV55Request(request, env, ctx) {
             //    (이전: PAYING → PAID → FETCHING 빠른 경로)
             const paidAt = Date.now();
             
-            // 9a. PAYING → PAID
-            await updateReading(env, readingId, {
-                status: STATUS.PAID,
-                paymentVerified: true,
-                paymentKey,
-                paidAt,
-                accessGranted: true,  // ★ ChatGPT #7: contentReady와 별도 ★
-                tossApprovedAt: tossResult.approvedAt,
-                paymentMethod: tossResult.method
-            });
-            
-            // 9b. PAID → CONFIRMING (★ Day 4b: 명확화 ★)
-            await updateReading(env, readingId, {
-                status: STATUS.CONFIRMING
-            });
-            
-            // 9c. CONFIRMING → CONSUMED (★ Day 4b: 토큰 소비 단계 명확화 ★)
-            await updateReading(env, readingId, {
-                status: STATUS.CONSUMED,
-                tokenConsumedAt: Date.now()  // ★ ChatGPT #2: replay 차단 ★
-            });
-            
-            // 9d. CONSUMED → FETCHING (★ Gemini fetch 진입 ★)
-            await updateReading(env, readingId, {
-                status: STATUS.FETCHING
-            });
+            // [v1.0.3] 9a~9d 상태 전이(PAYING→PAID→CONFIRMING→CONSUMED→FETCHING)를
+            //   KV 1회 저장으로 통합 (기존: 읽기 4 + 쓰기 4 → 읽기 1 + 쓰기 1)
+            //   · 전이 규칙은 동일하게 단계별로 검증 (isValidTransition 체인)
+            //   · 최종 기록 필드는 기존 4단계 결과와 동일
+            {
+                const _cur = await getReading(env, readingId);
+                if (!_cur) throw new Error(`updateReading: readingId 없음 ${readingId}`);
+                const _chain = [STATUS.PAID, STATUS.CONFIRMING, STATUS.CONSUMED, STATUS.FETCHING];
+                let _from = _cur.status;
+                for (const _to of _chain) {
+                    if (_from !== _to && !isValidTransition(_from, _to)) {
+                        throw new Error(`updateReading: 잘못된 상태 전이 ${_from} → ${_to}`);
+                    }
+                    _from = _to;
+                }
+                await saveReading(env, {
+                    ..._cur,
+                    status: STATUS.FETCHING,
+                    paymentVerified: true,
+                    paymentKey,
+                    paidAt,
+                    accessGranted: true,
+                    tossApprovedAt: tossResult.approvedAt,
+                    paymentMethod: tossResult.method,
+                    tokenConsumedAt: Date.now()
+                });
+            }
             
             // 10. ★ ctx.waitUntil(backgroundGeminiFetch) ★ (★ ChatGPT #10 가장 중요 ★)
             //     Gemini fetch를 백그라운드로 분리 → 모바일 timeout 차단
@@ -24940,6 +24945,7 @@ async function handleV55Request(request, env, ctx) {
                     question: reading.question,
                     sajuInput: reading.sajuInput || null,
                     selectedCards: reading.selectedCards || null,
+                    clientState: (reading.paymentVerified === true) ? (reading.clientState || null) : null,  // [v1.0.4]
                     paidAt: reading.paidAt,
                     contentAt: reading.contentAt
                 }, 200, {
@@ -24956,6 +24962,7 @@ async function handleV55Request(request, env, ctx) {
                     status: STATUS.FAILED,
                     error: reading.error || 'Unknown failure',
                     failedAt: reading.failedAt || null,
+                    clientState: (reading.paymentVerified === true) ? (reading.clientState || null) : null,  // [v1.0.4]
                     message: '결과 생성 실패 — 재시도 또는 문의'
                 }, 200);  // 200 응답 (클라이언트가 화면 표시 가능하도록)
             }
@@ -24986,6 +24993,7 @@ async function handleV55Request(request, env, ctx) {
                     accessGranted: reading.accessGranted === true,
                     contentReady: false,
                     message: 'Gemini fetch 진행 중',
+                    clientState: (reading.paymentVerified === true) ? (reading.clientState || null) : null,  // [v1.0.4]
                     pollCount: pollCount + 1,
                     retryAfterSec,
                     elapsedMs
