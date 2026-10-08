@@ -3670,7 +3670,9 @@
                 const badge = document.getElementById('zeus-version-badge');
                 if (badge) {
                     const versionText = APP_VERSION.replace(/^V/, '');  // 'V200.8.5' → '200.8.5'
-                    badge.textContent = `🛡 V31 #${versionText}`;
+                    // [v1.0] 화면 표시는 하단 #app-version을 따름 (내부 APP_VERSION 'V203'은 서버 버전체크용으로 유지)
+                    var _dv = document.getElementById('app-version');
+                    badge.textContent = '🛡 ' + (_dv ? _dv.textContent.trim() : 'v1.0');
                 }
                 // title도 자동 동기화
                 const titleEl = document.querySelector('title');
@@ -4887,7 +4889,7 @@
             pointer-events: none;
             backdrop-filter: blur(2px);
             -webkit-backdrop-filter: blur(2px);
-        ">🛡 V31 #203</div>
+        ">🛡 v1.0</div>
 
         <!-- [V21.0] ✦ 아치형 별빛 — 하이브리드 (큰 스파클 + 작은 점 + 골드 글로우) -->
         <div class="arch-title-wrapper">
@@ -25321,7 +25323,7 @@ function reshuffleDeck() {
         
         <!-- 저작권 -->
         <div style="text-align:center; color:#666; font-size: 0.74rem;">
-            © 2026 ZEUS TAROT <span id="app-version" style="margin-left:6px; color:#555;">v1.0.7</span>
+            © 2026 ZEUS TAROT <span id="app-version" style="margin-left:6px; color:#555;">v1.0</span>
         </div>
         
         <!-- ★★★ [V200.2] 결제 잔재 정리 버튼 (사장님 친화적) ★★★ -->
