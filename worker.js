@@ -28304,7 +28304,9 @@ ${metrics.cryptoSubtype === 'crypto_buy' ? `
                     // [STABILITY] love 8500→ 카드해석3개+oracle body 모두 수용, 실측 프롬프트 ~13500토큰
                     maxOutputTokens: queryType === 'love' ? 8500
                                    : (queryType === 'stock' || queryType === 'crypto') ? 7000
-                                   : 5500
+                                   : 5500,
+                    // [v1.0.6] 2.5 '생각' 단계 끔 — 생각 시간만큼 대기 단축 + 생각 토큰이 본문 한도를 잠식해 생기던 잘림 방지
+                    thinkingConfig: { thinkingBudget: 0 }
                   },
                   safetySettings: [
                     // [V2.5] 타로앱 특성상 모든 safety filter 완전 해제
@@ -28393,7 +28395,10 @@ ${metrics.cryptoSubtype === 'crypto_buy' ? `
           try {
             // [V203.14] generateContent JSON 방식 — 안정성 우선
             const geminiJson = await geminiResponse.json();
-            let geminiText = geminiJson?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+            // [v1.0.6] 본문 파트만 결합 (thought 파트 제외)
+            const _v106Text = (j) => ((j && j.candidates && j.candidates[0] && j.candidates[0].content && j.candidates[0].content.parts) || [])
+              .filter(p => p && !p.thought && typeof p.text === 'string').map(p => p.text).join('');
+            let geminiText = _v106Text(geminiJson);
 
             // 빈 응답 시 재시도 1회
             if (!geminiText || geminiText.trim().length < 10) {
@@ -28402,7 +28407,7 @@ ${metrics.cryptoSubtype === 'crypto_buy' ? `
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
                   contents: [{ parts: [{ text: masterPrompt }] }],
-                  generationConfig: { temperature: 0.75, topP: 0.95, topK: 40, maxOutputTokens: 8192 },
+                  generationConfig: { temperature: 0.75, topP: 0.95, topK: 40, maxOutputTokens: 8192, thinkingConfig: { thinkingBudget: 0 } },  // [v1.0.6]
                   safetySettings: [
                     { category: "HARM_CATEGORY_HARASSMENT",        threshold: "BLOCK_NONE" },
                     { category: "HARM_CATEGORY_HATE_SPEECH",       threshold: "BLOCK_NONE" },
@@ -28413,7 +28418,7 @@ ${metrics.cryptoSubtype === 'crypto_buy' ? `
               });
               if (_retryR.ok) {
                 const _retryJson = await _retryR.json();
-                geminiText = _retryJson?.candidates?.[0]?.content?.parts?.[0]?.text || geminiText;
+                geminiText = _v106Text(_retryJson) || geminiText;
               }
             }
 
