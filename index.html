@@ -19,6 +19,37 @@
     
     <title>ZEUS · Tarot Oracle</title>
 
+    <!-- [v1.0.7] 결제 복귀 브리지 화면 — 결제확인 페이지 → 메인 페이지 사이의 빈 화면(튐) 제거
+         · 결제확인 페이지와 동일한 모양을 무거운 리소스 로딩 전에 즉시 표시
+         · 실제 대기화면(#paidEarlyOverlay)이 그려지면 스스로 제거, 없으면 DOMContentLoaded에 제거
+         · 표시 전용: 결제·점사 로직과 저장소를 일절 건드리지 않음 -->
+    <script>
+    (function(){
+      try {
+        var p = new URLSearchParams(location.search);
+        if (p.get('paid') !== 'ok' || !p.get('rid') || !p.get('token')) return;
+        var saju = p.get('ctx') === 'saju' || p.get('plan') === 'saju_basic' || p.get('plan') === 'saju_premium';
+        try { if (!saju && localStorage.getItem('sajuPaymentContext') === 'true') saju = true; } catch(_) {}
+        var step = saju ? '사주 명식을 계산하는 중…' : '카드의 흐름을 읽는 중…';
+        document.documentElement.style.background = '#0a0612';
+        document.write(
+          '<style>@keyframes v1BridgeSpin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}</style>' +
+          '<div id="v1Bridge" style="position:fixed;top:0;left:0;width:100vw;height:100vh;background:linear-gradient(135deg,#0a0612 0%,#1a0a2e 100%);z-index:9999998;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:18px;font-family:-apple-system,BlinkMacSystemFont,\'Apple SD Gothic Neo\',\'Malgun Gothic\',sans-serif;">' +
+            '<div style="font-size:4rem;line-height:1;color:#FFD970;animation:v1BridgeSpin 2.5s linear infinite;animation-delay:-' + (Date.now() % 2500) + 'ms;filter:drop-shadow(0 0 18px rgba(255,217,112,0.6));">' + (saju ? '☯' : '✦') + '</div>' +
+            '<div style="color:#FFD970;font-size:1.2rem;font-weight:900;letter-spacing:0.04em;text-align:center;padding:0 20px;">' + (saju ? 'PRO 사주 신탁 불러오는 중' : '프리미엄 신탁 불러오는 중') + '</div>' +
+            '<div style="color:rgba(255,255,255,0.6);font-size:0.85rem;text-align:center;line-height:1.6;margin-top:4px;padding:0 20px;">' +
+              '<span style="color:#5DD68A;">결제 확인 완료 ✓</span><br><span>' + step + '</span><br>' +
+              '<span style="font-size:0.74rem;opacity:0.75;">보통 10~30초 걸립니다 · 화면을 닫지 마세요</span>' +
+            '</div>' +
+          '</div>'
+        );
+        document.addEventListener('DOMContentLoaded', function(){
+          if (!document.getElementById('paidEarlyOverlay')) { var b = document.getElementById('v1Bridge'); if (b) b.remove(); }
+        });
+      } catch(_) {}
+    })();
+    </script>
+
     <!-- ════════════════════════════════════════════════════════════ -->
     <!-- [V24.10] 파비콘 명시 선언 — 사장님 진단                       -->
     <!--   기존: HTML에 <link rel="icon"> 없음 → 브라우저 자동 추측      -->
@@ -4206,6 +4237,7 @@
                 '    z-index: 9999999;',
                 '    display: flex; align-items: center; justify-content: center;',
                 '    flex-direction: column; gap: 18px;',
+                "    font-family: -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif;",  // [v1.0.7] 결제확인 페이지와 동일 글꼴 고정
                 '  }',
                 '  /* ★ V202.51.1 사장님 라이브 결함 ★ subtitle "프리미엄 점사가 펼쳐집니다" 좌측 상단 깜빡임 차단 */',
                 '  /* 원인: <style> 적용 전 paint 1프레임에 자식 텍스트가 inline style 없이 좌측 상단(부모 div 시작점)에 노출 */',
@@ -4213,17 +4245,17 @@
                 '  #paidEarlyOverlay > * { visibility: hidden; }',
                 '  #paidEarlyOverlay.ready > * { visibility: visible; }',
                 '  #paidEarlyOverlay .saju-symbol {',
-                '    font-size: 4rem; color: #FFD970;',
+                '    font-size: 4rem; line-height: 1; color: #FFD970;',  // [v1.0.7] 세 화면 태극 위치 동일화
                 '    animation: paidSpin 2.5s linear infinite;',
                 '    filter: drop-shadow(0 0 18px rgba(255,217,112,0.6));',
                 '  }',
                 '  #paidEarlyOverlay .title {',
                 '    color: #FFD970; font-size: 1.2rem; font-weight: 900;',
-                '    letter-spacing: 0.04em;',
+                '    letter-spacing: 0.04em; text-align: center; padding: 0 20px;',  // [v1.0.7]
                 '  }',
                 '  #paidEarlyOverlay .subtitle {',
                 '    color: rgba(255,255,255,0.6); font-size: 0.85rem;',
-                '    text-align: center; line-height: 1.6; margin-top: 4px;',
+                '    text-align: center; line-height: 1.6; margin-top: 4px; padding: 0 20px;',  // [v1.0.7]
                 '  }',
                 '  @keyframes paidSpin {',
                 '    from { transform: rotate(0deg); }',
@@ -4231,6 +4263,7 @@
                 '  }',
                 '  /* ★ V200.8.7 P5 ★ 자가 복구 버튼 — 사용자 자가 탈출 안전망 */',
                 '  #paidEarlyOverlay .v87-recovery-btn {',
+                '    position: absolute; left: 50%; bottom: 12vh; transform: translateX(-50%); white-space: nowrap;',  // [v1.0.7] 가운데 정렬을 밀어올리지 않도록
                 '    margin-top: 22px;',
                 '    padding: 11px 22px;',
                 '    background: rgba(212,175,55,0.18);',
@@ -4253,7 +4286,7 @@
                 //         ★ 페이지 콘텐츠 잔재(이전 결제창 등) ★가 좌측 여백에 잠시 노출됨
                 //   해결: inline style로 CSS와 동일한 풀스크린+배경+flex 즉시 적용 → paint 1프레임부터 완전 가림
                 '<div id="paidEarlyOverlay" style="position:fixed;top:0;left:0;width:100vw;height:100vh;background:linear-gradient(135deg,#0a0612 0%,#1a0a2e 100%);z-index:9999999;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:18px;">',
-                '  <div class="saju-symbol">' + icon + '</div>',
+                '  <div class="saju-symbol" style="animation-delay:-' + (Date.now() % 2500) + 'ms">' + icon + '</div>',  // [v1.0.7] 회전 위상 연속
                 '  <div class="title">' + title + '</div>',
                 '  <div class="subtitle">' + subtitle + '</div>',
                 '  <div class="v87-recovery-btn" id="v87RecoveryBtn" onclick="(function(){',
@@ -4275,6 +4308,7 @@
                 'requestAnimationFrame(function(){',
                 '  var ov=document.getElementById("paidEarlyOverlay");',
                 '  if(ov)ov.classList.add("ready");',
+                '  requestAnimationFrame(function(){var b=document.getElementById("v1Bridge");if(b)b.remove();});',  // [v1.0.7]
                 '});',
                 // 폴백 — RAF 실패 시 50ms 후 강제 적용 (사용자 영구 hidden 상태 방지)
                 'setTimeout(function(){',
@@ -4350,9 +4384,18 @@
         })();
         if (!window._V31_paidEarlyOverlay) return;
 
-        setTimeout(function() {
+        var _v107GuardStart = Date.now();
+        setTimeout(function _v107Guard() {
             var overlay = document.getElementById('paidEarlyOverlay');
             if (!overlay) return;  // 정상 분기에서 이미 정리됐음 — 작동 X
+            // [v1.0.7] 사주 풀이 요청이 아직 진행 중이면 걷어내지 않고 2초 후 재확인 (최대 45초)
+            //   이유: 여기서 걷어내면 뒤에 깔린 sajuPostPayLoading(다른 모양 태극)이 드러나 화면이 바뀌어 보임
+            //   풀이 요청 자체에 12초/35초 제한과 오류 화면이 있어 무한 대기 없음
+            if ((window.__SAJU_FETCH_RUNNING || document.getElementById('sajuPostPayLoading'))
+                && Date.now() - _v107GuardStart < 45000) {
+                setTimeout(_v107Guard, 2000);
+                return;
+            }
             
             console.warn('🛡 [V200.7.7] STUCK GUARD 작동 — overlay 7초 정지 감지');
             
@@ -25278,7 +25321,7 @@ function reshuffleDeck() {
         
         <!-- 저작권 -->
         <div style="text-align:center; color:#666; font-size: 0.74rem;">
-            © 2026 ZEUS TAROT <span id="app-version" style="margin-left:6px; color:#555;">v1.0.4</span>
+            © 2026 ZEUS TAROT <span id="app-version" style="margin-left:6px; color:#555;">v1.0.7</span>
         </div>
         
         <!-- ★★★ [V200.2] 결제 잔재 정리 버튼 (사장님 친화적) ★★★ -->
