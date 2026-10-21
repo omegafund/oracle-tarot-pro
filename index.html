@@ -3592,7 +3592,8 @@
     (function() {
         'use strict';
         
-        const APP_VERSION = 'V203';  // ★ V202.54.8 긴급 롤백 — 결제 정상화 우선 ★ 사장님 라이브: 전 테스터 카드+카카오 모두 결제 멈춤 → 우리 측 결함 확정. 롤백 영역: (1) V54.0-D 캐시 버스터 ★ 완전 비활성화 ★ (window.location.replace 리다이렉트가 결제 흐름 깨뜨림 추정). (2) V54.0-F 잔재 청소 비활성화 유지. (3) V202.54.7 결제 콜백 보호도 더 이상 필요 X (캐시 버스터 자체 비활성화). 보존 영역: V54 사주 정밀 엔진 14영역 콘텐츠 + Progressive Disclosure UI + 첫 화면 정리. 결제 흐름 V53.5와 동일 작동으로 복귀.
+        const APP_VERSION = 'V202.54.13';  // [v1.0.8] 서버 /version과 일치 (불일치 시 매 세션 첫 접속마다 강제 새로고침 발생) — 화면 표시는 하단 #app-version 사용
+        // (구) const APP_VERSION = 'V203';  // ★ V202.54.8 긴급 롤백 — 결제 정상화 우선 ★ 사장님 라이브: 전 테스터 카드+카카오 모두 결제 멈춤 → 우리 측 결함 확정. 롤백 영역: (1) V54.0-D 캐시 버스터 ★ 완전 비활성화 ★ (window.location.replace 리다이렉트가 결제 흐름 깨뜨림 추정). (2) V54.0-F 잔재 청소 비활성화 유지. (3) V202.54.7 결제 콜백 보호도 더 이상 필요 X (캐시 버스터 자체 비활성화). 보존 영역: V54 사주 정밀 엔진 14영역 콘텐츠 + Progressive Disclosure UI + 첫 화면 정리. 결제 흐름 V53.5와 동일 작동으로 복귀.
         window.APP_VERSION = APP_VERSION;
         
         // ★★★ [V202.54.8 긴급 롤백] 캐시 버스터 ★ 완전 비활성화 ★ ★★★
@@ -8387,7 +8388,8 @@ console.log('══════════════════════�
                     if (wisdomEl)   wisdomEl.style.display   = 'none';
                     if (holdingMsg)  holdingMsg.style.display  = 'none';
                     if (finalBtn)   { finalBtn.style.display = 'inline-block'; finalBtn.style.marginTop = '25px'; }
-                    if (shareActions) shareActions.style.display = 'flex';
+                    // [v1.0.8] 공유 버튼은 제거된 기능 — 미정의 변수 참조 오류로 아래 '복원 후 삭제'가 실행되지 않던 결함 수정
+                    if (typeof shareActions !== 'undefined' && shareActions) shareActions.style.display = 'flex';
                 }
 
                 // 한 번만 복원 — 성공 후 삭제
@@ -22049,6 +22051,7 @@ window.zeusBankSelectPlan = function(btn, plan, amount) {
     // 상태 저장
     window._zeusBankSelectedPlan = plan;
     window._zeusBankSelectedAmount = amount;
+    try { if (window._v108SaveBankPending && localStorage.getItem('zeusBankPending')) window._v108SaveBankPending(plan); } catch(_) {}  // [v1.0.8]
     
     // 입금 금액 동적 갱신
     const amountFmt = '₩' + amount.toLocaleString('ko-KR');
@@ -22353,7 +22356,7 @@ function showPayModal() {
 
             <!-- 계좌이체 폴백 (접힌 상태) -->
             <!-- [V25.5] 토글 버튼 시인성 강화: 골드 톤·테두리·배경 추가 -->
-            <details style="margin-top:6px;">
+            <details style="margin-top:6px;" ontoggle="if(this.open && window._v108SaveBankPending) window._v108SaveBankPending(window._zeusBankSelectedPlan)">
                 <summary style="cursor:pointer;
                                 color:#FFD970;
                                 font-size:0.85rem;
@@ -22506,7 +22509,7 @@ ${tossBtn}
                         <!-- [V31 #176] zeusClaimSubmit plan = 사용자 선택 plan (계좌이체) -->
                         <!--   사주: trial 단일 (CSS 숨김 정책으로 990원만 선택 가능) -->
                         <!--   타로: 사용자가 5종 중 선택한 plan -->
-                        <button onclick="zeusClaimSubmit(window._zeusBankSelectedPlan || (${isSajuContext ? "'trial'" : "'day'"}))" style="
+                        <button onclick="window._v108ClaimNow(window._zeusBankSelectedPlan || (${isSajuContext ? "'trial'" : "'day'"}))" style="
                                 width:100%; padding:11px;
                                 background: linear-gradient(135deg, #2ecc71, #27ae60);
                                 color:#fff; border:none; border-radius:7px;
@@ -22686,6 +22689,7 @@ function zeusClaimResetTracking() {
 
 // 계좌번호 복사 (행동 기록)
 function zeusClaimCopyAccount(accNum) {
+    try { if (window._v108SaveBankPending) window._v108SaveBankPending(window._zeusBankSelectedPlan); } catch(_) {}  // [v1.0.8]
     const cleaned = String(accNum).replace(/[^0-9\-]/g, '');
     // [V24.14] 복사 성공 후 입금자 입력란으로 자동 시선 유도
     //   사장님 진단: "복사 후 입금자 입력란이 어디 있는지 못 찾음"
@@ -22902,6 +22906,7 @@ async function zeusClaimSubmit(plan) {
 
         // 3. 성공 — 토큰 저장 + UI 업데이트
         localStorage.setItem('oracleSessionToken', data.token);
+        try { localStorage.removeItem('zeusBankPending'); localStorage.removeItem('zeusBankPendingOracle'); } catch(_) {}  // [v1.0.8] 정상 완료 → 복구 안내 불필요
         // [V22.1] isPaidUser 즉시 활성화 (결과창 잠금 해제용)
         isPaidUser = true;
         
@@ -23440,6 +23445,7 @@ function showBankTransferModal(planKey) {
     }
     const amountFmt = plan.amount.toLocaleString('ko-KR');
     const cfg = PAYMENT_CONFIG;
+    try { if (window._v108SaveBankPending) window._v108SaveBankPending(planKey); } catch(_) {}  // [v1.0.8]
 
     // 기존 모달 제거 (중복 방지)
     closeBankTransferModal();
@@ -23622,6 +23628,131 @@ function closeBankTransferModal() {
     const el = document.getElementById('bankTransferModalOverlay');
     if (el) el.remove();
 }
+
+// ═══════════════════════════════════════════════════════════════
+// [v1.0.8] 계좌이체 안정화
+//   (1) _v108ClaimNow: 타로(옛 결제창) 송금완료 즉시 처리 — 사주(새 결제창)와 동일 정책
+//       (기존: 결제창 연 지 30초 미만이면 '모래시계 (28초)' 고정 문구로 대기 → 멈춘 것처럼 보임)
+//   (2) _v108SaveBankPending: 계좌이체 화면을 여는 순간 풀이 상태 저장
+//   (3) 복구 안내: 은행 앱 다녀오며 페이지가 새로 열리면(모바일·카카오 인앱 흔함)
+//       "송금 완료 신고하고 결과 보기" 안내 → 기존 결제 복귀 경로(?paid=ok&rid&token)로 결과 복원
+//   ※ 결제(토스) 로직·서버 코드 무변경. 계좌이체 신고는 기존 /claim-payment 그대로 사용
+// ═══════════════════════════════════════════════════════════════
+window._v108ClaimNow = function(plan) {
+    window._zeusClaimActions = window._zeusClaimActions || {};
+    window._zeusClaimActions.startTime = Date.now() - 31000;
+    window._zeusClaimActions.accountCopied = true;
+    if (typeof window._zeusClaimActions.tossClicked === 'undefined') window._zeusClaimActions.tossClicked = false;
+    return zeusClaimSubmit(plan);
+};
+
+window._v108SaveBankPending = function(plan) {
+    try {
+        var isSaju = (window._sajuPaymentContext === true) || (localStorage.getItem('sajuPaymentContext') === 'true');
+        var rec = { savedAt: Date.now(), kind: isSaju ? 'saju' : 'tarot',
+                    plan: plan || window._zeusBankSelectedPlan || (isSaju ? 'saju_basic' : 'day') };
+        if (!isSaju) {
+            var snap = {
+                savedAt:        Date.now(),
+                question:       document.getElementById('seed-input')?.value || '',
+                cachedFullText: (typeof cachedFullText !== 'undefined') ? cachedFullText : '',
+                selectedCards:  (typeof selectedCards !== 'undefined') ? selectedCards : [],
+                serverMetrics:  window._serverMetrics || null,
+                reversedFlags:  window._reversedFlags || [],
+                queryMode:      (typeof CURRENT_MODE !== 'undefined') ? CURRENT_MODE : 'life',
+                loveSubType:    (typeof LOVE_SUBTYPE !== 'undefined') ? LOVE_SUBTYPE : '',
+                stockSubType:   (typeof STOCK_SUBTYPE !== 'undefined') ? STOCK_SUBTYPE : '',
+                reSubType:      (typeof RE_SUBTYPE !== 'undefined') ? RE_SUBTYPE : '',
+                fortuneSubType: (typeof FORTUNE_SUBTYPE !== 'undefined') ? FORTUNE_SUBTYPE : '',
+                activeDomainBar: (typeof resolveActiveDomain === 'function') ? resolveActiveDomain() : ''
+            };
+            if (!snap.cachedFullText) return;   // 되살릴 풀이가 없으면 기록하지 않음
+            localStorage.setItem('zeusBankPendingOracle', JSON.stringify(snap));
+        } else {
+            if (!localStorage.getItem('sajuPendingResult')) return;  // 사주 입력값 없으면 기록하지 않음
+            if (rec.plan !== 'saju_premium') rec.plan = 'saju_basic';
+        }
+        localStorage.setItem('zeusBankPending', JSON.stringify(rec));
+    } catch (e) { console.warn('[v1.0.8] 계좌이체 상태 저장 실패:', e && e.message); }
+};
+
+(function v108BankRecovery() {
+    function show() {
+        try {
+            var p = new URLSearchParams(location.search);
+            if (p.get('paid') || p.get('rid') || p.get('ctx')) return;          // 결제 복귀 흐름 중엔 표시 안 함
+            var raw = localStorage.getItem('zeusBankPending'); if (!raw) return;
+            var rec = JSON.parse(raw);
+            if (!rec || !rec.savedAt || Date.now() - rec.savedAt > 60 * 60 * 1000) {   // 60분 지나면 정리
+                localStorage.removeItem('zeusBankPending'); localStorage.removeItem('zeusBankPendingOracle'); return;
+            }
+            if (rec.kind === 'tarot' && !localStorage.getItem('zeusBankPendingOracle')) return;
+            if (rec.kind === 'saju' && !localStorage.getItem('sajuPendingResult')) return;
+            if (document.getElementById('v108BankBar')) return;
+            var cfg = window.PAYMENT_CONFIG || (typeof PAYMENT_CONFIG !== 'undefined' ? PAYMENT_CONFIG : {});
+            var bar = document.createElement('div');
+            bar.id = 'v108BankBar';
+            bar.style.cssText = 'position:fixed;left:12px;right:12px;bottom:calc(env(safe-area-inset-bottom) + 14px);z-index:100002;'
+                + 'background:linear-gradient(135deg,#132a1d,#0e1a14);border:1px solid rgba(93,214,138,0.55);border-radius:14px;'
+                + 'padding:14px 14px 12px;box-shadow:0 8px 30px rgba(0,0,0,0.55);font-family:-apple-system,BlinkMacSystemFont,\'Apple SD Gothic Neo\',\'Malgun Gothic\',sans-serif;';
+            bar.innerHTML =
+                  '<div style="color:#5DD68A;font-weight:800;font-size:0.95rem;margin-bottom:4px;">🏦 계좌이체 하셨나요?</div>'
+                + '<div style="color:rgba(255,255,255,0.8);font-size:0.8rem;line-height:1.5;margin-bottom:10px;">'
+                +   (rec.kind === 'saju' ? '진행하시던 <b style="color:#FFD970;">사주 결과</b>' : '진행하시던 <b style="color:#FFD970;">타로 결과</b>')
+                +   '를 그대로 이어서 보실 수 있습니다.<br><span style="opacity:0.75;">' + (cfg.bank || '') + ' ' + (cfg.account || '') + ' (' + (cfg.holder || '') + ')</span></div>'
+                + '<input id="v108BankName" type="text" placeholder="입금자명 (송금 시 이름)" autocomplete="name" style="width:100%;box-sizing:border-box;padding:11px 12px;border-radius:9px;border:1px solid #FFD700;background:#fffef5;color:#111;font-size:0.95rem;margin-bottom:8px;">'
+                + '<button id="v108BankGo" type="button" style="width:100%;padding:12px;border:none;border-radius:9px;background:linear-gradient(135deg,#2ecc71,#27ae60);color:#fff;font-weight:900;font-size:0.95rem;">✅ 송금 완료 신고하고 결과 보기</button>'
+                + '<div id="v108BankMsg" style="margin-top:8px;font-size:0.8rem;color:#FFD970;min-height:1em;"></div>'
+                + '<button id="v108BankClose" type="button" style="position:absolute;top:8px;right:10px;background:none;border:none;color:rgba(255,255,255,0.55);font-size:1.1rem;">✕</button>';
+            document.body.appendChild(bar);
+            document.getElementById('v108BankClose').onclick = function() {
+                if (!confirm('계좌이체 진행 기록을 지울까요?\n(아직 송금 전이라면 그대로 두셔도 됩니다)')) return;
+                localStorage.removeItem('zeusBankPending'); localStorage.removeItem('zeusBankPendingOracle'); bar.remove();
+            };
+            document.getElementById('v108BankGo').onclick = async function() {
+                var btn = this, msg = document.getElementById('v108BankMsg');
+                var name = (document.getElementById('v108BankName').value || '').trim();
+                if (name.length < 2) { msg.style.color = '#ff8080'; msg.textContent = '입금자명을 2자 이상 입력해주세요'; return; }
+                btn.disabled = true; btn.style.opacity = '0.7'; msg.style.color = '#FFD970'; msg.textContent = '⏳ 송금 신고 처리 중...';
+                try {
+                    var question = '';
+                    if (rec.kind === 'tarot') { try { question = JSON.parse(localStorage.getItem('zeusBankPendingOracle')).question || ''; } catch(_) {} }
+                    var res = await fetch('https://tarot-api.omegafund01.workers.dev/claim-payment', {
+                        method: 'POST', headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ senderName: name, question: question, plan: rec.plan, accountCopied: true, stayTime: 31, tossClicked: false })
+                    });
+                    var data = await res.json();
+                    if (!data || !data.ok || !data.token) {
+                        btn.disabled = false; btn.style.opacity = '1'; msg.style.color = '#ff8080';
+                        msg.textContent = '❌ ' + ((data && (data.error || data.message)) || '처리 실패') ; return;
+                    }
+                    var rid = 'bank_' + Date.now();
+                    var url;
+                    if (rec.kind === 'saju') {
+                        var sp = (rec.plan === 'saju_premium') ? 'saju_premium' : 'saju_basic';
+                        url = '/?paid=ok&ctx=saju&plan=' + sp + '&rid=' + encodeURIComponent(rid) + '&token=' + encodeURIComponent(data.token) + '&method=' + encodeURIComponent('계좌이체');
+                    } else {
+                        var snap = JSON.parse(localStorage.getItem('zeusBankPendingOracle'));
+                        snap.savedAt = Date.now();
+                        localStorage.setItem('pendingOracle', JSON.stringify(snap));
+                        try { sessionStorage.setItem('pendingOracle', JSON.stringify(snap)); } catch(_) {}
+                        var mode = snap.queryMode || 'general';
+                        var ctx = (mode === 'love' || mode === 'stock' || mode === 'crypto') ? mode : 'general';
+                        var tier = (rec.plan === 'trial') ? 'basic' : 'premium';
+                        url = '/?paid=ok&ctx=' + ctx + '&plan=' + ctx + '_' + tier + '&rid=' + encodeURIComponent(rid) + '&token=' + encodeURIComponent(data.token) + '&method=' + encodeURIComponent('계좌이체');
+                    }
+                    localStorage.removeItem('zeusBankPending'); localStorage.removeItem('zeusBankPendingOracle');
+                    msg.style.color = '#5DD68A'; msg.textContent = '✅ 확인되었습니다 — 결과를 불러옵니다';
+                    setTimeout(function(){ location.replace(url); }, 400);
+                } catch (e) {
+                    btn.disabled = false; btn.style.opacity = '1'; msg.style.color = '#ff8080'; msg.textContent = '❌ 네트워크 오류 — 다시 눌러주세요';
+                }
+            };
+        } catch (e) { console.warn('[v1.0.8] 계좌이체 복구 안내 실패:', e && e.message); }
+    }
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', function(){ setTimeout(show, 1200); });
+    else setTimeout(show, 1200);
+})();
 
 // 계좌이체 송금 완료 신고
 function confirmBankTransfer(planKey) {
@@ -25323,7 +25454,7 @@ function reshuffleDeck() {
         
         <!-- 저작권 -->
         <div style="text-align:center; color:#666; font-size: 0.74rem;">
-            © 2026 ZEUS TAROT <span id="app-version" style="margin-left:6px; color:#555;">v1.0</span>
+            © 2026 ZEUS TAROT <span id="app-version" style="margin-left:6px; color:#555;">v1.0</span><!-- build v1.0.8 -->
         </div>
         
         <!-- ★★★ [V200.2] 결제 잔재 정리 버튼 (사장님 친화적) ★★★ -->
