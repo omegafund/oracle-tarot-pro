@@ -26142,6 +26142,13 @@ export default {
     //    • Cloudflare KV에 발급 기록 저장
     //    • 사장님이 admin.html에서 명단 조회 → 실 입금 대조
     if (url.pathname === "/claim-payment" && request.method === "POST") {
+      // [v1.1.0] 자진 신고식 계좌이체 접수 중단 — 실제 입금 확인 없이 이용권이 발급되던 구조
+      //   재개하려면 아래 if 블록 제거 (관리자 수동 지급 /admin/grant 는 그대로 사용 가능)
+      if (env.MANUAL_BANK_ENABLED !== "true") {
+        return new Response(JSON.stringify({
+          ok: false, error: "계좌이체 신고 접수가 중단되었습니다. 카드 또는 간편결제를 이용해 주세요."
+        }), { status: 200, headers: { ...corsHeaders(), "Content-Type": "application/json" } });
+      }
       try {
         const body = await request.json();
         const {
