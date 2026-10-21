@@ -23754,6 +23754,114 @@ window._v108SaveBankPending = function(plan) {
     else setTimeout(show, 1200);
 })();
 
+// ═══════════════════════════════════════════════════════════════
+// [v1.0.9] 결과 인쇄 / PDF 저장
+//   · 결제한 결과(사주 결과창 / 타로 결과)에만 버튼 노출 → 잠긴 무료 화면 내용 유출 방지
+//   · 버튼 → 흰 바탕 '인쇄용 보기' 화면 → 「인쇄 / PDF 저장」(window.print)
+//   · 카카오톡 인앱 등 인쇄 불가 환경: 안내 + 흰 화면 캡처로 대체 가능
+//   · 표시 전용 기능: 결제·점사 로직 무변경
+// ═══════════════════════════════════════════════════════════════
+(function v109PrintFeature() {
+    var BTN_STYLE = 'display:block;width:100%;max-width:320px;margin:14px auto 4px;padding:12px 14px;border-radius:10px;'
+        + 'background:rgba(212,175,55,0.10);border:1.5px solid rgba(212,175,55,0.65);color:#FFD970;font-weight:800;font-size:0.92rem;cursor:pointer;';
+    function sajuPaid() {
+        try { if (typeof getSajuAccessLevel === 'function') { var lv = getSajuAccessLevel(); if (lv && lv !== 'free') return true; } } catch(_) {}
+        return (typeof isPaidUser !== 'undefined' && isPaidUser === true);
+    }
+    function makeBtn(kind) {
+        var b = document.createElement('button');
+        b.type = 'button'; b.className = 'v109-print-btn'; b.setAttribute('data-no-print', '1');
+        b.style.cssText = BTN_STYLE; b.innerHTML = '🖨 인쇄 / PDF 저장';
+        b.onclick = function(ev) { ev.stopPropagation(); openPrintView(kind); };
+        return b;
+    }
+    function ensureButtons() {
+        try {
+            var m = document.querySelector('#sajuResultModal .pay-modal');
+            if (m && !m.querySelector('.v109-print-btn') && sajuPaid()) m.appendChild(makeBtn('saju'));
+            var fb = document.getElementById('final-reset-btn'), oc = document.getElementById('oracle-content');
+            if (fb && oc && fb.offsetParent && typeof isPaidUser !== 'undefined' && isPaidUser === true
+                && !document.querySelector('#dynamic-action-area .v109-print-btn, #result-view .v109-print-btn')) {
+                fb.parentNode.insertBefore(makeBtn('tarot'), fb);
+            }
+            if (typeof isPaidUser !== 'undefined' && isPaidUser !== true) {   // 결제 해제 상태면 타로 버튼 제거
+                document.querySelectorAll('#result-view .v109-print-btn').forEach(function(x){ x.remove(); });
+            }
+        } catch(_) {}
+    }
+    setInterval(ensureButtons, 1500);
+
+    function sanitize(root) {
+        root.querySelectorAll('button, input, select, textarea, script, iframe, video, audio, [data-no-print], .v109-print-btn').forEach(function(e){ e.remove(); });
+        root.querySelectorAll('[onclick]').forEach(function(e){ if ((e.innerText || e.textContent || '').trim().length < 40) e.remove(); else e.removeAttribute('onclick'); });
+        root.querySelectorAll('[id]').forEach(function(e){ e.removeAttribute('id'); });
+        return root;
+    }
+    function openPrintView(kind) {
+        var src = (kind === 'saju') ? document.querySelector('#sajuResultModal .pay-modal') : document.getElementById('oracle-content');
+        if (!src) { alert('인쇄할 결과를 찾을 수 없습니다.'); return; }
+        var old = document.getElementById('v109PrintArea'); if (old) old.remove();
+        var d = new Date(), pad = function(n){ return (n < 10 ? '0' : '') + n; };
+        var dateStr = d.getFullYear() + '.' + pad(d.getMonth() + 1) + '.' + pad(d.getDate()) + ' ' + pad(d.getHours()) + ':' + pad(d.getMinutes());
+        var q = (kind === 'tarot') ? ((document.getElementById('seed-input') || {}).value || '') : '';
+        var area = document.createElement('div');
+        area.id = 'v109PrintArea';
+        area.innerHTML =
+              '<div class="v109-toolbar" data-no-print="1">'
+            +   '<button type="button" id="v109DoPrint">🖨 인쇄 / PDF 저장</button>'
+            +   '<button type="button" id="v109Close">닫기</button>'
+            + '</div>'
+            + '<div class="v109-tip" data-no-print="1">인쇄 창에서 <b>「PDF로 저장」</b>을 고르면 파일로 저장됩니다.</div>'
+            + '<div class="v109-head"><div class="v109-brand">ZEUS TAROT · 제우스 타로</div>'
+            +   '<div class="v109-kind">' + (kind === 'saju' ? '사주 신탁 결과' : '타로 신탁 결과') + '</div>'
+            +   '<div class="v109-date">' + dateStr + '</div>'
+            +   (q ? '<div class="v109-q">질문: ' + q.replace(/[<>&]/g, function(c){ return {'<':'&lt;','>':'&gt;','&':'&amp;'}[c]; }) + '</div>' : '')
+            + '</div>'
+            + '<div class="v109-body"></div>'
+            + '<div class="v109-foot">zeustarot.com · 본 결과는 엔터테인먼트 콘텐츠이며, 중요한 결정은 본인 판단을 우선하세요.</div>';
+        area.querySelector('.v109-body').appendChild(sanitize(src.cloneNode(true)));
+        if (!document.getElementById('v109PrintStyle')) {
+            var st = document.createElement('style'); st.id = 'v109PrintStyle';
+            st.textContent =
+                  '#v109PrintArea{position:fixed;inset:0;z-index:2147483000;overflow:auto;background:#fff;color:#111;padding:16px 18px 40px;'
+                + 'font-family:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Malgun Gothic","Noto Sans KR",sans-serif;line-height:1.65;-webkit-overflow-scrolling:touch;}'
+                + '#v109PrintArea *{color:#111 !important;-webkit-text-fill-color:#111 !important;background:transparent !important;box-shadow:none !important;text-shadow:none !important;filter:none !important;'
+                + 'animation:none !important;transform:none !important;position:static !important;max-height:none !important;overflow:visible !important;opacity:1 !important;visibility:visible !important;border-color:#ccc !important;}'
+                + '#v109PrintArea img{max-width:110px !important;height:auto !important;}'
+                + '#v109PrintArea svg{max-width:260px !important;height:auto !important;display:block;margin:0 auto;}'
+                + '#v109PrintArea .v109-body > *{width:auto !important;max-width:none !important;margin:0 !important;padding:0 !important;border:none !important;}'
+                + '#v109PrintArea .v109-body *{max-width:100% !important;}'
+                + '#v109PrintArea .v109-toolbar{display:flex;gap:8px;position:sticky !important;top:0;padding:6px 0 10px;background:#fff !important;z-index:2;}'
+                + '#v109PrintArea .v109-toolbar button{flex:1;padding:12px;border-radius:9px;font-weight:800;font-size:0.95rem;border:1px solid #b8962e !important;}'
+                + '#v109PrintArea #v109DoPrint{background:#D4AF37 !important;}'
+                + '#v109PrintArea .v109-tip{font-size:0.78rem;color:#555 !important;margin-bottom:12px;}'
+                + '#v109PrintArea .v109-head{text-align:center;border-bottom:2px solid #D4AF37 !important;padding-bottom:10px;margin-bottom:14px;}'
+                + '#v109PrintArea .v109-brand{font-weight:900;font-size:1.15rem;letter-spacing:0.06em;}'
+                + '#v109PrintArea .v109-kind{font-weight:700;margin-top:2px;}'
+                + '#v109PrintArea .v109-date,#v109PrintArea .v109-q{font-size:0.85rem;color:#444 !important;margin-top:2px;}'
+                + '#v109PrintArea .v109-foot{margin-top:22px;padding-top:10px;border-top:1px solid #ccc !important;font-size:0.75rem;color:#666 !important;text-align:center;}'
+                + '@media print{@page{margin:14mm;}html,body{background:#fff !important;}'
+                + 'body > *:not(#v109PrintArea){display:none !important;}'
+                + '#v109PrintArea{position:static !important;inset:auto;overflow:visible !important;padding:0 !important;}'
+                + '#v109PrintArea [data-no-print]{display:none !important;}'
+                + '#v109PrintArea *{-webkit-print-color-adjust:exact;print-color-adjust:exact;}'
+                + '#v109PrintArea p,#v109PrintArea li,#v109PrintArea h1,#v109PrintArea h2,#v109PrintArea h3{page-break-inside:avoid;break-inside:avoid-page;}'
+                + '#v109PrintArea h1,#v109PrintArea h2,#v109PrintArea h3{page-break-after:avoid;break-after:avoid-page;}}';
+            document.head.appendChild(st);
+        }
+        document.body.appendChild(area);
+        document.getElementById('v109Close').onclick = function(){ area.remove(); };
+        document.getElementById('v109DoPrint').onclick = function() {
+            if (/KAKAOTALK/i.test(navigator.userAgent)) {
+                alert('카카오톡 안에서는 인쇄가 되지 않습니다.\n\n· 지금 이 흰 화면을 캡처해서 저장하시거나\n· 화면 오른쪽 아래 ⋮ → 「다른 브라우저로 열기」 후\n  결과를 다시 열어 인쇄해 주세요.');
+                return;
+            }
+            try { window.print(); } catch (e) { alert('이 브라우저에서는 인쇄를 지원하지 않습니다. 이 흰 화면을 캡처해서 저장해 주세요.'); }
+        };
+    }
+    window._v109OpenPrintView = openPrintView;
+})();
+
 // 계좌이체 송금 완료 신고
 function confirmBankTransfer(planKey) {
     const senderInput = document.getElementById('bankSenderName');
@@ -25454,7 +25562,7 @@ function reshuffleDeck() {
         
         <!-- 저작권 -->
         <div style="text-align:center; color:#666; font-size: 0.74rem;">
-            © 2026 ZEUS TAROT <span id="app-version" style="margin-left:6px; color:#555;">v1.0</span><!-- build v1.0.8 -->
+            © 2026 ZEUS TAROT <span id="app-version" style="margin-left:6px; color:#555;">v1.0</span><!-- build v1.0.9 -->
         </div>
         
         <!-- ★★★ [V200.2] 결제 잔재 정리 버튼 (사장님 친화적) ★★★ -->
