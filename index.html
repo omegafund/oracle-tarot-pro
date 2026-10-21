@@ -22195,6 +22195,14 @@ function showPayModal() {
                     ${isSajuContext ? '대운 8단계 + 십성 + 잠재력 정밀 (24시간)' : '24시간 한정 · 연애/운세 모두 무제한'}
                 </div>
                 </button> 
+               </div>
+               <!-- [v1.1.1] 토스 계좌이체 — 손님 은행 계좌에서 실제 출금, 토스가 결제 확인 (카드와 같은 결제 확인 흐름) -->
+               <div style="margin-top:10px; padding:10px 12px; border:1px solid rgba(93,173,226,0.45); border-radius:12px; background:rgba(52,152,219,0.08);">
+                   <div style="font-size:0.78rem; font-weight:800; color:#8fc9f0; margin-bottom:8px; text-align:center;">🏦 계좌이체로 결제 (내 은행 계좌에서 바로 출금)</div>
+                   <div style="display:flex; gap:8px;">
+                       <button type="button" class="pay-plan-btn" data-plan="bank" onclick="startTossPayment(${isSajuContext ? "'saju_basic'" : "'trial'"}, '계좌이체')" style="flex:1; padding:11px 6px; border-radius:10px; border:1px solid rgba(143,201,240,0.6); background:rgba(255,255,255,0.06); color:#e8f4fc; font-weight:800; font-size:0.86rem; cursor:pointer;">₩990</button>
+                       <button type="button" class="pay-plan-btn" data-plan="bank" onclick="startTossPayment('saju_premium', '계좌이체')" style="flex:1; padding:11px 6px; border-radius:10px; border:1px solid rgba(143,201,240,0.6); background:rgba(255,255,255,0.06); color:#e8f4fc; font-weight:800; font-size:0.86rem; cursor:pointer;">₩4,900</button>
+                   </div>
                </div>`;
 
     // 기존 계좌이체 섹션 (폴백 — 접힌 상태)
@@ -23389,6 +23397,22 @@ function showPaymentMethodModal(planKey) {
                         <span>신용/체크카드</span>
                     </span>
                     <span style="font-size:0.72rem; opacity:0.7; font-weight:500;">직접 입력</span>
+                </button>
+
+                <!-- [v1.1.1] 토스 계좌이체 — 실제 출금 확인 -->
+                <button onclick="startTossPayment('${planKey}','계좌이체'); closePaymentMethodModal();" style="
+                    display:flex; align-items:center; justify-content:space-between;
+                    width:100%; padding:13px 16px;
+                    background: rgba(52,152,219,0.10);
+                    color: rgba(255,255,255,0.92);
+                    border: 1px solid rgba(52,152,219,0.45);
+                    border-radius: 10px;
+                    font-weight: 700; font-size: 0.92rem; cursor: pointer;">
+                    <span style="display:flex; align-items:center; gap:10px;">
+                        <span style="font-size:1.2rem;">🏦</span>
+                        <span>계좌이체</span>
+                    </span>
+                    <span style="font-size:0.72rem; opacity:0.7; font-weight:500;">내 계좌에서 바로 출금</span>
                 </button>
 
                 <!-- [V26.5] 계좌이체 — 사장님 진단 안 (글로벌 표준 패턴)
@@ -25573,7 +25597,7 @@ function reshuffleDeck() {
         
         <!-- 저작권 -->
         <div style="text-align:center; color:#666; font-size: 0.74rem;">
-            © 2026 ZEUS TAROT <span id="app-version" style="margin-left:6px; color:#555;">v1.0</span><!-- build v1.1.0 -->
+            © 2026 ZEUS TAROT <span id="app-version" style="margin-left:6px; color:#555;">v1.0</span><!-- build v1.1.1 -->
         </div>
         
         <!-- ★★★ [V200.2] 결제 잔재 정리 버튼 (사장님 친화적) ★★★ -->
