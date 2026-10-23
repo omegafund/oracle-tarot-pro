@@ -1,6 +1,7 @@
 // ══════════════════════════════════════════════════════════════════
 // 🏛️ ZEUS ORACLE WORKER V203 — Single Source of Truth
 //   [V203] trend 점수표 단일화·역방향 약화·양극가드(V203.1) + 점사 멈춤 수정(V203.2)
+//   [v1.2.0] 2027 정미년 신년사주(NY27): 계산 모듈 + /saju/newyear/* + 결제 subtype newyear2027
 //   [v1.1.2] 자시 일주 수정(0시→전날 오류, 23시→다음 날) + 1990년 이전 음력 입력 500 오류 수정(음력설 표 1900-2030 공유)
 // ══════════════════════════════════════════════════════════════════
 // [V2 변경점]
@@ -22383,7 +22384,7 @@ function normalizeFeature(feature) {
 
 // ★ Day 2: 카테고리별 subtype 화이트리스트 ★
 const VALID_SUBTYPES = {
-    saju:    ['', 'fortune', 'medium', 'long'],   // 시계열 또는 빈값
+    saju:    ['', 'fortune', 'medium', 'long', 'newyear2027'],   // 시계열 또는 빈값 · [v1.2.0] 신년사주
     love:    ['', 'jjak', 'couple', 'married'],   // 짝사랑/커플/기혼
     stock:   ['', 'buy_timing', 'short', 'long'], // 매수/단타/장기
     crypto:  ['', 'buy_timing', 'short', 'long'],
@@ -23204,6 +23205,12 @@ async function backgroundGeminiFetch(env, readingId) {
             return;
         }
         
+        // [v1.2.0 NY27] 신년사주는 /saju/newyear/report가 생성 (waitUntil 30초 한도 회피) — 여기서는 건너뜀
+        if (reading.category === 'saju' && reading.subtype === 'newyear2027') {
+            console.log(`[V55 background] 신년사주 — report 엔드포인트에서 생성: ${readingId}`);
+            return;
+        }
+
         // ★ Day 4b BLOCK 4: generationAttempts 증가 ★
         const currentAttempts = reading.generationAttempts || 0;
         const MAX_GENERATION_ATTEMPTS = 3;
@@ -24937,6 +24944,7 @@ async function handleV55Request(request, env, ctx) {
                     metrics: reading.metrics || null,
                     category: reading.category,
                     feature: reading.feature,
+                    subtype: reading.subtype || '',
                     question: reading.question,
                     sajuInput: reading.sajuInput || null,
                     selectedCards: reading.selectedCards || null,
@@ -25044,6 +25052,720 @@ async function handleV55Request(request, env, ctx) {
 
 
 
+// ════════════════════════════════════════════════════════════════════════════════
+// [NY27] 2027 정미년(丁未年) 신년사주 계산 모듈 — v1.0
+//   원칙: 명리 계산은 코드가, 해석 문장은 AI가. 기존 사주 상품 로직과 완전 분리.
+//   판정 순서: 특수격(지지 국·방 성립) → 조후 → 억부 (비겁·인성 우선순위는 다수 자료 기준)
+//   점수 2층: 바탕 운(용신 길흉) + 사건 신호(일간·일지·관성·자녀궁의 합충형, 격 완성)
+//   검증: 사장님 확정 정답지 14건 회귀 테스트 통과 후 배포
+// ════════════════════════════════════════════════════════════════════════════════
+const NY27_VERSION = 'ny27-1.0';
+const NY_ELS = ['목', '화', '토', '금', '수'];
+const NY_GEN = { 목: '화', 화: '토', 토: '금', 금: '수', 수: '목' };      // A가 B를 생
+const NY_CTL = { 목: '토', 토: '수', 수: '화', 화: '금', 금: '목' };      // A가 B를 극
+const NY_GEN_BY = { 목: '수', 화: '목', 토: '화', 금: '토', 수: '금' };
+const NY_CTL_BY = { 목: '금', 화: '수', 토: '목', 금: '화', 수: '토' };
+const NY_STEMS = ['갑', '을', '병', '정', '무', '기', '경', '신', '임', '계'];
+const NY_BRANCHES = ['자', '축', '인', '묘', '진', '사', '오', '미', '신', '유', '술', '해'];
+const NY_HANJA = { 갑:'甲',을:'乙',병:'丙',정:'丁',무:'戊',기:'己',경:'庚',신:'辛',임:'壬',계:'癸' };
+const NY_HANJA_B = { 자:'子',축:'丑',인:'寅',묘:'卯',진:'辰',사:'巳',오:'午',미:'未',신:'申',유:'酉',술:'戌',해:'亥' };
+const NY_POS_KO = { year: '년', month: '월', day: '일', hour: '시', daewoon: '대운', seun: '세운', wolun: '월운' };
+
+function nyStemEl(s) { return V31_STEM_INFO[s] ? V31_STEM_INFO[s].element : null; }
+function nyStemYang(s) { return V31_STEM_INFO[s] ? V31_STEM_INFO[s].yinyang === '양' : null; }
+function nyBranchEl(b) { return V31_BRANCH_INFO[b] ? V31_BRANCH_INFO[b].element : null; }
+function nyBranchMainStem(b) { const h = V31_BRANCH_INFO[b].hidden; return h.reduce((a, x) => (x.weight > a.weight ? x : a), h[0]).stem; }
+function nyGz(stem, branch) { return { stem, branch, ko: stem + branch, hanja: (NY_HANJA[stem] || '') + (NY_HANJA_B[branch] || '') }; }
+
+// ── 십성 ──
+function nyGroup(dmEl, el) {
+  if (el === dmEl) return '비겁';
+  if (NY_GEN[dmEl] === el) return '식상';
+  if (NY_CTL[dmEl] === el) return '재성';
+  if (NY_CTL_BY[dmEl] === el) return '관성';
+  return '인성';
+}
+function nyTenGod(dm, stem) {
+  const de = nyStemEl(dm), se = nyStemEl(stem);
+  if (!de || !se) return null;
+  const same = nyStemYang(dm) === nyStemYang(stem);
+  const g = nyGroup(de, se);
+  return ({ 비겁: same ? '비견' : '겁재', 식상: same ? '식신' : '상관', 재성: same ? '편재' : '정재',
+            관성: same ? '편관' : '정관', 인성: same ? '편인' : '정인' })[g];
+}
+function nyTenGodBranch(dm, branch) { return nyTenGod(dm, nyBranchMainStem(branch)); }
+
+// ── 12운성 ──
+const NY_STAGES = ['장생', '목욕', '관대', '건록', '제왕', '쇠', '병', '사', '묘', '절', '태', '양'];
+const NY_CHANGSAENG = { 갑: '해', 병: '인', 무: '인', 경: '사', 임: '신', 을: '오', 정: '유', 기: '유', 신: '자', 계: '묘' };
+function nyStage(stem, branch) {
+  const start = NY_BRANCHES.indexOf(NY_CHANGSAENG[stem]); const b = NY_BRANCHES.indexOf(branch);
+  if (start < 0 || b < 0) return null;
+  const k = nyStemYang(stem) ? (b - start + 12) % 12 : (start - b + 12) % 12;
+  return NY_STAGES[k];
+}
+
+// ── 합충형파해원진 ──
+const NY_STEM_HAP = [['갑', '기', '토'], ['을', '경', '금'], ['병', '신', '수'], ['정', '임', '목'], ['무', '계', '화']];
+const NY_STEM_CHUNG = [['갑', '경'], ['을', '신'], ['병', '임'], ['정', '계']];
+const NY_YUKHAP = [['자', '축', '토'], ['인', '해', '목'], ['묘', '술', '화'], ['진', '유', '금'], ['사', '신', '수'], ['오', '미', '화']];
+const NY_CHUNG = [['자', '오'], ['축', '미'], ['인', '신'], ['묘', '유'], ['진', '술'], ['사', '해']];
+const NY_HYUNG = [['인', '사'], ['사', '신'], ['인', '신'], ['축', '술'], ['술', '미'], ['축', '미'], ['자', '묘']];
+const NY_JAHYUNG = ['진', '오', '유', '해'];
+const NY_PA = [['자', '유'], ['묘', '오'], ['진', '축'], ['미', '술'], ['인', '해'], ['사', '신']];
+const NY_HAE = [['자', '미'], ['축', '오'], ['인', '사'], ['묘', '진'], ['신', '해'], ['유', '술']];
+const NY_WONJIN = [['자', '미'], ['축', '오'], ['인', '유'], ['묘', '신'], ['진', '해'], ['사', '술']];
+const NY_SAMHAP = [[['신', '자', '진'], '수'], [['해', '묘', '미'], '목'], [['인', '오', '술'], '화'], [['사', '유', '축'], '금']];
+const NY_BANGHAP = [[['인', '묘', '진'], '목'], [['사', '오', '미'], '화'], [['신', '유', '술'], '금'], [['해', '자', '축'], '수']];
+function nyPair(list, a, b) { // a !== b 인 서로 다른 글자 쌍만 (같은 지지 오판 방지)
+  if (a === b) return null;
+  return list.find(p => (p[0] === a && p[1] === b) || (p[0] === b && p[1] === a)) || null;
+}
+// 두 지지 사이 관계 목록
+function nyBranchPairRel(a, b) {
+  const r = [];
+  let p;
+  if ((p = nyPair(NY_YUKHAP, a, b))) r.push({ type: '육합', el: p[2] });
+  if (nyPair(NY_CHUNG, a, b)) r.push({ type: '충' });
+  if (nyPair(NY_HYUNG, a, b)) r.push({ type: '형' });
+  if (a === b && NY_JAHYUNG.includes(a)) r.push({ type: '자형' });
+  if (nyPair(NY_PA, a, b)) r.push({ type: '파' });
+  if (nyPair(NY_HAE, a, b)) r.push({ type: '해' });
+  if (nyPair(NY_WONJIN, a, b)) r.push({ type: '원진' });
+  for (const [g, el] of NY_SAMHAP) if (g.includes(a) && g.includes(b) && a !== b) r.push({ type: '반합', el, group: g.join('') });
+  return r;
+}
+function nyStemPairRel(a, b) {
+  const r = []; let p;
+  if ((p = nyPair(NY_STEM_HAP, a, b))) r.push({ type: '천간합', el: p[2] });
+  if (nyPair(NY_STEM_CHUNG, a, b)) r.push({ type: '천간충' });
+  return r;
+}
+// 지지 집합에서 완성되는 삼합·방합 (newBranches 중 하나 이상이 참여해야 "완성 신호")
+function nyCompletions(baseBranches, newBranches) {
+  const all = [...baseBranches, ...newBranches];
+  const out = [];
+  for (const [kind, table] of [['삼합', NY_SAMHAP], ['방합', NY_BANGHAP]]) {
+    for (const [g, el] of table) {
+      if (g.every(x => all.includes(x)) && newBranches.some(x => g.includes(x)) && !g.every(x => baseBranches.includes(x))) {
+        out.push({ type: kind, group: g.join(''), el });
+      }
+    }
+  }
+  // 삼형 완성
+  for (const g of [['인', '사', '신'], ['축', '술', '미']]) {
+    if (g.every(x => all.includes(x)) && newBranches.some(x => g.includes(x)) && !g.every(x => baseBranches.includes(x))) out.push({ type: '삼형', group: g.join('') });
+  }
+  return out;
+}
+
+// ── 오행 가중 분포 ──
+//   천간 1.0 (월간 1.1), 지지는 지장간 가중치 × 자리 가중 (월지 2.0 = 월령, 일지 1.3)
+function nyDistribution(p) {
+  const d = { 목: 0, 화: 0, 토: 0, 금: 0, 수: 0 }, ex = { 목: 0, 화: 0, 토: 0, 금: 0, 수: 0 };
+  const sw = { year: 1.0, month: 1.1, day: 1.0, hour: 1.0 }, bw = { year: 1.0, month: 2.0, day: 1.3, hour: 1.0 };
+  for (const k of ['year', 'month', 'day', 'hour']) {
+    if (!p[k]) continue;
+    const se = nyStemEl(p[k].stem); d[se] += sw[k]; if (k !== 'day') ex[se] += sw[k];
+    for (const h of V31_BRANCH_INFO[p[k].branch].hidden) { const he = nyStemEl(h.stem); d[he] += h.weight * bw[k]; ex[he] += h.weight * bw[k]; }
+  }
+  const norm = o => { const t = Object.values(o).reduce((a, b) => a + b, 0) || 1; const r = {}; for (const e of NY_ELS) r[e] = Math.round(o[e] / t * 1000) / 10; return r; };
+  return { share: norm(d), shareExSelf: norm(ex) };
+}
+
+// ── 강약 ──
+function nyStrength(p, dist) {
+  const dm = p.day.stem, dmEl = nyStemEl(dm);
+  const sh = dist.shareExSelf;
+  const g = { 비겁: 0, 식상: 0, 재성: 0, 관성: 0, 인성: 0 };
+  for (const e of NY_ELS) g[nyGroup(dmEl, e)] += sh[e];
+  const self = g.비겁 + g.인성;
+  const monthGroup = nyGroup(dmEl, nyBranchEl(p.month.branch));
+  const deukryeong = monthGroup === '비겁' || monthGroup === '인성';
+  let level;
+  if (self >= 55) level = '신강'; else if (self >= 46) level = '중화(약강)'; else if (self >= 36) level = '중화(약약)'; else level = '신약';
+  const strong = self >= 50;
+  return { groups: g, selfShare: Math.round(self * 10) / 10, deukryeong, monthGroup, level, strong };
+}
+
+// ── 특수격(종왕) — 지지 국·방 성립 + 극하는 오행(관살) 투간 없음 ──
+function nyJongCheck(p, dist, st) {
+  const dmEl = nyStemEl(p.day.stem);
+  const branches = ['year', 'month', 'day', 'hour'].filter(k => p[k]).map(k => p[k].branch);
+  const ownShare = dist.share[dmEl] + dist.share[NY_GEN_BY[dmEl]];
+  const result = { candidate: ownShare >= 75, formed: false, reasons: [] };
+  if (!result.candidate) return result;
+  const guk = [...NY_SAMHAP, ...NY_BANGHAP].find(([g, el]) => el === dmEl && g.every(x => branches.includes(x)));
+  const gwanStem = ['year', 'month', 'hour'].some(k => p[k] && nyGroup(dmEl, nyStemEl(p[k].stem)) === '관성');
+  const jaeStem = ['year', 'month', 'hour'].some(k => p[k] && nyGroup(dmEl, nyStemEl(p[k].stem)) === '재성');
+  if (!guk) result.reasons.push('지지에 일간 오행의 국·방이 완성되지 않음');
+  if (gwanStem) result.reasons.push('관살 투간');
+  if (jaeStem) result.reasons.push('재성 투간');
+  result.formed = !!guk && !gwanStem && !jaeStem;
+  return result;
+}
+
+// ── 용신 판정 ──
+function nyYongshin(p, dist, st) {
+  const dmEl = nyStemEl(p.day.stem);
+  const sh = dist.share;
+  const mb = p.month.branch;
+  const summer = ['사', '오', '미'].includes(mb), winter = ['해', '자', '축'].includes(mb);
+  const jong = nyJongCheck(p, dist, st);
+  let method, yong, cause, basis = [];
+  if (jong.formed) {
+    method = '종왕격'; yong = dmEl; cause = NY_CTL_BY[dmEl]; basis.push('일간 오행이 지지 국·방을 이루고 관살·재성이 투간하지 않음');
+  } else if (summer && sh.수 < 16) {
+    method = '조후'; yong = '수'; cause = '화'; basis.push('여름 출생에 수 기운 부족 — 조열 해소가 최우선');
+  } else if (winter && sh.화 < 10) {
+    method = '조후'; yong = '화'; cause = '수'; basis.push('겨울 출생에 화 기운 부족 — 한랭 해소가 최우선');
+  } else if (sh.수 >= 33 && sh.화 < 6) {
+    method = '조후'; yong = '화'; cause = '수'; basis.push('수 기운 과다·화 부재 — 한습 해소');
+  } else if (!st.strong) {
+    method = '억부(신약)';
+    const g = st.groups;
+    const drains = [['식상', g.식상], ['재성', g.재성], ['관성', g.관성]].sort((a, b) => b[1] - a[1]);
+    const top = drains[0][0];
+    const elOf = grp => NY_ELS.find(e => nyGroup(dmEl, e) === grp);
+    cause = elOf(top);
+    if (top === '재성' && g.관성 < 20) { yong = dmEl; basis.push('재성 과다 신약 — 비겁으로 재를 나눔(다수 자료 기준)'); }
+    else { yong = NY_GEN_BY[dmEl]; basis.push(top === '관성' ? '관살 과다 신약 — 인성으로 살인상생' : top === '식상' ? '식상 과다 신약 — 인성으로 식상 제어(상관패인)' : '재·관이 함께 강한 신약 — 인성으로 관인상생'); }
+  } else {
+    method = '억부(신강)';
+    const g = st.groups;
+    if (g.인성 > g.비겁) { yong = NY_CTL[dmEl]; cause = NY_GEN_BY[dmEl]; basis.push('인성 과다 신강 — 재성으로 인성 제어'); }
+    else { const gw = g.관성 >= 8; yong = gw ? NY_CTL_BY[dmEl] : NY_GEN[dmEl]; cause = dmEl; basis.push(gw ? '비겁 과다 신강 — 관성으로 제어' : '비겁 과다 신강 — 식상으로 설기'); }
+  }
+  // 희신
+  const yongGroup = nyGroup(dmEl, yong);
+  let hee = [];
+  const gen = NY_GEN_BY[yong], genGroup = nyGroup(dmEl, gen);
+  const gwanHeavy = st.groups.관성 >= 25;
+  if (method.startsWith('억부(신약)') && yongGroup === '인성') hee = gwanHeavy ? [dmEl] : [dmEl, NY_GEN_BY[yong]]; // 비겁 (+관인상생)
+  else if (method.startsWith('억부(신약)') && yongGroup === '비겁') hee = [NY_GEN_BY[dmEl]];                       // 인성
+  else if (!st.strong && genGroup === '관성' && gwanHeavy) hee = [NY_GEN[yong]];                                   // 관살이 이미 무거우면 관 희신 금지
+  else if ((st.strong || st.selfShare >= 40) && genGroup === '비겁') hee = [NY_GEN[yong], gen];                   // 세력 충분 — 비겁은 보조
+  else if (st.strong && genGroup === '인성') hee = [NY_GEN[yong], gen];
+  else hee = [gen];
+  const gi = cause && cause !== yong ? cause : NY_CTL_BY[yong];
+  let gu = NY_CTL_BY[yong] !== gi ? NY_CTL_BY[yong] : NY_GEN_BY[gi];
+  if (gu === yong) gu = NY_GEN_BY[gi];
+  hee = [...new Set(hee.filter(e => e !== yong && e !== gi && e !== gu))];
+  if (!hee.length) hee = [NY_GEN[yong] !== gi ? NY_GEN[yong] : NY_GEN_BY[yong]];
+  return { method, yong, hee, gi, gu, basis, jong, yongGroup, confidence: method === '조후' || method === '종왕격' ? 'high' : (Math.abs(st.selfShare - 50) > 8 ? 'high' : 'medium') };
+}
+
+// ── 대운 (절기 시각 기준 정밀 대운수) ──
+function nyDaewoon(norm, saju) {
+  const p = saju.pillars; const sd = saju.meta.solarDate;
+  const yearYang = nyStemYang(p.year.stem);
+  const forward = (norm.gender === 'male') === yearYang;
+  const hour = typeof norm.hour === 'number' ? norm.hour : 12;
+  const birthJD = v31ToJulianDay(sd.year, sd.month, sd.day, hour, 0) - 9 / 24;
+  // 12절기 황경: 입춘315 경칩345 청명15 입하45 망종75 소서105 입추135 백로165 한로195 입동225 대설255 소한285
+  const terms = [];
+  for (let y = sd.year - 1; y <= sd.year + 1; y++) {
+    for (let i = 0; i < 12; i++) { const lon = (285 + i * 30) % 360; const m = i + 1; terms.push(v31SolarTermJD(lon, y, m, 6)); }
+  }
+  terms.sort((a, b) => a - b);
+  let days;
+  if (forward) days = terms.find(t => t > birthJD) - birthJD;
+  else days = birthJD - terms.filter(t => t <= birthJD).pop();
+  const startAge = Math.round((days / 3) * 100) / 100;
+  const startYear = sd.year + (sd.month - 1) / 12 + sd.day / 365 + startAge;
+  const mi = NY_STEMS.indexOf(p.month.stem), mb = NY_BRANCHES.indexOf(p.month.branch);
+  const list = [];
+  for (let i = 1; i <= 10; i++) {
+    const s = NY_STEMS[((mi + (forward ? i : -i)) % 10 + 10) % 10], b = NY_BRANCHES[((mb + (forward ? i : -i)) % 12 + 12) % 12];
+    const from = startYear + (i - 1) * 10;
+    list.push({ ...nyGz(s, b), age: Math.round((startAge + (i - 1) * 10) * 10) / 10, fromYear: Math.round(from * 10) / 10, toYear: Math.round((from + 10) * 10) / 10 });
+  }
+  return { forward, startAge, list };
+}
+function nyDaewoonAt(dw, yearFloat) { return dw.list.find(d => yearFloat >= d.fromYear && yearFloat < d.toYear) || null; }
+
+// ── 2027 월 구간 (절기 기준) ──
+function nyJdToKst(jd) { const d = new Date((jd - 2440587.5) * 86400000 + 9 * 3600000); return d.toISOString().slice(0, 10); }
+function nyMonths2027() {
+  // 1월(辛丑, 정미년 진입 전) + 寅~丑 12개월
+  const spec = [
+    [285, 2027, 1, 5, '신', '축', true], [315, 2027, 2, 4, '임', '인'], [345, 2027, 3, 6, '계', '묘'], [15, 2027, 4, 5, '갑', '진'],
+    [45, 2027, 5, 6, '을', '사'], [75, 2027, 6, 6, '병', '오'], [105, 2027, 7, 7, '정', '미'], [135, 2027, 8, 8, '무', '신'],
+    [165, 2027, 9, 8, '기', '유'], [195, 2027, 10, 8, '경', '술'], [225, 2027, 11, 7, '신', '해'], [255, 2027, 12, 7, '임', '자'],
+    [285, 2028, 1, 6, '계', '축'], [315, 2028, 2, 4, null, null]
+  ];
+  const out = [];
+  for (let i = 0; i < spec.length - 1; i++) {
+    const [lon, y, m, d, s, b, pre] = spec[i]; const nx = spec[i + 1];
+    const from = v31SolarTermJD(lon, y, m, d), to = v31SolarTermJD(nx[0], nx[1], nx[2], nx[3]);
+    out.push({ ...nyGz(s, b), from: nyJdToKst(from), to: nyJdToKst(to - 1), preYear: !!pre, label: pre ? '2027년 1월 (정미년 진입 전)' : (y === 2028 ? '2028년 1월' : `${m}월`) });
+  }
+  return out;
+}
+
+// ── 특정 운(세운/월운) 글자가 원국·대운과 만드는 작용 ──
+function nyInteractions(p, dm, unit, dw) {
+  // unit = {stem, branch, pos}
+  const dmEl = nyStemEl(dm);
+  const sig = [];
+  const posList = ['year', 'month', 'day', 'hour'].filter(k => p[k]);
+  for (const k of posList) {
+    for (const r of nyStemPairRel(unit.stem, p[k].stem)) sig.push({ kind: 'stem', with: k, ...r, target: p[k].stem });
+    for (const r of nyBranchPairRel(unit.branch, p[k].branch)) sig.push({ kind: 'branch', with: k, ...r, target: p[k].branch });
+  }
+  if (dw) {
+    for (const r of nyStemPairRel(unit.stem, dw.stem)) sig.push({ kind: 'stem', with: 'daewoon', ...r, target: dw.stem });
+    for (const r of nyBranchPairRel(unit.branch, dw.branch)) sig.push({ kind: 'branch', with: 'daewoon', ...r, target: dw.branch });
+    if (unit.branch === dw.branch) sig.push({ kind: 'branch', with: 'daewoon', type: '복음', target: dw.branch });
+  }
+  const base = posList.map(k => p[k].branch).concat(dw ? [dw.branch] : []);
+  for (const c of nyCompletions(base, [unit.branch])) sig.push({ kind: 'complete', with: 'all', ...c });
+  return sig;
+}
+
+// ── 바탕 운 점수 (용신 길흉) : 천간 40%, 지지 60% ──
+function nyElementScore(el, ys) {
+  if (el === ys.yong) return 2; if (ys.hee.includes(el)) return 1; if (el === ys.gi) return -2; if (el === ys.gu) return -1; return 0;
+}
+function nyBaseScore(unit, ys, extraEls) {
+  const bScore = V31_BRANCH_INFO[unit.branch].hidden.reduce((a, h) => a + h.weight * nyElementScore(nyStemEl(h.stem), ys), 0);
+  let s = 0.4 * nyElementScore(nyStemEl(unit.stem), ys) + 0.6 * bScore;
+  for (const e of (extraEls || [])) s += 0.5 * nyElementScore(e, ys);   // 합·국으로 생기는 오행
+  return Math.max(-2, Math.min(2, Math.round(s * 100) / 100));
+}
+
+// ── 사건 신호 해석 (자리·십성 기준) ──
+function nyEventSignals(p, dm, gender, unit, sig, ys) {
+  const dmEl = nyStemEl(dm);
+  const out = [];
+  const tgStem = nyTenGod(dm, unit.stem), tgBranch = nyTenGodBranch(dm, unit.branch);
+  const spouseGroup = gender === 'female' ? '관성' : '재성';
+  const add = (area, tone, text, weight) => out.push({ area, tone, text, weight: weight || 1 });
+  for (const s of sig) {
+    const posKo = NY_POS_KO[s.with] || '';
+    if (s.kind === 'stem' && s.with === 'day') {
+      if (s.type === '천간합') add('self', 'mixed', `일간이 ${unit.stem}과 합 — 묶임·새 인연·계약`, 2);
+      if (s.type === '천간충') add('self', 'neg', `일간이 ${unit.stem}에게 충 — 정면 압박·변동`, 2);
+    }
+    if (s.kind === 'branch' && s.with === 'day') {
+      if (['충', '형', '자형'].includes(s.type)) add('spouse', 'neg', `배우자 자리(일지 ${s.target})가 ${s.type} — 관계·몸·거처 변동`, 2);
+      if (['원진', '파', '해'].includes(s.type)) add('spouse', 'neg', `배우자 자리(일지 ${s.target}) ${s.type} — 관계 마찰`, 1);
+      if (s.type === '육합' || s.type === '반합') add('spouse', 'pos', `배우자 자리(일지 ${s.target}) ${s.type} — 인연·결속`, 1.5);
+    }
+    if (s.kind === 'branch' && s.with === 'month') {
+      if (['충', '형'].includes(s.type)) add('career', 'mixed', `사회·직장 자리(월지 ${s.target}) ${s.type} — 직장·환경의 이동·변동(승진·전보·이직 양방향)`, 1.5);
+      if (s.type === '육합') add('career', 'pos', `사회·직장 자리(월지) 합 — 소속·협력 강화`, 1);
+    }
+    if (s.kind === 'branch' && s.with === 'year' && ['충', '형'].includes(s.type)) add('family', 'mixed', `부모·집안 자리(년지 ${s.target}) ${s.type} — 집안·윗사람 관련 변동`, 0.8);
+    if (s.kind === 'branch' && s.with === 'hour') {
+      if (['충', '형'].includes(s.type)) add('children', 'neg', `자녀·미래 자리(시지 ${s.target}) ${s.type}`, 1);
+      if (['육합', '반합'].includes(s.type)) add('children', 'pos', `자녀 자리(시지) 합 — 자녀 경사·결실`, 1);
+    }
+    if (s.kind === 'complete') {
+      const grp = s.el ? nyGroup(dmEl, s.el) : null;
+      if (s.type === '삼형') add('self', 'neg', `${s.group} 삼형 완성 — 사고·법적 문제·건강 주의`, 2);
+      else add(grp === spouseGroup ? 'spouse' : grp === '관성' ? 'career' : grp === '재성' ? 'wealth' : grp === '인성' ? 'study' : 'self',
+        ys.yong === s.el || ys.hee.includes(s.el) ? 'pos' : (s.el === ys.gi ? 'neg' : 'mixed'),
+        `${s.group} ${s.type} 완성 → ${s.el} 기운(${grp}) 결집`, 2);
+    }
+    // 관성 합거 (세운 천간이 원국 관성과 합)
+    if (s.kind === 'stem' && s.type === '천간합' && s.with !== 'day' && nyGroup(dmEl, nyStemEl(s.target)) === '관성')
+      add(gender === 'female' ? 'spouse' : 'career', 'mixed', `관성 ${s.target}이 합으로 움직임 — ${gender === 'female' ? '남편 인연의 큰 움직임(결혼·이별 양방향), ' : ''}직위·소속 변동`, 1.5);
+    if (s.kind === 'stem' && s.type === '천간합' && s.with !== 'day' && gender === 'male' && nyGroup(dmEl, nyStemEl(s.target)) === '재성')
+      add('spouse', 'mixed', `재성 ${s.target}이 합으로 묶임 — 재물·아내 인연 변동`, 1);
+  }
+  // 상관견관: 세운 상관 vs 원국 정관 투간
+  const natalStems = ['year', 'month', 'hour'].filter(k => p[k]).map(k => p[k].stem);
+  if (tgStem === '상관' && natalStems.some(s => nyTenGod(dm, s) === '정관')) add(gender === 'female' ? 'spouse' : 'career', 'neg', '상관견관 — 윗사람·조직과 충돌, 여성은 남편 관계 긴장', 2);
+  // 편인도식: 세운 편인 vs 원국 식신 투간
+  if (tgStem === '편인' && natalStems.some(s => nyTenGod(dm, s) === '식신')) add('self', 'neg', '편인도식 — 활동·의욕 위축, 고립 주의', 2);
+  // 관인상생 / 살인상생
+  if (['정관', '편관'].includes(tgStem) && (ys.yongGroup === '인성' || ys.hee.includes(NY_GEN_BY[dmEl]))) add('career', 'pos', '관인상생 흐름 — 승진·자격·인정', 1.5);
+  // 배우자성 등장
+  const sg = nyGroup(dmEl, nyStemEl(unit.stem));
+  if (sg === spouseGroup) add('spouse', 'mixed', `${gender === 'female' ? '남편성(관성)' : '아내성(재성)'} ${unit.stem} 투출 — 이성 인연 활성`, 1.2);
+  if (sg === '인성') add('study', 'mixed', '인성 투출 — 공부·문서·자격', 1);
+  if (sg === '식상') add('self', 'mixed', '식상 투출 — 표현·활동·창작', 1);
+  if (sg === '재성' && gender === 'female') add('wealth', 'mixed', '재성 투출 — 재물 활동', 1);
+  if (sg === '재성' && gender === 'male') add('wealth', 'mixed', '재성 투출 — 재물 활동', 1);
+  // 화개(華蓋): 년지·일지 삼합의 고지
+  const HWAGAE = { 인: '술', 오: '술', 술: '술', 신: '진', 자: '진', 진: '진', 사: '축', 유: '축', 축: '축', 해: '미', 묘: '미', 미: '미' };
+  if (unit.branch === HWAGAE[p.year.branch] || unit.branch === HWAGAE[p.day.branch]) add('study', 'mixed', '화개 — 공부·종교·수행·정리, 내면으로 향하는 흐름', 1);
+  const seen = new Set();
+  return out.filter(e => (seen.has(e.text) ? false : seen.add(e.text)));
+}
+
+function nyUnitAnalysis(p, dm, gender, unit, dw, ys) {
+  const sig = nyInteractions(p, dm, unit, dw);
+  const extraEls = sig.filter(s => s.kind === 'complete' && s.el).map(s => s.el)
+    .concat(sig.filter(s => s.type === '육합' && s.with === 'day' && s.el).map(s => s.el));
+  const base = nyBaseScore(unit, ys, extraEls);
+  const events = nyEventSignals(p, dm, gender, unit, sig, ys);
+  const eventLoad = events.reduce((a, e) => a + e.weight, 0);
+  const neg = events.filter(e => e.tone === 'neg').reduce((a, e) => a + e.weight, 0);
+  const pos = events.filter(e => e.tone === 'pos').reduce((a, e) => a + e.weight, 0);
+  const dwBase = dw ? nyBaseScore({ stem: dw.stem, branch: dw.branch }, ys, []) : 0;
+  const total = Math.round((base * 1.5 + dwBase * 0.5 + (pos - neg) * 0.5) * 100) / 100;
+  return {
+    ...nyGz(unit.stem, unit.branch),
+    tenGodStem: nyTenGod(dm, unit.stem), tenGodBranch: nyTenGodBranch(dm, unit.branch),
+    stage: nyStage(dm, unit.branch),
+    baseScore: base, daewoonBase: dwBase, eventLoad: Math.round(eventLoad * 10) / 10, score: total,
+    relations: sig.map(s => `${NY_POS_KO[s.with] || ''}${s.target ? '(' + s.target + ')' : ''} ${s.type}${s.group ? ' ' + s.group : ''}${s.el ? '→' + s.el : ''}`.trim()),
+    events
+  };
+}
+
+// ── 원국 정적 특징 (배우자·자녀·특수 구조) ──
+function nyNatalFeatures(p, dm, gender, ys) {
+  const dmEl = nyStemEl(dm);
+  const pos = ['year', 'month', 'day', 'hour'].filter(k => p[k]);
+  const f = [];
+  // 지지 상호 관계
+  const rels = [];
+  for (let i = 0; i < pos.length; i++) for (let j = i + 1; j < pos.length; j++) {
+    for (const r of nyBranchPairRel(p[pos[i]].branch, p[pos[j]].branch)) rels.push({ a: pos[i], b: pos[j], ...r });
+    for (const r of nyStemPairRel(p[pos[i]].stem, p[pos[j]].stem)) rels.push({ a: pos[i], b: pos[j], stem: true, ...r });
+  }
+  const dayAttack = rels.filter(r => !r.stem && (r.a === 'day' || r.b === 'day') && ['충', '형', '자형', '파', '원진', '해'].includes(r.type));
+  // 배우자성 위치
+  const spouseGroup = gender === 'female' ? '관성' : '재성';
+  const spouseStems = pos.filter(k => k !== 'day' && nyGroup(dmEl, nyStemEl(p[k].stem)) === spouseGroup);
+  const spouseBranches = pos.filter(k => nyGroup(dmEl, nyBranchEl(p[k].branch)) === spouseGroup);
+  const dayBranchGod = nyTenGodBranch(dm, p.day.branch);
+  const branches = pos.map(k => p[k].branch);
+  const sets = { 왕지: ['자', '오', '묘', '유'], 생지: ['인', '신', '사', '해'], 고지: ['진', '술', '축', '미'] };
+  const full = Object.entries(sets).filter(([, g]) => g.every(x => branches.includes(x))).map(([k]) => k);
+  // 관살혼잡
+  const gwanTypes = new Set();
+  for (const k of pos) { if (k !== 'day') { const t = nyTenGod(dm, p[k].stem); if (t === '정관' || t === '편관') gwanTypes.add(t); } const tb = nyTenGodBranch(dm, p[k].branch); if (tb === '정관' || tb === '편관') gwanTypes.add(tb); }
+  return {
+    branchRelations: rels.map(r => `${NY_POS_KO[r.a]}-${NY_POS_KO[r.b]} ${r.type}${r.el ? '→' + r.el : ''}`),
+    spousePalace: { branch: p.day.branch, tenGod: dayBranchGod, attacks: dayAttack.map(r => r.type), attackCount: dayAttack.length },
+    spouseStar: { group: spouseGroup, stems: spouseStems.map(k => ({ pos: NY_POS_KO[k], stem: p[k].stem, stage: nyStage(p[k].stem, p[k].branch) })), branches: spouseBranches.map(k => NY_POS_KO[k]),
+      timing: spouseStems.length ? (spouseStems.includes('hour') && !spouseStems.some(k => k === 'year' || k === 'month') ? '시주 — 만혼·연하 경향' : spouseStems.some(k => k === 'year') ? '년주 — 연상·이른 인연 경향' : '월주 — 사회에서 만나는 인연') : '천간에 드러나지 않음 — 인연이 늦게 드러남',
+      combinesDay: spouseStems.some(k => nyStemPairRel(dm, p[k].stem).some(r => r.type === '천간합')) },
+    gwanMixed: gwanTypes.size === 2,
+    fullSet: full,
+    dayBranchIsSiksang: ['식신', '상관'].includes(dayBranchGod),
+  };
+}
+
+// ── 메인: 2027 신년 분석 ──
+function buildNewYear2027(input) {
+  const v = v31ValidateSajuInput(input);
+  if (!v.valid) return { success: false, error: v.error };
+  const norm = v.normalized;
+  const saju = v31ExtractSaju(norm);
+  const p = saju.pillars, dm = p.day.stem;
+  const dist = nyDistribution(p);
+  const st = nyStrength(p, dist);
+  const ys = nyYongshin(p, dist, st);
+  const dw = nyDaewoon(norm, saju);
+  const dw2027 = nyDaewoonAt(dw, 2027.5);
+  const dwStartIn2027 = dw.list.find(d => Math.floor(d.fromYear) === 2027) || null;
+  const seunUnit = { stem: '정', branch: '미' };
+  const seun = nyUnitAnalysis(p, dm, norm.gender, seunUnit, dw2027, ys);
+  const months = nyMonths2027().map(m => {
+    const dwAt = nyDaewoonAt(dw, parseInt(m.from.slice(0, 4)) + (parseInt(m.from.slice(5, 7)) - 0.5) / 12);
+    const a = nyUnitAnalysis(p, dm, norm.gender, { stem: m.stem, branch: m.branch }, dwAt, ys);
+    // 월운과 세운(丁未)의 관계
+    const withSeun = nyBranchPairRel(m.branch, '미').map(r => r.type).concat(nyStemPairRel(m.stem, '정').map(r => r.type));
+    return { label: m.label, from: m.from, to: m.to, preYear: m.preYear, ...a, withSeun };
+  });
+  const main = months.filter(m => !m.preYear);
+  const ranked = [...main].sort((a, b) => b.score - a.score);
+  const natal = nyNatalFeatures(p, dm, norm.gender, ys);
+  const dmEl = nyStemEl(dm);
+  return {
+    success: true, version: NY27_VERSION, targetYear: 2027,
+    input: { ...norm, solarDate: saju.meta.solarDate },
+    natal: {
+      pillars: ['year', 'month', 'day', 'hour'].reduce((o, k) => { if (p[k]) o[k] = { ...nyGz(p[k].stem, p[k].branch), tenGodStem: k === 'day' ? '일간' : nyTenGod(dm, p[k].stem), tenGodBranch: nyTenGodBranch(dm, p[k].branch), stage: nyStage(dm, p[k].branch) }; return o; }, {}),
+      hasHour: !!p.hour, dayMaster: dm, dayMasterElement: dmEl,
+      distribution: dist.share, strength: st, yongshin: ys, features: natal
+    },
+    daewoon: { forward: dw.forward, startAge: dw.startAge, list: dw.list, current: dw2027, changesIn2027: dwStartIn2027 },
+    seun, months,
+    highlights: {
+      bestMonths: ranked.slice(0, 3).map(m => ({ label: m.label, ko: m.ko, score: m.score })),
+      cautionMonths: ranked.slice(-3).reverse().map(m => ({ label: m.label, ko: m.ko, score: m.score })),
+      yearTone: seun.score >= 1 ? '상승' : seun.score <= -1 ? '조심' : '혼재'
+    }
+  };
+}
+
+// ════════════════════════════════════════════════════════════════════════════════
+// [NY27] 보고서 생성부 — 계산 결과(JSON) → Gemini 3분할 병렬 → 보고서
+//   A: 표지·총운·재물·직업 / B: 연애·결혼·대인·건강·핵심조언 / C: 13개월
+// ════════════════════════════════════════════════════════════════════════════════
+const NY_JOB_OPTIONS = ['직장인', '사업자', '프리랜서', '학생·취업준비', '주부', '기타'];
+const NY_REL_OPTIONS = ['미혼', '연애 중', '기혼', '이혼·사별', '기타'];
+
+function nyCleanOpts(o) {
+  o = o || {};
+  return {
+    job: NY_JOB_OPTIONS.includes(o.job) ? o.job : '',
+    relation: NY_REL_OPTIONS.includes(o.relation) ? o.relation : ''
+  };
+}
+
+function nyContextText(r, opts) {
+  const n = r.natal, ys = n.yongshin, st = n.strength, f = n.features;
+  const P = n.pillars;
+  const pz = ['year', 'month', 'day', 'hour'].filter(k => P[k]).map(k => `${NY_POS_KO[k]}주 ${P[k].ko}(${P[k].hanja}) [천간 ${P[k].tenGodStem} / 지지 ${P[k].tenGodBranch} / 12운성 ${P[k].stage}]`).join('\n');
+  const evText = evs => evs.length ? evs.map(e => `  - [${e.area}/${e.tone}] ${e.text}`).join('\n') : '  - 특기할 합충 신호 없음';
+  const sd = r.input.solarDate;
+  const lines = [];
+  lines.push(`■ 기본: ${r.input.gender === 'female' ? '여성' : '남성'}, 양력 ${sd.year}.${sd.month}.${sd.day}${n.hasHour ? '' : ' (태어난 시 모름 — 시주 제외, 자녀·말년 해석은 약하게)'}`);
+  if (opts.job) lines.push(`■ 직업 상황(본인 입력): ${opts.job}`);
+  if (opts.relation) lines.push(`■ 관계 상황(본인 입력): ${opts.relation}`);
+  if (!opts.job) lines.push('■ 직업 상황: 미입력 → 직장인·사업자 모두에 해당되도록 쓰되 단정 금지');
+  if (!opts.relation) lines.push('■ 관계 상황: 미입력 → 미혼·기혼을 가정하지 말고 "인연이 있는 분은/혼자인 분은"처럼 나눠 쓸 것');
+  lines.push(`■ 원국\n${pz}`);
+  lines.push(`■ 일간: ${n.dayMaster}(${NY_HANJA[n.dayMaster]}) ${n.dayMasterElement}`);
+  lines.push(`■ 오행 분포(%): ${NY_ELS.map(e => e + ' ' + Math.round(n.distribution[e])).join(', ')}`);
+  lines.push(`■ 강약: ${st.level} (자기 세력 ${st.selfShare}%, 월령 ${st.deukryeong ? '득령' : '실령'})`);
+  lines.push(`■ 용신 판정(${ys.method}): 용신 ${ys.yong}, 희신 ${ys.hee.join('·')}, 기신 ${ys.gi}, 구신 ${ys.gu} — 근거: ${ys.basis.join(' / ')}`);
+  lines.push(`■ 배우자 자리(일지): ${f.spousePalace.branch} (${f.spousePalace.tenGod})${f.spousePalace.attackCount ? ' — 원국에서 ' + f.spousePalace.attacks.join('·') + ' 받음' : ''}`);
+  lines.push(`■ 배우자성(${f.spouseStar.group}): ${f.spouseStar.stems.map(s => s.pos + '간 ' + s.stem).join(', ') || '천간에 없음'} — ${f.spouseStar.timing}${f.spouseStar.combinesDay ? ', 일간과 합(인연 성사력)' : ''}`);
+  if (f.gwanMixed) lines.push('■ 관살혼잡: 정관·편관이 함께 있음');
+  if (f.fullSet.length) lines.push(`■ 지지 ${f.fullSet.join('·')} 전비 — 원국 변동성 큼`);
+  if (f.dayBranchIsSiksang) lines.push('■ 배우자 자리에 식상 — 본인이 생활을 주도하는 구조');
+  if (f.branchRelations.length) lines.push(`■ 원국 지지·천간 관계: ${f.branchRelations.join(', ')}`);
+  const dw = r.daewoon.current;
+  lines.push(`■ 2027년 대운: ${dw ? dw.ko + '(' + dw.hanja + ') ' + Math.floor(dw.fromYear) + '~' + Math.floor(dw.toYear) + '년' : '미상'}${r.daewoon.changesIn2027 ? ' — ★2027년 중 ' + r.daewoon.changesIn2027.ko + ' 대운으로 교체(10년 흐름이 바뀌는 해)' : ''}`);
+  const s = r.seun;
+  lines.push(`■ 2027 세운 丁未: 천간 정 = ${s.tenGodStem}, 지지 미 = ${s.tenGodBranch}, 일간의 12운성 ${s.stage}, 바탕 운 ${s.baseScore} (범위 -2~+2), 종합 ${s.score}, 해의 성격: ${r.highlights.yearTone}`);
+  lines.push(`  관계: ${s.relations.join(', ') || '없음'}\n${evText(s.events)}`);
+  lines.push('■ 월별 (절기 기준)');
+  for (const m of r.months) {
+    lines.push(`  ${m.label} ${m.ko}(${m.hanja}) ${m.from}~${m.to} | 천간 ${m.tenGodStem}·지지 ${m.tenGodBranch} | 바탕 ${m.baseScore}, 종합 ${m.score}${m.withSeun.length ? ' | 세운 미와: ' + m.withSeun.join('·') : ''}`);
+    for (const e of m.events.slice(0, 5)) lines.push(`     · [${e.area}/${e.tone}] ${e.text}`);
+  }
+  lines.push(`■ 상대적으로 좋은 달: ${r.highlights.bestMonths.map(m => m.label + '(' + m.ko + ')').join(', ')}`);
+  lines.push(`■ 상대적으로 신중할 달: ${r.highlights.cautionMonths.map(m => m.label + '(' + m.ko + ')').join(', ')}`);
+  return lines.join('\n');
+}
+
+const NY_SYSTEM_PROMPT = `당신은 『명리다이제스트』 저자 춘추 선생의 관법을 따르는 제우스 타로의 명리 해설가입니다.
+고객이 4,900원을 내고 받은 "2027 정미년(丁未年) 신년사주" 보고서의 한 부분을 씁니다.
+
+[절대 규칙]
+1. 아래 [계산 근거]에 있는 사실만 근거로 씁니다. 근거에 없는 사건·숫자·인물을 지어내지 않습니다.
+2. 점수(바탕·종합 수치)는 내부 지표입니다. 숫자를 그대로 쓰지 말고 "흐름이 받쳐준다/조정이 필요하다"처럼 말로 바꿉니다.
+3. 확정 예언 금지. "~하게 됩니다" 대신 "~하기 쉬운 흐름입니다", "~에 유리합니다"처럼 경향으로 씁니다.
+4. 질병명·사고·사망·이혼을 단정하지 않습니다. 건강은 생활 관리 참고로만, 의학적 판단을 대신하지 않습니다.
+5. 특정 종목·코인 매수 같은 투자 권유를 하지 않습니다.
+6. 입력되지 않은 개인 상황(결혼 여부, 직업 등)을 사실처럼 가정하지 않습니다.
+7. 명리 용어는 꼭 필요한 것만 쓰고, 처음 나올 때 쉬운 말을 괄호로 붙입니다. 예: 용신(나에게 가장 필요한 기운).
+8. 이 사람의 원국에만 해당하는 구체적 근거를 문장마다 연결합니다. 누구에게나 맞는 일반론, 상투적 덕담, 같은 말 반복을 피합니다.
+9. 존댓말(~습니다/~세요). 따뜻하지만 군더더기 없이.
+10. 출력은 지정한 JSON 형식만. 마크다운 기호(**, #) 쓰지 않습니다.`;
+
+function nyPromptA(ctx) {
+  return `[계산 근거]\n${ctx}\n\n[작성할 부분] 표지, 총운, 재물운, 직업운.
+JSON 형식:
+{"cover":{"theme":"올해의 주제 한 문장(25자 이내)","summary":"원국과 정미년이 만나는 핵심을 3~4문장"},
+ "total":{"flow":"한 해 전체 흐름 4~5문장","keyFactor":"가장 크게 작용하는 명리 요인 2~3문장(근거 명시)","opportunity":"기회가 되는 분야 2~3문장","caution":"부담·갈등이 생기기 쉬운 분야 2~3문장","advice":"한 해를 보내는 핵심 조언 2문장"},
+ "wealth":{"body":"재물운 본문 5~7문장(재성과 원국·세운 관계 근거)","good":"재물에 유리한 시기·방식 1~2문장","caution":"지출·금전 갈등 주의점 1~2문장"},
+ "career":{"common":"직업 전반 4~5문장","employee":"직장인이라면 2~3문장","business":"사업·자영업이라면 2~3문장","caution":"직업적 판단에서 신중할 시기 1~2문장"}}`;
+}
+function nyPromptB(ctx) {
+  return `[계산 근거]\n${ctx}\n\n[작성할 부분] 연애운, 결혼·배우자운, 대인관계·가족운, 건강·생활 관리, 핵심 시기와 최종 조언.
+JSON 형식:
+{"love":{"body":"연애운 4~5문장(배우자성·배우자 자리 근거)","single":"혼자인 분이라면 2문장","together":"인연이 있는 분이라면 2문장","months":"연애에 의미 있는 달 1~2문장"},
+ "marriage":{"body":"결혼·배우자운 4~5문장 — 연애와 구분해 배우자 자리와 배우자성의 작용을 씀","caution":"관계에서 신중할 점 1~2문장"},
+ "relations":{"body":"대인관계·가족 3~4문장 — 근거가 약하면 짧게"},
+ "health":{"body":"생활 관리 참고 3문장 — 오행 균형 관점, 과로·리듬 관리. 질병 예언 금지"},
+ "final":{"goodPeriods":"상대적으로 활용하기 좋은 시기 2문장","cautionPeriods":"신중한 판단이 필요한 시기 2문장","priorities":"재물·직업·연애·결혼 중 우선 살필 문제 2문장","tips":["올해 실천할 조언 1","조언 2","조언 3"]}}`;
+}
+function nyPromptC(ctx, months) {
+  return `[계산 근거]\n${ctx}\n\n[작성할 부분] 월별 운세 ${months.length}개월, [계산 근거]의 월별 순서 그대로.
+규칙: 근거(종합 점수·신호)가 강한 달은 자세히, 약한 달은 짧게. 모든 분야를 매달 억지로 쓰지 않음 — 근거 없는 분야는 빈 문자열.
+JSON 형식: {"months":[{"label":"월 이름 그대로","headline":"그 달의 핵심 한 줄(20자 이내)","flow":"핵심 흐름 2~3문장","workMoney":"재물·직업 1~2문장 또는 빈 문자열","love":"연애·결혼 1문장 또는 빈 문자열","tip":"기회·주의 한 줄"}, ...]}
+월 이름 목록: ${months.map(m => m.label).join(' / ')}`;
+}
+
+async function nyGeminiJSON(apiKey, system, user, maxTokens) {
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
+  const body = JSON.stringify({
+    system_instruction: { parts: [{ text: system }] },
+    contents: [{ parts: [{ text: user }] }],
+    generationConfig: { temperature: 0.7, maxOutputTokens: maxTokens, responseMimeType: 'application/json', thinkingConfig: { thinkingBudget: 0 } }
+  });
+  let lastErr = '';
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      const ac = new AbortController(); const t = setTimeout(() => ac.abort(), 55000);
+      const res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body, signal: ac.signal });
+      clearTimeout(t);
+      if (!res.ok) { lastErr = 'HTTP ' + res.status; if (res.status === 429 || res.status >= 500) { await new Promise(r => setTimeout(r, 1200)); continue; } break; }
+      const d = await res.json();
+      const text = ((d.candidates && d.candidates[0] && d.candidates[0].content && d.candidates[0].content.parts) || []).filter(p => !p.thought && typeof p.text === 'string').map(p => p.text).join('');
+      const clean = text.replace(/^```(?:json)?\s*/i, '').replace(/```\s*$/, '').trim();
+      return JSON.parse(clean);
+    } catch (e) { lastErr = String(e && e.message || e); }
+  }
+  throw new Error('Gemini 실패: ' + lastErr);
+}
+
+function nyCalcSummary(r) {
+  // 화면 표시용 계산 요약 (보고서와 함께 저장)
+  const n = r.natal;
+  return {
+    pillars: n.pillars, hasHour: n.hasHour, dayMaster: n.dayMaster, dayMasterElement: n.dayMasterElement,
+    distribution: n.distribution, strengthLevel: n.strength.level,
+    yongshin: { yong: n.yongshin.yong, hee: n.yongshin.hee, gi: n.yongshin.gi, gu: n.yongshin.gu, method: n.yongshin.method },
+    daewoon: r.daewoon.current, daewoonChange: r.daewoon.changesIn2027,
+    seun: { ko: r.seun.ko, hanja: r.seun.hanja, tenGodStem: r.seun.tenGodStem, tenGodBranch: r.seun.tenGodBranch, stage: r.seun.stage },
+    months: r.months.map(m => ({ label: m.label, ko: m.ko, hanja: m.hanja, from: m.from, to: m.to, score: m.score, preYear: m.preYear })),
+    highlights: r.highlights, input: r.input
+  };
+}
+
+async function nyGenerateReport(apiKey, input, rawOpts) {
+  const r = buildNewYear2027(input);
+  if (!r.success) throw new Error(r.error || '명식 계산 실패');
+  const opts = nyCleanOpts(rawOpts);
+  const ctx = nyContextText(r, opts);
+  const t0 = Date.now();
+  const [A, B, C] = await Promise.all([
+    nyGeminiJSON(apiKey, NY_SYSTEM_PROMPT, nyPromptA(ctx), 4096),
+    nyGeminiJSON(apiKey, NY_SYSTEM_PROMPT, nyPromptB(ctx), 4096),
+    nyGeminiJSON(apiKey, NY_SYSTEM_PROMPT, nyPromptC(ctx, r.months), 7000)
+  ]);
+  if (!A || !A.cover || !A.total) throw new Error('보고서 A 형식 오류');
+  if (!B || !B.love || !B.final) throw new Error('보고서 B 형식 오류');
+  if (!C || !Array.isArray(C.months) || C.months.length < 10) throw new Error('보고서 C 형식 오류');
+  // 월 순서·라벨을 계산값에 고정 (AI가 순서를 바꿔도 안전)
+  const monthsText = r.months.map((m, i) => {
+    const t = C.months.find(x => x && x.label === m.label) || C.months[i] || {};
+    return { label: m.label, headline: t.headline || '', flow: t.flow || '', workMoney: t.workMoney || '', love: t.love || '', tip: t.tip || '' };
+  });
+  return {
+    product: 'newyear2027', version: NY27_VERSION, generatedAt: Date.now(), genMs: Date.now() - t0,
+    options: opts, calc: nyCalcSummary(r),
+    text: { cover: A.cover, total: A.total, wealth: A.wealth, career: A.career, love: B.love, marriage: B.marriage, relations: B.relations, health: B.health, final: B.final, months: monthsText }
+  };
+}
+
+function nyRo(word) { // 받침에 따라 '로/으로' (ㄹ받침은 '로')
+  const c = word.charCodeAt(word.length - 1) - 0xAC00; if (c < 0 || c > 11171) return '로';
+  const jong = c % 28; return (jong === 0 || jong === 8) ? '로' : '으로';
+}
+function nyPreview(input) {
+  const r = buildNewYear2027(input);
+  if (!r.success) return { success: false, error: r.error };
+  const s = r.seun, tone = r.highlights.yearTone;
+  const toneText = tone === '상승' ? '기운이 받쳐주는 상승의 흐름' : tone === '조심' ? '속도를 조절하며 지켜야 할 흐름' : '기회와 조정이 함께 오는 변화의 흐름';
+  let lunar = null;
+  try { const l = v31SolarToLunar(r.input.solarDate.year, r.input.solarDate.month, r.input.solarDate.day); if (l) lunar = { year: l.year, month: l.month, day: l.day, isLeapMonth: !!l.isLeapMonth }; } catch (e) {}
+  const best = r.highlights.bestMonths[0];
+  return {
+    success: true, version: NY27_VERSION,
+    pillars: r.natal.pillars, hasHour: r.natal.hasHour, solarDate: r.input.solarDate, lunarDate: lunar, gender: r.input.gender,
+    dayMaster: r.natal.dayMaster, dayMasterHanja: NY_HANJA[r.natal.dayMaster], dayMasterElement: r.natal.dayMasterElement,
+    oneLine: `2027 정미년은 ${NY_HANJA[r.natal.dayMaster]}${r.natal.dayMasterElement} 일간인 당신에게 ${s.tenGodStem}·${s.tenGodBranch}의 해 — ${toneText}입니다.`,
+    teaser: `올해 가장 힘이 실리는 달은 「${best.label}」입니다. 그 이유와 12개월 전체 흐름은 보고서에서 확인하세요.`,
+    daewoonChange: r.daewoon.changesIn2027 ? `2027년에는 10년 단위 대운이 ${r.daewoon.changesIn2027.hanja}(${r.daewoon.changesIn2027.ko})${nyRo(r.daewoon.changesIn2027.ko)} 바뀝니다.` : null
+  };
+}
+
+// ════════════════════════════════════════════════════════════════════════════════
+// [NY27] 라우트 — /saju/newyear/preview · /saju/newyear/report · /saju/newyear/sample
+// ════════════════════════════════════════════════════════════════════════════════
+const NY_SAMPLES = {
+  // 공개 샘플은 실존 인물이 아닌 가상 명식만 사용
+  '1': { input: { year: 1985, month: 3, day: 15, hour: 9, calendar: 'solar', gender: 'male' }, options: { job: '직장인', relation: '미혼' } },
+  '2': { input: { year: 1990, month: 8, day: 20, hour: 15, calendar: 'solar', gender: 'female' }, options: { job: '프리랜서', relation: '연애 중' } },
+  '3': { input: { year: 1972, month: 11, day: 2, hour: null, calendar: 'solar', gender: 'male' }, options: { job: '사업자', relation: '기혼' } }
+};
+function nyJson(obj, status) {
+  return new Response(JSON.stringify(obj), { status: status || 200, headers: { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store', ...corsHeaders() } });
+}
+async function nyLoadPaidReading(env, rid, token) {
+  if (!rid || !token) return { error: 'MISSING_PARAMS', status: 400 };
+  const reading = await getReading(env, rid);
+  if (!reading) return { error: 'READING_NOT_FOUND', status: 404 };
+  const ok = await verifySignedAccessToken(token, {
+    readingId: reading.readingId, orderId: reading.orderId, amount: reading.amount, category: reading.category,
+    feature: reading.feature, nonce: reading.nonce, createdAt: reading.createdAt
+  }, env.SERVER_SECRET);
+  if (!ok) return { error: 'INVALID_TOKEN', status: 401 };
+  if (reading.category !== 'saju' || reading.subtype !== 'newyear2027') return { error: 'NOT_NEWYEAR_PRODUCT', status: 400 };
+  if (reading.paymentVerified !== true) return { error: 'NOT_PAID', status: 402 };
+  return { reading };
+}
+async function handleNewYearRoutes(request, env, url) {
+  const path = url.pathname;
+  if (!path.startsWith('/saju/newyear/')) return null;
+  try {
+    // 1) 무료 명식 확인 + 한 줄 맛보기 (AI 호출 없음)
+    if (path === '/saju/newyear/preview' && request.method === 'POST') {
+      const body = await request.json().catch(() => ({}));
+      const r = nyPreview(body.input || body);
+      return nyJson(r, r.success ? 200 : 400);
+    }
+    // 2) 결제 확인 후 보고서 생성·조회
+    if (path === '/saju/newyear/report' && request.method === 'POST') {
+      const body = await request.json().catch(() => ({}));
+      const got = await nyLoadPaidReading(env, body.rid, body.token);
+      if (got.error) return nyJson({ ok: false, error: got.error }, got.status);
+      let reading = got.reading;
+      if (reading.contentReady === true && reading.content) {
+        let report = null; try { report = JSON.parse(reading.content); } catch (e) {}
+        if (report && report.product === 'newyear2027') return nyJson({ ok: true, status: 'ready', report });
+      }
+      if (reading.nyGenStartedAt && Date.now() - reading.nyGenStartedAt < 90000) {
+        return nyJson({ ok: true, status: 'processing', retryAfter: 4 }, 202);
+      }
+      await updateReading(env, reading.readingId, { nyGenStartedAt: Date.now() });
+      const opts = (reading.clientState && (() => { try { return JSON.parse(reading.clientState).nyOptions; } catch (e) { return null; } })()) || body.options || {};
+      const si = reading.sajuInput || {};
+      const input = {
+        year: Number(si.year), month: Number(si.month), day: Number(si.day),
+        hour: (si.hour === null || si.hour === undefined || si.hour === '') ? null : Number(si.hour),
+        calendar: si.calendar === 'lunar' ? 'lunar' : 'solar', isLeapMonth: !!si.isLeapMonth,
+        gender: (si.gender === 'female' || si.gender === '여' || si.gender === 'F') ? 'female' : 'male'
+      };
+      try {
+        const report = await nyGenerateReport(env.GEMINI_API_KEY, input, opts);
+        await updateReading(env, reading.readingId, {
+          content: JSON.stringify(report), contentReady: true, contentAt: Date.now(), status: STATUS.READY, nyGenStartedAt: 0,
+          metrics: { source: 'ny27', version: NY27_VERSION, genMs: report.genMs }
+        });
+        return nyJson({ ok: true, status: 'ready', report });
+      } catch (e) {
+        await updateReading(env, reading.readingId, { nyGenStartedAt: 0, nyLastError: String(e && e.message || e), nyErrorAt: Date.now() });
+        return nyJson({ ok: false, status: 'error', error: '보고서 생성이 지연되고 있습니다. 잠시 후 다시 시도해 주세요.', detail: String(e && e.message || e) }, 503);
+      }
+    }
+    // 3) 공개 샘플 (가상 명식 3개, 30일 캐시 — 반복 호출해도 AI 비용 1회)
+    if (path === '/saju/newyear/sample' && request.method === 'GET') {
+      const id = url.searchParams.get('case') || '1';
+      const sp = NY_SAMPLES[id];
+      if (!sp) return nyJson({ ok: false, error: 'case는 1~3' }, 400);
+      const key = `ny27:sample:${NY27_VERSION}:${id}`;
+      const cached = env.READINGS_KV ? await env.READINGS_KV.get(key) : null;
+      if (cached) return nyJson({ ok: true, cached: true, report: JSON.parse(cached) });
+      const report = await nyGenerateReport(env.GEMINI_API_KEY, sp.input, sp.options);
+      if (env.READINGS_KV) await env.READINGS_KV.put(key, JSON.stringify(report), { expirationTtl: 60 * 60 * 24 * 30 });
+      return nyJson({ ok: true, cached: false, report });
+    }
+    // 4) 계산만 (검증용, AI 없음)
+    if (path === '/saju/newyear/calc' && request.method === 'POST') {
+      const body = await request.json().catch(() => ({}));
+      const r = buildNewYear2027(body.input || body);
+      return nyJson(r, r.success ? 200 : 400);
+    }
+    return nyJson({ ok: false, error: 'NOT_FOUND' }, 404);
+  } catch (e) {
+    return nyJson({ ok: false, error: 'NEWYEAR_ERROR', message: String(e && e.message || e) }, 500);
+  }
+}
+
+
 // 🚪 메인 엔트리
 // ══════════════════════════════════════════════════════════════════════════
 export default {
@@ -25060,6 +25782,10 @@ export default {
     // ════════════════════════════════════════════════════════════════════
     const v55Response = await handleV55Request(request, env, ctx);
     if (v55Response !== null) return v55Response;
+
+    // [v1.2.0 NY27] 2027 신년사주 — /saju/newyear/* (기존 사주·결제 경로와 분리)
+    const nyResponse = await handleNewYearRoutes(request, env, url);
+    if (nyResponse !== null) return nyResponse;
 
     // ════════════════════════════════════════════════════════════════════
     // ☯️ [V31 #184.5 FINAL+] /saju/safe — 사주 안전 파이프라인 + Tier 1
