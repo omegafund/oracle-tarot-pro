@@ -31,6 +31,11 @@
     (function(){
       try {
         var p = new URLSearchParams(location.search);
+        if (p.get('nyr') && p.get('nyt')) {   // 보고서 링크 (다른 기기·브라우저에서 다시보기)
+          sessionStorage.setItem('nyReturn', JSON.stringify({ rid: p.get('nyr'), token: p.get('nyt'), at: Date.now(), link: true }));
+          history.replaceState(null, '', '/?ny=report&paid=ny');
+          return;
+        }
         if (p.get('paid') !== 'ok' || !p.get('rid') || !p.get('token')) return;
         var rid = p.get('rid'), tok = p.get('token');
         var ny = p.get('ny') === '1';
@@ -25791,7 +25796,7 @@ function reshuffleDeck() {
       '<li>만세력 정밀 계산(절기 시각·진태양시)으로 원국과 대운을 먼저 계산</li><li>용신·희신을 판정해 정미년이 나에게 득인지 실인지 근거로 풀이</li>' +
       '<li>양력 달이 아닌 <b>절기 기준</b> 월운 (2월 4일 입춘부터 정미년)</li></ul></div>' +
       '<div class="ny-card" style="text-align:center"><div style="font-size:1.5rem;font-weight:900;color:#FFD970">4,900원</div>' +
-      '<div class="ny-note" style="opacity:0.85">1회 결제 · 2028년 입춘 전까지 다시보기 · 인쇄/PDF 저장</div></div>' +
+      '<div class="ny-note" style="opacity:0.85">1회 결제 · 보고서는 서버에 보관되어 이 기기의 「다시보기」나 보고서 링크로 언제든 무료 재조회 · 인쇄/PDF 저장</div></div>' +
       '<button class="ny-btn" type="button" onclick="NY.form()">생년월일 입력하고 명식 확인하기 (무료)</button>' +
       '<div class="ny-note" style="text-align:center">결제 전에 계산된 명식과 정미년 한 줄 풀이를 무료로 먼저 보여드립니다.</div>'
     );
@@ -25843,7 +25848,7 @@ function reshuffleDeck() {
     fetch(API + '/saju/newyear/preview', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ input: { year: f.year, month: f.month, day: f.day, hour: f.hour, calendar: f.calendar, isLeapMonth: f.isLeapMonth, gender: f.gender } }) })
       .then(function (r) { return r.json(); })
       .then(function (j) {
-        if (!j || !j.success) { $('nyGo').disabled = false; $('nyErr').textContent = (j && j.error) || '명식 계산에 실패했습니다. 날짜를 확인해 주세요.'; return; }
+        if (!j || !j.success) { $('nyGo').disabled = !!(j && j.closed); $('nyErr').textContent = (j && j.error) || '명식 계산에 실패했습니다. 날짜를 확인해 주세요.'; return; }
         st.preview = j; confirmView();
       })
       .catch(function () { $('nyGo').disabled = false; $('nyErr').textContent = '연결이 원활하지 않습니다. 잠시 후 다시 시도해 주세요.'; });
@@ -25929,7 +25934,7 @@ function reshuffleDeck() {
           saveMine({ rid: rid, token: token, label: label || labelFrom(x.j.report), savedAt: Date.now() });
           try { var np = store('nyPending'); if (np && np.rid === rid) localStorage.removeItem('nyPending'); } catch (e) {}
           try { sessionStorage.removeItem('nyReturn'); if (/[?&]ny=report/.test(location.search)) history.replaceState(null, '', '/'); } catch (e) {}
-          st.report = x.j.report; report(); return;
+          st.current = { rid: rid, token: token }; st.report = x.j.report; report(); return;
         }
         if (x.s === 202 && attempt < 40) return delay((x.j && x.j.retryAfter || 4) * 1000).then(function () { return fetchReport(rid, token, label, attempt + 1); });
         if ((x.s === 503 || x.s >= 500) && attempt < 3) return delay(2500).then(function () { return fetchReport(rid, token, label, attempt + 1); });
@@ -25999,8 +26004,17 @@ function reshuffleDeck() {
       sec('2027년 핵심 시기와 최종 조언', (fn.goodPeriods ? '<h3>활용하기 좋은 시기</h3>' + para(fn.goodPeriods) : '') + (fn.cautionPeriods ? '<h3>신중한 판단이 필요한 시기</h3>' + para(fn.cautionPeriods) : '') + (fn.priorities ? '<h3>우선 살필 문제</h3>' + para(fn.priorities) : '') +
         ((fn.tips || []).length ? '<div class="ny-card"><h3 style="margin-top:0">올해 실천할 조언 3가지</h3><ol class="ny-list">' + fn.tips.map(function (t) { return '<li>' + esc(t) + '</li>'; }).join('') + '</ol></div>' : '')) +
       '<div class="ny-note" style="margin-top:22px">본 보고서는 명리학적 해석에 근거한 참고 자료입니다. 중요한 결정은 본인의 판단과 전문가 상담을 함께 고려하세요. · ZEUS TAROT</div>' +
-      '<div class="ny-noprint"><button class="ny-btn" type="button" onclick="NY.print()">🖨 인쇄 / PDF 저장</button><button class="ny-btn sub" type="button" onclick="NY.close()">홈으로</button></div>'
+      '<div class="ny-noprint"><button class="ny-btn" type="button" onclick="NY.print()">🖨 인쇄 / PDF 저장</button>' +
+      '<button class="ny-btn sub" type="button" onclick="NY.copyLink()">🔗 보고서 링크 복사 (다른 기기에서 열기)</button>' +
+      '<div class="ny-note" id="nyLinkMsg" style="text-align:center">링크를 카카오톡 나에게 보내기 등에 저장해 두면 휴대폰을 바꿔도 다시 볼 수 있습니다. 링크를 가진 사람은 이 보고서를 볼 수 있으니 공유에 유의하세요.</div>' +
+      '<button class="ny-btn sub" type="button" onclick="NY.close()">홈으로</button></div>'
     );
+  }
+  function copyLink() {
+    var cur = st.current; if (!cur) return;
+    var url = 'https://zeustarot.com/?nyr=' + encodeURIComponent(cur.rid) + '&nyt=' + encodeURIComponent(cur.token);
+    var done = function () { var m = $('nyLinkMsg'); if (m) m.innerHTML = '<b style="color:#5DD68A">✓ 링크를 복사했습니다.</b> 카카오톡 「나에게 보내기」 등에 붙여넣어 보관하세요.'; };
+    try { navigator.clipboard.writeText(url).then(done, function () { prompt('아래 링크를 복사해 보관하세요', url); }); } catch (e) { prompt('아래 링크를 복사해 보관하세요', url); }
   }
   function print() {
     if (/KAKAOTALK/i.test(navigator.userAgent)) { alert('카카오톡 안에서는 인쇄가 되지 않습니다.\n오른쪽 아래 ⋯ 메뉴 → "다른 브라우저로 열기" 후 홈의 「다시보기」에서 인쇄해 주세요.'); return; }
@@ -26017,7 +26031,7 @@ function reshuffleDeck() {
   }
 
   window.NY = {
-    open: function () { show(); intro(); }, close: close, intro: intro, form: form, check: check, pay: pay, reopen: reopen, print: print,
+    open: function () { show(); intro(); }, close: close, intro: intro, form: form, check: check, pay: pay, reopen: reopen, print: print, copyLink: copyLink,
     _report: function (rep) { show(); st.report = rep; report(); }
   };
 

@@ -1,7 +1,7 @@
 // ══════════════════════════════════════════════════════════════════
 // 🏛️ ZEUS ORACLE WORKER V203 — Single Source of Truth
 //   [V203] trend 점수표 단일화·역방향 약화·양극가드(V203.1) + 점사 멈춤 수정(V203.2)
-//   [v1.2.0] 2027 정미년 신년사주(NY27): 계산 모듈 + /saju/newyear/* + 결제 subtype newyear2027
+//   [v1.2.0] 2027 정미년 신년사주(NY27): 계산 모듈 + /saju/newyear/* + 결제 subtype newyear2027 + 절기 정밀표(1900-2100)
 //   [v1.1.2] 자시 일주 수정(0시→전날 오류, 23시→다음 날) + 1990년 이전 음력 입력 500 오류 수정(음력설 표 1900-2030 공유)
 // ══════════════════════════════════════════════════════════════════
 // [V2 변경점]
@@ -6890,7 +6890,24 @@ function v31SolarLongitude(jd) {
  * 특정 황경에 도달하는 율리우스 일수 (이분법)
  *   targetLon: 목표 황경 (입춘=315, 대설=255 등)
  */
+// [v1.2.0] 12절기 정밀 시각표 1900-2100 (천문 정밀 계산, 천문연 발표와 1~2분 이내)
+//   기존 간이식(아래 v31SolarTermJDMeeus)은 최대 13분 오차 → 절기 직전·직후 출생자 월주 오판 가능
+//   형식: 연도별 12개(소한·입춘·경칩·청명·입하·망종·소서·입추·백로·한로·입동·대설), 그해 1/1 0시 UTC부터의 분(36진수)
+const V31_TERM_LONS = [285, 315, 345, 15, 45, 75, 105, 135, 165, 195, 225, 255];
+const V31_TERM_TABLE_RAW = '5a4,121s,1z4m,2wpt,3uvv,4tjr,5sha,6rdf,7pxh,8nyd,9leg,aidk;5jt,12bg,1zeb,2wzk,3v5q,4tto,5sr7,6rna,7q7a,8o86,9loa,ainh;5ts,12le,1zo7,2x9d,3vff,4u38,5t0m,6rwm,7qgn,8ohl,9lxu,aix5;63k,12v7,1zxz,2xj2,3vp2,4ucv,5tac,6s6g,7qqi,8ori,9m7p,aj6z;6dd,1350,207r,2xsu,3vyu,4ump,5tk8,6sgc,7r0e,8p1c,9mhh,ajgq;5j3,12as,1zdl,2wyq,3v4q,4tsh,5spw,6rlx,7q5y,8o6w,9ln2,aimb;5sq,12kg,1znc,2x8j,3vel,4u2d,5szr,6rvr,7qfs,8ogr,9lwz,aiw9;62n,12ub,1zx3,2xi7,3vo6,4ubx,5t9b,6s5c,7qpe,8oqf,9m6o,aj5z;6cd,133z,206p,2xrs,3vxq,4ulj,5tj0,6sf3,7qz5,8p03,9mga,ajfk;5hy,129l,1zcd,2wxi,3v3k,4tre,5sow,6rkz,7q4z,8o5v,9lm1,ailb;5rq,12jf,1zm8,2x7a,3vd7,4u0w,5sy9,6ru9,7qea,8of9,9lvi,aiut;619,12sy,1zvr,2xgt,3vmp,4uae,5t7t,6s3w,7qo1,8op3,9m5b,aj4k;6aw,132i,2059,2xqc,3vwb,4uk3,5thl,6sdp,7qxu,8oyv,9mf3,ajeb;5gm,1287,1zax,2ww0,3v1y,4tpp,5sn3,6rj4,7q36,8o47,9lki,aijt;5q7,12ht,1zkk,2x5m,3vbk,4tzc,5swr,6rst,7qcx,8odz,9lub,aitp;604,12rq,1zud,2xfa,3vl3,4u8t,5t68,6s2c,7qmi,8onl,9m3y,aj3c;69s,131e,2041,2xoy,3vup,4uid,5tft,6sbz,7qw5,8ox8,9mdi,ajcu;5fa,126y,1z9p,2wuq,3v0m,4tob,5slq,6rhu,7q20,8o32,9ljd,aiip;5p5,12gt,1zjl,2x4l,3vae,4txz,5sv8,6rr7,7qbb,8ocg,9lsv,aisa;5yr,12qf,1zt5,2xe5,3vjy,4u7l,5t4x,6s0y,7ql4,8om9,9m2o,aj22;68h,1302,202r,2xnr,3vtn,4uhf,5tev,6say,7qv3,8ow5,9mch,ajbv;5ea,125w,1z8l,2wtl,3uzg,4tn5,5skj,6rgk,7q0m,8o1n,9lhy,aihc;5nt,12fi,1zi9,2x3a,3v95,4twu,5su9,6rqd,7qai,8obl,9lrx,aira;5xq,12pc,1zs1,2xcy,3viq,4u6f,5t3v,6s01,7qk9,8olg,9m1t,aj15;67i,12z2,201p,2xml,3vse,4ug1,5tdh,6s9o,7qty,8ov4,9mbh,ajat;5d5,124p,1z7c,2wsa,3uy6,4tlw,5sjd,6rfj,7pzs,8o0z,9lhe,aigs;5n7,12eq,1zhc,2x26,3v7w,4tvi,5ssu,6row,7q94,8oad,9lqw,aiqf;5wx,12oi,1zr2,2xbu,3vhh,4u50,5t2e,6ryj,7qit,8ok3,9m0l,aj02;66j,12y4,200p,2xli,3vr7,4uet,5tc8,6s8f,7qsq,8oty,9mae,aj9t;5ca,123x,1z6k,2wrf,3ux4,4tkm,5shw,6rdx,7py4,8nzb,9lfr,aif9;5lr,12df,1zg4,2x11,3v6r,4tua,5srk,6rnl,7q7t,8o92,9lpk,aip2;5vj,12n5,1zpq,2xak,3vga,4u3u,5t16,6rx9,7qhh,8oir,9lza,aiys;659,12wt,1zzd,2xk6,3vpv,4udg,5tas,6s6w,7qr3,8osa,9m8q,aj87;5an,1229,1z4w,2wpr,3uvi,4tj5,5sgk,6rcp,7pwx,8ny3,9lei,aidz;5kh,12c3,1zeq,2wzj,3v57,4tsp,5sq0,6rm4,7q6c,8o7l,9lo3,aink;5u2,12lp,1zoa,2x92,3veo,4u26,5szh,6rvo,7qg0,8ohb,9lxt,aix9;63n,12v5,1zxp,2xii,3vo8,4ubu,5t9a,6s5j,7qpx,8or9,9m7r,aj76;59k,1212,1z3k,2wod,3uu2,4thn,5sey,6rb2,7pvc,8nwn,9ld7,aicq;5j7,12ar,1zda,2wy0,3v3n,4tr7,5soj,6rkp,7q50,8o6e,9ln1,aimm;5t4,12kn,1zn2,2x7p,3vd9,4u0r,5sy6,6ruf,7qeu,8og9,9lwv,aiwh;62z,12uj,1zwz,2xhm,3vn4,4uak,5t7w,6s44,7qoh,8opu,9m6f,aj5y;58g,1202,1z2m,2wnd,3usy,4tgf,5sdr,6r9y,7puc,8nvq,9lcc,aibw;5if,12a1,1zcl,2wxb,3v2v,4tq8,5sng,6rji,7q3u,8o5a,9llz,ailn;5s7,12js,1zma,2x6z,3vch,4tzv,5sx3,6rt6,7qdj,8oey,9lvn,aiv9;61r,12tb,1zvs,2xgi,3vm3,4u9n,5t70,6s37,7qnj,8oox,9m5j,aj54;57n,11z8,1z1q,2wmg,3us1,4tfi,5scr,6r8t,7pt2,8nud,9lay,aiak;5h4,128s,1zbc,2ww2,3v1m,4tp1,5smb,6rif,7q2r,8o45,9lkr,aikc;5qu,12if,1zkw,2x5k,3vb3,4tyk,5svw,6rs5,7qcl,8oe2,9lup,aiu8;60o,12s6,1zum,2xf9,3vks,4u88,5t5j,6s1q,7qm5,8onk,9m47,aj3q;565,11xn,1z03,2wks,3uqd,4tdv,5sb8,6r7f,7pru,8ntb,9la0,ai9m;5g3,127l,1z9z,2wuk,3v01,4tnf,5skp,6rgv,7q1a,8o2s,9ljk,aij9;5pu,12hd,1zjr,2x49,3v9l,4tww,5su6,6rqe,7qau,8ocd,9lt3,aisr;5za,12qt,1zt7,2xdr,3vj6,4u6k,5t3x,6s07,7qkq,8om9,9m2y,aj2k;552,11wm,1yz3,2wjp,3up4,4tcg,5s9n,6r5r,7pq5,8nrn,9l8d,ai81;5em,1267,1z8o,2wtb,3uyq,4tm1,5sj7,6rfb,7pzq,8o1a,9li3,aihs;5oc,12fu,1zi7,2x2r,3v86,4tvk,5ssu,6rp2,7q9k,8ob4,9lry,airn;5y7,12pp,1zs1,2xck,3vhy,4u5c,5t2m,6ryt,7qj7,8oko,9m1e,aj12;53n,11v7,1yxm,2wi7,3unm,4tb1,5s8c,6r4k,7pp0,8nqi,9l78,ai6w;5dh,1251,1z7h,2ws0,3uxd,4tko,5shx,6re5,7pyn,8o07,9lh0,aigq;5nb,12eu,1zh9,2x1r,3v72,4tuc,5srk,6rns,7q8c,8o9y,9lqq,aiqe;5wv,12ob,1zqo,2xb7,3vgm,4u40,5t1d,6rxo,7qi9,8ojx,9m0q,aj0e;52v,11ub,1ywn,2wh6,3uml,4t9y,5s77,6r3d,7pnt,8npf,9l6a,ai62;5cn,1245,1z6h,2wqy,3uwa,4tjk,5sgr,6rcy,7pxg,8nz3,9lfz,aifs;5me,12dw,1zg5,2x0j,3v5s,4tt2,5sqe,6rmp,7q7c,8o90,9lpw,aipp;5wa,12nt,1zq4,2xai,3vfr,4u30,5t08,6rwg,7qh0,8oim,9lzf,aiz5;51q,11ta,1yvp,2wg7,3uli,4t8q,5s5x,6r24,7pmn,8nob,9l56,ai4x;5bi,1232,1z5f,2wpw,3uv7,4tie,5sfj,6rbp,7pw8,8nxx,9lew,aieq;5lc,12cv,1zf6,2wzl,3v4u,4ts0,5sp5,6rlb,7q5u,8o7h,9loe,aio6;5uq,12m7,1zoh,2x8w,3ve7,4u1j,5syu,6rv3,7qfn,8ohb,9ly6,aixx;50h,11rz,1yub,2wer,3uk2,4t7c,5s4k,6r0q,7pl7,8nms,9l3n,ai3f;5a2,121m,1z3y,2wod,3utm,4tgs,5sdz,6ra6,7puq,8nwe,9lda,aid1;5jm,12b2,1zdb,2wxo,3v2w,4tq5,5snf,6rjs,7q4i,8o6a,9ln8,aimz;5ti,12kw,1zn4,2x7g,3vcp,4tzy,5sx7,6rth,7qe3,8ofu,9lwr,aiwj;4z2,11qg,1ysp,2wd2,3uia,4t5j,5s2r,6qz1,7pjn,8nlf,9l2f,ai2b;58w,120c,1z2j,2wmt,3ury,4tf3,5scb,6r8l,7pt9,8nv3,9lc6,aic4;5it,12ab,1zci,2wwq,3v1r,4tou,5slz,6ri9,7q2x,8o4q,9llr,ailm;5s9,12jr,1zm0,2x6a,3vbe,4tyj,5svr,6rs2,7qcs,8oem,9lvm,aivh;4y3,11pm,1yrw,2wca,3uhg,4t4k,5s1o,6qxu,7pig,8nk8,9l1a,ai17;57v,11zf,1z1q,2wm3,3ur9,4teb,5sbd,6r7h,7ps3,8ntv,9lay,aiaw;5hj,1290,1zb8,2wvi,3v0n,4tnt,5sl1,6rhb,7q20,8o3u,9lkx,aiku;5rh,12ix,1zl5,2x5f,3vak,4txs,5sv0,6rr8,7qbt,8odj,9lui,aiud;4x1,11oj,1yqt,2wb5,3ugb,4t3h,5s0o,6qwx,7phj,8nj9,9l08,ai04;56r,11y9,1z0i,2wkt,3upw,4td0,5sa7,6r6i,7pr8,8nt2,9la4,aia0;5gn,1284,1zab,2wuk,3uzn,4tmp,5sjv,6rg6,7q0w,8o2r,9ljt,aijm;5q5,12hj,1zjo,2x3y,3v93,4tw8,5sth,6rpu,7qam,8ocj,9ltm,aitg;4vz,11nc,1yph,2w9q,3uev,4t20,5rz7,6qvg,7pg5,8ni1,9kz6,ahz5;55s,11x8,1yzc,2wji,3uoj,4tbk,5s8p,6r4y,7ppn,8nrj,9l8p,ai8p;5fd,126s,1z8u,2wsw,3uxt,4tkv,5si3,6reh,7pzc,8o1c,9lii,aiig;5p4,12gj,1zin,2x2s,3v7q,4tur,5srx,6ro9,7q90,8oax,9ls1,airz;4um,11m3,1yoa,2w8i,3udi,4t0h,5rxj,6qts,7pei,8ngf,9kxm,ahxl;549,11vq,1yxv,2wi1,3un0,4t9y,5s70,6r39,7po1,8nq2,9l7c,ai7e;5e4,125l,1z7p,2wrt,3uwr,4tjq,5sgt,6rd1,7pxr,8nzp,9lgw,aigw;5nl,12f0,1zh4,2x19,3v69,4tta,5sqg,6rms,7q7i,8o9f,9lql,aiqk;4t9,11kp,1ymv,2w71,3uc2,4sz3,5rw8,6qsi,7pd8,8nf4,9kwa,ahwa;530,11uj,1ywq,2wgw,3ulv,4t8t,5s5w,6r25,7pmw,8nou,9l60,ai5z;5cm,1241,1z64,2wq8,3uv6,4ti6,5sfd,6rbs,7pwo,8nyr,9lg0,aify;5mk,12dw,1zfy,2x02,3v52,4ts5,5spc,6rlp,7q6j,8o8j,9lpr,aipq;4sd,11jq,1yls,2w5w,3uav,4sxx,5rv1,6qrc,7pc5,8ne5,9kvf,ahvh;526,11tl,1yvl,2wfl,3ukf,4t7d,5s4i,6r0w,7pls,8nnw,9l59,ai5e;5c5,123l,1z5m,2wpl,3uud,4th9,5sed,6raq,7pvm,8nxp,9ley,aif0;5lp,12d4,1zf6,2wz8,3v42,4tqy,5so2,6rkf,7q5b,8o7e,9loo,aiop;4re,11it,1ykx,2w51,3u9x,4swu,5rtv,6qq4,7pay,8nd1,9kud,ahuh;517,11so,1yur,2weu,3ujq,4t6l,5s3k,6qzr,7pkj,8nmm,9l3y,ai43;5as,1226,1z46,2wo5,3usy,4tfw,5sd0,6r9c,7pu8,8nwd,9ldp,aidt;5kj,12bw,1zdw,2wxv,3v2q,4tpq,5smv,6rj8,7q41,8o61,9lnb,aind;4q3,11hj,1yjl,2w3m,3u8h,4sve,5rsh,6qor,7p9k,8nbl,9ksu,ahsx;4zn,11r3,1yt4,2wd3,3uhu,4t4p,5s1r,6qy5,7pj3,8nla,9l2n,ai2r;59g,120u,1z2u,2wmt,3urk,4tef,5sbi,6r7v,7psu,8nv0,9lcc,aice;5j1,12ac,1zcb,2wwa,3v13,4to0,5sl3,6rhg,7q2e,8o4l,9llz,aim2;4oq,11g2,1yi0,2w1y,3u6r,4stn,5rqq,6qn1,7p7y,8na4,9krk,ahrs;4yl,11q0,1yry,2wbu,3ugk,4t3e,5s0e,6qwp,7phl,8njr,9l17,ai1f;587,11zl,1z1i,2wlc,3upz,4tcr,5s9u,6r6a,7pra,8ntj,9laz,aib5;5hw,129a,1zb9,2wv6,3uzw,4tmq,5sjs,6rg6,7q15,8o3c,9lkq,aikv;4nm,11f1,1yh3,2w12,3u5u,4ssn,5rpm,6qlw,7p6s,8n8z,9kqe,ahql;4xc,11or,1yqq,2wam,3ufb,4t23,5rz3,6qvf,7pgd,8nio,9l07,ai0g;578,11ym,1z0k,2wkf,3up4,4tby,5s90,6r5e,7pqc,8nsj,9l9z,aia6;5gx,128a,1za7,2wu3,3uyu,4tlo,5sis,6rf5,7q03,8o29,9ljo,aijt;4mk,11dy,1yfx,2vzt,3u4j,4srd,5rof,6qks,7p5q,8n7y,9kpe,ahpl;4wd,11nt,1yps,2w9p,3ued,4t15,5ry6,6quj,7pfi,8nhr,9kz7,ahzd;563,11xe,1yza,2wj3,3unq,4tai,5s7k,6r41,7pp5,8nrh,9l90,ai97;5fu,1274,1z8x,2wsr,3uxg,4tkb,5she,6rdu,7pyw,8o17,9liq,aiiy;4lo,11cz,1yeu,2vyn,3u3b,4sq4,5rn5,6qji,7p4h,8n6r,9kob,ahol;4ve,11mr,1yok,2w88,3ucq,4sze,5rwe,6qst,7pdw,8ngb,9kxy,ahya;555,11wi,1yyc,2wi1,3umj,4t96,5s66,6r2n,7pnr,8nq4,9l7o,ai7x;5ep,1263,1z7y,2wrq,3uwa,4tiy,5sfw,6rca,7pxc,8nzo,9lh8,aihh;4k9,11bm,1ydj,2vxd,3u1x,4sol,5rlh,6qhr,7p2s,8n55,9kms,ahn5;4tz,11le,1ynb,2w74,3ubp,4syd,5rv9,6qrj,7pci,8neu,9kwh,ahwt;53m,11uy,1ywr,2wgh,3ul1,4t7p,5s4p,6r12,7pm4,8noh,9l63,ai6e;5d7,124j,1z6d,2wq3,3uuo,4thg,5sei,6rax,7pvy,8ny8,9lfr,aig1;4iu,11a9,1yc5,2vvy,3u0k,4sna,5rka,6qgn,7p1n,8n3y,9klh,ahlq;4sj,11jw,1ylr,2w5g,3u9y,4swk,5rtj,6qpz,7pb5,8ndl,9kv9,ahvk;52b,11tn,1yvf,2wf4,3ujn,4t6c,5s3d,6qzv,7pl2,8nnj,9l56,ai5f;5c4,123d,1z54,2wot,3ute,4tg4,5sd5,6r9l,7puq,8nx6,9leu,aif5;4hx,1196,1yax,2vuk,3tz2,4slp,5rip,6qf4,7p08,8n2q,9kkh,ahkw;4rs,11j5,1ykw,2w4i,3u8x,4svj,5rsi,6qox,7pa2,8nck,9kua,ahup;51k,11sw,1yum,2we6,3uij,4t53,5s21,6qyi,7pjr,8nma,9l40,ai4e;5b7,122k,1z4b,2wny,3usd,4tez,5sbx,6r8d,7ptj,8nw1,9ldq,aie4;4gy,118c,1ya6,2vtw,3tye,4skz,5rhv,6qe7,7oz9,8n1q,9kjg,ahjw;4qr,11i3,1yjv,2w3h,3u7v,4sud,5rr8,6qnl,7p8q,8nba,9kt3,ahtk;50h,11rt,1ytj,2wd4,3uhi,4t43,5s12,6qxi,7pio,8nl5,9l2v,ai39;5a3,121g,1z37,2wmt,3ur9,4tdw,5sav,6r7a,7pse,8nut,9lch,aicu;4fo,1171,1y8u,2vsg,3twv,4sje,5rgb,6qcp,7oxu,8n0b,9ki1,ahig;4pb,11gp,1yih,2w24,3u6j,4st2,5rpz,6qmf,7p7m,8na5,9krw,ahs9;4z1,11qb,1ys0,2wbk,3ufx,4t2i,5rzg,6qvx,7ph6,8njs,9l1k,ai1y;58p,11zw,1z1j,2wl3,3uph,4tc4,5s93,6r5k,7pqs,8ntd,9lb5,aibl;4ef,115o,1y7d,2vqx,3tvb,4shx,5rew,6qbb,7owh,8mz1,9kgu,ahhc;4o8,11fj,1yh6,2w0l,3u4s,4sr8,5ro4,6qkm,7p5w,8n8j,9kqe,ahqx;4xu,11p6,1yqt,2wa9,3ueg,4t0w,5rxu,6que,7pfq,8nie,9l07,ai0n;57h,11yt,1z0i,2wk1,3uoc,4tau,5s7r,6r47,7ppg,8ns3,9l9w,aiac;4d7,114h,1y67,2vpq,3tu1,4sgg,5rd9,6q9m,7out,8mxh,9kff,ahfz;4mw,11e8,1yfx,2vzf,3u3q,4sq7,5rn2,6qjg,7p4p,8n7c,9kp9,ahpt;4wq,11o0,1ypm,2w91,3uda,4szs,5rwp,6qt6,7pef,8nh2,9kyy,ahzg;56c,11xn,1yz9,2wip,3umz,4t9h,5s6g,6r2x,7po6,8nqs,9l8m,ai93;4c0,113d,1y53,2vom,3tsx,4sff,5rcd,6q8u,7ou2,8mwo,9kei,ahf0;4lw,11d7,1yev,2vyb,3u2h,4sov,5rlp,6qi7,7p3k,8n6a,9ko8,ahor;4vm,11mw,1yoh,2w7w,3uc3,4syj,5rvh,6qs1,7pdf,8ng7,9ky5,ahyn;55g,11wn,1yy8,2who,3uly,4t8g,5s5f,6r1w,7pn7,8npx,9l7v,ai8f;4ba,112j,1y43,2vng,3trm,4se0,5rau,6q7a,7osk,8mva,9kdb,ahdz;4ky,11ca,1ydw,2vx8,3u1c,4snp,5rkj,6qh1,7p2e,8n55,9kn5,ahnr;4up,11m0,1ynl,2w6w,3uaz,4sxb,5ru6,6qqo,7pc2,8neu,9kwt,ahxd;54a,11vk,1yx6,2wgj,3ukp,4t71,5s3v,6r0b,7plm,8nod,9l6d,ai6x;49v,1116,1y2t,2vma,3tqi,4scx,5r9q,6q64,7ore,8mu4,9kc4,ahcq;4jo,11az,1ycj,2vvv,3tzz,4sma,5rj2,6qfh,7p0t,8n3l,9kln,ahma;4t9,11kj,1ym2,2w5d,3u9g,4svt,5rsp,6qp8,7pal,8ndd,9kvc,ahvx;52t,11u3,1yvn,2wf0,3uj7,4t5m,5s2k,6qz2,7pke,8nn4,9l51,ai5l;48i,10zs,1y1d,2vkp,3tot,4sb4,5r7w,6q4d,7opq,8msi,9kai,ahb4;4i2,119d,1yay,2vu9,3tyd,4sko,5rhi,6qe1,7ozh,8n2d,9kkf,ahl0;4rv,11j2,1ykj,2w3t,3u7w,4su9,5rr5,6qnp,7p96,8nc3,9ku7,ahut;51n,11st,1yu9,2wdh,3uhk,4t3x,5s0s,6qxb,7piq,8nll,9l3p,ai4e;47c,10yl,1y02,2vjc,3tne,4s9r,5r6n,6q36,7ook,8mrf,9k9k,ahaa;4hb,118l,1ya2,2vt7,3tx4,4sjb,5rg4,6qcn,7oy4,8n12,9kj8,ahjz;4r0,11ib,1yjs,2w2y,3u6v,4st2,5rpv,6qmf,7p7y,8naw,9kt1,ahtp;50n,11rx,1yth,2wcs,3ugu,4t34,5rzx,6qwf,7phv,8nkr,9l2w,ai3k;46j,10xt,1xzd,2vin,3tmo,4s8v,5r5j,6q1w,7on9,8mq6,9k8c,ah95;4g6,117h,1y90,2vs9,3tw9,4sii,5rf9,6qbp,7ox4,8n01,9ki7,ahiy;4py,11h7,1yin,2w1v,3u5v,4ss6,5rp1,6qlk,7p70,8n9v,9ks0,ahsp;4zn,11qw,1ysd,2wbk,3ufk,4t1u,5ryo,6qv6,7pgl,8nje,9l1h,ai25;455,10wf,1xxy,2vh8,3tla,4s7k,5r4f,6q0y,7omf,8mpb,9k7e,ah82;4f1,1169,1y7q,2vqw,3tut,4sh0,5rdt,6qac,7ovw,8myw,9kh3,ahht;4op,11fv,1yh9,2w0d,3u4a,4sqh,5rnb,6qjx,7p5i,8n8j,9kqr,ahrg;4yc,11pg,1yqt,2w9z,3udy,4t0a,5rx5,6qtr,7pfa,8nia,9l0i,ai19;448,10ve,1xwr,2vft,3tjo,4s5t,5r2j,6pz1,7okj,8mnj,9k5t,ah6o;4dq,1150,1y6e,2vpf,3tt7,4sfa,5rc1,6q8l,7ou7,8mx9,9kfk,ahgd;4ne,11em,1yg0,2vz2,3u2v,4soz,5rlr,6qid,7p3y,8n71,9kpb,ahq4;4x3,11oa,1ypp,2w8s,3ucn,4syr,5rvf,6qrw,7pde,8ngf,9kyq,ahzj;42k,10tu,1xva,2veg,3tid,4s4i,5r18,6pxp,7oj7,8mm8,9k4k,ah5f;4ch,113q,1y54,2vo5,3trz,4se2,5ras,6q7a,7oss,8mvv,9ke8,ahf4;4m6,11df,1yes,2vxs,3u1k,4sno,5rkg,6qh0,7p2k,8n5l,9knv,ahop;4vp,11my,1yod,2w7h,3ubd,4sxk,5rue,6qr0,7pck,8nfk,9kxs,ahyk;41l,10sv,1xua,2vde,3th7,4s3a,5qzz,6pwg,7oi0,8ml2,9k3d,ah47;4b9,112i,1y3x,2vn0,3tqs,4scv,5r9k,6q65,7ors,8muy,9kdb,ahe4;4l2,11c7,1ydi,2vwk,3u0e,4sml,5rje,6qg1,7p1p,8n4v,9kn8,aho2;4v1,11m5,1yne,2w6e,3ua8,4swd,5rt4,6qpo,7pb8,8nec,9kwp,ahxl;40n,10rv,1xt6,2vc6,3tfy,4s22,5qyv,6pvf,7oh1,8mk6,9k2k,ah3h;4ak,111t,1y33,2vm0,3tpn,4sbn,5r8e,6q50,7oqo,8mtw,9kcb,ahd8;4kb,11bj,1ycu,2vvq,3tzd,4slc,5ri1,6qem,7p0b,8n3i,9klw,ahmr;4ts,11kz,1ymb,2w5c,3u94,4sv6,5rrw,6qoh,7pa5,8ndb,9kvq,ahwl;3zn,10qu,1xs6,2vb6,3tew,4s0v,5qxh,6ptw,7ofh,8min,9k14,ah23;498,110g,1y1r,2vkp,3toc,4sab,5r6y,6q3g,7op2,8msa,9kaq,ahbp;4ir,119x,1yb7,2vu3,3txt,4sjv,5rgn,6qda,7oyy,8n24,9kkj,ahlf;4sh,11jo,1yky,2w3v,3u7l,4stm,5rqb,6qmu,7p8f,8nbj,9ktw,ahus';
+let V31_TERM_TABLE = null;
 function v31SolarTermJD(targetLon, year, approxMonth, approxDay) {
+  const idx = V31_TERM_LONS.indexOf(((targetLon % 360) + 360) % 360);
+  if (idx >= 0 && year >= 1900 && year <= 2100) {
+    if (!V31_TERM_TABLE) V31_TERM_TABLE = V31_TERM_TABLE_RAW.split(';').map(r => r.split(',').map(x => parseInt(x, 36)));
+    const mins = V31_TERM_TABLE[year - 1900][idx];
+    const jd = Date.UTC(year, 0, 1) / 86400000 + 2440587.5 + mins / 1440;
+    const approxJD = Date.UTC(year, (approxMonth || 1) - 1, approxDay || 15) / 86400000 + 2440587.5;
+    if (Math.abs(jd - approxJD) < 25) return jd;
+  }
+  return v31SolarTermJDMeeus(targetLon, year, approxMonth, approxDay);
+}
+function v31SolarTermJDMeeus(targetLon, year, approxMonth, approxDay) {
   // 시작점: 근사 날짜 ±5일
   let jdLow = v31ToJulianDay(year, approxMonth, approxDay - 5);
   let jdHigh = v31ToJulianDay(year, approxMonth, approxDay + 5);
@@ -24536,6 +24553,11 @@ async function handleV55Request(request, env, ctx) {
                 );
             }
             
+            // [v1.2.0] 신년사주 판매 스위치 — 환경변수 NEWYEAR_OPEN=false 이면 신규 주문만 차단
+            if (input.subtype === 'newyear2027' && env.NEWYEAR_OPEN === 'false') {
+                return errorResponse('2027 신년사주 접수가 잠시 중단되었습니다.', 403, 'NEWYEAR_CLOSED');
+            }
+
             // 3. ★ ChatGPT #3 idempotency 검사 ★
             const idempotencyHash = await generateIdempotencyHash(input);
             const existing = await findExistingReading(env, idempotencyHash);
@@ -25488,8 +25510,9 @@ function buildNewYear2027(input) {
     daewoon: { forward: dw.forward, startAge: dw.startAge, list: dw.list, current: dw2027, changesIn2027: dwStartIn2027 },
     seun, months,
     highlights: {
-      bestMonths: ranked.slice(0, 3).map(m => ({ label: m.label, ko: m.ko, score: m.score })),
-      cautionMonths: ranked.slice(-3).reverse().map(m => ({ label: m.label, ko: m.ko, score: m.score })),
+      // 상위·하위 3개 중 근거가 충분한 달만 표시 (종합 +1 이상 / -1 이하), 약하면 길흉 확정하지 않음
+      bestMonths: ranked.slice(0, 3).filter(m => m.score >= 1).map(m => ({ label: m.label, ko: m.ko, score: m.score })),
+      cautionMonths: ranked.slice(-3).reverse().filter(m => m.score <= -1).map(m => ({ label: m.label, ko: m.ko, score: m.score })),
       yearTone: seun.score >= 1 ? '상승' : seun.score <= -1 ? '조심' : '혼재'
     }
   };
@@ -25543,8 +25566,10 @@ function nyContextText(r, opts) {
     lines.push(`  ${m.label} ${m.ko}(${m.hanja}) ${m.from}~${m.to} | 천간 ${m.tenGodStem}·지지 ${m.tenGodBranch} | 바탕 ${m.baseScore}, 종합 ${m.score}${m.withSeun.length ? ' | 세운 미와: ' + m.withSeun.join('·') : ''}`);
     for (const e of m.events.slice(0, 5)) lines.push(`     · [${e.area}/${e.tone}] ${e.text}`);
   }
-  lines.push(`■ 상대적으로 좋은 달: ${r.highlights.bestMonths.map(m => m.label + '(' + m.ko + ')').join(', ')}`);
-  lines.push(`■ 상대적으로 신중할 달: ${r.highlights.cautionMonths.map(m => m.label + '(' + m.ko + ')').join(', ')}`);
+  lines.push(`■ 상대적으로 좋은 달: ${r.highlights.bestMonths.map(m => m.label + '(' + m.ko + ')').join(', ') || '뚜렷하게 두드러진 달 없음 — 억지로 지정하지 말 것'}`);
+  lines.push(`■ 상대적으로 신중할 달: ${r.highlights.cautionMonths.map(m => m.label + '(' + m.ko + ')').join(', ') || '뚜렷하게 두드러진 달 없음 — 억지로 지정하지 말 것'}`);
+  lines.push('■ 주의: 「2027년 1월 (정미년 진입 전)」 辛丑월은 아직 병오년(2026) 기운이며 정미년은 2월 4일 입춘부터 시작됨 — 월별 첫 항목과 총운에서 분명히 구분할 것');
+  if (ys.confidence !== 'high') lines.push('■ 용신 판정 신뢰도: 중간 — 용신 관련 표현은 단정하지 말고 "~로 보는 것이 자연스럽다" 정도로 쓸 것');
   return lines.join('\n');
 }
 
@@ -25616,7 +25641,7 @@ function nyCalcSummary(r) {
   return {
     pillars: n.pillars, hasHour: n.hasHour, dayMaster: n.dayMaster, dayMasterElement: n.dayMasterElement,
     distribution: n.distribution, strengthLevel: n.strength.level,
-    yongshin: { yong: n.yongshin.yong, hee: n.yongshin.hee, gi: n.yongshin.gi, gu: n.yongshin.gu, method: n.yongshin.method },
+    yongshin: { yong: n.yongshin.yong, hee: n.yongshin.hee, gi: n.yongshin.gi, gu: n.yongshin.gu, method: n.yongshin.method, basis: n.yongshin.basis, confidence: n.yongshin.confidence, selfShare: n.strength.selfShare },
     daewoon: r.daewoon.current, daewoonChange: r.daewoon.changesIn2027,
     seun: { ko: r.seun.ko, hanja: r.seun.hanja, tenGodStem: r.seun.tenGodStem, tenGodBranch: r.seun.tenGodBranch, stage: r.seun.stage },
     months: r.months.map(m => ({ label: m.label, ko: m.ko, hanja: m.hanja, from: m.from, to: m.to, score: m.score, preYear: m.preYear })),
@@ -25624,20 +25649,29 @@ function nyCalcSummary(r) {
   };
 }
 
-async function nyGenerateReport(apiKey, input, rawOpts) {
+const NY_PART_OK = {
+  A: x => !!(x && x.cover && x.cover.theme && x.total && x.wealth && x.career),
+  B: x => !!(x && x.love && x.marriage && x.final && Array.isArray(x.final.tips)),
+  C: x => !!(x && Array.isArray(x.months) && x.months.length >= 10)
+};
+async function nyGenerateReport(apiKey, input, rawOpts, prevParts) {
   const r = buildNewYear2027(input);
   if (!r.success) throw new Error(r.error || '명식 계산 실패');
   const opts = nyCleanOpts(rawOpts);
   const ctx = nyContextText(r, opts);
   const t0 = Date.now();
-  const [A, B, C] = await Promise.all([
-    nyGeminiJSON(apiKey, NY_SYSTEM_PROMPT, nyPromptA(ctx), 4096),
-    nyGeminiJSON(apiKey, NY_SYSTEM_PROMPT, nyPromptB(ctx), 4096),
-    nyGeminiJSON(apiKey, NY_SYSTEM_PROMPT, nyPromptC(ctx, r.months), 7000)
-  ]);
-  if (!A || !A.cover || !A.total) throw new Error('보고서 A 형식 오류');
-  if (!B || !B.love || !B.final) throw new Error('보고서 B 형식 오류');
-  if (!C || !Array.isArray(C.months) || C.months.length < 10) throw new Error('보고서 C 형식 오류');
+  // 이미 성공한 항목은 재사용하고, 없거나 깨진 항목만 생성 (부분 실패 복구)
+  const parts = Object.assign({}, prevParts || {});
+  const errs = [];
+  const job = (key, prompt, max) => NY_PART_OK[key](parts[key]) ? Promise.resolve() :
+    nyGeminiJSON(apiKey, NY_SYSTEM_PROMPT, prompt, max).then(v => { if (NY_PART_OK[key](v)) parts[key] = v; else errs.push(key + ': 형식 오류'); })
+      .catch(e => errs.push(key + ': ' + (e && e.message || e)));
+  await Promise.all([job('A', nyPromptA(ctx), 4096), job('B', nyPromptB(ctx), 4096), job('C', nyPromptC(ctx, r.months), 7000)]);
+  if (!NY_PART_OK.A(parts.A) || !NY_PART_OK.B(parts.B) || !NY_PART_OK.C(parts.C)) {
+    const err = new Error('보고서 일부 생성 실패 — ' + errs.join(' / '));
+    err.parts = parts; throw err;
+  }
+  const A = parts.A, B = parts.B, C = parts.C;
   // 월 순서·라벨을 계산값에 고정 (AI가 순서를 바꿔도 안전)
   const monthsText = r.months.map((m, i) => {
     const t = C.months.find(x => x && x.label === m.label) || C.months[i] || {};
@@ -25703,6 +25737,7 @@ async function handleNewYearRoutes(request, env, url) {
   try {
     // 1) 무료 명식 확인 + 한 줄 맛보기 (AI 호출 없음)
     if (path === '/saju/newyear/preview' && request.method === 'POST') {
+      if (env.NEWYEAR_OPEN === 'false') return nyJson({ success: false, closed: true, error: '2027 신년사주 접수가 잠시 중단되었습니다.' }, 403);
       const body = await request.json().catch(() => ({}));
       const r = nyPreview(body.input || body);
       return nyJson(r, r.success ? 200 : 400);
@@ -25730,14 +25765,16 @@ async function handleNewYearRoutes(request, env, url) {
         gender: (si.gender === 'female' || si.gender === '여' || si.gender === 'F') ? 'female' : 'male'
       };
       try {
-        const report = await nyGenerateReport(env.GEMINI_API_KEY, input, opts);
+        let prev = null; try { prev = reading.nyParts ? JSON.parse(reading.nyParts) : null; } catch (e) {}
+        const report = await nyGenerateReport(env.GEMINI_API_KEY, input, opts, prev);
         await updateReading(env, reading.readingId, {
-          content: JSON.stringify(report), contentReady: true, contentAt: Date.now(), status: STATUS.READY, nyGenStartedAt: 0,
+          content: JSON.stringify(report), contentReady: true, contentAt: Date.now(), status: STATUS.READY, nyGenStartedAt: 0, nyParts: null,
           metrics: { source: 'ny27', version: NY27_VERSION, genMs: report.genMs }
         });
         return nyJson({ ok: true, status: 'ready', report });
       } catch (e) {
-        await updateReading(env, reading.readingId, { nyGenStartedAt: 0, nyLastError: String(e && e.message || e), nyErrorAt: Date.now() });
+        await updateReading(env, reading.readingId, { nyGenStartedAt: 0, nyLastError: String(e && e.message || e), nyErrorAt: Date.now(),
+          nyParts: e && e.parts ? JSON.stringify(e.parts) : (reading.nyParts || null), nyFailCount: (reading.nyFailCount || 0) + 1 });
         return nyJson({ ok: false, status: 'error', error: '보고서 생성이 지연되고 있습니다. 잠시 후 다시 시도해 주세요.', detail: String(e && e.message || e) }, 503);
       }
     }
