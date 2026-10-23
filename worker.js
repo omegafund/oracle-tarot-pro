@@ -25081,7 +25081,7 @@ async function handleV55Request(request, env, ctx) {
 //   점수 2층: 바탕 운(용신 길흉) + 사건 신호(일간·일지·관성·자녀궁의 합충형, 격 완성)
 //   검증: 사장님 확정 정답지 14건 회귀 테스트 통과 후 배포
 // ════════════════════════════════════════════════════════════════════════════════
-const NY27_VERSION = 'ny27-1.1';
+const NY27_VERSION = 'ny27-1.2';
 const NY_ELS = ['목', '화', '토', '금', '수'];
 const NY_GEN = { 목: '화', 화: '토', 토: '금', 금: '수', 수: '목' };      // A가 B를 생
 const NY_CTL = { 목: '토', 토: '수', 수: '화', 화: '금', 금: '목' };      // A가 B를 극
@@ -25132,7 +25132,7 @@ const NY_STEM_HAP = [['갑', '기', '토'], ['을', '경', '금'], ['병', '신'
 const NY_STEM_CHUNG = [['갑', '경'], ['을', '신'], ['병', '임'], ['정', '계']];
 const NY_YUKHAP = [['자', '축', '토'], ['인', '해', '목'], ['묘', '술', '화'], ['진', '유', '금'], ['사', '신', '수'], ['오', '미', '화']];
 const NY_CHUNG = [['자', '오'], ['축', '미'], ['인', '신'], ['묘', '유'], ['진', '술'], ['사', '해']];
-const NY_HYUNG = [['인', '사'], ['사', '신'], ['인', '신'], ['축', '술'], ['술', '미'], ['축', '미'], ['자', '묘']];
+const NY_HYUNG = [['인', '사'], ['사', '신'], ['축', '술'], ['술', '미'], ['자', '묘']];   // 寅申·丑未는 충으로만 판정(형 중복 부여 안 함), 삼형은 3자 완성 시 별도
 const NY_JAHYUNG = ['진', '오', '유', '해'];
 const NY_PA = [['자', '유'], ['묘', '오'], ['진', '축'], ['미', '술'], ['인', '해'], ['사', '신']];
 const NY_HAE = [['자', '미'], ['축', '오'], ['인', '사'], ['묘', '진'], ['신', '해'], ['유', '술']];
@@ -25371,8 +25371,9 @@ function nyEventSignals(p, dm, gender, unit, sig, ys) {
     }
     if (s.kind === 'branch' && s.with === 'day') {
       if (['충', '형', '자형'].includes(s.type)) add('spouse', 'neg', `배우자 자리(일지 ${s.target})가 ${s.type} — 관계·몸·거처 변동`, 2);
-      if (['원진', '파', '해'].includes(s.type)) add('spouse', 'neg', `배우자 자리(일지 ${s.target}) ${s.type} — 관계 마찰`, 1);
-      if (s.type === '육합' || s.type === '반합') add('spouse', 'pos', `배우자 자리(일지 ${s.target}) ${s.type} — 인연·결속`, 1.5);
+      if (['원진', '파', '해'].includes(s.type)) add('relation', 'neg', `일지(${s.target}) ${s.type} — 가까운 관계의 작은 마찰(약한 신호, 결혼·이별 근거 아님)`, 0.7);
+      if (s.type === '육합') add('spouse', 'pos', `배우자 자리(일지 ${s.target}) 육합 — 인연·결속`, 1.5);
+      if (s.type === '반합') add('love', 'pos', `배우자 자리(일지 ${s.target}) 반합 — 가까운 관계에 온기(약한 신호)`, 1.0);
     }
     if (s.kind === 'branch' && s.with === 'month') {
       if (['충', '형'].includes(s.type)) add('career', 'mixed', `사회·직장 자리(월지 ${s.target}) ${s.type} — 직장·환경의 이동·변동(승진·전보·이직 양방향)`, 1.5);
@@ -25405,7 +25406,7 @@ function nyEventSignals(p, dm, gender, unit, sig, ys) {
   if (['정관', '편관'].includes(tgStem) && (ys.yongGroup === '인성' || ys.hee.includes(NY_GEN_BY[dmEl]))) add('career', 'pos', '관인상생 흐름 — 승진·자격·인정', 1.5);
   // 배우자성 등장
   const sg = nyGroup(dmEl, nyStemEl(unit.stem));
-  if (sg === spouseGroup) add('spouse', 'mixed', `${gender === 'female' ? '남편성(관성)' : '아내성(재성)'} ${unit.stem} 투출 — 이성 인연 활성`, 1.2);
+  if (sg === spouseGroup) add('love', 'mixed', `${gender === 'female' ? '남편성(관성)' : '아내성(재성)'} ${unit.stem} 투출 — 이성 인연 기운 활성(약한 신호, 단독으로 결혼 근거 아님)`, 0.8);
   if (sg === '인성') add('study', 'mixed', '인성 투출 — 공부·문서·자격', 1);
   if (sg === '식상') add('self', 'mixed', '식상 투출 — 표현·활동·창작', 1);
   if (sg === '재성' && gender === 'female') add('wealth', 'mixed', '재성 투출 — 재물 활동', 1);
@@ -25498,6 +25499,15 @@ function buildNewYear2027(input) {
   const main = months.filter(m => !m.preYear);
   const ranked = [...main].sort((a, b) => b.score - a.score);
   const natal = nyNatalFeatures(p, dm, norm.gender, ys);
+  // 결혼·배우자 근거 강도: 강한 배우자 신호(일지 충형·합, 배우자성 합, 배우자성 국 완성)만 집계
+  //   월지는 12개월 중 절반 가까이 일지와 만나므로 월 신호로는 강도를 정하지 않음.
+  //   강도 = 그해(세운)가 배우자 자리·배우자성을 직접 움직이는가 / 월은 강도가 있을 때 시기 표시용 상위 2개만
+  const strongSpouse = u => u.events.filter(e => e.area === 'spouse' && e.weight >= 1.5);
+  const seunSpouse = strongSpouse(seun).length;
+  const seunLove = seun.events.some(e => e.area === 'love');
+  const marriageLevel = seunSpouse ? '강함' : seunLove ? '보통' : '약함';
+  const spouseMonths = marriageLevel === '약함' ? [] : main.map(m => ({ label: m.label, w: strongSpouse(m).reduce((a, e) => a + e.weight, 0) }))
+    .filter(x => x.w > 0).sort((a, b) => b.w - a.w).slice(0, 2).map(x => x.label);
   const dmEl = nyStemEl(dm);
   return {
     success: true, version: NY27_VERSION, targetYear: 2027,
@@ -25513,7 +25523,8 @@ function buildNewYear2027(input) {
       // 상위·하위 3개 중 근거가 충분한 달만 표시 (종합 +1 이상 / -1 이하), 약하면 길흉 확정하지 않음
       bestMonths: ranked.slice(0, 3).filter(m => m.score >= 1).map(m => ({ label: m.label, ko: m.ko, score: m.score })),
       cautionMonths: ranked.slice(-3).reverse().filter(m => m.score <= -1).map(m => ({ label: m.label, ko: m.ko, score: m.score })),
-      yearTone: seun.score >= 1 ? '상승' : seun.score <= -1 ? '조심' : '혼재'
+      yearTone: seun.score >= 1 ? '상승' : seun.score <= -1 ? '조심' : '혼재',
+      marriageEvidence: { level: marriageLevel, seun: seunSpouse > 0, months: spouseMonths }
     }
   };
 }
@@ -25540,7 +25551,7 @@ function nyContextText(r, opts) {
   const evText = evs => evs.length ? evs.map(e => `  - [${e.area}/${e.tone}] ${e.text}`).join('\n') : '  - 특기할 합충 신호 없음';
   const sd = r.input.solarDate;
   const lines = [];
-  lines.push(`■ 기본: ${r.input.gender === 'female' ? '여성' : '남성'}, 양력 ${sd.year}.${sd.month}.${sd.day}${n.hasHour ? '' : ' (태어난 시 모름 — 시주 제외, 자녀·말년 해석은 약하게)'}`);
+  lines.push(`■ 기본: ${r.input.gender === 'female' ? '여성' : '남성'}, 양력 ${sd.year}.${sd.month}.${sd.day}${n.hasHour ? '' : ' (태어난 시 모름 — 시주·시지·자녀 자리·말년을 근거로 한 해석은 절대 쓰지 말 것)'}`);
   if (opts.job) lines.push(`■ 직업 상황(본인 입력): ${opts.job}`);
   if (opts.relation) lines.push(`■ 관계 상황(본인 입력): ${opts.relation}`);
   if (!opts.job) lines.push('■ 직업 상황: 미입력 → 직장인·사업자 모두에 해당되도록 쓰되 단정 금지');
@@ -25570,6 +25581,9 @@ function nyContextText(r, opts) {
   }
   lines.push(`■ 상대적으로 좋은 달: ${r.highlights.bestMonths.map(m => m.label + '(' + m.ko + ')').join(', ') || '뚜렷하게 두드러진 달 없음 — 억지로 지정하지 말 것'}`);
   lines.push(`■ 상대적으로 신중할 달: ${r.highlights.cautionMonths.map(m => m.label + '(' + m.ko + ')').join(', ') || '뚜렷하게 두드러진 달 없음 — 억지로 지정하지 말 것'}`);
+  const me = r.highlights.marriageEvidence;
+  lines.push(`■ 결혼·배우자 근거 강도: ${me.level}${me.months.length ? ' (강한 배우자 신호 달: ' + me.months.join(', ') + ')' : ''}${me.seun ? ', 세운 자체에 배우자 신호 있음' : ''} — 「약함」이면 결혼 시기·이별을 언급하지 말 것`);
+  lines.push('■ [area/tone] 표기에서 love·relation 신호는 약한 신호이므로 결혼·이별의 근거로 쓰지 말 것');
   lines.push('■ 주의: 「2027년 1월 (정미년 진입 전)」 辛丑월은 아직 병오년(2026) 기운이며 정미년은 2월 4일 입춘부터 시작됨 — 월별 첫 항목과 총운에서 분명히 구분할 것');
   if (ys.confidence !== 'high') lines.push('■ 용신 판정 신뢰도: 중간 — 용신 관련 표현은 단정하지 말고 "~로 보는 것이 자연스럽다" 정도로 쓸 것');
   return lines.join('\n');
@@ -25590,7 +25604,9 @@ const NY_SYSTEM_PROMPT = `당신은 『명리다이제스트』 저자 춘추 �
 9. 존댓말(~습니다/~세요). 따뜻하지만 군더더기 없이.
 10. 출력은 지정한 JSON 형식만. 마크다운 기호(**, #) 쓰지 않습니다.
 11. 십성(비견·겁재·식신·상관·편재·정재·편관·정관·편인·정인)과 12운성 이름은 [계산 근거]의 "원국 글자별 십성"과 "오행→십성 대응"에 적힌 그대로만 씁니다. 어떤 글자가 무슨 십성인지 스스로 추론하거나 바꾸지 않습니다. 확신이 없으면 십성 이름 대신 오행(나무·불·흙·쇠·물)으로 말합니다.
-12. 한자 병기는 같은 용어가 처음 나올 때 한 번만. 한 문단에 명리 용어는 2~3개 이내로 하고 나머지는 쉬운 말로 풉니다.`;
+12. 한자 병기는 같은 용어가 처음 나올 때 한 번만. 한 문단에 명리 용어는 2~3개 이내로 하고 나머지는 쉬운 말로 풉니다.
+13. 신체 부위·장기·질병 이름(비뇨기, 신장, 심장, 위장, 간, 폐, 혈압, 관절 등)을 쓰지 않습니다. 건강은 과로·수면·휴식·일정 조절 같은 생활 관리로만 씁니다.
+14. 태어난 시를 모르는 경우 시주·시지·자녀 자리를 근거로 한 문장을 쓰지 않습니다.`;
 
 function nyPromptA(ctx) {
   return `[계산 근거]\n${ctx}\n\n[작성할 부분] 표지, 총운, 재물운, 직업운.
@@ -25600,11 +25616,20 @@ JSON 형식:
  "wealth":{"body":"재물운 본문 5~7문장(재성과 원국·세운 관계 근거)","good":"재물에 유리한 시기·방식 1~2문장","caution":"지출·금전 갈등 주의점 1~2문장"},
  "career":{"common":"직업 전반 4~5문장","employee":"직장인이라면 2~3문장","business":"사업·자영업이라면 2~3문장","caution":"직업적 판단에서 신중할 시기 1~2문장"}}`;
 }
-function nyPromptB(ctx) {
+const NY_REL_GUIDE = {
+  '미혼': '고객은 미혼. love는 새로운 인연·만남의 기회·관계를 발전시키는 방법 중심. marriage는 근거 강도가 「강함」일 때만 결혼 가능성을 조건부로 언급하고, 「보통/약함」이면 "결혼을 서두르기보다 관계를 다지는 흐름"처럼 2문장 이내. 결혼 시기 단정 금지.',
+  '연애 중': '고객은 연애 중. love는 관계의 안정·소통·함께 보내는 시간 중심. marriage는 결혼 논의를 위한 현실적 조건과 시기. 충이 있어도 이별을 단정하지 말고 "조율이 필요한 때"로 표현.',
+  '기혼': '고객은 기혼. love는 새로운 이성 인연을 언급하지 말고 부부·가족 간 애정과 소통으로 쓸 것. marriage는 부부 역할·생활 변화·갈등이 드러나기 쉬운 시기의 소통법. 결혼 가능성·새 인연 언급 금지. 이혼·별거 단정 금지.',
+  '이혼·사별': '고객은 이혼 또는 사별. 기존 배우자가 있다는 전제 금지, 재혼 권유 금지. love·marriage는 "원한다면" 새로운 인연이 열리는 흐름과 자신을 돌보는 관점으로 짧게.',
+  '': '관계 상태 미입력. 미혼·기혼을 가정하지 말 것. love의 single/together로 나눠 쓰고, marriage는 근거 강도가 「강함」일 때만 결혼·배우자 변화를 조건부로 언급, 아니면 2문장 이내로 일반적인 관계 관리만.'
+};
+function nyPromptB(ctx, opts) {
+  const guide = NY_REL_GUIDE[(opts && opts.relation) || ''] || NY_REL_GUIDE[''];
   return `[계산 근거]\n${ctx}\n\n[작성할 부분] 연애운, 결혼·배우자운, 대인관계·가족운, 건강·생활 관리, 핵심 시기와 최종 조언.
+[관계 상태 지침] ${guide}
 JSON 형식:
-{"love":{"body":"연애운 4~5문장(배우자성·배우자 자리 근거)","single":"혼자인 분이라면 2문장","together":"인연이 있는 분이라면 2문장","months":"연애에 의미 있는 달 1~2문장"},
- "marriage":{"body":"결혼·배우자운 4~5문장 — 연애와 구분해 배우자 자리와 배우자성의 작용을 씀","caution":"관계에서 신중할 점 1~2문장"},
+{"love":{"body":"연애·애정운 3~4문장(관계 상태 지침을 따름)","single":"혼자인 분이라면 2문장 — 미혼·미입력·이혼사별일 때만, 아니면 빈 문자열","together":"인연이 있는 분이라면 2문장 — 연애 중·기혼·미입력일 때만, 아니면 빈 문자열","months":"애정 면에서 의미 있는 달 1문장 — 강한 근거가 없으면 빈 문자열"},
+ "marriage":{"body":"결혼·배우자운 — 관계 상태 지침과 근거 강도에 따라 2~5문장","caution":"관계에서 신중할 점 1문장 또는 빈 문자열"},
  "relations":{"body":"대인관계·가족 3~4문장 — 근거가 약하면 짧게"},
  "health":{"body":"생활 관리 참고 3문장 — 오행 균형 관점, 과로·리듬 관리. 질병 예언 금지"},
  "final":{"goodPeriods":"상대적으로 활용하기 좋은 시기 2문장","cautionPeriods":"신중한 판단이 필요한 시기 2문장","priorities":"재물·직업·연애·결혼 중 우선 살필 문제 2문장","tips":["올해 실천할 조언 1","조언 2","조언 3"]}}`;
@@ -25653,6 +25678,26 @@ function nyCalcSummary(r) {
   };
 }
 
+// ── 생성 문장 자동 검증: 십성 오기 · 신체/질병 언급 · 시간 모름인데 시주 언급 ──
+const NY_TG_NAMES = ['비견', '겁재', '식신', '상관', '편재', '정재', '편관', '정관', '편인', '정인'];
+const NY_HJ2KO = {}; Object.keys(NY_HANJA).forEach(k => { NY_HJ2KO[NY_HANJA[k]] = { ko: k, kind: 'stem' }; }); Object.keys(NY_HANJA_B).forEach(k => { NY_HJ2KO[NY_HANJA_B[k]] = { ko: k, kind: 'branch' }; });
+const NY_BODY_RE = /비뇨|신장|방광|심장|심혈관|위장|소화기|간 기능|간장|간 건강|폐 |폐가|폐의|호흡기|혈압|당뇨|갑상선|자궁|관절|척추|허리 통증|신경계|암 |종양|질환|질병/;
+function nyTextOf(obj) { const out = []; (function walk(v) { if (typeof v === 'string') out.push(v); else if (Array.isArray(v)) v.forEach(walk); else if (v && typeof v === 'object') Object.values(v).forEach(walk); })(obj); return out.join('\n'); }
+function nyCheckPart(obj, r) {
+  const t = nyTextOf(obj); const issues = [];
+  const dm = r.natal.dayMaster;
+  const tgOf = h => { const x = NY_HJ2KO[h]; if (!x) return null; return x.kind === 'stem' ? (x.ko === dm ? '일간' : nyTenGod(dm, x.ko)) : nyTenGodBranch(dm, x.ko); };
+  // 패턴1: 「卯(...)? 편관」 — 한자 1글자 바로 뒤(괄호·공백·조사 최대 6자) 십성
+  const re1 = new RegExp('([甲乙丙丁戊己庚辛壬癸子丑寅卯辰巳午未申酉戌亥])[^가-힣甲-龥]{0,2}(?:\\([^)]{0,6}\\))?\\s?(?:은|는|이|가|인|의|=)?\\s?(' + NY_TG_NAMES.join('|') + ')', 'g');
+  let m;
+  while ((m = re1.exec(t))) { const real = tgOf(m[1]); if (real && real !== '일간' && real !== m[2]) issues.push(`${m[1]}은(는) ${real}인데 ${m[2]}로 씀`); }
+  // 패턴2: 「편관(丑, 卯)」
+  const re2 = new RegExp('(' + NY_TG_NAMES.join('|') + ')\\s?\\(([^)]{1,24})\\)', 'g');
+  while ((m = re2.exec(t))) { for (const ch of m[2]) { const real = tgOf(ch); if (real && real !== '일간' && real !== m[1]) issues.push(`${ch}은(는) ${real}인데 ${m[1]}로 묶음`); } }
+  if (NY_BODY_RE.test(t)) issues.push('신체 부위·질병 이름 사용: ' + (t.match(NY_BODY_RE) || [''])[0]);
+  if (!r.natal.hasHour && /시주|시지|자녀 자리|자녀궁|시간\(時干\)/.test(t)) issues.push('태어난 시를 모르는데 시주·시지·자녀 자리를 언급');
+  return [...new Set(issues)].slice(0, 6);
+}
 const NY_PART_OK = {
   A: x => !!(x && x.cover && x.cover.theme && x.total && x.wealth && x.career),
   B: x => !!(x && x.love && x.marriage && x.final && Array.isArray(x.final.tips)),
@@ -25667,10 +25712,21 @@ async function nyGenerateReport(apiKey, input, rawOpts, prevParts) {
   // 이미 성공한 항목은 재사용하고, 없거나 깨진 항목만 생성 (부분 실패 복구)
   const parts = Object.assign({}, prevParts || {});
   const errs = [];
+  const warnings = [];
   const job = (key, prompt, max) => NY_PART_OK[key](parts[key]) ? Promise.resolve() :
-    nyGeminiJSON(apiKey, NY_SYSTEM_PROMPT, prompt, max).then(v => { if (NY_PART_OK[key](v)) parts[key] = v; else errs.push(key + ': 형식 오류'); })
-      .catch(e => errs.push(key + ': ' + (e && e.message || e)));
-  await Promise.all([job('A', nyPromptA(ctx), 4096), job('B', nyPromptB(ctx), 4096), job('C', nyPromptC(ctx, r.months), 7000)]);
+    nyGeminiJSON(apiKey, NY_SYSTEM_PROMPT, prompt, max).then(async v => {
+      if (!NY_PART_OK[key](v)) { errs.push(key + ': 형식 오류'); return; }
+      let issues = nyCheckPart(v, r);
+      if (issues.length) {   // 검증 실패 → 지적 사항을 붙여 1회 재작성
+        try {
+          const v2 = await nyGeminiJSON(apiKey, NY_SYSTEM_PROMPT, prompt + '\n\n[직전 작성본의 오류 — 반드시 고쳐서 다시 작성]\n- ' + issues.join('\n- '), max);
+          if (NY_PART_OK[key](v2)) { const i2 = nyCheckPart(v2, r); if (i2.length < issues.length) { v = v2; issues = i2; } }
+        } catch (e) {}
+        if (issues.length) warnings.push(key + ': ' + issues.join(' / '));
+      }
+      parts[key] = v;
+    }).catch(e => errs.push(key + ': ' + (e && e.message || e)));
+  await Promise.all([job('A', nyPromptA(ctx), 4096), job('B', nyPromptB(ctx, opts), 4096), job('C', nyPromptC(ctx, r.months), 7000)]);
   if (!NY_PART_OK.A(parts.A) || !NY_PART_OK.B(parts.B) || !NY_PART_OK.C(parts.C)) {
     const err = new Error('보고서 일부 생성 실패 — ' + errs.join(' / '));
     err.parts = parts; throw err;
@@ -25683,7 +25739,7 @@ async function nyGenerateReport(apiKey, input, rawOpts, prevParts) {
   });
   return {
     product: 'newyear2027', version: NY27_VERSION, generatedAt: Date.now(), genMs: Date.now() - t0,
-    options: opts, calc: nyCalcSummary(r),
+    options: opts, calc: nyCalcSummary(r), qa: { warnings },
     text: { cover: A.cover, total: A.total, wealth: A.wealth, career: A.career, love: B.love, marriage: B.marriage, relations: B.relations, health: B.health, final: B.final, months: monthsText }
   };
 }
