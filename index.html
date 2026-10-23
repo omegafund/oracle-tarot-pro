@@ -24,6 +24,24 @@
          · 실제 대기화면(#paidEarlyOverlay)이 그려지면 스스로 제거, 없으면 DOMContentLoaded에 제거
          · 표시 전용: 결제·점사 로직과 저장소를 일절 건드리지 않음 -->
     <script>
+    /* [v1.2.0 NY27] 신년사주 결제 복귀 인터셉터 — 다른 모든 스크립트보다 먼저 실행
+       결제 번호가 신년사주 대기 번호와 같거나 ny=1이면, 일반 사주·타로 복원 장치가 반응하지 않도록
+       주소를 ?ny=report&paid=ny 로 바꾸고 신년사주 화면이 보고서를 불러오게 함 */
+    window.ZEUS_NEWYEAR_ENABLED = false;   // ★ 오픈 시 true (홈 배너 노출). 사전 점검: zeustarot.com/?ny=test
+    (function(){
+      try {
+        var p = new URLSearchParams(location.search);
+        if (p.get('paid') !== 'ok' || !p.get('rid') || !p.get('token')) return;
+        var rid = p.get('rid'), tok = p.get('token');
+        var ny = p.get('ny') === '1';
+        if (!ny) { try { var np = JSON.parse(localStorage.getItem('nyPending') || 'null'); ny = !!(np && np.rid === rid); } catch (_) {} }
+        if (!ny) return;
+        sessionStorage.setItem('nyReturn', JSON.stringify({ rid: rid, token: tok, at: Date.now() }));
+        history.replaceState(null, '', '/?ny=report&paid=ny');
+      } catch (_) {}
+    })();
+    </script>
+    <script>
     (function(){
       try {
         var p = new URLSearchParams(location.search);
@@ -5046,6 +5064,15 @@
         <!-- ☯ HERO — 사주 (V202.0 Saju Hero — 풀 width 상단)   -->
         <!--   가격 표시 제거 (NEW 뱃지만 유지)                  -->
         <!-- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ -->
+        <!-- [v1.2.0 NY27] 2027 신년사주 시즌 배너 (ZEUS_NEWYEAR_ENABLED 또는 ?ny=test 일 때 노출) -->
+        <div id="nyBanner" class="ny-banner" hidden onclick="NY.open()">
+            <span class="nyb-badge">NEW · 2027</span>
+            <div class="nyb-title">🎍 2027 정미년 신년사주</div>
+            <div class="nyb-sub">丁未年 · 내 사주에 정미년과 절기 기준 12개월 흐름을 대입한 연간 보고서</div>
+            <div class="nyb-row"><span class="nyb-price">4,900원 · 명식 확인은 무료</span><span class="nyb-cta">보러 가기 →</span></div>
+            <span class="nyb-again" id="nyBannerAgain" style="display:none" onclick="event.stopPropagation(); NY.open();">📂 내 신년사주 다시보기</span>
+        </div>
+
         <div class="saju-aux-card" onclick="selectCategory('saju', this)">
             <div class="saju-aux-badges">
                 <span class="badge-new-dot"></span>
@@ -25597,7 +25624,7 @@ function reshuffleDeck() {
         
         <!-- 저작권 -->
         <div style="text-align:center; color:#666; font-size: 0.74rem;">
-            © 2026 ZEUS TAROT <span id="app-version" style="margin-left:6px; color:#555;">v1.0</span><!-- build v1.1.1 -->
+            © 2026 ZEUS TAROT <span id="app-version" style="margin-left:6px; color:#555;">v1.0</span><!-- build v1.2.0 -->
         </div>
         
         <!-- ★★★ [V200.2] 결제 잔재 정리 버튼 (사장님 친화적) ★★★ -->
@@ -25618,6 +25645,395 @@ function reshuffleDeck() {
         </div>
     </div>
 </footer>
+
+
+<!-- ════════════════════════════════════════════════════════════════════════
+     [v1.2.0 NY27] 2027 정미년 신년사주 — 화면 모듈 (기존 사주·타로 흐름과 분리)
+     흐름: 소개 → 입력 → 명식 확인(무료) → 결제(토스) → 생성 대기 → 보고서 → 다시보기
+     ════════════════════════════════════════════════════════════════════════ -->
+<style>
+  .ny-banner{position:relative;margin:14px auto 12px;max-width:600px;width:calc(100% - 28px);box-sizing:border-box;padding:16px 18px 15px;border-radius:16px;cursor:pointer;
+    background:linear-gradient(135deg,#3a0d12 0%,#6b1a1f 45%,#2a0a2e 100%);border:1.5px solid rgba(255,215,0,0.75);
+    box-shadow:0 0 22px rgba(255,190,60,0.28),inset 0 0 18px rgba(255,215,0,0.08);color:#FFF4D6;font-family:-apple-system,BlinkMacSystemFont,'Apple SD Gothic Neo','Malgun Gothic',sans-serif;}
+  .ny-banner[hidden]{display:none !important;}
+  .ny-banner .nyb-badge{position:absolute;top:-9px;right:14px;background:#FFD700;color:#3a0d12;font-size:0.68rem;font-weight:900;padding:3px 9px;border-radius:999px;letter-spacing:0.05em;}
+  .ny-banner .nyb-title{font-size:1.12rem;font-weight:900;color:#FFE08A;letter-spacing:0.01em;}
+  .ny-banner .nyb-sub{font-size:0.8rem;opacity:0.85;margin-top:5px;line-height:1.45;}
+  .ny-banner .nyb-row{display:flex;justify-content:space-between;align-items:center;margin-top:10px;gap:8px;flex-wrap:wrap;}
+  .ny-banner .nyb-price{font-size:0.82rem;color:#FFD970;font-weight:800;}
+  .ny-banner .nyb-cta{background:linear-gradient(135deg,#FFD700,#E8A317);color:#2a0a0e;font-weight:900;font-size:0.84rem;padding:8px 14px;border-radius:999px;}
+  .ny-banner .nyb-again{font-size:0.76rem;color:#FFE9B0;text-decoration:underline;margin-top:8px;display:inline-block;}
+
+  #nyApp{position:fixed;inset:0;z-index:2147483000;background:linear-gradient(160deg,#0d0614 0%,#1c0a24 55%,#2a0d14 100%);color:#F3EAD6;overflow-y:auto;-webkit-overflow-scrolling:touch;
+    font-family:-apple-system,BlinkMacSystemFont,'Apple SD Gothic Neo','Malgun Gothic',sans-serif;}
+  #nyApp[hidden]{display:none !important;}
+  #nyApp *{box-sizing:border-box;}
+  #nyApp .ny-top{position:sticky;top:0;z-index:2;display:flex;align-items:center;justify-content:space-between;padding:12px 16px;background:rgba(13,6,20,0.92);border-bottom:1px solid rgba(212,175,55,0.3);backdrop-filter:blur(6px);}
+  #nyApp .ny-top b{color:#FFD970;font-size:0.95rem;letter-spacing:0.02em;}
+  #nyApp .ny-x{background:none;border:1px solid rgba(212,175,55,0.5);color:#FFE08A;border-radius:999px;padding:5px 12px;font-size:0.8rem;cursor:pointer;}
+  #nyApp .ny-wrap{max-width:640px;margin:0 auto;padding:18px 16px 60px;}
+  #nyApp h1{font-size:1.45rem;color:#FFD970;margin:6px 0 6px;line-height:1.35;text-align:center;}
+  #nyApp h2{font-size:1.08rem;color:#FFD970;margin:26px 0 10px;padding-bottom:6px;border-bottom:1px solid rgba(212,175,55,0.35);}
+  #nyApp h3{font-size:0.92rem;color:#FFE9B0;margin:14px 0 5px;}
+  #nyApp p{font-size:0.92rem;line-height:1.75;margin:0 0 8px;color:#EFE4CC;word-break:keep-all;}
+  #nyApp .ny-lead{text-align:center;font-size:0.88rem;opacity:0.85;line-height:1.6;margin-bottom:14px;}
+  #nyApp .ny-card{background:rgba(255,255,255,0.045);border:1px solid rgba(212,175,55,0.28);border-radius:14px;padding:14px 15px;margin:12px 0;}
+  #nyApp .ny-list{margin:0;padding-left:18px;font-size:0.88rem;line-height:1.8;}
+  #nyApp .ny-btn{display:block;width:100%;padding:14px;border-radius:12px;border:none;font-weight:900;font-size:1rem;cursor:pointer;margin-top:12px;
+    background:linear-gradient(135deg,#FFD700,#E8A317);color:#2a0a0e;box-shadow:0 4px 14px rgba(255,190,60,0.3);}
+  #nyApp .ny-btn.sub{background:rgba(255,255,255,0.07);color:#FFE08A;border:1px solid rgba(212,175,55,0.5);box-shadow:none;font-weight:800;}
+  #nyApp .ny-btn[disabled]{opacity:0.5;}
+  #nyApp .ny-pays{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px;}
+  #nyApp .ny-pays button{padding:12px 6px;border-radius:10px;border:1px solid rgba(212,175,55,0.55);background:rgba(255,255,255,0.06);color:#FFF1C9;font-weight:800;font-size:0.86rem;cursor:pointer;}
+  #nyApp .ny-pays button.main{grid-column:1 / -1;background:linear-gradient(135deg,#FFD700,#E8A317);color:#2a0a0e;border:none;font-size:1rem;padding:14px;}
+  #nyApp label.ny-l{display:block;font-size:0.82rem;color:#FFE9B0;margin:12px 0 5px;font-weight:700;}
+  #nyApp .ny-row{display:flex;gap:8px;}
+  #nyApp .ny-row > *{flex:1;min-width:0;}
+  #nyApp select,#nyApp input[type=number]{width:100%;padding:11px 10px;border-radius:9px;border:1.5px solid rgba(212,175,55,0.55);background:rgba(0,0,0,0.45);color:#FFE08A;font-size:0.95rem;font-weight:700;}
+  #nyApp .ny-seg{display:flex;border:1.5px solid rgba(212,175,55,0.55);border-radius:9px;overflow:hidden;}
+  #nyApp .ny-seg button{flex:1;padding:10px 4px;background:transparent;border:none;color:#E8DCC0;font-weight:800;font-size:0.9rem;cursor:pointer;}
+  #nyApp .ny-seg button.on{background:rgba(255,215,0,0.85);color:#2a0a0e;}
+  #nyApp .ny-chk{display:flex;align-items:center;gap:6px;font-size:0.82rem;margin-top:8px;color:#E8DCC0;}
+  #nyApp .ny-note{font-size:0.76rem;opacity:0.7;line-height:1.55;margin-top:8px;}
+  #nyApp .ny-err{color:#FF9B9B;font-size:0.85rem;margin-top:8px;min-height:1em;}
+  #nyApp .ny-pillars{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;text-align:center;margin:8px 0 4px;}
+  #nyApp .ny-pillars .pc{background:rgba(0,0,0,0.35);border:1px solid rgba(212,175,55,0.35);border-radius:10px;padding:8px 2px;}
+  #nyApp .ny-pillars .pc.day{border-color:#FFD700;box-shadow:0 0 10px rgba(255,215,0,0.25);}
+  #nyApp .ny-pillars .pos{font-size:0.7rem;opacity:0.7;}
+  #nyApp .ny-pillars .hj{font-size:1.5rem;font-weight:900;color:#FFE08A;line-height:1.25;letter-spacing:0.05em;}
+  #nyApp .ny-pillars .ko{font-size:0.72rem;opacity:0.8;}
+  #nyApp .ny-pillars .tg{font-size:0.66rem;color:#E9C46A;margin-top:2px;}
+  #nyApp .ny-one{font-size:1rem;color:#FFD970;font-weight:800;line-height:1.6;text-align:center;margin:12px 0 6px;word-break:keep-all;}
+  #nyApp .ny-tags{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0;}
+  #nyApp .ny-tags span{font-size:0.74rem;padding:4px 9px;border-radius:999px;background:rgba(255,215,0,0.12);border:1px solid rgba(255,215,0,0.4);color:#FFE9B0;}
+  #nyApp .ny-month{border-left:3px solid rgba(212,175,55,0.5);}
+  #nyApp .ny-month.good{border-left-color:#5DD68A;}
+  #nyApp .ny-month.care{border-left-color:#FF8A7A;}
+  #nyApp .ny-month .mh{display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap;}
+  #nyApp .ny-month .mh b{color:#FFD970;font-size:0.98rem;}
+  #nyApp .ny-month .mh small{font-size:0.72rem;opacity:0.7;}
+  #nyApp .ny-month .badge{font-size:0.68rem;font-weight:900;padding:2px 8px;border-radius:999px;margin-left:6px;}
+  #nyApp .ny-month.good .badge{background:#5DD68A;color:#06240f;}
+  #nyApp .ny-month.care .badge{background:#FF8A7A;color:#2a0606;}
+  #nyApp .ny-month .hl{font-weight:800;color:#FFE9B0;margin:6px 0 4px;font-size:0.92rem;}
+  #nyApp .ny-month p{font-size:0.86rem;line-height:1.65;margin:0 0 4px;}
+  #nyApp .ny-month .k{color:#E9C46A;font-weight:800;}
+  #nyApp .ny-tip{font-size:0.82rem;color:#FFE9B0;background:rgba(255,215,0,0.08);border-radius:8px;padding:6px 9px;margin-top:6px;}
+  #nyApp .ny-spin{font-size:4rem;line-height:1;color:#FFD970;text-align:center;margin:60px 0 18px;animation:nySpin 2.5s linear infinite;filter:drop-shadow(0 0 18px rgba(255,217,112,0.6));}
+  @keyframes nySpin{from{transform:rotate(0)}to{transform:rotate(360deg)}}
+  #nyApp .ny-steps{text-align:center;font-size:0.9rem;line-height:2;opacity:0.9;}
+  #nyApp .ny-steps .done{color:#5DD68A;}
+  #nyApp .ny-steps .now{color:#FFD970;font-weight:800;}
+  #nyApp .ny-mine{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:10px 12px;border-radius:10px;background:rgba(255,255,255,0.05);border:1px solid rgba(212,175,55,0.3);margin-top:8px;font-size:0.86rem;cursor:pointer;}
+  @media print{
+    body.ny-open > *:not(#nyApp){display:none !important;}
+    body.ny-open #nyApp{position:static !important;overflow:visible !important;background:#fff !important;color:#111 !important;}
+    body.ny-open #nyApp .ny-top, body.ny-open #nyApp .ny-noprint{display:none !important;}
+    body.ny-open #nyApp h1, body.ny-open #nyApp h2, body.ny-open #nyApp .ny-month .mh b, body.ny-open #nyApp .ny-one{color:#7a1a1f !important;}
+    body.ny-open #nyApp h2{border-color:#c9a227 !important;}
+    body.ny-open #nyApp p, body.ny-open #nyApp h3, body.ny-open #nyApp .hl, body.ny-open #nyApp .ny-tip, body.ny-open #nyApp li, body.ny-open #nyApp .ny-pillars *{color:#111 !important;}
+    body.ny-open #nyApp .ny-card, body.ny-open #nyApp .ny-pillars .pc{background:#fff !important;border-color:#c9a227 !important;box-shadow:none !important;}
+    body.ny-open #nyApp .ny-tip{background:#fbf5e1 !important;}
+    body.ny-open #nyApp .ny-tags span{color:#5a3a00 !important;background:#fbf5e1 !important;border-color:#c9a227 !important;}
+    body.ny-open #nyApp .ny-month{break-inside:avoid;}
+  }
+</style>
+
+<div id="nyApp" hidden>
+  <div class="ny-top"><b>🎍 2027 정미년 신년사주</b><button class="ny-x" type="button" onclick="NY.close()">✕ 닫기</button></div>
+  <div class="ny-wrap" id="nyBody"></div>
+</div>
+
+<script>
+(function () {
+  var API = 'https://tarot-api.omegafund01.workers.dev';
+  var PRICE = 4900;
+  var KEEP_UNTIL = new Date('2028-02-04T00:00:00+09:00').getTime();
+  var JOBS = ['직장인', '사업자', '프리랜서', '학생·취업준비', '주부', '기타'];
+  var RELS = ['미혼', '연애 중', '기혼', '이혼·사별', '기타'];
+  var HOURS = [['', '시간 모름'], ['0', '자시 (00:00~00:59)'], ['1', '축시 (01:00~02:59)'], ['3', '인시 (03:00~04:59)'], ['5', '묘시 (05:00~06:59)'], ['7', '진시 (07:00~08:59)'], ['9', '사시 (09:00~10:59)'], ['11', '오시 (11:00~12:59)'], ['13', '미시 (13:00~14:59)'], ['15', '신시 (15:00~16:59)'], ['17', '유시 (17:00~18:59)'], ['19', '술시 (19:00~20:59)'], ['21', '해시 (21:00~22:59)'], ['23', '자시 (23:00~23:59)']];
+  var EL_NAME = { 목: '나무(木)', 화: '불(火)', 토: '흙(土)', 금: '쇠(金)', 수: '물(水)' };
+  var st = { gender: 'female', calendar: 'solar', leap: false, form: null, preview: null, report: null };
+
+  function $(id) { return document.getElementById(id); }
+  function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+  function para(s) { s = String(s || '').trim(); if (!s) return ''; return s.split(/\n+/).map(function (x) { return '<p>' + esc(x) + '</p>'; }).join(''); }
+  function store(k, v) { try { if (v === undefined) return JSON.parse(localStorage.getItem(k) || 'null'); localStorage.setItem(k, JSON.stringify(v)); } catch (e) { return null; } }
+  function myReports() { var a = store('nyReports') || []; return a.filter(function (r) { return r && r.rid && r.token && Date.now() < KEEP_UNTIL; }); }
+  function saveMine(entry) { var a = myReports().filter(function (r) { return r.rid !== entry.rid; }); a.unshift(entry); store('nyReports', a.slice(0, 10)); }
+  function body(html) { var b = $('nyBody'); b.innerHTML = html; var app = $('nyApp'); if (app) app.scrollTop = 0; }
+  function show() { $('nyApp').hidden = false; document.body.classList.add('ny-open'); document.documentElement.style.overflow = 'hidden'; }
+  function close() { $('nyApp').hidden = true; document.body.classList.remove('ny-open'); document.documentElement.style.overflow = ''; refreshBanner(); }
+
+  function pillarsHTML(P) {
+    var order = [['hour', '시주'], ['day', '일주'], ['month', '월주'], ['year', '년주']];
+    return '<div class="ny-pillars">' + order.map(function (o) {
+      var p = P[o[0]];
+      if (!p) return '<div class="pc"><div class="pos">' + o[1] + '</div><div class="hj">?</div><div class="ko">시간 모름</div></div>';
+      return '<div class="pc' + (o[0] === 'day' ? ' day' : '') + '"><div class="pos">' + o[1] + '</div><div class="hj">' + esc(p.hanja) + '</div><div class="ko">' + esc(p.ko) + '</div>' +
+        '<div class="tg">' + esc(o[0] === 'day' ? '나 (일간)' : (p.tenGodStem || '')) + '</div></div>';
+    }).join('') + '</div>';
+  }
+
+  // ── ① 소개 ──
+  function intro() {
+    var mine = myReports();
+    body(
+      '<h1>2027 정미년(丁未年)<br>신년사주</h1>' +
+      '<div class="ny-lead">내 사주 원국에 2027년 정미년의 기운과 절기 기준 12개월 흐름을 대입한<br>나만의 연간 운세 보고서</div>' +
+      (mine.length ? '<div class="ny-card"><h3 style="margin-top:0">📂 내 신년사주 다시보기</h3>' + mine.map(function (r) {
+        return '<div class="ny-mine" onclick="NY.reopen(\'' + esc(r.rid) + '\')"><span>' + esc(r.label || r.rid) + '</span><b style="color:#FFD970">열기 →</b></div>';
+      }).join('') + '</div>' : '') +
+      '<div class="ny-card"><h3 style="margin-top:0">보고서에 담기는 내용</h3><ul class="ny-list">' +
+      '<li>나의 사주와 2027 정미년의 핵심 관계</li><li>2027년 총운 · 재물운 · 직업운</li><li>연애운 · 결혼·배우자운</li>' +
+      '<li><b style="color:#FFD970">절기 기준 12개월 월별 운세</b> (좋은 달·주의할 달 표시)</li><li>대인관계·가족 · 건강·생활 관리 참고</li><li>핵심 시기와 올해 실천할 조언 3가지</li></ul></div>' +
+      '<div class="ny-card"><h3 style="margin-top:0">제우스 신년사주가 다른 점</h3><ul class="ny-list">' +
+      '<li>만세력 정밀 계산(절기 시각·진태양시)으로 원국과 대운을 먼저 계산</li><li>용신·희신을 판정해 정미년이 나에게 득인지 실인지 근거로 풀이</li>' +
+      '<li>양력 달이 아닌 <b>절기 기준</b> 월운 (2월 4일 입춘부터 정미년)</li></ul></div>' +
+      '<div class="ny-card" style="text-align:center"><div style="font-size:1.5rem;font-weight:900;color:#FFD970">4,900원</div>' +
+      '<div class="ny-note" style="opacity:0.85">1회 결제 · 2028년 입춘 전까지 다시보기 · 인쇄/PDF 저장</div></div>' +
+      '<button class="ny-btn" type="button" onclick="NY.form()">생년월일 입력하고 명식 확인하기 (무료)</button>' +
+      '<div class="ny-note" style="text-align:center">결제 전에 계산된 명식과 정미년 한 줄 풀이를 무료로 먼저 보여드립니다.</div>'
+    );
+  }
+
+  // ── ② 입력 ──
+  function opt(list, sel) { return list.map(function (x) { var v = Array.isArray(x) ? x[0] : x, t = Array.isArray(x) ? x[1] : x; return '<option value="' + esc(v) + '"' + (String(sel) === String(v) ? ' selected' : '') + '>' + esc(t) + '</option>'; }).join(''); }
+  function form() {
+    var f = st.form || {};
+    var years = []; for (var y = 2015; y >= 1930; y--) years.push([String(y), y + '년']);
+    var months = []; for (var m = 1; m <= 12; m++) months.push([String(m), m + '월']);
+    var days = []; for (var d = 1; d <= 31; d++) days.push([String(d), d + '일']);
+    body(
+      '<h1 style="font-size:1.2rem">생년월일시 입력</h1><div class="ny-lead">정확한 명식 계산을 위해 태어난 시간까지 입력하면 좋습니다.</div>' +
+      '<label class="ny-l">성별</label><div class="ny-seg" id="nyG"><button type="button" data-v="female">여성</button><button type="button" data-v="male">남성</button></div>' +
+      '<label class="ny-l">양력 / 음력</label><div class="ny-seg" id="nyC"><button type="button" data-v="solar">양력</button><button type="button" data-v="lunar">음력</button></div>' +
+      '<label class="ny-chk" id="nyLeapWrap" style="display:none"><input type="checkbox" id="nyLeap"> 윤달</label>' +
+      '<label class="ny-l">생년월일</label><div class="ny-row"><select id="nyY"><option value="">년</option>' + opt(years, f.year || '') + '</select>' +
+      '<select id="nyM"><option value="">월</option>' + opt(months, f.month || '') + '</select><select id="nyD"><option value="">일</option>' + opt(days, f.day || '') + '</select></div>' +
+      '<label class="ny-l">태어난 시</label><select id="nyH">' + opt(HOURS, f.hour == null ? '' : f.hour) + '</select>' +
+      '<label class="ny-l">현재 상황 (선택 — 입력하면 해석이 더 정확해집니다)</label><div class="ny-row"><select id="nyJob"><option value="">직업 선택 안 함</option>' + opt(JOBS, f.job || '') + '</select>' +
+      '<select id="nyRel"><option value="">관계 선택 안 함</option>' + opt(RELS, f.relation || '') + '</select></div>' +
+      '<div class="ny-err" id="nyErr"></div>' +
+      '<button class="ny-btn" type="button" id="nyGo" onclick="NY.check()">명식 확인하기 (무료)</button>' +
+      '<button class="ny-btn sub" type="button" onclick="NY.intro()">← 이전</button>'
+    );
+    if (f.gender) st.gender = f.gender; if (f.calendar) st.calendar = f.calendar; st.leap = !!f.isLeapMonth;
+    function seg(id, key) {
+      var el = $(id);
+      function paint() { [].forEach.call(el.children, function (b) { b.classList.toggle('on', b.getAttribute('data-v') === st[key]); }); $('nyLeapWrap').style.display = st.calendar === 'lunar' ? 'flex' : 'none'; }
+      el.addEventListener('click', function (e) { var v = e.target && e.target.getAttribute('data-v'); if (v) { st[key] = v; paint(); } });
+      paint();
+    }
+    seg('nyG', 'gender'); seg('nyC', 'calendar');
+    $('nyLeap').checked = st.leap;
+  }
+
+  // ── ③ 명식 확인 (무료 미리보기) ──
+  function readForm() {
+    var y = parseInt($('nyY').value, 10), m = parseInt($('nyM').value, 10), d = parseInt($('nyD').value, 10);
+    var hv = $('nyH').value;
+    if (!y || !m || !d) return null;
+    return { year: y, month: m, day: d, hour: hv === '' ? null : parseInt(hv, 10), calendar: st.calendar, isLeapMonth: st.calendar === 'lunar' && $('nyLeap').checked, gender: st.gender, job: $('nyJob').value, relation: $('nyRel').value };
+  }
+  function check() {
+    var f = readForm();
+    if (!f) { $('nyErr').textContent = '생년월일을 모두 선택해 주세요.'; return; }
+    st.form = f; $('nyGo').disabled = true; $('nyErr').textContent = '';
+    fetch(API + '/saju/newyear/preview', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ input: { year: f.year, month: f.month, day: f.day, hour: f.hour, calendar: f.calendar, isLeapMonth: f.isLeapMonth, gender: f.gender } }) })
+      .then(function (r) { return r.json(); })
+      .then(function (j) {
+        if (!j || !j.success) { $('nyGo').disabled = false; $('nyErr').textContent = (j && j.error) || '명식 계산에 실패했습니다. 날짜를 확인해 주세요.'; return; }
+        st.preview = j; confirmView();
+      })
+      .catch(function () { $('nyGo').disabled = false; $('nyErr').textContent = '연결이 원활하지 않습니다. 잠시 후 다시 시도해 주세요.'; });
+  }
+  function dateLine(p) {
+    var s = p.solarDate, l = p.lunarDate;
+    return '양력 ' + s.year + '.' + s.month + '.' + s.day + (l ? ' (음력 ' + l.year + '.' + l.month + '.' + l.day + (l.isLeapMonth ? ' 윤달' : '') + ')' : '') + ' · ' + (p.gender === 'female' ? '여성' : '남성');
+  }
+  function confirmView() {
+    var p = st.preview;
+    body(
+      '<h1 style="font-size:1.2rem">계산된 나의 명식</h1><div class="ny-lead">' + esc(dateLine(p)) + '</div>' +
+      pillarsHTML(p.pillars) +
+      '<div class="ny-note" style="text-align:center">날짜가 다르게 보이면 <b>양력·음력 선택</b>을 확인해 주세요. ' + (p.hasHour ? '' : '태어난 시를 모르면 시주 없이 계산합니다.') + '</div>' +
+      '<div class="ny-card"><div class="ny-one">' + esc(p.oneLine) + '</div>' +
+      '<p style="text-align:center;margin:0">' + esc(p.teaser) + '</p>' + (p.daewoonChange ? '<p style="text-align:center;margin:8px 0 0;color:#FFE9B0">⚡ ' + esc(p.daewoonChange) + '</p>' : '') + '</div>' +
+      '<div class="ny-card"><div style="text-align:center;font-weight:900;color:#FFD970;font-size:1.05rem">전체 보고서 4,900원</div>' +
+      '<div class="ny-note" style="text-align:center;opacity:0.85">총운·재물·직업·연애·결혼·12개월·핵심 조언 · 2028년 입춘 전까지 다시보기</div>' +
+      '<div class="ny-pays"><button class="main" type="button" onclick="NY.pay(\'카드\')">💳 카드·간편결제로 4,900원 결제</button>' +
+      '<button type="button" onclick="NY.pay(\'카카오페이\')">카카오페이</button><button type="button" onclick="NY.pay(\'토스페이\')">토스페이</button>' +
+      '<button type="button" onclick="NY.pay(\'네이버페이\')">네이버페이</button><button type="button" onclick="NY.pay(\'계좌이체\')">🏦 계좌이체</button></div>' +
+      '<div class="ny-err" id="nyErr"></div><div class="ny-note">결제 후 보고서 작성에 20~40초 정도 걸립니다. 화면을 닫지 말고 기다려 주세요.</div></div>' +
+      '<button class="ny-btn sub" type="button" onclick="NY.form()">← 생년월일 다시 입력</button>'
+    );
+  }
+
+  // ── ④ 결제 ──
+  var paying = false;
+  function pay(method) {
+    if (paying) return; paying = true;
+    var f = st.form;
+    var payload = {
+      plan: 'premium', v54Plan: 'saju_premium', feature: 'premium', category: 'saju', categoryHint: 'saju', subtype: 'newyear2027',
+      question: '[NY2027] 2027 정미년 신년사주',
+      sajuInput: { year: f.year, month: f.month, day: f.day, hour: f.hour, calendar: f.calendar, isLeapMonth: !!f.isLeapMonth, gender: f.gender },
+      clientState: JSON.stringify({ nyOptions: { job: f.job || '', relation: f.relation || '' } }),
+      idempotencyKey: 'ny2027_' + Date.now() + '_' + Math.random().toString(36).slice(2, 10),
+      clientVersion: (typeof APP_VERSION !== 'undefined') ? APP_VERSION : 'unknown'
+    };
+    var errBox = $('nyErr'); if (errBox) errBox.textContent = '결제창을 여는 중…';
+    fetch(API + '/v55/create-reading', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload), cache: 'no-store' })
+      .then(function (r) { return r.json(); })
+      .then(function (d) {
+        if (!d || !d.readingId || !d.signedAccessToken) throw new Error((d && (d.message || d.error)) || '주문 생성 실패');
+        var rid = d.readingId, tok = d.signedAccessToken;
+        store('nyPending', { rid: rid, token: tok, at: Date.now(), label: dateLine(st.preview) });
+        var toss = (typeof _getTossSDK === 'function') ? _getTossSDK() : null;
+        if (!toss) throw new Error('결제 모듈을 불러오는 중입니다. 잠시 후 다시 눌러 주세요.');
+        var base = (typeof V55_STATIC_BASE !== 'undefined') ? V55_STATIC_BASE : 'https://oracle-tarot-v1.omegafund01.workers.dev';
+        var q = '?readingId=' + encodeURIComponent(rid) + '&rid=' + encodeURIComponent(rid) + '&token=' + encodeURIComponent(tok) +
+                '&plan=saju_premium&n=n' + Date.now() + '&ctx=saju&ny=1';
+        return toss.requestPayment(method, {
+          amount: PRICE, orderId: 'ORD-' + rid, orderName: '2027 정미년 신년사주', customerName: '고객',
+          successUrl: base + '/v55/success-v55.html' + q, failUrl: base + '/v55/fail-v55.html' + q
+        });
+      })
+      .catch(function (e) {
+        paying = false;
+        var b = $('nyErr');
+        if (e && e.code === 'USER_CANCEL') { if (b) b.textContent = '결제를 취소했습니다.'; return; }
+        if (b) b.textContent = '결제를 시작하지 못했습니다: ' + ((e && e.message) || e);
+      });
+  }
+
+  // ── ⑤ 생성 대기 + 보고서 요청 ──
+  var STEPS = ['결제 확인', '원국·대운 계산', '정미년 세운 대입', '12개월 절기 월운 계산', '보고서 작성'];
+  var stepTimer = null;
+  function waiting(stepIdx) {
+    body('<div class="ny-spin">☯</div><h1 style="font-size:1.15rem">신년사주 보고서를 작성하고 있습니다</h1>' +
+      '<div class="ny-steps" id="nySteps"></div><div class="ny-note" style="text-align:center;margin-top:16px">보통 20~40초 걸립니다 · 화면을 닫지 마세요<br>창이 닫혀도 결제 내역은 안전하며, 홈의 「다시보기」에서 열 수 있습니다.</div>');
+    var i = stepIdx || 1;
+    function paint() { var el = $('nySteps'); if (!el) return; el.innerHTML = STEPS.map(function (s, k) { return '<div class="' + (k < i ? 'done' : k === i ? 'now' : '') + '">' + (k < i ? '✓ ' : k === i ? '◉ ' : '○ ') + s + '</div>'; }).join(''); }
+    paint(); clearInterval(stepTimer);
+    stepTimer = setInterval(function () { if (i < STEPS.length - 1) { i++; paint(); } }, 5000);
+  }
+  function fetchReport(rid, token, label, attempt) {
+    attempt = attempt || 0;
+    return fetch(API + '/saju/newyear/report', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ rid: rid, token: token }) })
+      .then(function (r) { return r.json().then(function (j) { return { s: r.status, j: j }; }); })
+      .then(function (x) {
+        if (x.j && x.j.status === 'ready' && x.j.report) {
+          clearInterval(stepTimer);
+          saveMine({ rid: rid, token: token, label: label || labelFrom(x.j.report), savedAt: Date.now() });
+          try { var np = store('nyPending'); if (np && np.rid === rid) localStorage.removeItem('nyPending'); } catch (e) {}
+          try { sessionStorage.removeItem('nyReturn'); if (/[?&]ny=report/.test(location.search)) history.replaceState(null, '', '/'); } catch (e) {}
+          st.report = x.j.report; report(); return;
+        }
+        if (x.s === 202 && attempt < 40) return delay((x.j && x.j.retryAfter || 4) * 1000).then(function () { return fetchReport(rid, token, label, attempt + 1); });
+        if ((x.s === 503 || x.s >= 500) && attempt < 3) return delay(2500).then(function () { return fetchReport(rid, token, label, attempt + 1); });
+        clearInterval(stepTimer);
+        failView(rid, token, label, x.j && (x.j.error || x.j.message));
+      })
+      .catch(function () {
+        if (attempt < 3) return delay(2500).then(function () { return fetchReport(rid, token, label, attempt + 1); });
+        clearInterval(stepTimer); failView(rid, token, label, '연결이 원활하지 않습니다.');
+      });
+  }
+  function delay(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
+  function labelFrom(rep) { try { var i = rep.calc.input, s = i.solarDate; return '양력 ' + s.year + '.' + s.month + '.' + s.day + ' · ' + (i.gender === 'female' ? '여성' : '남성'); } catch (e) { return '2027 신년사주'; } }
+  function failView(rid, token, label, msg) {
+    try { sessionStorage.removeItem('nyReturn'); if (/[?&]ny=report/.test(location.search)) history.replaceState(null, '', '/'); } catch (e) {}
+    saveMine({ rid: rid, token: token, label: label || '2027 신년사주', savedAt: Date.now() });
+    body('<div class="ny-spin" style="animation:none">☯</div><h1 style="font-size:1.1rem">보고서 작성이 지연되고 있습니다</h1>' +
+      '<p style="text-align:center">' + esc(msg || '잠시 후 다시 시도해 주세요.') + '</p><p style="text-align:center;font-size:0.85rem;opacity:0.8">결제는 정상 처리되었고 보고서는 안전하게 보관됩니다.<br>아래 버튼으로 다시 시도하거나, 나중에 홈의 「다시보기」에서 열 수 있습니다.</p>' +
+      '<button class="ny-btn" type="button" onclick="NY.reopen(\'' + esc(rid) + '\')">다시 시도</button><button class="ny-btn sub" type="button" onclick="NY.close()">홈으로</button>');
+  }
+  function reopen(rid) {
+    var r = myReports().filter(function (x) { return x.rid === rid; })[0];
+    if (!r) return intro();
+    show(); waiting(1); fetchReport(r.rid, r.token, r.label);
+  }
+
+  // ── ⑥ 보고서 ──
+  function sec(title, inner) { return inner ? '<h2>' + title + '</h2>' + inner : ''; }
+  function report() {
+    var R = st.report, T = R.text || {}, C = R.calc || {}, ys = C.yongshin || {}, o = R.options || {};
+    var best = (C.highlights && C.highlights.bestMonths || []).map(function (m) { return m.label; });
+    var care = (C.highlights && C.highlights.cautionMonths || []).map(function (m) { return m.label; });
+    var tot = T.total || {}, w = T.wealth || {}, c = T.career || {}, lv = T.love || {}, mr = T.marriage || {}, fn = T.final || {};
+    var career = para(c.common) +
+      ((!o.job || o.job === '직장인' || o.job === '기타' || o.job === '학생·취업준비') && c.employee ? '<h3>직장인이라면</h3>' + para(c.employee) : '') +
+      ((!o.job || o.job === '사업자' || o.job === '프리랜서' || o.job === '기타') && c.business ? '<h3>사업·자영업이라면</h3>' + para(c.business) : '') +
+      (c.caution ? '<h3>신중할 때</h3>' + para(c.caution) : '');
+    var single = !o.relation || o.relation === '미혼' || o.relation === '이혼·사별' || o.relation === '기타';
+    var together = !o.relation || o.relation === '연애 중' || o.relation === '기혼' || o.relation === '기타';
+    var love = para(lv.body) + (single && lv.single ? '<h3>혼자인 분이라면</h3>' + para(lv.single) : '') + (together && lv.together ? '<h3>인연이 있는 분이라면</h3>' + para(lv.together) : '') + (lv.months ? '<h3>연애에 의미 있는 달</h3>' + para(lv.months) : '');
+    var months = (T.months || []).map(function (m, i) {
+      var cm = (C.months || [])[i] || {};
+      var cls = best.indexOf(m.label) >= 0 ? ' good' : care.indexOf(m.label) >= 0 ? ' care' : '';
+      var badge = cls === ' good' ? '<span class="badge">좋은 달</span>' : cls === ' care' ? '<span class="badge">신중할 달</span>' : '';
+      return '<div class="ny-card ny-month' + cls + '"><div class="mh"><b>' + esc(m.label) + ' · ' + esc(cm.hanja || '') + '월' + badge + '</b><small>' + esc((cm.from || '') + ' ~ ' + (cm.to || '')) + '</small></div>' +
+        (m.headline ? '<div class="hl">' + esc(m.headline) + '</div>' : '') + (m.flow ? '<p>' + esc(m.flow) + '</p>' : '') +
+        (m.workMoney ? '<p><span class="k">재물·직업</span> ' + esc(m.workMoney) + '</p>' : '') + (m.love ? '<p><span class="k">연애·결혼</span> ' + esc(m.love) + '</p>' : '') +
+        (m.tip ? '<div class="ny-tip">💡 ' + esc(m.tip) + '</div>' : '') + '</div>';
+    }).join('');
+    var dw = C.daewoon;
+    body(
+      '<h1>2027 정미년(丁未年)<br>신년사주 보고서</h1><div class="ny-lead">' + esc(labelFrom(R)) + '</div>' +
+      pillarsHTML(C.pillars || {}) +
+      '<div class="ny-card"><div class="ny-one">「' + esc(T.cover && T.cover.theme) + '」</div>' + para(T.cover && T.cover.summary) +
+      '<div class="ny-tags"><span>용신(나에게 필요한 기운) · ' + esc(EL_NAME[ys.yong] || ys.yong) + '</span><span>희신 · ' + esc((ys.hee || []).map(function (e) { return EL_NAME[e] || e; }).join(', ')) + '</span>' +
+      (dw ? '<span>대운 · ' + esc(dw.hanja) + ' (' + Math.floor(dw.fromYear) + '~' + Math.floor(dw.toYear) + ')</span>' : '') +
+      (C.daewoonChange ? '<span>⚡ 2027년 대운 교체 → ' + esc(C.daewoonChange.hanja) + '</span>' : '') +
+      (C.seun ? '<span>정미년 = ' + esc(C.seun.tenGodStem) + '·' + esc(C.seun.tenGodBranch) + '의 해</span>' : '') + '</div></div>' +
+      sec('2027년 총운', para(tot.flow) + (tot.keyFactor ? '<h3>가장 크게 작용하는 기운</h3>' + para(tot.keyFactor) : '') + (tot.opportunity ? '<h3>기회가 되는 분야</h3>' + para(tot.opportunity) : '') + (tot.caution ? '<h3>부담이 생기기 쉬운 분야</h3>' + para(tot.caution) : '') + (tot.advice ? '<h3>한 해의 핵심 조언</h3>' + para(tot.advice) : '')) +
+      sec('재물운', para(w.body) + (w.good ? '<h3>유리한 때와 방식</h3>' + para(w.good) : '') + (w.caution ? '<h3>주의할 점</h3>' + para(w.caution) : '')) +
+      sec('직업운 · 직장운 · 사업운', career) +
+      sec('연애운', love) +
+      sec('결혼운 · 배우자운', para(mr.body) + (mr.caution ? '<h3>신중할 점</h3>' + para(mr.caution) : '')) +
+      sec('2027년 12개월 운세 <small style="font-size:0.72rem;opacity:0.7;font-weight:400">· 절기 기준</small>', '<div class="ny-note" style="margin-bottom:6px">정미년은 2027년 2월 4일 입춘부터 시작합니다. 각 달은 절기(입춘·경칩·청명…)로 나뉩니다.</div>' + months) +
+      sec('대인관계 · 가족운', para(T.relations && T.relations.body)) +
+      sec('건강 · 생활 관리 참고', para(T.health && T.health.body) + '<div class="ny-note">명리학적 생활 관리 참고이며 의학적 진단을 대신하지 않습니다.</div>') +
+      sec('2027년 핵심 시기와 최종 조언', (fn.goodPeriods ? '<h3>활용하기 좋은 시기</h3>' + para(fn.goodPeriods) : '') + (fn.cautionPeriods ? '<h3>신중한 판단이 필요한 시기</h3>' + para(fn.cautionPeriods) : '') + (fn.priorities ? '<h3>우선 살필 문제</h3>' + para(fn.priorities) : '') +
+        ((fn.tips || []).length ? '<div class="ny-card"><h3 style="margin-top:0">올해 실천할 조언 3가지</h3><ol class="ny-list">' + fn.tips.map(function (t) { return '<li>' + esc(t) + '</li>'; }).join('') + '</ol></div>' : '')) +
+      '<div class="ny-note" style="margin-top:22px">본 보고서는 명리학적 해석에 근거한 참고 자료입니다. 중요한 결정은 본인의 판단과 전문가 상담을 함께 고려하세요. · ZEUS TAROT</div>' +
+      '<div class="ny-noprint"><button class="ny-btn" type="button" onclick="NY.print()">🖨 인쇄 / PDF 저장</button><button class="ny-btn sub" type="button" onclick="NY.close()">홈으로</button></div>'
+    );
+  }
+  function print() {
+    if (/KAKAOTALK/i.test(navigator.userAgent)) { alert('카카오톡 안에서는 인쇄가 되지 않습니다.\n오른쪽 아래 ⋯ 메뉴 → "다른 브라우저로 열기" 후 홈의 「다시보기」에서 인쇄해 주세요.'); return; }
+    try { window.print(); } catch (e) { alert('이 브라우저에서는 인쇄를 지원하지 않습니다.'); }
+  }
+
+  // ── 홈 배너 ──
+  function refreshBanner() {
+    var b = $('nyBanner'); if (!b) return;
+    var on = window.ZEUS_NEWYEAR_ENABLED === true || /[?&]ny=test/.test(location.search) || sessionStorage.getItem('nyTest') === '1';
+    if (/[?&]ny=test/.test(location.search)) { try { sessionStorage.setItem('nyTest', '1'); } catch (e) {} }
+    b.hidden = !on;
+    var again = $('nyBannerAgain'); if (again) again.style.display = myReports().length ? 'inline-block' : 'none';
+  }
+
+  window.NY = {
+    open: function () { show(); intro(); }, close: close, intro: intro, form: form, check: check, pay: pay, reopen: reopen, print: print,
+    _report: function (rep) { show(); st.report = rep; report(); }
+  };
+
+  function boot() {
+    refreshBanner();
+    // 결제 복귀 (head 인터셉터가 sessionStorage에 넣어 둠)
+    var ret = null; try { ret = JSON.parse(sessionStorage.getItem('nyReturn') || 'null'); } catch (e) {}
+    if (ret && ret.rid && ret.token) {
+      var np = store('nyPending'); var label = np && np.rid === ret.rid ? np.label : '';
+      saveMine({ rid: ret.rid, token: ret.token, label: label || '2027 신년사주', savedAt: Date.now() });
+      show(); waiting(1); fetchReport(ret.rid, ret.token, label);
+    }
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot); else boot();
+})();
+</script>
 
 </body>
 </html>
