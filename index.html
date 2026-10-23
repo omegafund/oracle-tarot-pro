@@ -5071,11 +5071,11 @@
         <!-- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ -->
         <!-- [v1.2.0 NY27] 2027 신년사주 시즌 배너 (ZEUS_NEWYEAR_ENABLED 또는 ?ny=test 일 때 노출) -->
         <div id="nyBanner" class="ny-banner" hidden onclick="NY.open()">
-            <span class="nyb-badge">NEW · 2027</span>
-            <div class="nyb-title">🎍 2027 정미년 신년사주</div>
-            <div class="nyb-sub">丁未年 · 내 사주에 정미년과 절기 기준 12개월 흐름을 대입한 연간 보고서</div>
-            <div class="nyb-row"><span class="nyb-price">4,900원 · 명식 확인은 무료</span><span class="nyb-cta">보러 가기 →</span></div>
-            <span class="nyb-again" id="nyBannerAgain" style="display:none" onclick="event.stopPropagation(); NY.open();">📂 내 신년사주 다시보기</span>
+            <span class="nyb-badge">2027 신년사주</span>
+            <div class="nyb-title">🎍 나의 2027 운세</div>
+            <div class="nyb-sub">내 사주에 2027년 정미년(丁未年)의 기운을 대입해 살펴보는 나만의 한 해 운세. 총운부터 재물·일·사랑, 절기별 12개월 흐름까지 한눈에 확인해 보세요.</div>
+            <div class="nyb-row"><span class="nyb-price">4,900원 · 명식 확인은 무료</span><span class="nyb-cta">내 운세 확인하기 →</span></div>
+            <span class="nyb-again" id="nyBannerAgain" style="display:none" onclick="event.stopPropagation(); NY.open();">📂 내 운세 다시보기</span>
         </div>
 
         <div class="saju-aux-card" onclick="selectCategory('saju', this)">
@@ -25663,7 +25663,7 @@ function reshuffleDeck() {
   .ny-banner[hidden]{display:none !important;}
   .ny-banner .nyb-badge{position:absolute;top:-9px;right:14px;background:#FFD700;color:#3a0d12;font-size:0.68rem;font-weight:900;padding:3px 9px;border-radius:999px;letter-spacing:0.05em;}
   .ny-banner .nyb-title{font-size:1.12rem;font-weight:900;color:#FFE08A;letter-spacing:0.01em;}
-  .ny-banner .nyb-sub{font-size:0.8rem;opacity:0.85;margin-top:5px;line-height:1.45;}
+  .ny-banner .nyb-sub{font-size:0.8rem;opacity:0.85;margin-top:5px;line-height:1.5;word-break:keep-all;}
   .ny-banner .nyb-row{display:flex;justify-content:space-between;align-items:center;margin-top:10px;gap:8px;flex-wrap:wrap;}
   .ny-banner .nyb-price{font-size:0.82rem;color:#FFD970;font-weight:800;}
   .ny-banner .nyb-cta{background:linear-gradient(135deg,#FFD700,#E8A317);color:#2a0a0e;font-weight:900;font-size:0.84rem;padding:8px 14px;border-radius:999px;}
@@ -25745,7 +25745,7 @@ function reshuffleDeck() {
 </style>
 
 <div id="nyApp" hidden>
-  <div class="ny-top"><b>🎍 2027 정미년 신년사주</b><button class="ny-x" type="button" onclick="NY.close()">✕ 닫기</button></div>
+  <div class="ny-top"><b>🎍 나의 2027 운세</b><button class="ny-x" type="button" onclick="NY.close()">✕ 닫기</button></div>
   <div class="ny-wrap" id="nyBody"></div>
 </div>
 
@@ -25784,22 +25784,22 @@ function reshuffleDeck() {
   function intro() {
     var mine = myReports();
     body(
-      '<h1>2027 정미년(丁未年)<br>신년사주</h1>' +
-      '<div class="ny-lead">내 사주 원국에 2027년 정미년의 기운과 절기 기준 12개월 흐름을 대입한<br>나만의 연간 운세 보고서</div>' +
-      (mine.length ? '<div class="ny-card"><h3 style="margin-top:0">📂 내 신년사주 다시보기</h3>' + mine.map(function (r) {
+      '<h1>나의 2027 운세</h1>' +
+      '<div class="ny-lead">2027 정미년(丁未年) 신년사주<br>내 사주에 정미년의 기운과 절기 기준 12개월 흐름을 대입한 나만의 한 해 운세 풀이</div>' +
+      (mine.length ? '<div class="ny-card"><h3 style="margin-top:0">📂 내 운세 다시보기</h3>' + mine.map(function (r) {
         return '<div class="ny-mine" onclick="NY.reopen(\'' + esc(r.rid) + '\')"><span>' + esc(r.label || r.rid) + '</span><b style="color:#FFD970">열기 →</b></div>';
       }).join('') + '</div>' : '') +
-      '<div class="ny-card"><h3 style="margin-top:0">보고서에 담기는 내용</h3><ul class="ny-list">' +
+      '<div class="ny-card"><h3 style="margin-top:0">운세 풀이에 담기는 내용</h3><ul class="ny-list">' +
       '<li>나의 사주와 2027 정미년의 핵심 관계</li><li>2027년 총운 · 재물운 · 직업운</li><li>연애운 · 결혼·배우자운</li>' +
       '<li><b style="color:#FFD970">절기 기준 12개월 월별 운세</b> (좋은 달·주의할 달 표시)</li><li>대인관계·가족 · 건강·생활 관리 참고</li><li>핵심 시기와 올해 실천할 조언 3가지</li></ul></div>' +
       '<div class="ny-card"><h3 style="margin-top:0">제우스 신년사주가 다른 점</h3><ul class="ny-list">' +
       '<li>만세력 정밀 계산(절기 시각·진태양시)으로 원국과 대운을 먼저 계산</li><li>용신·희신을 판정해 정미년이 나에게 득인지 실인지 근거로 풀이</li>' +
       '<li>양력 달이 아닌 <b>절기 기준</b> 월운 (2월 4일 입춘부터 정미년)</li></ul></div>' +
       '<div class="ny-card" style="text-align:center"><div style="font-size:1.5rem;font-weight:900;color:#FFD970">4,900원</div>' +
-      '<div class="ny-note" style="opacity:0.85">1회 결제 · 보고서는 서버에 보관되어 이 기기의 「다시보기」나 보고서 링크로 언제든 무료 재조회 · 인쇄/PDF 저장</div></div>' +
-      '<div class="ny-card"><h3 style="margin-top:0">📄 샘플 보고서 미리 보기 <small style="opacity:0.7;font-weight:400">(가상 명식)</small></h3>' +
-      '<div class="ny-pays" style="grid-template-columns:1fr 1fr 1fr"><button type="button" onclick="NY.sample(1)">직장인·남</button><button type="button" onclick="NY.sample(2)">프리랜서·여</button><button type="button" onclick="NY.sample(3)">사업자·남</button></div></div>' +
-      '<button class="ny-btn" type="button" onclick="NY.form()">생년월일 입력하고 명식 확인하기 (무료)</button>' +
+      '<div class="ny-note" style="opacity:0.85">1회 결제 · 풀이는 안전하게 보관되어 「내 운세 다시보기」나 내 운세 링크로 언제든 무료 재조회 · 인쇄/PDF 저장</div></div>' +
+      '<div class="ny-card"><h3 style="margin-top:0">📄 샘플 운세 풀이 미리 보기 <small style="opacity:0.7;font-weight:400">(가상 명식)</small></h3>' +
+      '<div class="ny-pays" style="grid-template-columns:1fr"><button type="button" onclick="NY.sample(1)">① 직장인 남성 · 미혼</button><button type="button" onclick="NY.sample(2)">② 프리랜서 여성 · 연애 중</button><button type="button" onclick="NY.sample(3)">③ 사업자 남성 · 기혼 · 태어난 시 모름</button></div></div>' +
+      '<button class="ny-btn" type="button" onclick="NY.form()">내 운세 확인하기 — 생년월일 입력 (명식 확인 무료)</button>' +
       '<div class="ny-note" style="text-align:center">결제 전에 계산된 명식과 정미년 한 줄 풀이를 무료로 먼저 보여드립니다.</div>'
     );
   }
@@ -25867,12 +25867,12 @@ function reshuffleDeck() {
       '<div class="ny-note" style="text-align:center">날짜가 다르게 보이면 <b>양력·음력 선택</b>을 확인해 주세요. ' + (p.hasHour ? '' : '태어난 시를 모르면 시주 없이 계산합니다.') + '</div>' +
       '<div class="ny-card"><div class="ny-one">' + esc(p.oneLine) + '</div>' +
       '<p style="text-align:center;margin:0">' + esc(p.teaser) + '</p>' + (p.daewoonChange ? '<p style="text-align:center;margin:8px 0 0;color:#FFE9B0">⚡ ' + esc(p.daewoonChange) + '</p>' : '') + '</div>' +
-      '<div class="ny-card"><div style="text-align:center;font-weight:900;color:#FFD970;font-size:1.05rem">전체 보고서 4,900원</div>' +
+      '<div class="ny-card"><div style="text-align:center;font-weight:900;color:#FFD970;font-size:1.05rem">나의 2027 운세 전체 풀이 · 4,900원</div>' +
       '<div class="ny-note" style="text-align:center;opacity:0.85">총운·재물·직업·연애·결혼·12개월·핵심 조언 · 2028년 입춘 전까지 다시보기</div>' +
       '<div class="ny-pays"><button class="main" type="button" onclick="NY.pay(\'카드\')">💳 카드·간편결제로 4,900원 결제</button>' +
       '<button type="button" onclick="NY.pay(\'카카오페이\')">카카오페이</button><button type="button" onclick="NY.pay(\'토스페이\')">토스페이</button>' +
       '<button type="button" onclick="NY.pay(\'네이버페이\')">네이버페이</button><button type="button" onclick="NY.pay(\'계좌이체\')">🏦 계좌이체</button></div>' +
-      '<div class="ny-err" id="nyErr"></div><div class="ny-note">결제 후 보고서 작성에 20~40초 정도 걸립니다. 화면을 닫지 말고 기다려 주세요.</div></div>' +
+      '<div class="ny-err" id="nyErr"></div><div class="ny-note">결제 후 운세 풀이 작성에 20~40초 정도 걸립니다. 화면을 닫지 말고 기다려 주세요.</div></div>' +
       '<button class="ny-btn sub" type="button" onclick="NY.form()">← 생년월일 다시 입력</button>'
     );
   }
@@ -25903,7 +25903,7 @@ function reshuffleDeck() {
         var q = '?readingId=' + encodeURIComponent(rid) + '&rid=' + encodeURIComponent(rid) + '&token=' + encodeURIComponent(tok) +
                 '&plan=saju_premium&n=n' + Date.now() + '&ctx=saju&ny=1';
         return toss.requestPayment(method, {
-          amount: PRICE, orderId: 'ORD-' + rid, orderName: '2027 정미년 신년사주', customerName: '고객',
+          amount: PRICE, orderId: 'ORD-' + rid, orderName: '나의 2027 운세', customerName: '고객',
           successUrl: base + '/v55/success-v55.html' + q, failUrl: base + '/v55/fail-v55.html' + q
         });
       })
@@ -25919,8 +25919,8 @@ function reshuffleDeck() {
   var STEPS = ['결제 확인', '원국·대운 계산', '정미년 세운 대입', '12개월 절기 월운 계산', '보고서 작성'];
   var stepTimer = null;
   function waiting(stepIdx) {
-    body('<div class="ny-spin">☯</div><h1 style="font-size:1.15rem">신년사주 보고서를 작성하고 있습니다</h1>' +
-      '<div class="ny-steps" id="nySteps"></div><div class="ny-note" style="text-align:center;margin-top:16px">보통 20~40초 걸립니다 · 화면을 닫지 마세요<br>창이 닫혀도 결제 내역은 안전하며, 홈의 「다시보기」에서 열 수 있습니다.</div>');
+    body('<div class="ny-spin">☯</div><h1 style="font-size:1.15rem">나의 2027 운세를 풀이하고 있습니다</h1>' +
+      '<div class="ny-steps" id="nySteps"></div><div class="ny-note" style="text-align:center;margin-top:16px">보통 20~40초 걸립니다 · 화면을 닫지 마세요<br>창이 닫혀도 결제 내역은 안전하며, 홈의 「내 운세 다시보기」에서 열 수 있습니다.</div>');
     var i = stepIdx || 1;
     function paint() { var el = $('nySteps'); if (!el) return; el.innerHTML = STEPS.map(function (s, k) { return '<div class="' + (k < i ? 'done' : k === i ? 'now' : '') + '">' + (k < i ? '✓ ' : k === i ? '◉ ' : '○ ') + s + '</div>'; }).join(''); }
     paint(); clearInterval(stepTimer);
@@ -25949,12 +25949,12 @@ function reshuffleDeck() {
       });
   }
   function delay(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
-  function labelFrom(rep) { try { var i = rep.calc.input, s = i.solarDate; return '양력 ' + s.year + '.' + s.month + '.' + s.day + ' · ' + (i.gender === 'female' ? '여성' : '남성'); } catch (e) { return '2027 신년사주'; } }
+  function labelFrom(rep) { try { var i = rep.calc.input, s = i.solarDate; return '양력 ' + s.year + '.' + s.month + '.' + s.day + ' · ' + (i.gender === 'female' ? '여성' : '남성'); } catch (e) { return '나의 2027 운세'; } }
   function failView(rid, token, label, msg) {
     try { sessionStorage.removeItem('nyReturn'); if (/[?&]ny=report/.test(location.search)) history.replaceState(null, '', '/'); } catch (e) {}
-    saveMine({ rid: rid, token: token, label: label || '2027 신년사주', savedAt: Date.now() });
-    body('<div class="ny-spin" style="animation:none">☯</div><h1 style="font-size:1.1rem">보고서 작성이 지연되고 있습니다</h1>' +
-      '<p style="text-align:center">' + esc(msg || '잠시 후 다시 시도해 주세요.') + '</p><p style="text-align:center;font-size:0.85rem;opacity:0.8">결제는 정상 처리되었고 보고서는 안전하게 보관됩니다.<br>아래 버튼으로 다시 시도하거나, 나중에 홈의 「다시보기」에서 열 수 있습니다.</p>' +
+    saveMine({ rid: rid, token: token, label: label || '나의 2027 운세', savedAt: Date.now() });
+    body('<div class="ny-spin" style="animation:none">☯</div><h1 style="font-size:1.1rem">운세 풀이 작성이 지연되고 있습니다</h1>' +
+      '<p style="text-align:center">' + esc(msg || '잠시 후 다시 시도해 주세요.') + '</p><p style="text-align:center;font-size:0.85rem;opacity:0.8">결제는 정상 처리되었고 풀이는 안전하게 보관됩니다.<br>아래 버튼으로 다시 시도하거나, 나중에 홈의 「내 운세 다시보기」에서 열 수 있습니다.</p>' +
       '<button class="ny-btn" type="button" onclick="NY.reopen(\'' + esc(rid) + '\')">다시 시도</button><button class="ny-btn sub" type="button" onclick="NY.close()">홈으로</button>');
   }
   function reopen(rid) {
@@ -25965,7 +25965,7 @@ function reshuffleDeck() {
 
   // ── 샘플 보고서 (가상 명식, 서버 캐시) ──
   function sample(n) {
-    body('<div class="ny-spin">☯</div><h1 style="font-size:1.1rem">샘플 보고서를 불러오는 중…</h1>');
+    body('<div class="ny-spin">☯</div><h1 style="font-size:1.1rem">샘플 운세 풀이를 불러오는 중…</h1>');
     fetch(API + '/saju/newyear/sample?case=' + n).then(function (r) { return r.json(); }).then(function (j) {
       if (!j || !j.ok || !j.report) throw new Error('샘플을 불러오지 못했습니다');
       st.current = null; st.sample = true; st.report = j.report; report();
@@ -25997,14 +25997,17 @@ function reshuffleDeck() {
     }).join('');
     var dw = C.daewoon;
     body(
-      (st.sample ? '<div class="ny-card" style="text-align:center;border-color:#FFD700"><b style="color:#FFD970">📄 샘플 보고서</b><div class="ny-note" style="margin-top:4px">가상의 명식으로 만든 예시입니다. 실제 보고서는 입력하신 명식으로 작성됩니다.</div></div>' : '') +
-      '<h1>2027 정미년(丁未年)<br>신년사주 보고서</h1><div class="ny-lead">' + esc(labelFrom(R)) + '</div>' +
+      (st.sample ? '<div class="ny-card" style="text-align:center;border-color:#FFD700"><b style="color:#FFD970">📄 샘플 운세 풀이</b><div class="ny-note" style="margin-top:4px">가상의 명식으로 만든 예시입니다. 실제 풀이는 입력하신 명식으로 작성됩니다.</div></div>' : '') +
+      '<h1>나의 정미년 운세 풀이</h1><div class="ny-lead">2027 정미년(丁未年) · ' + esc(labelFrom(R)) + '</div>' +
       pillarsHTML(C.pillars || {}) +
       '<div class="ny-card"><div class="ny-one">「' + esc(T.cover && T.cover.theme) + '」</div>' + para(T.cover && T.cover.summary) +
-      '<div class="ny-tags"><span>용신(나에게 필요한 기운) · ' + esc(EL_NAME[ys.yong] || ys.yong) + '</span><span>희신 · ' + esc((ys.hee || []).map(function (e) { return EL_NAME[e] || e; }).join(', ')) + '</span>' +
-      (dw ? '<span>대운 · ' + esc(dw.hanja) + ' (' + Math.floor(dw.fromYear) + '~' + Math.floor(dw.toYear) + ')</span>' : '') +
-      (C.daewoonChange ? '<span>⚡ 2027년 대운 교체 → ' + esc(C.daewoonChange.hanja) + '</span>' : '') +
-      (C.seun ? '<span>정미년 = ' + esc(C.seun.tenGodStem) + '·' + esc(C.seun.tenGodBranch) + '의 해</span>' : '') + '</div></div>' +
+      '<ul class="ny-list" style="margin-top:8px">' +
+      '<li><b>용신</b>(나에게 가장 필요한 기운): ' + esc(EL_NAME[ys.yong] || ys.yong) + '</li>' +
+      '<li><b>희신</b>(용신을 돕는 기운): ' + esc((ys.hee || []).map(function (e) { return EL_NAME[e] || e; }).join(', ')) + '</li>' +
+      (dw ? '<li><b>현재 대운</b>: ' + esc(dw.hanja) + '(' + esc(dw.ko) + ') · ' + Math.floor(dw.fromYear) + '~' + Math.floor(dw.toYear) + '년</li>' : '') +
+      (C.daewoonChange ? '<li><b>2027년 대운 교체</b> → ' + esc(C.daewoonChange.hanja) + '(' + esc(C.daewoonChange.ko) + ')</li>' : '') +
+      (C.seun ? '<li><b>정미년이 나에게 갖는 의미</b>: ' + esc(C.seun.tenGodStem) + '·' + esc(C.seun.tenGodBranch) + '</li>' : '') +
+      (C.pillars && !C.pillars.hour ? '<li><b>태어난 시 모름</b> — 시주를 제외한 세 기둥으로 풀이했습니다</li>' : '') + '</ul></div>' +
       sec('2027년 총운', para(tot.flow) + (tot.keyFactor ? '<h3>가장 크게 작용하는 기운</h3>' + para(tot.keyFactor) : '') + (tot.opportunity ? '<h3>기회가 되는 분야</h3>' + para(tot.opportunity) : '') + (tot.caution ? '<h3>부담이 생기기 쉬운 분야</h3>' + para(tot.caution) : '') + (tot.advice ? '<h3>한 해의 핵심 조언</h3>' + para(tot.advice) : '')) +
       sec('재물운', para(w.body) + (w.good ? '<h3>유리한 때와 방식</h3>' + para(w.good) : '') + (w.caution ? '<h3>주의할 점</h3>' + para(w.caution) : '')) +
       sec('직업운 · 직장운 · 사업운', career) +
@@ -26015,11 +26018,11 @@ function reshuffleDeck() {
       sec('건강 · 생활 관리 참고', para(T.health && T.health.body) + '<div class="ny-note">명리학적 생활 관리 참고이며 의학적 진단을 대신하지 않습니다.</div>') +
       sec('2027년 핵심 시기와 최종 조언', (fn.goodPeriods ? '<h3>활용하기 좋은 시기</h3>' + para(fn.goodPeriods) : '') + (fn.cautionPeriods ? '<h3>신중한 판단이 필요한 시기</h3>' + para(fn.cautionPeriods) : '') + (fn.priorities ? '<h3>우선 살필 문제</h3>' + para(fn.priorities) : '') +
         ((fn.tips || []).length ? '<div class="ny-card"><h3 style="margin-top:0">올해 실천할 조언 3가지</h3><ol class="ny-list">' + fn.tips.map(function (t) { return '<li>' + esc(t) + '</li>'; }).join('') + '</ol></div>' : '')) +
-      '<div class="ny-note" style="margin-top:22px">본 보고서는 명리학적 해석에 근거한 참고 자료입니다. 중요한 결정은 본인의 판단과 전문가 상담을 함께 고려하세요. · ZEUS TAROT</div>' +
-      (st.sample ? '<div class="ny-noprint"><button class="ny-btn" type="button" onclick="NY.form()">내 명식으로 신년사주 받기 →</button><button class="ny-btn sub" type="button" onclick="NY.intro()">← 소개로 돌아가기</button></div>' :
+      '<div class="ny-note" style="margin-top:22px">본 풀이는 명리학적 해석에 근거한 참고 자료입니다. 중요한 결정은 본인의 판단과 전문가 상담을 함께 고려하세요. · ZEUS TAROT</div>' +
+      (st.sample ? '<div class="ny-noprint"><button class="ny-btn" type="button" onclick="NY.form()">내 운세 확인하기 →</button><button class="ny-btn sub" type="button" onclick="NY.intro()">← 신년사주 안내로 돌아가기</button></div>' :
       '<div class="ny-noprint"><button class="ny-btn" type="button" onclick="NY.print()">🖨 인쇄 / PDF 저장</button>' +
-      '<button class="ny-btn sub" type="button" onclick="NY.copyLink()">🔗 보고서 링크 복사 (다른 기기에서 열기)</button>' +
-      '<div class="ny-note" id="nyLinkMsg" style="text-align:center">링크를 카카오톡 나에게 보내기 등에 저장해 두면 휴대폰을 바꿔도 다시 볼 수 있습니다. 링크를 가진 사람은 이 보고서를 볼 수 있으니 공유에 유의하세요.</div>' +
+      '<button class="ny-btn sub" type="button" onclick="NY.copyLink()">🔗 내 운세 링크 복사 (다른 기기에서 열기)</button>' +
+      '<div class="ny-note" id="nyLinkMsg" style="text-align:center">링크를 카카오톡 나에게 보내기 등에 저장해 두면 휴대폰을 바꿔도 다시 볼 수 있습니다. 링크를 가진 사람은 이 풀이를 볼 수 있으니 공유에 유의하세요.</div>' +
       '<button class="ny-btn sub" type="button" onclick="NY.close()">홈으로</button></div>')
     );
   }
@@ -26030,7 +26033,7 @@ function reshuffleDeck() {
     try { navigator.clipboard.writeText(url).then(done, function () { prompt('아래 링크를 복사해 보관하세요', url); }); } catch (e) { prompt('아래 링크를 복사해 보관하세요', url); }
   }
   function print() {
-    if (/KAKAOTALK/i.test(navigator.userAgent)) { alert('카카오톡 안에서는 인쇄가 되지 않습니다.\n오른쪽 아래 ⋯ 메뉴 → "다른 브라우저로 열기" 후 홈의 「다시보기」에서 인쇄해 주세요.'); return; }
+    if (/KAKAOTALK/i.test(navigator.userAgent)) { alert('카카오톡 안에서는 인쇄가 되지 않습니다.\n오른쪽 아래 ⋯ 메뉴 → "다른 브라우저로 열기" 후 홈의 「내 운세 다시보기」에서 인쇄해 주세요.'); return; }
     try { window.print(); } catch (e) { alert('이 브라우저에서는 인쇄를 지원하지 않습니다.'); }
   }
 
@@ -26054,7 +26057,7 @@ function reshuffleDeck() {
     var ret = null; try { ret = JSON.parse(sessionStorage.getItem('nyReturn') || 'null'); } catch (e) {}
     if (ret && ret.rid && ret.token) {
       var np = store('nyPending'); var label = np && np.rid === ret.rid ? np.label : '';
-      saveMine({ rid: ret.rid, token: ret.token, label: label || '2027 신년사주', savedAt: Date.now() });
+      saveMine({ rid: ret.rid, token: ret.token, label: label || '나의 2027 운세', savedAt: Date.now() });
       show(); waiting(1); fetchReport(ret.rid, ret.token, label);
     }
   }
