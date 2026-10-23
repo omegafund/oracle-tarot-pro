@@ -6489,6 +6489,15 @@ function v31ValidateSajuInput(input) {
     }
   }
 
+  // [v1.2.0] 음력 일수 검증 — 작은달(29일)에 30일 입력 시 조용히 다음 달로 계산되던 문제 차단
+  if (calendar === 'lunar') {
+    const ld = V31_LUNAR_DATA[y];
+    if (ld) {
+      const maxDay = isLeapMonth ? ld[1] : ld[2][m - 1];
+      if (maxDay && d > maxDay) return { valid: false, error: `음력 ${y}년 ${isLeapMonth ? '윤' : ''}${m}월은 ${maxDay}일까지입니다` };
+    }
+  }
+
   // 4. 시간 (선택) 검증
   let h = null;
   if (hour !== undefined && hour !== null && hour !== '') {
@@ -25852,6 +25861,14 @@ async function handleNewYearRoutes(request, env, url) {
       const report = await nyGenerateReport(env.GEMINI_API_KEY, sp.input, sp.options);
       if (env.READINGS_KV) await env.READINGS_KV.put(key, JSON.stringify(report), { expirationTtl: 60 * 60 * 24 * 30 });
       return nyJson({ ok: true, cached: false, report });
+    }
+    // 3-1) 음력 → 양력 변환 (기존 사주 화면의 음력 입력용, 천문연 기준 전수 검증된 표 사용)
+    if (path === '/saju/newyear/convert' && request.method === 'POST') {
+      const b = await request.json().catch(() => ({}));
+      const v = v31ValidateSajuInput({ year: b.year, month: b.month, day: b.day, calendar: 'lunar', isLeapMonth: !!b.isLeapMonth, gender: 'male' });
+      if (!v.valid) return nyJson({ ok: false, error: v.error }, 400);
+      const sd = v31LunarToSolar(v.normalized.year, v.normalized.month, v.normalized.day, v.normalized.isLeapMonth);
+      return nyJson({ ok: true, solar: { year: sd.year, month: sd.month, day: sd.day }, lunar: { year: v.normalized.year, month: v.normalized.month, day: v.normalized.day, isLeapMonth: v.normalized.isLeapMonth } });
     }
     // 4) 계산만 (검증용, AI 없음)
     if (path === '/saju/newyear/calc' && request.method === 'POST') {

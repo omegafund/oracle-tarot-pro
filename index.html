@@ -16557,15 +16557,15 @@ function showSajuInputModal() {
                 <label style="display:block; color:#FFE08A; font-size:0.82rem; font-weight:700; margin-bottom:6px;">
                     📅 입력 방식
                 </label>
-                <div style="padding:10px; background:rgba(46,204,113,0.12); border:1px solid rgba(46,204,113,0.4); border-radius:6px; text-align:center; font-size:0.86rem;">
-                    <input type="hidden" name="sajuCalendar" value="solar">
-                    <strong style="color:#2ecc71;">📅 양력 입력</strong>
-                    <div style="font-size:0.7rem; color:#2ecc71; margin-top:3px;">절기 + 간지 100% 정확 ★</div>
-                    <div style="font-size: 0.74rem; color:rgba(255,255,255,0.6); margin-top:6px; line-height:1.55;">
-                        ※ 음력 생일은 <a href="https://search.naver.com/search.naver?query=만세력" target="_blank" style="color:#FFD970; text-decoration:underline;">만세력 사이트</a>에서 양력 변환 후 입력하세요.<br>
-                        결과 화면에 ★ 음력 날짜도 자동 표시 ★ 됩니다.
-                    </div>
+                <!-- [v1.2.0] 양력/음력 선택 복원 — 음력은 서버(천문연 기준 전수 검증 표)에서 양력으로 바꿔 기존 양력 경로로 계산 -->
+                <div>
+                <div style="display:flex; border:2px solid rgba(212,175,55,0.65); border-radius:8px; overflow:hidden;">
+                    <label style="flex:1; text-align:center; padding:10px 4px; cursor:pointer; font-weight:800; font-size:0.9rem; color:#FFE08A;"><input type="radio" name="sajuCalendar" value="solar" checked onchange="sajuCalendarChanged()" style="margin-right:5px;">양력</label>
+                    <label style="flex:1; text-align:center; padding:10px 4px; cursor:pointer; font-weight:800; font-size:0.9rem; color:#FFE08A; border-left:1px solid rgba(212,175,55,0.4);"><input type="radio" name="sajuCalendar" value="lunar" onchange="sajuCalendarChanged()" style="margin-right:5px;">음력</label>
                 </div>
+                <label id="sajuLeapWrap" style="display:none; margin-top:8px; font-size:0.82rem; color:#FFE08A;"><input type="checkbox" id="sajuLeap" style="margin-right:5px;">윤달 (음력 생일이 윤달인 경우)</label>
+                <div id="sajuCalNote" style="font-size:0.74rem; color:rgba(255,255,255,0.6); margin-top:6px; line-height:1.55;">양력·음력 모두 입력할 수 있습니다. 결과 화면에 양력·음력 날짜가 함께 표시됩니다.</div>
+            </div>
             </div>
 
             <!-- 생년월일 -->
@@ -16976,6 +16976,11 @@ function showSajuPlanGate(sajuInput) {
     console.log('✅ [V200.4] 사주 결제 게이트 모달 표시 완료');
 }
 
+function sajuCalendarChanged() {
+    const lunar = (document.querySelector('input[name="sajuCalendar"]:checked') || {}).value === 'lunar';
+    const w = document.getElementById('sajuLeapWrap'); if (w) w.style.display = lunar ? 'block' : 'none';
+}
+
 async function runSajuOracle() {
     // ★ V200.7 분석가 안 채택 ★ — 동시 실행 차단 (race condition 안전망)
     if (window.isProcessing) {
@@ -16983,7 +16988,30 @@ async function runSajuOracle() {
         return;
     }
     window.isProcessing = true;
-    
+
+    // [v1.2.0] 음력 입력 → 서버에서 양력으로 변환해 입력칸에 채우고, 이후는 검증된 양력 경로 그대로 사용
+    if ((document.querySelector('input[name="sajuCalendar"]:checked') || {}).value === 'lunar') {
+        const ly = parseInt(document.getElementById('sajuYear').value), lm = parseInt(document.getElementById('sajuMonth').value), lday = parseInt(document.getElementById('sajuDay').value);
+        const leap = !!(document.getElementById('sajuLeap') && document.getElementById('sajuLeap').checked);
+        if (!ly || !lm || !lday) { alert('생년월일을 모두 입력해주세요'); window.isProcessing = false; return; }
+        try {
+            const cr = await fetch('https://tarot-api.omegafund01.workers.dev/saju/newyear/convert', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ year: ly, month: lm, day: lday, isLeapMonth: leap }) });
+            if (cr.status === 404) { alert('음력 입력은 잠시 후 열립니다. 지금은 양력으로 입력해 주세요.'); window.isProcessing = false; return; }
+            const cj = await cr.json();
+            if (!cj || !cj.ok) { alert((cj && cj.error) || '음력 날짜를 확인해 주세요.'); window.isProcessing = false; return; }
+            document.getElementById('sajuYear').value = cj.solar.year;
+            document.getElementById('sajuMonth').value = cj.solar.month;
+            document.getElementById('sajuDay').value = cj.solar.day;
+            const solarRadio = document.querySelector('input[name="sajuCalendar"][value="solar"]'); if (solarRadio) solarRadio.checked = true;
+            if (document.getElementById('sajuLeap')) document.getElementById('sajuLeap').checked = false;
+            sajuCalendarChanged();
+            const note = document.getElementById('sajuCalNote');
+            if (note) note.innerHTML = '<b style="color:#5DD68A">✓ 음력 ' + ly + '.' + lm + '.' + lday + (leap ? '(윤달)' : '') + ' → 양력 ' + cj.solar.year + '.' + cj.solar.month + '.' + cj.solar.day + '로 바꿔 계산합니다.</b>';
+        } catch (e) {
+            alert('음력 변환 중 연결이 원활하지 않습니다. 잠시 후 다시 시도해 주세요.'); window.isProcessing = false; return;
+        }
+    }
+
     const calendar = document.querySelector('input[name="sajuCalendar"]:checked')?.value || 'solar';
     const year = parseInt(document.getElementById('sajuYear').value);
     const month = parseInt(document.getElementById('sajuMonth').value);
