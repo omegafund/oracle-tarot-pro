@@ -25081,7 +25081,7 @@ async function handleV55Request(request, env, ctx) {
 //   점수 2층: 바탕 운(용신 길흉) + 사건 신호(일간·일지·관성·자녀궁의 합충형, 격 완성)
 //   검증: 사장님 확정 정답지 14건 회귀 테스트 통과 후 배포
 // ════════════════════════════════════════════════════════════════════════════════
-const NY27_VERSION = 'ny27-1.0';
+const NY27_VERSION = 'ny27-1.1';
 const NY_ELS = ['목', '화', '토', '금', '수'];
 const NY_GEN = { 목: '화', 화: '토', 토: '금', 금: '수', 수: '목' };      // A가 B를 생
 const NY_CTL = { 목: '토', 토: '수', 수: '화', 화: '금', 금: '목' };      // A가 B를 극
@@ -25366,8 +25366,8 @@ function nyEventSignals(p, dm, gender, unit, sig, ys) {
   for (const s of sig) {
     const posKo = NY_POS_KO[s.with] || '';
     if (s.kind === 'stem' && s.with === 'day') {
-      if (s.type === '천간합') add('self', 'mixed', `일간이 ${unit.stem}과 합 — 묶임·새 인연·계약`, 2);
-      if (s.type === '천간충') add('self', 'neg', `일간이 ${unit.stem}에게 충 — 정면 압박·변동`, 2);
+      if (s.type === '천간합') add('self', 'mixed', `일간이 ${nyGwa(unit.stem)} 합 — 묶임·새 인연·계약`, 2);
+      if (s.type === '천간충') add('self', 'neg', `일간이 ${unit.stem}에게 충을 받음 — 정면 압박·변동`, 2);
     }
     if (s.kind === 'branch' && s.with === 'day') {
       if (['충', '형', '자형'].includes(s.type)) add('spouse', 'neg', `배우자 자리(일지 ${s.target})가 ${s.type} — 관계·몸·거처 변동`, 2);
@@ -25392,9 +25392,9 @@ function nyEventSignals(p, dm, gender, unit, sig, ys) {
     }
     // 관성 합거 (세운 천간이 원국 관성과 합)
     if (s.kind === 'stem' && s.type === '천간합' && s.with !== 'day' && nyGroup(dmEl, nyStemEl(s.target)) === '관성')
-      add(gender === 'female' ? 'spouse' : 'career', 'mixed', `관성 ${s.target}이 합으로 움직임 — ${gender === 'female' ? '남편 인연의 큰 움직임(결혼·이별 양방향), ' : ''}직위·소속 변동`, 1.5);
+      add(gender === 'female' ? 'spouse' : 'career', 'mixed', `관성 ${nyI(s.target)} 합으로 움직임 — ${gender === 'female' ? '남편 인연의 큰 움직임(결혼·이별 양방향), ' : ''}직위·소속 변동`, 1.5);
     if (s.kind === 'stem' && s.type === '천간합' && s.with !== 'day' && gender === 'male' && nyGroup(dmEl, nyStemEl(s.target)) === '재성')
-      add('spouse', 'mixed', `재성 ${s.target}이 합으로 묶임 — 재물·아내 인연 변동`, 1);
+      add('spouse', 'mixed', `재성 ${nyI(s.target)} 합으로 묶임 — 재물·아내 인연 변동`, 1);
   }
   // 상관견관: 세운 상관 vs 원국 정관 투간
   const natalStems = ['year', 'month', 'hour'].filter(k => p[k]).map(k => p[k].stem);
@@ -25547,6 +25547,8 @@ function nyContextText(r, opts) {
   if (!opts.relation) lines.push('■ 관계 상황: 미입력 → 미혼·기혼을 가정하지 말고 "인연이 있는 분은/혼자인 분은"처럼 나눠 쓸 것');
   lines.push(`■ 원국\n${pz}`);
   lines.push(`■ 일간: ${n.dayMaster}(${NY_HANJA[n.dayMaster]}) ${n.dayMasterElement}`);
+  lines.push(`■ 이 사람 기준 오행→십성 대응(반드시 이것만 사용): ${NY_ELS.map(e => e + '=' + nyGroup(n.dayMasterElement, e)).join(', ')}`);
+  lines.push(`■ 원국 글자별 십성(확정값): ${['year', 'month', 'day', 'hour'].filter(k => P[k]).map(k => (k === 'day' ? NY_POS_KO[k] + '간 ' + P[k].stem + '=본인, ' : NY_POS_KO[k] + '간 ' + P[k].stem + '=' + P[k].tenGodStem + ', ') + NY_POS_KO[k] + '지 ' + P[k].branch + '=' + P[k].tenGodBranch).join(' / ')}`);
   lines.push(`■ 오행 분포(%): ${NY_ELS.map(e => e + ' ' + Math.round(n.distribution[e])).join(', ')}`);
   lines.push(`■ 강약: ${st.level} (자기 세력 ${st.selfShare}%, 월령 ${st.deukryeong ? '득령' : '실령'})`);
   lines.push(`■ 용신 판정(${ys.method}): 용신 ${ys.yong}, 희신 ${ys.hee.join('·')}, 기신 ${ys.gi}, 구신 ${ys.gu} — 근거: ${ys.basis.join(' / ')}`);
@@ -25586,7 +25588,9 @@ const NY_SYSTEM_PROMPT = `당신은 『명리다이제스트』 저자 춘추 �
 7. 명리 용어는 꼭 필요한 것만 쓰고, 처음 나올 때 쉬운 말을 괄호로 붙입니다. 예: 용신(나에게 가장 필요한 기운).
 8. 이 사람의 원국에만 해당하는 구체적 근거를 문장마다 연결합니다. 누구에게나 맞는 일반론, 상투적 덕담, 같은 말 반복을 피합니다.
 9. 존댓말(~습니다/~세요). 따뜻하지만 군더더기 없이.
-10. 출력은 지정한 JSON 형식만. 마크다운 기호(**, #) 쓰지 않습니다.`;
+10. 출력은 지정한 JSON 형식만. 마크다운 기호(**, #) 쓰지 않습니다.
+11. 십성(비견·겁재·식신·상관·편재·정재·편관·정관·편인·정인)과 12운성 이름은 [계산 근거]의 "원국 글자별 십성"과 "오행→십성 대응"에 적힌 그대로만 씁니다. 어떤 글자가 무슨 십성인지 스스로 추론하거나 바꾸지 않습니다. 확신이 없으면 십성 이름 대신 오행(나무·불·흙·쇠·물)으로 말합니다.
+12. 한자 병기는 같은 용어가 처음 나올 때 한 번만. 한 문단에 명리 용어는 2~3개 이내로 하고 나머지는 쉬운 말로 풉니다.`;
 
 function nyPromptA(ctx) {
   return `[계산 근거]\n${ctx}\n\n[작성할 부분] 표지, 총운, 재물운, 직업운.
@@ -25684,6 +25688,9 @@ async function nyGenerateReport(apiKey, input, rawOpts, prevParts) {
   };
 }
 
+function nyJong(word) { const c = String(word).charCodeAt(String(word).length - 1) - 0xAC00; return (c < 0 || c > 11171) ? 0 : c % 28; }
+function nyGwa(w) { return w + (nyJong(w) ? '과' : '와'); }
+function nyI(w) { return w + (nyJong(w) ? '이' : '가'); }
 function nyRo(word) { // 받침에 따라 '로/으로' (ㄹ받침은 '로')
   const c = word.charCodeAt(word.length - 1) - 0xAC00; if (c < 0 || c > 11171) return '로';
   const jong = c % 28; return (jong === 0 || jong === 8) ? '로' : '으로';
