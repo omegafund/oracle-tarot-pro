@@ -5015,32 +5015,21 @@
         <!-- [V25.4+V25.8] 상단: 오늘의 카드 — 중앙 정렬 슬림 레이아웃
              V25.8 사장님 진단: "좌측으로 몰려있다 — 중앙배치 해야"
              해결: 가로 3단 → 세로 중앙 정렬 (라벨 위 + 카드명 + 메시지 중앙 정렬) -->
-        <div id="daily-card-slim" style="display:none; max-width:380px; margin:6px auto 14px; padding:0 14px;">
-            <div style="
-                display:flex;
-                flex-direction:column;
-                align-items:center;
-                gap:3px;
+        <div id="daily-card-slim" class="home-col" style="display:none; margin:6px auto 14px;">
+            <!-- [v1.2.0] 홈 정돈: 카드 그림 왼쪽 · 글 오른쪽 가로형 -->
+            <div style="display:flex; align-items:center; gap:12px;
                 background:linear-gradient(135deg, rgba(212,175,55,0.08), rgba(80,200,120,0.04));
-                border:1px solid rgba(212,175,55,0.28);
-                border-radius:10px;
-                padding:8px 14px;
-                box-shadow: 0 1px 6px rgba(212,175,55,0.06);
-                text-align:center;">
-                <!-- 라벨 -->
-                <div style="font-size:0.58rem; letter-spacing:0.18em; color:var(--gold); font-weight:900; line-height:1.2;">
-                    TODAY · <span style="opacity:0.7;">오늘의 카드</span>
+                border:1px solid rgba(212,175,55,0.35); border-radius:12px; padding:10px 14px;
+                box-shadow: 0 1px 6px rgba(212,175,55,0.06); text-align:left;">
+                <img id="daily-card-img" alt=""
+                     style="display:none; flex:0 0 auto; width:38px; height:58px; object-fit:cover; border-radius:4px; border:1px solid rgba(212,175,55,0.55);"
+                     onload="this.style.display='block'"
+                     onerror="this.style.display='none'">
+                <div style="flex:1; min-width:0;">
+                    <div style="font-size:0.62rem; letter-spacing:0.16em; color:var(--gold); font-weight:900; line-height:1.2;">✦ TODAY · <span style="opacity:0.75;">오늘의 카드</span></div>
+                    <div id="daily-card-name" style="font-size:0.95rem; color:#fff; font-weight:800; line-height:1.3; margin-top:3px;">-</div>
+                    <div id="daily-card-message" style="font-size:0.76rem; color:rgba(255,255,255,0.72); line-height:1.45; font-style:italic; margin-top:2px;">-</div>
                 </div>
-                <!-- 카드 이미지 + 카드명 (가로 중앙) -->
-                <div style="display:flex; align-items:center; justify-content:center; gap:8px; margin-top:3px;">
-                    <img id="daily-card-img" alt=""
-                         style="display:none; width:24px; height:36px; object-fit:cover; border-radius:3px; border:1px solid rgba(212,175,55,0.5);"
-                         onload="this.style.display='block'"
-                         onerror="this.style.display='none'">
-                    <div id="daily-card-name" style="font-size:0.85rem; color:#fff; font-weight:800; line-height:1.2;">-</div>
-                </div>
-                <!-- 메시지 (중앙 정렬) -->
-                <div id="daily-card-message" style="font-size: 0.74rem; color:rgba(255,255,255,0.7); line-height:1.4; font-style:italic; margin-top:2px; max-width:340px; text-align:center;">-</div>
             </div>
         </div>
 
@@ -5072,9 +5061,14 @@
         <!-- [v1.2.0 NY27] 2027 신년사주 시즌 배너 (ZEUS_NEWYEAR_ENABLED 또는 ?ny=test 일 때 노출) -->
         <div id="nyBanner" class="ny-banner" hidden onclick="NY.open()">
             <span class="nyb-badge">2027 신년사주</span>
-            <div class="nyb-title">🎍 나의 2027 운세</div>
-            <div class="nyb-sub">내 사주에 2027년 정미년(丁未年)의 기운을 대입해 살펴보는 나만의 한 해 운세. 총운부터 재물·일·사랑, 절기별 12개월 흐름까지 한눈에 확인해 보세요.</div>
-            <div class="nyb-row"><span class="nyb-price">4,900원 · 명식 확인은 무료</span><span class="nyb-cta">내 운세 확인하기 →</span></div>
+            <div class="nyb-flex">
+              <div class="nyb-emblem" aria-hidden="true"><svg viewBox="0 0 64 64" width="58" height="58"><circle cx="32" cy="32" r="29" fill="none" stroke="#FFD970" stroke-opacity="0.75" stroke-width="1.4"/><circle cx="32" cy="32" r="23" fill="none" stroke="#FFD970" stroke-opacity="0.35" stroke-width="1" stroke-dasharray="2 3"/><path d="M32 3 L33.6 12 L32 10.5 L30.4 12 Z M32 61 L33.6 52 L32 53.5 L30.4 52 Z" fill="#FFD970"/><text x="32" y="36.5" text-anchor="middle" font-size="12.5" font-weight="800" fill="#FFE08A" font-family="Georgia,serif">2027</text><text x="32" y="47" text-anchor="middle" font-size="6.5" fill="#FFD970" fill-opacity="0.85">丁未</text></svg></div>
+              <div class="nyb-main">
+                <div class="nyb-title">나의 2027 운세</div>
+                <div class="nyb-sub">정미년의 재물·일·사랑 흐름을 절기별 12개월로 한눈에</div>
+                <div class="nyb-row"><span class="nyb-price">4,900원 · 명식 확인 무료</span><span class="nyb-cta">내 운세 확인하기 →</span></div>
+              </div>
+            </div>
             <span class="nyb-again" id="nyBannerAgain" style="display:none" onclick="event.stopPropagation(); NY.open();">📂 내 운세 다시보기</span>
         </div>
 
@@ -25685,13 +25679,21 @@ function reshuffleDeck() {
      흐름: 소개 → 입력 → 명식 확인(무료) → 결제(토스) → 생성 대기 → 보고서 → 다시보기
      ════════════════════════════════════════════════════════════════════════ -->
 <style>
-  .ny-banner{position:relative;margin:14px auto 12px;max-width:600px;width:calc(100% - 28px);box-sizing:border-box;padding:16px 18px 15px;border-radius:16px;cursor:pointer;
+  .ny-banner{position:relative;margin:14px auto 12px;max-width:448px;box-sizing:border-box;padding:16px 16px 14px;border-radius:16px;cursor:pointer;
     background:linear-gradient(135deg,#3a0d12 0%,#6b1a1f 45%,#2a0a2e 100%);border:1.5px solid rgba(255,215,0,0.75);
     box-shadow:0 0 22px rgba(255,190,60,0.28),inset 0 0 18px rgba(255,215,0,0.08);color:#FFF4D6;font-family:-apple-system,BlinkMacSystemFont,'Apple SD Gothic Neo','Malgun Gothic',sans-serif;}
   .ny-banner[hidden]{display:none !important;}
   .ny-banner .nyb-badge{position:absolute;top:-9px;right:14px;background:#FFD700;color:#3a0d12;font-size:0.68rem;font-weight:900;padding:3px 9px;border-radius:999px;letter-spacing:0.05em;}
-  .ny-banner .nyb-title{font-size:1.12rem;font-weight:900;color:#FFE08A;letter-spacing:0.01em;}
-  .ny-banner .nyb-sub{font-size:0.8rem;opacity:0.85;margin-top:5px;line-height:1.5;word-break:keep-all;}
+  .ny-banner .nyb-title{font-size:1.22rem;font-weight:900;color:#FFE08A;letter-spacing:0.01em;}
+  .ny-banner .nyb-sub{font-size:0.8rem;opacity:0.85;margin-top:4px;line-height:1.45;word-break:keep-all;}
+  .ny-banner .nyb-flex{display:flex;align-items:center;gap:12px;}
+  .ny-banner .nyb-emblem{flex:0 0 auto;filter:drop-shadow(0 0 6px rgba(255,215,0,0.35));}
+  .ny-banner .nyb-main{flex:1;min-width:0;text-align:left;}
+  .ny-banner .nyb-row{justify-content:space-between;}
+  /* [v1.2.0] 홈 정돈: 모든 홈 카드를 같은 폭(최대 448px)으로 통일 */
+  .home-col, #nyBanner.ny-banner, #home-view .saju-aux-card, .saju-aux-card, #category-grid.category-grid{
+    width:auto !important; max-width:448px !important; margin-left:auto !important; margin-right:auto !important; box-sizing:border-box !important;}
+  #category-grid.category-grid{padding-left:0 !important;padding-right:0 !important;}
   .ny-banner .nyb-row{display:flex;justify-content:space-between;align-items:center;margin-top:10px;gap:8px;flex-wrap:wrap;}
   .ny-banner .nyb-price{font-size:0.82rem;color:#FFD970;font-weight:800;}
   .ny-banner .nyb-cta{background:linear-gradient(135deg,#FFD700,#E8A317);color:#2a0a0e;font-weight:900;font-size:0.84rem;padding:8px 14px;border-radius:999px;}
