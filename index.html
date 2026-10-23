@@ -16996,6 +16996,7 @@ async function runSajuOracle() {
         if (!ly || !lm || !lday) { alert('생년월일을 모두 입력해주세요'); window.isProcessing = false; return; }
         try {
             const cr = await fetch('https://tarot-api.omegafund01.workers.dev/saju/newyear/convert', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ year: ly, month: lm, day: lday, isLeapMonth: leap }) });
+            if (cr.status === 404) { alert('음력 입력은 잠시 후 열립니다. 지금은 양력으로 입력해 주세요.'); window.isProcessing = false; return; }
             const cj = await cr.json();
             if (!cj || !cj.ok) { alert((cj && cj.error) || '음력 날짜를 확인해 주세요.'); window.isProcessing = false; return; }
             document.getElementById('sajuYear').value = cj.solar.year;
