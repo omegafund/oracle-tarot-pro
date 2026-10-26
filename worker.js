@@ -25142,7 +25142,7 @@ async function handleV55Request(request, env, ctx) {
 //   점수 2층: 바탕 운(용신 길흉) + 사건 신호(일간·일지·관성·자녀궁의 합충형, 격 완성)
 //   검증: 사장님 확정 정답지 14건 회귀 테스트 통과 후 배포
 // ════════════════════════════════════════════════════════════════════════════════
-const NY27_VERSION = 'ny27-1.3';
+const NY27_VERSION = 'ny27-1.4';
 const NY_ELS = ['목', '화', '토', '금', '수'];
 const NY_GEN = { 목: '화', 화: '토', 토: '금', 금: '수', 수: '목' };      // A가 B를 생
 const NY_CTL = { 목: '토', 토: '수', 수: '화', 화: '금', 금: '목' };      // A가 B를 극
@@ -25454,13 +25454,18 @@ function nyEventSignals(p, dm, gender, unit, sig, ys) {
     }
     // 관성 합거 (세운 천간이 원국 관성과 합)
     if (s.kind === 'stem' && s.type === '천간합' && s.with !== 'day' && nyGroup(dmEl, nyStemEl(s.target)) === '관성')
-      add(gender === 'female' ? 'spouse' : 'career', 'mixed', `관성 ${nyI(s.target)} 합으로 움직임 — ${gender === 'female' ? '남편 인연의 큰 움직임(결혼·이별 양방향), ' : ''}직위·소속 변동`, 1.5);
+    { add('career', 'mixed', `관성 ${nyI(s.target)} 합으로 움직임 — 직위·소속의 변동(승진·이동·퇴직 양방향)`, 1.5);
+      if (gender === 'female') add('spouse', 'mixed', `관성 ${nyI(s.target)} 합으로 움직임 — 남편 인연의 움직임(결혼·이별 양방향)`, 1.5); }
     if (s.kind === 'stem' && s.type === '천간합' && s.with !== 'day' && gender === 'male' && nyGroup(dmEl, nyStemEl(s.target)) === '재성')
       add('spouse', 'mixed', `재성 ${nyI(s.target)} 합으로 묶임 — 재물·아내 인연 변동`, 1);
   }
   // 상관견관: 세운 상관 vs 원국 정관 투간
   const natalStems = ['year', 'month', 'hour'].filter(k => p[k]).map(k => p[k].stem);
-  if (tgStem === '상관' && natalStems.some(s => nyTenGod(dm, s) === '정관')) add(gender === 'female' ? 'spouse' : 'career', 'neg', '상관견관 — 윗사람·조직과 충돌, 여성은 남편 관계 긴장', 2);
+  // [ny27-1.4] 여성의 관성 = 직장 + 남편 → 상관견관은 직장 신호(주)와 배우자 신호(보조, 결혼 근거 강도에는 미포함) 양쪽에 기록
+  if (tgStem === '상관' && natalStems.some(s => nyTenGod(dm, s) === '정관')) {
+    add('career', 'neg', '상관견관 — 윗사람·조직과의 충돌, 직위·평가에 대한 압박', 2);
+    if (gender === 'female') add('spouse', 'neg', '상관견관 — 남편과의 말다툼·긴장(보조 신호)', 1.2);
+  }
   // 편인도식: 세운 편인 vs 원국 식신 투간
   if (tgStem === '편인' && natalStems.some(s => nyTenGod(dm, s) === '식신')) add('self', 'neg', '편인도식 — 활동·의욕 위축, 고립 주의', 2);
   // 관인상생 / 살인상생
