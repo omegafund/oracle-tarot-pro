@@ -1533,6 +1533,28 @@
             }
         }
 
+
+        /* [v1.3 HOME] 나의 사주 분석 카드 — 신년사주 배너와 같은 폭·같은 무게 */
+        .saju-aux-card.sx2{max-width:448px;margin:14px auto 12px;padding:16px 16px 14px;gap:14px;border-radius:16px;align-items:center;
+            background:radial-gradient(ellipse at 20% 50%,rgba(212,175,55,0.16) 0%,rgba(10,14,40,0) 60%),linear-gradient(135deg,#0d1230 0%,#121a3d 55%,#0a0d24 100%);
+            border:1.5px solid rgba(255,215,0,0.75);box-shadow:0 0 22px rgba(255,190,60,0.22),inset 0 0 18px rgba(255,215,0,0.06);overflow:visible;}
+        .saju-aux-card.sx2 .sx2-badge{position:absolute;top:-9px;left:14px;background:#FFD700;color:#1a1530;font-size:0.68rem;font-weight:900;padding:3px 10px;border-radius:999px;letter-spacing:0.08em;}
+        .saju-aux-card.sx2 .sx2-medal{width:70px;height:70px;padding:5px;border-radius:50%;
+            background:radial-gradient(circle,rgba(255,215,0,0.28) 0%,rgba(255,215,0,0.06) 70%);border:2px solid rgba(255,215,0,0.8);
+            box-shadow:0 0 16px rgba(255,200,80,0.45),inset 0 0 8px rgba(255,215,0,0.25);}
+        .saju-aux-card.sx2 .sx2-medal svg{filter:drop-shadow(0 0 5px rgba(255,215,0,0.35));}
+        .saju-aux-card.sx2 .saju-aux-title{font-size:1.22rem;font-weight:900;color:#FFE08A;letter-spacing:0.01em;}
+        .saju-aux-card.sx2 .sx2-hook{font-size:0.82rem;color:rgba(255,244,214,0.9);line-height:1.45;margin-top:4px;word-break:keep-all;}
+        .saju-aux-card.sx2 .sx2-tags{display:flex;flex-wrap:wrap;gap:5px;margin-top:8px;}
+        .saju-aux-card.sx2 .sx2-tags span{font-size:0.7rem;padding:3px 9px;border-radius:999px;border:1px solid rgba(255,215,0,0.45);color:#FFE9B0;background:rgba(255,215,0,0.08);}
+        .saju-aux-card.sx2 .sx2-cta{font-size:0.84rem;padding:8px 14px;border-radius:999px;margin-top:10px;background:linear-gradient(135deg,#FFD700,#E8A317);color:#1a1530;font-weight:900;}
+        @media (max-width:480px){
+            .saju-aux-card.sx2{max-width:448px;padding:15px 13px 13px;gap:12px;}
+            .saju-aux-card.sx2 .sx2-medal{width:62px;height:62px;}
+            .saju-aux-card.sx2 .saju-aux-title{font-size:1.12rem;}
+            .saju-aux-card.sx2 .sx2-hook{font-size:0.8rem;}
+            .saju-aux-card.sx2 .sx2-cta{font-size:0.82rem;padding:7px 13px;}
+        }
         /* ═══════════════════════════════════════════════════════════════
          * [V31 #140] 결제 모달 — 사주 컨텍스트 시 990원만 노출
          *   사장님 명령:
@@ -5058,28 +5080,10 @@
         <!-- ☯ HERO — 사주 (V202.0 Saju Hero — 풀 width 상단)   -->
         <!--   가격 표시 제거 (NEW 뱃지만 유지)                  -->
         <!-- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ -->
-        <!-- [v1.2.0 NY27] 2027 신년사주 시즌 배너 (ZEUS_NEWYEAR_ENABLED 또는 ?ny=test 일 때 노출) -->
-        <div id="nyBanner" class="ny-banner" hidden onclick="NY.open()">
-            <span class="nyb-badge">2027 신년사주</span>
-            <div class="nyb-flex">
-              <div class="nyb-emblem"><svg role="img" aria-label="정미년 양띠" viewBox="0 0 64 64" width="62" height="62" xmlns="http://www.w3.org/2000/svg"><g fill="#FFF4D6"><circle cx="19" cy="23" r="9"/><circle cx="32" cy="16" r="10.5"/><circle cx="45" cy="23" r="9"/><circle cx="15" cy="35" r="7.5"/><circle cx="49" cy="35" r="7.5"/></g><ellipse cx="32" cy="39" rx="13.5" ry="15.5" fill="#F3D3A6"/><g fill="#FFF4D6"><circle cx="27" cy="26" r="4.5"/><circle cx="32" cy="24" r="5"/><circle cx="37" cy="26" r="4.5"/></g><path d="M18.5 28c-6.5-2-9.5 5.5-5 8.5 3 2 6.5-1 4-3.5" fill="none" stroke="#E8A317" stroke-width="3.2" stroke-linecap="round"/><path d="M45.5 28c6.5-2 9.5 5.5 5 8.5-3 2-6.5-1-4-3.5" fill="none" stroke="#E8A317" stroke-width="3.2" stroke-linecap="round"/><circle cx="26.5" cy="37" r="2.4" fill="#3a1d10"/><circle cx="37.5" cy="37" r="2.4" fill="#3a1d10"/><circle cx="27.3" cy="36.2" r="0.8" fill="#fff"/><circle cx="38.3" cy="36.2" r="0.8" fill="#fff"/><ellipse cx="22.8" cy="42.5" rx="2.8" ry="1.6" fill="#FF8FA0" opacity="0.75"/><ellipse cx="41.2" cy="42.5" rx="2.8" ry="1.6" fill="#FF8FA0" opacity="0.75"/><path d="M29.5 45.5q2.5 2.2 5 0" fill="none" stroke="#3a1d10" stroke-width="1.7" stroke-linecap="round"/></svg></div>
-              <div class="nyb-main">
-                <div class="nyb-title">나의 2027 운세</div>
-                <div class="nyb-sub">정미년의 재물·일·사랑 흐름을 절기별 12개월로 한눈에</div>
-                <div class="nyb-row"><span class="nyb-price">4,900원 · 명식 확인 무료</span><span class="nyb-cta">내 운세 확인하기 →</span></div>
-              </div>
-            </div>
-            <span class="nyb-again" id="nyBannerAgain" style="display:none" onclick="event.stopPropagation(); NY.open();">📂 내 운세 다시보기</span>
-        </div>
-
-        <div class="saju-aux-card" onclick="selectCategory('saju', this)">
-            <div class="saju-aux-badges">
-                <span class="badge-new-dot"></span>
-                <span class="badge-new-text">NEW</span>
-            </div>
-
-            <!-- 좌측: 태극 청홍 SVG (V31 #127 표준 알고리즘 유지) -->
-            <div class="saju-aux-taegeuk">
+        <!-- [v1.3 HOME] 나의 사주 분석 — 메인 매출 카드 (신년사주보다 위, 가장 크게) -->
+        <div class="saju-aux-card sx2" onclick="selectCategory('saju', this)">
+            <span class="sx2-badge">BEST</span>
+            <div class="saju-aux-taegeuk sx2-medal">
                 <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
                     <defs>
                         <radialGradient id="taegeukRed" cx="50%" cy="35%" r="60%">
@@ -5099,17 +5103,28 @@
                     <circle cx="50" cy="50" r="48" fill="none" stroke="rgba(212,175,55,0.7)" stroke-width="1.5"/>
                 </svg>
             </div>
-
-            <!-- 우측: 정보 영역 (가격 제거 — V202.0) -->
             <div class="saju-aux-info">
-                <div class="saju-aux-title">☯ 사주 보기</div>
-                <div class="saju-aux-divider"></div>
-                <div class="saju-aux-sub">생년월일시 기반 명식 + 대운 분석</div>
-
-                <button class="saju-aux-cta" type="button" onclick="event.stopPropagation(); selectCategory('saju', this.closest('.saju-aux-card'));">
-                    사주 시작 →
+                <div class="saju-aux-title">나의 사주 분석</div>
+                <div class="sx2-hook">나는 어떤 그릇으로 태어났고,<br>지금 운은 어디쯤 와 있을까?</div>
+                <div class="sx2-tags"><span>사주 원국</span><span>신강신약</span><span>적성</span></div>
+                <button class="saju-aux-cta sx2-cta" type="button" onclick="event.stopPropagation(); selectCategory('saju', this.closest('.saju-aux-card'));">
+                    내 사주 분석하기 →
                 </button>
             </div>
+        </div>
+
+        <!-- [v1.2.0 NY27] 2027 신년사주 시즌 배너 (ZEUS_NEWYEAR_ENABLED 또는 ?ny=test 일 때 노출) -->
+        <div id="nyBanner" class="ny-banner" hidden onclick="NY.open()">
+            <span class="nyb-badge">2027 신년사주</span>
+            <div class="nyb-flex">
+              <div class="nyb-emblem"><img src="images/ny_ram.webp" alt="정미년 양" width="76" height="76" style="display:block;width:76px;height:76px;border-radius:50%;"></div>
+              <div class="nyb-main">
+                <div class="nyb-title">나의 2027 운세</div>
+                <div class="nyb-sub">정미년의 재물·일·사랑 흐름을 절기별 12개월로 한눈에</div>
+                <div class="nyb-row"><span class="nyb-price">4,900원 · 명식 확인 무료</span><span class="nyb-cta">내 운세 확인하기 →</span></div>
+              </div>
+            </div>
+            <span class="nyb-again" id="nyBannerAgain" style="display:none" onclick="event.stopPropagation(); NY.open();">📂 내 운세 다시보기</span>
         </div>
 
         <!-- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ -->
@@ -5132,6 +5147,14 @@
                 <div class="cat-icon">✨</div>
                 <div class="cat-title">일반 운세</div>
                 <div class="cat-sub">오늘 / 전반</div>
+            </div>
+
+            <!-- [v1.3 HOME] 💞 궁합 바로가기 — 연애 카테고리의 궁합 서브타입으로 바로 진입 -->
+            <div class="cat-card" data-cat="love-compat" onclick="openCompatShortcut()">
+                <span class="cat-badge cat-badge-pro">PRO</span>
+                <div class="cat-icon">💞</div>
+                <div class="cat-title">궁합</div>
+                <div class="cat-sub">두 사람의 호환성</div>
             </div>
 
             <!-- 📈 투자 (보조 카테고리) -->
@@ -16161,7 +16184,14 @@ function applyInvestVisibility() {
     const card = document.getElementById('invest-cat-card');
     const grid = document.getElementById('category-grid');
     if (card) card.style.display = 'none';
-    if (grid) grid.classList.remove('category-grid-3col'); // 2칸 남으면 2-col 레이아웃으로 복귀
+    // [v1.3 HOME] 궁합 바로가기 추가로 투자 숨김 후에도 3칸(연애·운세·궁합) → 3-col 유지
+}
+// [v1.3 HOME] 궁합 타일 → 연애 카테고리 열고 궁합 서브타입 자동 선택
+function openCompatShortcut() {
+    const loveCard = document.querySelector('#category-grid .cat-card[data-cat="love"]');
+    selectCategory('love', loveCard);
+    const b = document.querySelector('#subtype-row .sub-btn[data-subtype="compatibility"]');
+    if (b) b.click();
 }
 
 // 홈 진입 시점에 자동 실행
@@ -25711,7 +25741,7 @@ function reshuffleDeck() {
   #nyApp h2{font-size:1.08rem;color:#FFD970;margin:26px 0 10px;padding-bottom:6px;border-bottom:1px solid rgba(212,175,55,0.35);}
   #nyApp h3{font-size:0.92rem;color:#FFE9B0;margin:14px 0 5px;}
   #nyApp p{font-size:0.92rem;line-height:1.75;margin:0 0 8px;color:#EFE4CC;word-break:keep-all;}
-  #nyApp .ny-lead{text-align:center;font-size:0.88rem;opacity:0.85;line-height:1.6;margin-bottom:14px;}
+  #nyApp .ny-lead{text-align:center;font-size:0.88rem;opacity:0.85;line-height:1.6;margin-bottom:14px;word-break:keep-all;}
   #nyApp .ny-card{background:rgba(255,255,255,0.045);border:1px solid rgba(212,175,55,0.28);border-radius:14px;padding:14px 15px;margin:12px 0;}
   #nyApp .ny-list{margin:0;padding-left:18px;font-size:0.88rem;line-height:1.8;}
   #nyApp .ny-btn{display:block;width:100%;padding:14px;border-radius:12px;border:none;font-weight:900;font-size:1rem;cursor:pointer;margin-top:12px;
@@ -25729,7 +25759,7 @@ function reshuffleDeck() {
   #nyApp .ny-seg button{flex:1;padding:10px 4px;background:transparent;border:none;color:#E8DCC0;font-weight:800;font-size:0.9rem;cursor:pointer;}
   #nyApp .ny-seg button.on{background:rgba(255,215,0,0.85);color:#2a0a0e;}
   #nyApp .ny-chk{display:flex;align-items:center;gap:6px;font-size:0.82rem;margin-top:8px;color:#E8DCC0;}
-  #nyApp .ny-note{font-size:0.76rem;opacity:0.7;line-height:1.55;margin-top:8px;}
+  #nyApp .ny-note{font-size:0.76rem;opacity:0.7;line-height:1.55;margin-top:8px;word-break:keep-all;}
   #nyApp .ny-err{color:#FF9B9B;font-size:0.85rem;margin-top:8px;min-height:1em;}
   #nyApp .ny-pillars{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;text-align:center;margin:8px 0 4px;}
   #nyApp .ny-pillars .pc{background:rgba(0,0,0,0.35);border:1px solid rgba(212,175,55,0.35);border-radius:10px;padding:8px 2px;}
@@ -25759,6 +25789,23 @@ function reshuffleDeck() {
   #nyApp .ny-steps{text-align:center;font-size:0.9rem;line-height:2;opacity:0.9;}
   #nyApp .ny-steps .done{color:#5DD68A;}
   #nyApp .ny-steps .now{color:#FFD970;font-weight:800;}
+  #nyApp .ny-chips{display:flex;flex-wrap:wrap;justify-content:center;gap:7px;margin:16px 0 10px;}
+  #nyApp .ny-chips span{font-size:0.8rem;padding:6px 11px;border-radius:999px;background:rgba(255,215,0,0.1);border:1px solid rgba(255,215,0,0.38);color:#FFE9B0;font-weight:700;}
+  #nyApp .ny-why{text-align:center;font-size:0.78rem;color:#E9C46A;opacity:0.85;margin:4px 0 18px;}
+  #nyApp .ny-priceline{text-align:center;font-size:0.86rem;color:#EFE4CC;margin:8px 0 2px;word-break:keep-all;}
+  #nyApp .ny-priceline b{color:#FFD970;font-size:1rem;}
+  #nyApp .ny-more{margin-top:10px;font-size:0.82rem;color:#E8DCC0;}
+  #nyApp .ny-more summary{cursor:pointer;text-align:center;opacity:0.85;list-style:none;padding:6px 0;text-decoration:underline;text-underline-offset:3px;}
+  #nyApp .ny-more summary::-webkit-details-marker{display:none;}
+  #nyApp #nySheetBg{position:fixed;inset:0;z-index:5;background:rgba(0,0,0,0.6);}
+  #nyApp #nySheetBg[hidden]{display:none !important;}
+  #nyApp #nySheet{display:none;position:fixed;left:0;right:0;bottom:0;z-index:6;max-height:92vh;overflow-y:auto;-webkit-overflow-scrolling:touch;
+    background:linear-gradient(180deg,#24112c 0%,#170a1d 100%);border-top:1.5px solid rgba(212,175,55,0.65);border-radius:18px 18px 0 0;
+    padding:8px 16px 26px;box-shadow:0 -8px 30px rgba(0,0,0,0.5);transform:translateY(100%);transition:transform .28s ease;}
+  #nyApp #nySheet.on{transform:translateY(0);}
+  #nyApp #nySheet .grab{width:42px;height:4px;border-radius:2px;background:rgba(255,215,0,0.5);margin:4px auto 10px;}
+  #nyApp #nySheet .in{max-width:640px;margin:0 auto;}
+  @media print{#nyApp #nySheet,#nyApp #nySheetBg{display:none !important;}}
   #nyApp .ny-mine{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:10px 12px;border-radius:10px;background:rgba(255,255,255,0.05);border:1px solid rgba(212,175,55,0.3);margin-top:8px;font-size:0.86rem;cursor:pointer;}
   @media print{
     body.ny-open > *:not(#nyApp){display:none !important;}
@@ -25777,6 +25824,8 @@ function reshuffleDeck() {
 <div id="nyApp" hidden>
   <div class="ny-top"><b>🎍 나의 2027 운세</b><button class="ny-x" type="button" onclick="NY.close()">✕ 닫기</button></div>
   <div class="ny-wrap" id="nyBody"></div>
+  <div id="nySheetBg" hidden onclick="NY.closeSheet()"></div>
+  <div id="nySheet" role="dialog" aria-label="생년월일시 입력"><div class="grab"></div><div class="in" id="nySheetBody"></div></div>
 </div>
 
 <script>
@@ -25797,8 +25846,19 @@ function reshuffleDeck() {
   function myReports() { var a = store('nyReports') || []; return a.filter(function (r) { return r && r.rid && r.token && Date.now() < KEEP_UNTIL; }); }
   function saveMine(entry) { var a = myReports().filter(function (r) { return r.rid !== entry.rid; }); a.unshift(entry); store('nyReports', a.slice(0, 10)); }
   function body(html) { var b = $('nyBody'); b.innerHTML = html; var app = $('nyApp'); if (app) app.scrollTop = 0; }
+  function sheet(html) {
+    var sh = $('nySheet'), bg = $('nySheetBg');
+    $('nySheetBody').innerHTML = html; sh.scrollTop = 0;
+    sh.style.display = 'block'; bg.hidden = false;
+    requestAnimationFrame(function () { requestAnimationFrame(function () { sh.classList.add('on'); }); });
+  }
+  function closeSheet() {
+    var sh = $('nySheet'), bg = $('nySheetBg'); if (!sh) return;
+    sh.classList.remove('on'); bg.hidden = true;
+    setTimeout(function () { if (!sh.classList.contains('on')) sh.style.display = 'none'; }, 300);
+  }
   function show() { $('nyApp').hidden = false; document.body.classList.add('ny-open'); document.documentElement.style.overflow = 'hidden'; }
-  function close() { $('nyApp').hidden = true; document.body.classList.remove('ny-open'); document.documentElement.style.overflow = ''; refreshBanner(); }
+  function close() { closeSheet(); $('nyApp').hidden = true; document.body.classList.remove('ny-open'); document.documentElement.style.overflow = ''; refreshBanner(); }
 
   function pillarsHTML(P) {
     var order = [['hour', '시주'], ['day', '일주'], ['month', '월주'], ['year', '년주']];
@@ -25814,21 +25874,17 @@ function reshuffleDeck() {
   function intro() {
     var mine = myReports();
     body(
+      '<img src="images/ny_hero.webp" alt="정미년 양" width="800" height="497" style="display:block;width:100%;height:auto;border-radius:14px;border:1px solid rgba(212,175,55,0.45);margin:2px 0 10px;box-shadow:0 0 18px rgba(255,190,60,0.2)">' +
       '<h1>나의 2027 운세</h1>' +
-      '<div class="ny-lead">2027 정미년(丁未年) 신년사주<br>내 사주에 정미년의 기운과 절기 기준 12개월 흐름을 대입한 나만의 한 해 운세 풀이</div>' +
+      '<div class="ny-lead">2027 정미년(丁未年), 내 사주에는 어떤 한 해가 찾아올까요?<br>내 사주에 정미년의 기운과 절기 기준 12개월 흐름을 대입한 나만의 운세 풀이</div>' +
       (mine.length ? '<div class="ny-card"><h3 style="margin-top:0">📂 내 운세 다시보기</h3>' + mine.map(function (r) {
         return '<div class="ny-mine" onclick="NY.reopen(\'' + esc(r.rid) + '\')"><span>' + esc(r.label || r.rid) + '</span><b style="color:#FFD970">열기 →</b></div>';
       }).join('') + '</div>' : '') +
-      '<div class="ny-card"><h3 style="margin-top:0">운세 풀이에 담기는 내용</h3><ul class="ny-list">' +
-      '<li>나의 사주와 2027 정미년의 핵심 관계</li><li>2027년 총운 · 재물운 · 직업운</li><li>연애운 · 결혼·배우자운</li>' +
-      '<li><b style="color:#FFD970">절기 기준 12개월 월별 운세</b> (좋은 달·주의할 달 표시)</li><li>대인관계·가족 · 건강·생활 관리 참고</li><li>핵심 시기와 올해 실천할 조언 3가지</li></ul></div>' +
-      '<div class="ny-card"><h3 style="margin-top:0">제우스 신년사주가 다른 점</h3><ul class="ny-list">' +
-      '<li>만세력 정밀 계산(절기 시각·진태양시)으로 원국과 대운을 먼저 계산</li><li>용신·희신을 판정해 정미년이 나에게 득인지 실인지 근거로 풀이</li>' +
-      '<li>양력 달이 아닌 <b>절기 기준</b> 월운 (2월 4일 입춘부터 정미년)</li></ul></div>' +
-      '<div class="ny-card" style="text-align:center"><div style="font-size:1.5rem;font-weight:900;color:#FFD970">4,900원</div>' +
-      '<div class="ny-note" style="opacity:0.85">1회 결제 · 풀이는 안전하게 보관되어 「내 운세 다시보기」나 내 운세 링크로 언제든 무료 재조회 · 인쇄/PDF 저장</div></div>' +
-      '<button class="ny-btn" type="button" onclick="NY.form()">내 운세 확인하기 — 생년월일 입력 (명식 확인 무료)</button>' +
-      '<div class="ny-note" style="text-align:center">결제 전에 계산된 명식과 정미년 한 줄 풀이를 무료로 먼저 보여드립니다.</div>'
+      '<div class="ny-chips"><span>총운 · 재물 · 직업</span><span>연애 · 결혼</span><span>절기 기준 12개월</span><span>대인관계 · 건강</span><span>핵심 시기 · 조언</span></div>' +
+      '<div class="ny-why">만세력 정밀 계산 · 용신·희신 판정 · 절기 기준 월운</div>' +
+      '<div class="ny-priceline">전체 풀이 <b>4,900원</b> · 결제는 무료 명식 확인 후에 선택합니다</div>' +
+      '<button class="ny-btn" type="button" onclick="NY.form()">무료로 내 사주 확인하기 →</button>' +
+      '<div class="ny-note" style="text-align:center">생년월일시를 입력하면 나의 명식과 정미년 한 줄 풀이를 무료로 먼저 보여드립니다.</div>'
     );
   }
 
@@ -25839,7 +25895,7 @@ function reshuffleDeck() {
     var years = []; for (var y = 2015; y >= 1930; y--) years.push([String(y), y + '년']);
     var months = []; for (var m = 1; m <= 12; m++) months.push([String(m), m + '월']);
     var days = []; for (var d = 1; d <= 31; d++) days.push([String(d), d + '일']);
-    body(
+    sheet(
       '<h1 style="font-size:1.2rem">생년월일시 입력</h1><div class="ny-lead">정확한 명식 계산을 위해 태어난 시간까지 입력하면 좋습니다.</div>' +
       '<label class="ny-l">성별</label><div class="ny-seg" id="nyG"><button type="button" data-v="female">여성</button><button type="button" data-v="male">남성</button></div>' +
       '<label class="ny-l">양력 / 음력</label><div class="ny-seg" id="nyC"><button type="button" data-v="solar">양력</button><button type="button" data-v="lunar">음력</button></div>' +
@@ -25849,9 +25905,9 @@ function reshuffleDeck() {
       '<label class="ny-l">태어난 시</label><select id="nyH">' + opt(HOURS, f.hour == null ? '' : f.hour) + '</select>' +
       '<label class="ny-l">현재 상황 (선택 — 입력하면 해석이 더 정확해집니다)</label><div class="ny-row"><select id="nyJob"><option value="">직업 선택 안 함</option>' + opt(JOBS, f.job || '') + '</select>' +
       '<select id="nyRel"><option value="">관계 선택 안 함</option>' + opt(RELS, f.relation || '') + '</select></div>' +
-      '<div class="ny-err" id="nyErr"></div>' +
-      '<button class="ny-btn" type="button" id="nyGo" onclick="NY.check()">명식 확인하기 (무료)</button>' +
-      '<button class="ny-btn sub" type="button" onclick="NY.intro()">← 이전</button>'
+      '<div class="ny-err" id="nyFErr"></div>' +
+      '<button class="ny-btn" type="button" id="nyGo" onclick="NY.check()">내 사주 확인하기 (무료) →</button>' +
+      '<button class="ny-btn sub" type="button" onclick="NY.closeSheet()">닫기</button>'
     );
     if (f.gender) st.gender = f.gender; if (f.calendar) st.calendar = f.calendar; st.leap = !!f.isLeapMonth;
     function seg(id, key) {
@@ -25873,15 +25929,15 @@ function reshuffleDeck() {
   }
   function check() {
     var f = readForm();
-    if (!f) { $('nyErr').textContent = '생년월일을 모두 선택해 주세요.'; return; }
-    st.form = f; $('nyGo').disabled = true; $('nyErr').textContent = '';
+    if (!f) { $('nyFErr').textContent = '생년월일을 모두 선택해 주세요.'; return; }
+    st.form = f; $('nyGo').disabled = true; $('nyFErr').textContent = '';
     fetch(API + '/saju/newyear/preview', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ input: { year: f.year, month: f.month, day: f.day, hour: f.hour, calendar: f.calendar, isLeapMonth: f.isLeapMonth, gender: f.gender } }) })
       .then(function (r) { return r.json(); })
       .then(function (j) {
-        if (!j || !j.success) { $('nyGo').disabled = !!(j && j.closed); $('nyErr').textContent = (j && j.error) || '명식 계산에 실패했습니다. 날짜를 확인해 주세요.'; return; }
-        st.preview = j; confirmView();
+        if (!j || !j.success) { $('nyGo').disabled = !!(j && j.closed); $('nyFErr').textContent = (j && j.error) || '명식 계산에 실패했습니다. 날짜를 확인해 주세요.'; return; }
+        st.preview = j; closeSheet(); confirmView();
       })
-      .catch(function () { $('nyGo').disabled = false; $('nyErr').textContent = '연결이 원활하지 않습니다. 잠시 후 다시 시도해 주세요.'; });
+      .catch(function () { $('nyGo').disabled = false; $('nyFErr').textContent = '연결이 원활하지 않습니다. 잠시 후 다시 시도해 주세요.'; });
   }
   function dateLine(p) {
     var s = p.solarDate, l = p.lunarDate;
@@ -25892,14 +25948,15 @@ function reshuffleDeck() {
     body(
       '<h1 style="font-size:1.2rem">계산된 나의 명식</h1><div class="ny-lead">' + esc(dateLine(p)) + '</div>' +
       pillarsHTML(p.pillars) +
-      '<div class="ny-note" style="text-align:center">날짜가 다르게 보이면 <b>양력·음력 선택</b>을 확인해 주세요. ' + (p.hasHour ? '' : '태어난 시를 모르면 시주 없이 계산합니다.') + '</div>' +
+      '<div class="ny-note" style="text-align:center">날짜가 다르게 보이면 <b>양력·음력 선택</b>을 확인해 주세요. ' + (p.hasHour ? '' : '태어난 시를 모르면 시주 없이 계산한 명식을 보여드립니다.') + '</div>' +
       '<div class="ny-card"><div class="ny-one">' + esc(p.oneLine) + '</div>' +
       '<p style="text-align:center;margin:0">' + esc(p.teaser) + '</p>' + (p.daewoonChange ? '<p style="text-align:center;margin:8px 0 0;color:#FFE9B0">⚡ ' + esc(p.daewoonChange) + '</p>' : '') + '</div>' +
-      '<div class="ny-card"><div style="text-align:center;font-weight:900;color:#FFD970;font-size:1.05rem">나의 2027 운세 전체 풀이 · 4,900원</div>' +
-      '<div class="ny-note" style="text-align:center;opacity:0.85">총운·재물·직업·연애·결혼·12개월·핵심 조언 · 2028년 입춘 전까지 다시보기</div>' +
-      '<div class="ny-pays"><button class="main" type="button" onclick="NY.pay(\'카드\')">💳 카드·간편결제로 4,900원 결제</button>' +
+      '<div class="ny-card"><div style="text-align:center;font-weight:900;color:#FFD970;font-size:1.05rem;word-break:keep-all">2027년, 나의 운세를<br>자세히 알아보세요</div>' +
+      '<div class="ny-note" style="text-align:center;opacity:0.85">총운·재물·직업·연애·결혼·절기 기준 12개월·핵심 조언<br>풀이는 보관되어 2028년 입춘 전까지 언제든 다시보기 · 인쇄/PDF 저장</div>' +
+      '<div class="ny-pays"><button class="main" type="button" onclick="NY.pay(\'카드\')">2027 전체 풀이 받기 · 4,900원</button></div>' +
+      '<details class="ny-more"><summary>다른 결제 수단 ▾</summary><div class="ny-pays">' +
       '<button type="button" onclick="NY.pay(\'카카오페이\')">카카오페이</button><button type="button" onclick="NY.pay(\'토스페이\')">토스페이</button>' +
-      '<button type="button" onclick="NY.pay(\'네이버페이\')">네이버페이</button><button type="button" onclick="NY.pay(\'계좌이체\')">🏦 계좌이체</button></div>' +
+      '<button type="button" onclick="NY.pay(\'네이버페이\')">네이버페이</button><button type="button" onclick="NY.pay(\'계좌이체\')">🏦 계좌이체</button></div></details>' +
       '<div class="ny-err" id="nyErr"></div><div class="ny-note">결제 후 운세 풀이 작성에 20~40초 정도 걸립니다. 화면을 닫지 말고 기다려 주세요.</div></div>' +
       '<button class="ny-btn sub" type="button" onclick="NY.form()">← 생년월일 다시 입력</button>'
     );
@@ -26075,7 +26132,7 @@ function reshuffleDeck() {
   }
 
   window.NY = {
-    open: function () { show(); intro(); }, close: close, intro: intro, form: form, check: check, pay: pay, reopen: reopen, print: print, copyLink: copyLink, sample: sample,
+    open: function () { show(); intro(); }, close: close, closeSheet: closeSheet, intro: intro, form: form, check: check, pay: pay, reopen: reopen, print: print, copyLink: copyLink, sample: sample,
     _report: function (rep) { show(); st.report = rep; report(); }
   };
 
