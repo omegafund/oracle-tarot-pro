@@ -19595,7 +19595,7 @@ window.zeusPillarCardsHTML = function (P) {
     for (var j = 0; j < 12; j++) KO2H_B[BRANCH_KO[j]] = BRANCHES[j];
     function norm(v) {
         if (!v) return null;
-        var g = typeof v === 'string' ? v : (v.ganzhi || ((v.stem || '') + (v.branch || '')));
+        var g = typeof v === 'string' ? v : (v.hanja || v.ganzhi || ((v.stem || '') + (v.branch || '')));
         g = String(g || '').replace(/\s/g, '');
         if (g.length < 2) return null;
         var s = g.charAt(0), b = g.charAt(1);
@@ -19616,7 +19616,8 @@ window.zeusPillarCardsHTML = function (P) {
     return '<div class="zp-pillars">' + order.map(function (o) {
         var p = norm(P[o[0]]);
         if (!p) return '<div class="pc"><div class="pos">' + o[1] + '</div><div class="hj">?</div><div class="ko">시간 모름</div></div>';
-        var tg = o[0] === 'day' ? '나 (일간)' : (day ? tenGod(day.si, p.si) : '');
+        var raw = P[o[0]], given = (raw && typeof raw === 'object' && raw.tenGodStem) ? raw.tenGodStem : '';
+        var tg = o[0] === 'day' ? '나 (일간)' : (given || (day ? tenGod(day.si, p.si) : ''));
         return '<div class="pc' + (o[0] === 'day' ? ' day' : '') + '"><div class="pos">' + o[1] + '</div><div class="hj">' + _escape(p.hanja) + '</div>' +
             '<div class="ko">' + _escape(p.ko) + '</div><div class="tg">' + _escape(tg) + '</div></div>';
     }).join('') + '</div>';
@@ -25838,8 +25839,8 @@ function reshuffleDeck() {
     body.ny-open #nyApp .ny-top, body.ny-open #nyApp .ny-noprint{display:none !important;}
     body.ny-open #nyApp h1, body.ny-open #nyApp h2, body.ny-open #nyApp .ny-month .mh b, body.ny-open #nyApp .ny-one{color:#7a1a1f !important;}
     body.ny-open #nyApp h2{border-color:#c9a227 !important;}
-    body.ny-open #nyApp p, body.ny-open #nyApp h3, body.ny-open #nyApp .hl, body.ny-open #nyApp .ny-tip, body.ny-open #nyApp li, body.ny-open #nyApp .ny-pillars *{color:#111 !important;}
-    body.ny-open #nyApp .ny-card, body.ny-open #nyApp .ny-pillars .pc{background:#fff !important;border-color:#c9a227 !important;box-shadow:none !important;}
+    body.ny-open #nyApp p, body.ny-open #nyApp h3, body.ny-open #nyApp .hl, body.ny-open #nyApp .ny-tip, body.ny-open #nyApp li, body.ny-open #nyApp .ny-pillars *, body.ny-open #nyApp .zp-pillars *{color:#111 !important;}
+    body.ny-open #nyApp .ny-card, body.ny-open #nyApp .ny-pillars .pc, body.ny-open #nyApp .zp-pillars .pc{background:#fff !important;border-color:#c9a227 !important;box-shadow:none !important;}
     body.ny-open #nyApp .ny-tip{background:#fbf5e1 !important;}
     body.ny-open #nyApp .ny-tags span{color:#5a3a00 !important;background:#fbf5e1 !important;border-color:#c9a227 !important;}
     body.ny-open #nyApp .ny-month{break-inside:avoid;}
@@ -25885,15 +25886,8 @@ function reshuffleDeck() {
   function show() { $('nyApp').hidden = false; document.body.classList.add('ny-open'); document.documentElement.style.overflow = 'hidden'; }
   function close() { closeSheet(); $('nyApp').hidden = true; document.body.classList.remove('ny-open'); document.documentElement.style.overflow = ''; refreshBanner(); }
 
-  function pillarsHTML(P) {
-    var order = [['hour', '시주'], ['day', '일주'], ['month', '월주'], ['year', '년주']];
-    return '<div class="ny-pillars">' + order.map(function (o) {
-      var p = P[o[0]];
-      if (!p) return '<div class="pc"><div class="pos">' + o[1] + '</div><div class="hj">?</div><div class="ko">시간 모름</div></div>';
-      return '<div class="pc' + (o[0] === 'day' ? ' day' : '') + '"><div class="pos">' + o[1] + '</div><div class="hj">' + esc(p.hanja) + '</div><div class="ko">' + esc(p.ko) + '</div>' +
-        '<div class="tg">' + esc(o[0] === 'day' ? '나 (일간)' : (p.tenGodStem || '')) + '</div></div>';
-    }).join('') + '</div>';
-  }
+  // [v1.3] 모든 명식 화면 통일 — 「나의 사주 분석」과 같은 공용 명식 카드 사용
+  function pillarsHTML(P) { return window.zeusPillarCardsHTML(P || {}); }
 
   // ── ① 소개 ──
   function intro() {
