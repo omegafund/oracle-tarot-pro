@@ -5117,7 +5117,7 @@
         <div id="nyBanner" class="ny-banner" hidden onclick="NY.open()">
             <span class="nyb-badge">2027 신년사주</span>
             <div class="nyb-flex">
-              <div class="nyb-emblem"><svg role="img" aria-label="정미년 양띠" viewBox="0 0 64 64" width="62" height="62" xmlns="http://www.w3.org/2000/svg"><g fill="#FFF4D6"><circle cx="19" cy="23" r="9"/><circle cx="32" cy="16" r="10.5"/><circle cx="45" cy="23" r="9"/><circle cx="15" cy="35" r="7.5"/><circle cx="49" cy="35" r="7.5"/></g><ellipse cx="32" cy="39" rx="13.5" ry="15.5" fill="#F3D3A6"/><g fill="#FFF4D6"><circle cx="27" cy="26" r="4.5"/><circle cx="32" cy="24" r="5"/><circle cx="37" cy="26" r="4.5"/></g><path d="M18.5 28c-6.5-2-9.5 5.5-5 8.5 3 2 6.5-1 4-3.5" fill="none" stroke="#E8A317" stroke-width="3.2" stroke-linecap="round"/><path d="M45.5 28c6.5-2 9.5 5.5 5 8.5-3 2-6.5-1-4-3.5" fill="none" stroke="#E8A317" stroke-width="3.2" stroke-linecap="round"/><circle cx="26.5" cy="37" r="2.4" fill="#3a1d10"/><circle cx="37.5" cy="37" r="2.4" fill="#3a1d10"/><circle cx="27.3" cy="36.2" r="0.8" fill="#fff"/><circle cx="38.3" cy="36.2" r="0.8" fill="#fff"/><ellipse cx="22.8" cy="42.5" rx="2.8" ry="1.6" fill="#FF8FA0" opacity="0.75"/><ellipse cx="41.2" cy="42.5" rx="2.8" ry="1.6" fill="#FF8FA0" opacity="0.75"/><path d="M29.5 45.5q2.5 2.2 5 0" fill="none" stroke="#3a1d10" stroke-width="1.7" stroke-linecap="round"/></svg></div>
+              <div class="nyb-emblem"><img src="images/ny_ram.webp" alt="정미년 양" width="76" height="76" style="display:block;width:76px;height:76px;border-radius:50%;"></div>
               <div class="nyb-main">
                 <div class="nyb-title">나의 2027 운세</div>
                 <div class="nyb-sub">정미년의 재물·일·사랑 흐름을 절기별 12개월로 한눈에</div>
@@ -25874,6 +25874,7 @@ function reshuffleDeck() {
   function intro() {
     var mine = myReports();
     body(
+      '<img src="images/ny_ram.webp" alt="" width="96" height="96" style="display:block;margin:4px auto 2px;width:96px;height:96px;border-radius:50%;filter:drop-shadow(0 0 12px rgba(255,200,80,0.35))">' +
       '<h1>나의 2027 운세</h1>' +
       '<div class="ny-lead">2027 정미년(丁未年), 내 사주에는 어떤 한 해가 찾아올까요?<br>내 사주에 정미년의 기운과 절기 기준 12개월 흐름을 대입한 나만의 운세 풀이</div>' +
       (mine.length ? '<div class="ny-card"><h3 style="margin-top:0">📂 내 운세 다시보기</h3>' + mine.map(function (r) {
@@ -25947,7 +25948,7 @@ function reshuffleDeck() {
     body(
       '<h1 style="font-size:1.2rem">계산된 나의 명식</h1><div class="ny-lead">' + esc(dateLine(p)) + '</div>' +
       pillarsHTML(p.pillars) +
-      '<div class="ny-note" style="text-align:center">날짜가 다르게 보이면 <b>양력·음력 선택</b>을 확인해 주세요. ' + (p.hasHour ? '' : '태어난 시를 모르면 시주 없이 계산합니다.') + '</div>' +
+      '<div class="ny-note" style="text-align:center">날짜가 다르게 보이면 <b>양력·음력 선택</b>을 확인해 주세요. ' + (p.hasHour ? '' : '태어난 시를 모르면 시주 없이 계산한 명식을 보여드립니다.') + '</div>' +
       '<div class="ny-card"><div class="ny-one">' + esc(p.oneLine) + '</div>' +
       '<p style="text-align:center;margin:0">' + esc(p.teaser) + '</p>' + (p.daewoonChange ? '<p style="text-align:center;margin:8px 0 0;color:#FFE9B0">⚡ ' + esc(p.daewoonChange) + '</p>' : '') + '</div>' +
       '<div class="ny-card"><div style="text-align:center;font-weight:900;color:#FFD970;font-size:1.05rem;word-break:keep-all">2027년, 나의 운세를<br>자세히 알아보세요</div>' +
