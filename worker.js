@@ -1,6 +1,7 @@
 // ══════════════════════════════════════════════════════════════════
 // 🏛️ ZEUS ORACLE WORKER V203 — Single Source of Truth
 //   [V203] trend 점수표 단일화·역방향 약화·양극가드(V203.1) + 점사 멈춤 수정(V203.2)
+//   [v1.2.2] 「사주 보기」 용신을 신년 엔진(NY27) 판정으로 단일화 (기존 '가장 약한 오행' 방식 폐기)
 //   [v1.2.1] 없는 날짜(2/30·4/31·평년 2/29) 거부, 오류 응답 내부정보(stack) 제거, 음력 옛 주석 정정
 //   [v1.2.0] 2027 정미년 신년사주(NY27): 계산 모듈 + /saju/newyear/* + 결제 subtype newyear2027 + 절기 정밀표(1900-2100)
 //   [v1.1.2] 자시 일주 수정(0시→전날 오류, 23시→다음 날) + 1990년 이전 음력 입력 500 오류 수정(음력설 표 1900-2030 공유)
@@ -9350,6 +9351,31 @@ const V31_STRENGTH_ESSENCE_POOL = {
  * @param {Object} judgeResult - v31JudgeSaju 결과
  * @returns {Object} 최종 텍스트 결과
  */
+// ════════════════════════════════════════════════════════════════════════
+// [v1.2.2] 용신 단일화 — 「사주 보기」의 용신을 「나의 2027 운세」(NY27) 판정과 통일
+//   기존: '가장 약한 오행 = 용신'(정답지 9/14, 신년 엔진과 일치 30%) → NY27 판정(정답지 14/14)
+// ════════════════════════════════════════════════════════════════════════
+function v31YongshinWhy(ys, st) {
+  const NM = { 목: '나무', 화: '불', 토: '흙', 금: '쇠', 수: '물' };
+  const el = NM[ys.yong] || ys.yong;
+  if (ys.method === '조후' && ys.yong === '수') return `더운 계절의 열기를 식혀 줄 ${el} 기운이 가장 먼저 필요한 구조`;
+  if (ys.method === '조후' && ys.cause === '수') return `물 기운이 넘쳐 차고 습해진 명식을 데워 줄 ${el} 기운이 필요한 구조`;
+  if (ys.method === '조후') return `추운 계절에 온기를 더해 줄 ${el} 기운이 가장 먼저 필요한 구조`;
+  if (ys.method === '종왕격') return `한 기운으로 강하게 모인 명식이라 그 흐름을 따르는 ${el} 기운이 맞는 구조`;
+  if (ys.method === '억부(신강)') return `내 기운이 넘쳐 쓰임을 만들어 줄 ${el} 기운이 필요한 구조`;
+  if (ys.yongGroup === '비겁') return `감당할 일이 많아 나를 함께 받쳐 줄 ${el} 기운이 필요한 구조`;
+  return `나를 누르거나 빼가는 기운이 많아 나를 받쳐 줄 ${el} 기운이 필요한 구조`;
+}
+function v31UnifiedYongshin(pillars) {
+  try {
+    if (!pillars || !pillars.day || !pillars.month) return null;
+    const dist = nyDistribution(pillars), st = nyStrength(pillars, dist), ys = nyYongshin(pillars, dist, st);
+    return { element: ys.yong, hee: ys.hee, gi: ys.gi, gu: ys.gu, method: ys.method, basis: ys.basis,
+             strength: st.strong ? 'strong' : (st.selfShare < 40 ? 'weak' : 'balanced'), selfShare: st.selfShare,
+             why: v31YongshinWhy({ ...ys, cause: ys.gi }, st) };
+  } catch (e) { return null; }
+}
+
 function v31GenerateText(sajuData, judgeResult) {
   const { pillars, elements, strength, meta } = sajuData;
   const { schema, judgement, scenarioKey, matrix, category, timePhase } = judgeResult;
@@ -9422,7 +9448,9 @@ function v31GenerateText(sajuData, judgeResult) {
     //     = 가장 약한 오행 (동률 시 객체 키 순서 = 목/화/토/금/수 정렬 순서)
     //   효과: 계수 사례 목 1% / 금 1% 동률 → 목 선택 (클라이언트와 일치)
     let yongShinEl = null;
-    if (sajuData.elements) {
+    const _uni = v31UnifiedYongshin(sajuData.pillars);   // [v1.2.2] 통합 용신
+    if (_uni) yongShinEl = _uni.element;
+    if (!yongShinEl && sajuData.elements) {
       const _sortedEls = Object.entries(sajuData.elements).sort((a, b) => a[1] - b[1]);
       yongShinEl = _sortedEls[0] && _sortedEls[0][0];
     }
@@ -9587,7 +9615,7 @@ function v31GenerateText(sajuData, judgeResult) {
       enforcedTldr,
       enforcedAction,
       enforcedRisk: '',
-      yongshin: null,
+      yongshin: (function () { const u = v31UnifiedYongshin(pillars); return u ? { element: u.element, reason: u.why } : null; })(),
       dayPillar,
       timePhase,
       v54DeepInsight,
@@ -9607,6 +9635,7 @@ function v31GenerateText(sajuData, judgeResult) {
         level: strength.level,
         dayElement: strength.dayElement
       },
+      yongshinUnified: (function () { const u = v31UnifiedYongshin(pillars); return u ? { element: u.element, hee: u.hee, method: u.method, strength: u.strength } : null; })(),
       scenario: scenarioKey,
       category,
       timePhase,
@@ -9992,7 +10021,8 @@ function buildGeminiSajuContext(sajuData, v54DeepInsight, v54EnergyGuide, proCon
 
   // ── 3층 currentFlow ──
   const sorted   = Object.entries(elements).sort((a, b) => a[1] - b[1]);
-  const yongEl   = sorted[0][0];
+  const _uniG    = v31UnifiedYongshin(sajuData.pillars);   // [v1.2.2]
+  const yongEl   = (_uniG && _uniG.element) || sorted[0][0];
   const flowMap  = {
     extra_strong: '확장보다 내려놓고 정리하는 흐름',
     strong:       '추진하되 속도를 조절하는 흐름',
@@ -10163,7 +10193,8 @@ function buildStoryBridge(sajuData, v54DeepInsight, v54EnergyGuide) {
   const dayEl = sajuData.meta.dayMasterElement;
   const elements = sajuData.elements;
   const sorted = Object.entries(elements).sort((a, b) => a[1] - b[1]);
-  const yongEl = sorted[0][0];
+  const _uniS = v31UnifiedYongshin(sajuData.pillars);   // [v1.2.2]
+  const yongEl = (_uniS && _uniS.element) || sorted[0][0];
   const elName = { '목':'목(木)', '화':'화(火)', '토':'토(土)', '금':'금(金)', '수':'수(水)' }[yongEl] || yongEl;
 
   // 1) 현재 시기 — 12운성 meaning/advice 활용 (short 라벨 대신 서사)
@@ -10207,7 +10238,8 @@ function whyNeedYongsin(sajuData) {
   const strength = sajuData.strength.level;
 
   const sorted = Object.entries(elements).sort((a, b) => a[1] - b[1]);
-  const yongEl = sorted[0][0];    // 가장 약한 = 용신
+  const _uniW = v31UnifiedYongshin(sajuData.pillars);   // [v1.2.2] 통합 용신
+  const yongEl = (_uniW && _uniW.element) || sorted[0][0];
   const dominantEl = Object.entries(elements).sort((a, b) => b[1] - a[1])[0][0]; // 가장 강한
 
   const elName = {
@@ -10245,6 +10277,9 @@ function whyNeedYongsin(sajuData) {
     '수': '쉬는 틈이 생기면 다음 추진력이 더 단단해집니다'
   }[yongEl] || '흐름이 안정됩니다';
 
+  if (_uniW && _uniW.why) {
+    return `명식 안에서 ${dominantName}의 기운이 강합니다.\n${dominantExcess}, ${_uniW.why}입니다.\n\n${elName}의 기운이 채워질 때\n${fillEffect}.`;
+  }
   return `명식 안에서 ${dominantName}의 기운이 강합니다.\n${dominantExcess}, ${missingReason}이 생기기 쉬운 구조입니다.\n\n${elName}의 기운이 채워질 때\n${fillEffect}.`;
 }
 function buildZeusSajuOracleBox(ctx) {
@@ -20803,7 +20838,13 @@ function _v45_judgeDayMasterStrength(dayMaster, ohaengPercent, monthGanji) {
   return 'balanced';
 }
 
-function inferYongShinV184_5(dayMaster, ohaengPercent, monthGanji) {
+function inferYongShinV184_5(dayMaster, ohaengPercent, monthGanji, pillars) {
+  // [v1.2.2] 원국 기둥이 있으면 통합 용신(NY27) 사용
+  const _u = v31UnifiedYongshin(pillars);
+  if (_u) {
+    return { element: _u.element, reason: _u.why, strength: _u.strength,
+             avoidElement: _u.strength === 'weak' ? (NY_CTL_BY[_u.element] || null) : null };
+  }
   // ★ V202.45 신강/신약 분기 ★
   const strength = _v45_judgeDayMasterStrength(dayMaster, ohaengPercent, monthGanji);
   const dayMasterOhaeng = STEM_TO_OHAENG[dayMaster] || '목';
@@ -20853,7 +20894,7 @@ function buildOhaengAnalysisV184_5(core) {
 function buildYongShinV184_5(core) {
   // ★ V202.45 월령 가중치용 — core.meta.monthPillar 추출 ★
   const monthGanji = core.meta?.monthPillar || core.meta?.month || '';
-  const y = inferYongShinV184_5(core.meta?.dayMaster, core.ohaengPercent, monthGanji);
+  const y = inferYongShinV184_5(core.meta?.dayMaster, core.ohaengPercent, monthGanji, core.pillars);
   const baseRec = YONGSHIN_RECOMMENDATIONS[y.element] || YONGSHIN_RECOMMENDATIONS['수'];
   
   // ★★★ [V202.45 사장님 명령 — 동적 avoidColors] ★★★

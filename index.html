@@ -19803,8 +19803,11 @@ function renderSajuResult(data) {
     };
     
     // [V31 #163] 사주 → 용신 추정 (워커 응답 우선, 폴백: 오행 분포 분석)
-    function detectYongshin(elements, dayMaster) {
-        // 오행 약한 순으로 보충 → 용신
+    function detectYongshin(elements, dayMaster, unifiedEl) {
+        // [v1.2.2] 서버 통합 용신(신년 엔진 판정)이 있으면 그것을 사용 — 「나의 2027 운세」와 동일
+        const map0 = { '목': '木', '화': '火', '토': '土', '금': '金', '수': '水' };
+        if (unifiedEl && map0[unifiedEl]) return map0[unifiedEl];
+        // 오행 약한 순으로 보충 → 용신 (구 워커 응답 대비 폴백)
         if (!elements) return '火';  // 폴백
         
         const sorted = Object.entries(elements).sort((a, b) => a[1] - b[1]);
@@ -20829,7 +20832,7 @@ ${_oracle.storyBridge ? `
             ${(function() {
                 // 용신 + 현실 상태 추정 (워커 응답 분석)
                 const dayMaster = (text.meta?.pillars?.day || '').charAt(0);
-                const yongshinKey = detectYongshin(elements, dayMaster);
+                const yongshinKey = detectYongshin(elements, dayMaster, text.meta && text.meta.yongshinUnified && text.meta.yongshinUnified.element);
                 const lifeState = detectLifeState(elements, dayMaster);
                 const yongshinData = YONGSHIN_MATRIX[yongshinKey] || YONGSHIN_MATRIX['火'];
                 
