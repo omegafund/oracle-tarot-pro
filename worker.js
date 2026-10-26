@@ -1,6 +1,7 @@
 // ══════════════════════════════════════════════════════════════════
 // 🏛️ ZEUS ORACLE WORKER V203 — Single Source of Truth
 //   [V203] trend 점수표 단일화·역방향 약화·양극가드(V203.1) + 점사 멈춤 수정(V203.2)
+//   [v1.2.1] 없는 날짜(2/30·4/31·평년 2/29) 거부, 오류 응답 내부정보(stack) 제거, 음력 옛 주석 정정
 //   [v1.2.0] 2027 정미년 신년사주(NY27): 계산 모듈 + /saju/newyear/* + 결제 subtype newyear2027 + 절기 정밀표(1900-2100)
 //   [v1.1.2] 자시 일주 수정(0시→전날 오류, 23시→다음 날) + 1990년 이전 음력 입력 500 오류 수정(음력설 표 1900-2030 공유)
 // ══════════════════════════════════════════════════════════════════
@@ -6477,6 +6478,14 @@ function v31ValidateSajuInput(input) {
   if (isNaN(d) || d < 1 || d > 31) {
     return { valid: false, error: "일은 1~31 범위여야 합니다" };
   }
+  // [v1.2.1] 정수 형식 + 양력 실제 날짜 검증 (2월 30일·4월 31일·평년 2월 29일이 조용히 계산되던 문제 차단)
+  for (const [nm, v] of [['연도', year], ['월', month], ['일', day]]) {
+    if (!/^\s*\d+\s*$/.test(String(v))) return { valid: false, error: `${nm}는 숫자로 입력해 주세요` };
+  }
+  if (calendar === 'solar') {
+    const last = new Date(Date.UTC(y, m, 0)).getUTCDate();
+    if (d > last) return { valid: false, error: `${y}년 ${m}월은 ${last}일까지입니다` };
+  }
 
   // 3. 음력 윤달 검증
   if (calendar === 'lunar' && isLeapMonth) {
@@ -6549,7 +6558,9 @@ const V31_LUNAR_NEW_YEAR_TABLE = {
   };
 
 /**
- * 음력 → 양력 변환 (⚠️ Phase 1: 결함 확인됨 — Phase 2에서 KASI API 연동)
+ * 음력 → 양력 변환 — [v1.1.2] 1900~2030 음력 47,839일 전수를 한국천문연구원 기준(korean-lunar-calendar)과 대조해 전부 일치 확인
+ *   (아래 Phase 1 시절 주석은 1990년 이전 음력설 표 누락 당시의 기록이며 현재는 해당 없음.
+ *    특히 '1973.02.09 정답 3/23'은 틀린 기록 — 실제 양력 1973-03-13이 맞음)
  *
  * [ 정확성 안내 — 사장님 BEST 구조 ]
  *   ⭐⭐⭐⭐⭐ 양력 직접 입력 → 절기 + 간지 100% 정확 ★ Phase 1 완성
@@ -6691,7 +6702,7 @@ function v31SolarToLunar(solarYear, solarMonth, solarDay) {
     month: lunarMonth,
     day: lunarDay,
     isLeapMonth: isLeapMonth,
-    accuracy: 'medium'  // Phase 1 데이터 정확도 (KASI API 미연동)
+    accuracy: 'verified'  // [v1.2.1] 1900~2030 KASI 기준 전수 대조 일치
   };
 }
 
@@ -26219,8 +26230,7 @@ export default {
         }
         return new Response(JSON.stringify({
           ok: false,
-          error: `V31 Chunk 5 처리 오류: ${e.message}`,
-          stack: e.stack
+          error: `V31 Chunk 5 처리 오류: ${e.message}`
         }), {
           status: 500,
           headers: { ...corsHeaders(), "Content-Type": "application/json" }
@@ -26262,8 +26272,7 @@ export default {
       } catch (e) {
         return new Response(JSON.stringify({
           ok: false,
-          error: `V31 Chunk 3 처리 오류: ${e.message}`,
-          stack: e.stack
+          error: `V31 Chunk 3 처리 오류: ${e.message}`
         }), {
           status: 500,
           headers: { ...corsHeaders(), "Content-Type": "application/json" }
@@ -26307,8 +26316,7 @@ export default {
       } catch (e) {
         return new Response(JSON.stringify({
           ok: false,
-          error: `V31 Chunk 2 처리 오류: ${e.message}`,
-          stack: e.stack
+          error: `V31 Chunk 2 처리 오류: ${e.message}`
         }), {
           status: 500,
           headers: { ...corsHeaders(), "Content-Type": "application/json" }
@@ -26389,8 +26397,7 @@ export default {
       } catch (e) {
         return new Response(JSON.stringify({
           ok: false,
-          error: `V31 Chunk 1 처리 오류: ${e.message}`,
-          stack: e.stack
+          error: `V31 Chunk 1 처리 오류: ${e.message}`
         }), {
           status: 500,
           headers: { ...corsHeaders(), "Content-Type": "application/json" }
