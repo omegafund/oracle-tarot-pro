@@ -1534,6 +1534,15 @@
         }
 
 
+
+        /* [v1.3] 명식 카드 — 「나의 2027 운세」와 같은 모양 */
+        .zp-pillars{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;text-align:center;margin:10px 0 6px;}
+        .zp-pillars .pc{background:rgba(0,0,0,0.35);border:1px solid rgba(212,175,55,0.35);border-radius:10px;padding:8px 2px;}
+        .zp-pillars .pc.day{border-color:#FFD700;box-shadow:0 0 10px rgba(255,215,0,0.25);}
+        .zp-pillars .pos{font-size:0.7rem;color:rgba(255,255,255,0.7);}
+        .zp-pillars .hj{font-size:1.5rem;font-weight:900;color:#FFE08A;line-height:1.25;letter-spacing:0.05em;}
+        .zp-pillars .ko{font-size:0.72rem;color:rgba(255,255,255,0.8);}
+        .zp-pillars .tg{font-size:0.66rem;color:#E9C46A;margin-top:2px;min-height:1em;}
         /* [v1.3 HOME] 나의 사주 분석 카드 — 신년사주 배너와 같은 폭·같은 무게 */
         .saju-aux-card.sx2{max-width:448px;margin:14px auto 12px;padding:16px 16px 14px;gap:14px;border-radius:16px;align-items:center;
             background:radial-gradient(ellipse at 20% 50%,rgba(212,175,55,0.16) 0%,rgba(10,14,40,0) 60%),linear-gradient(135deg,#0d1230 0%,#121a3d 55%,#0a0d24 100%);
@@ -18065,24 +18074,14 @@ function renderSajuChatMessageV185(msg, index) {
             }
             return { stem: '', branch: '' };
         };
-        const cells = labels.map((label, i) => {
-            const v = p[keys[i]];
-            const { stem, branch } = extractStemBranch(v);
-            if (!stem && !branch) return `<div style="text-align:center; padding:8px 4px; background:rgba(255,255,255,0.04); border-radius:4px; color:rgba(255,255,255,0.3); font-size: 0.74rem;">${label}<br><br>—<br>—</div>`;
-            return `<div style="text-align:center; padding:8px 4px; background:rgba(212,175,55,0.10); border:1px solid rgba(212,175,55,0.30); border-radius:6px;">
-                <div style="color:rgba(255,255,255,0.55); font-size: 0.74rem; margin-bottom:3px;">${label}</div>
-                <div style="color:#FFD970; font-size:1.35rem; font-weight:900; line-height:1;">${stem}</div>
-                <div style="color:#FFE08A; font-size:1.12rem; font-weight:700; margin-top:3px;">${branch}</div>
-            </div>`;
-        }).join('');
+        // [v1.3] 신년사주 명식 카드와 같은 모양
+        const cardsHTML = window.zeusPillarCardsHTML(p);
         return `
         <div class="saju-chat-msg" style="animation-delay:${msg.delay || index*200}ms;">
             <div class="saju-chat-avatar">☯️</div>
             <div class="saju-chat-bubble">
                 <div class="saju-chat-bubble-title">📜 사주 명식</div>
-                <div style="display:grid; grid-template-columns:repeat(4, 1fr); gap:5px; margin-top:8px;">
-                    ${cells}
-                </div>
+                <div style="margin-top:8px;">${cardsHTML}</div>
                 ${msg.inputDisplay ? `<div style="margin-top:10px; padding:7px 10px; background:rgba(255,255,255,0.05); border-radius:6px; font-size:0.7rem; color:rgba(255,255,255,0.7); text-align:center; font-weight:600;">${msg.inputDisplay}</div>` : ''}
                 <div class="saju-chat-bubble-time">${msg.time}</div>
             </div>
@@ -19581,6 +19580,49 @@ window.zeusForceClear = function() {
  * - getSajuAccessLevel() 결과로 분기
  * - 함수 분리로 회귀 차단 (premium 코드가 basic에 들어가지 않음)
  */
+
+// ════════════════════════════════════════════════════════════════════════
+// [v1.3 명식 카드 통일] 「나의 사주 분석」 명식 표를 「나의 2027 운세」 명식 카드와 같은 모양으로
+//   한자 간지 + 한글 독음 + 천간 십성, 일주는 금색 강조 「나 (일간)」
+//   입력: { hour, day, month, year } — 각 값은 '甲子' 문자열 또는 {stem,branch,ganzhi} 객체
+// ════════════════════════════════════════════════════════════════════════
+window.zeusPillarCardsHTML = function (P) {
+    P = P || {};
+    var STEMS = '甲乙丙丁戊己庚辛壬癸', BRANCHES = '子丑寅卯辰巳午未申酉戌亥';
+    var STEM_KO = '갑을병정무기경신임계', BRANCH_KO = '자축인묘진사오미신유술해';
+    var KO2H_S = {}, KO2H_B = {};
+    for (var i = 0; i < 10; i++) KO2H_S[STEM_KO[i]] = STEMS[i];
+    for (var j = 0; j < 12; j++) KO2H_B[BRANCH_KO[j]] = BRANCHES[j];
+    function norm(v) {
+        if (!v) return null;
+        var g = typeof v === 'string' ? v : (v.hanja || v.ganzhi || ((v.stem || '') + (v.branch || '')));
+        g = String(g || '').replace(/\s/g, '');
+        if (g.length < 2) return null;
+        var s = g.charAt(0), b = g.charAt(1);
+        if (KO2H_S[s]) s = KO2H_S[s];
+        if (KO2H_B[b]) b = KO2H_B[b];
+        var si = STEMS.indexOf(s), bi = BRANCHES.indexOf(b);
+        if (si < 0 || bi < 0) return { hanja: g.slice(0, 2), ko: '', si: -1 };
+        return { hanja: s + b, ko: STEM_KO[si] + BRANCH_KO[bi], si: si };
+    }
+    function tenGod(d, o) {
+        if (d < 0 || o < 0) return '';
+        var de = Math.floor(d / 2), oe = Math.floor(o / 2), same = (d % 2) === (o % 2);
+        var rel = (oe - de + 5) % 5; // 0 같음, 1 내가 생함, 2 내가 극함, 3 나를 극함, 4 나를 생함
+        return [['비견', '겁재'], ['식신', '상관'], ['편재', '정재'], ['편관', '정관'], ['편인', '정인']][rel][same ? 0 : 1];
+    }
+    var day = norm(P.day);
+    var order = [['hour', '시주'], ['day', '일주'], ['month', '월주'], ['year', '년주']];
+    return '<div class="zp-pillars">' + order.map(function (o) {
+        var p = norm(P[o[0]]);
+        if (!p) return '<div class="pc"><div class="pos">' + o[1] + '</div><div class="hj">?</div><div class="ko">시간 모름</div></div>';
+        var raw = P[o[0]], given = (raw && typeof raw === 'object' && raw.tenGodStem) ? raw.tenGodStem : '';
+        var tg = o[0] === 'day' ? '나 (일간)' : (given || (day ? tenGod(day.si, p.si) : ''));
+        return '<div class="pc' + (o[0] === 'day' ? ' day' : '') + '"><div class="pos">' + o[1] + '</div><div class="hj">' + _escape(p.hanja) + '</div>' +
+            '<div class="ko">' + _escape(p.ko) + '</div><div class="tg">' + _escape(tg) + '</div></div>';
+    }).join('') + '</div>';
+};
+
 function showSajuByPlan(data) {
     const access = getSajuAccessLevel();
     
@@ -20251,24 +20293,8 @@ function renderSajuResult(data) {
         result.className = 'pay-modal-overlay';
         result.style.cssText = 'overflow:auto; z-index: 9999999 !important;';
     
-    // 사주 명식 4×4 시각화
-    const meongSik = `
-        <div style="display:grid; grid-template-columns:repeat(4, 1fr); gap:6px; margin:16px 0;">
-            ${['시주', '일주', '월주', '년주'].map((label, i) => {
-                const keys = ['hour', 'day', 'month', 'year'];
-                const p = pillars[keys[i]];
-                if (!p) return `<div style="text-align:center; padding:10px; background:rgba(255,255,255,0.04); border-radius:4px; color:rgba(255,255,255,0.3); font-size:0.7rem;">${label}<br><br>—<br>—</div>`;
-                const stem = p.charAt(0);
-                const branch = p.charAt(1);
-                return `
-                <div style="text-align:center; padding:10px 6px; background:rgba(212,175,55,0.08); border:1px solid rgba(212,175,55,0.25); border-radius:6px;">
-                    <div style="color:rgba(255,255,255,0.5); font-size: 0.74rem; margin-bottom:4px;">${label}</div>
-                    <div style="color:#FFD970; font-size:1.5rem; font-weight:900; line-height:1;">${stem}</div>
-                    <div style="color:#FFE08A; font-size:1.2rem; font-weight:700; margin-top:4px;">${branch}</div>
-                </div>`;
-            }).join('')}
-        </div>
-    `;
+    // 사주 명식 — [v1.3] 신년사주 명식 카드와 같은 모양
+    const meongSik = window.zeusPillarCardsHTML(pillars);
 
     // 오행 분포 차트 (CSS bars)
     // [V31 #184.6 작업 5] 숫자 → 퍼센트 표시 (메이저 앱 표준, 인지속도 3배)
@@ -25813,8 +25839,8 @@ function reshuffleDeck() {
     body.ny-open #nyApp .ny-top, body.ny-open #nyApp .ny-noprint{display:none !important;}
     body.ny-open #nyApp h1, body.ny-open #nyApp h2, body.ny-open #nyApp .ny-month .mh b, body.ny-open #nyApp .ny-one{color:#7a1a1f !important;}
     body.ny-open #nyApp h2{border-color:#c9a227 !important;}
-    body.ny-open #nyApp p, body.ny-open #nyApp h3, body.ny-open #nyApp .hl, body.ny-open #nyApp .ny-tip, body.ny-open #nyApp li, body.ny-open #nyApp .ny-pillars *{color:#111 !important;}
-    body.ny-open #nyApp .ny-card, body.ny-open #nyApp .ny-pillars .pc{background:#fff !important;border-color:#c9a227 !important;box-shadow:none !important;}
+    body.ny-open #nyApp p, body.ny-open #nyApp h3, body.ny-open #nyApp .hl, body.ny-open #nyApp .ny-tip, body.ny-open #nyApp li, body.ny-open #nyApp .ny-pillars *, body.ny-open #nyApp .zp-pillars *{color:#111 !important;}
+    body.ny-open #nyApp .ny-card, body.ny-open #nyApp .ny-pillars .pc, body.ny-open #nyApp .zp-pillars .pc{background:#fff !important;border-color:#c9a227 !important;box-shadow:none !important;}
     body.ny-open #nyApp .ny-tip{background:#fbf5e1 !important;}
     body.ny-open #nyApp .ny-tags span{color:#5a3a00 !important;background:#fbf5e1 !important;border-color:#c9a227 !important;}
     body.ny-open #nyApp .ny-month{break-inside:avoid;}
@@ -25860,15 +25886,8 @@ function reshuffleDeck() {
   function show() { $('nyApp').hidden = false; document.body.classList.add('ny-open'); document.documentElement.style.overflow = 'hidden'; }
   function close() { closeSheet(); $('nyApp').hidden = true; document.body.classList.remove('ny-open'); document.documentElement.style.overflow = ''; refreshBanner(); }
 
-  function pillarsHTML(P) {
-    var order = [['hour', '시주'], ['day', '일주'], ['month', '월주'], ['year', '년주']];
-    return '<div class="ny-pillars">' + order.map(function (o) {
-      var p = P[o[0]];
-      if (!p) return '<div class="pc"><div class="pos">' + o[1] + '</div><div class="hj">?</div><div class="ko">시간 모름</div></div>';
-      return '<div class="pc' + (o[0] === 'day' ? ' day' : '') + '"><div class="pos">' + o[1] + '</div><div class="hj">' + esc(p.hanja) + '</div><div class="ko">' + esc(p.ko) + '</div>' +
-        '<div class="tg">' + esc(o[0] === 'day' ? '나 (일간)' : (p.tenGodStem || '')) + '</div></div>';
-    }).join('') + '</div>';
-  }
+  // [v1.3] 모든 명식 화면 통일 — 「나의 사주 분석」과 같은 공용 명식 카드 사용
+  function pillarsHTML(P) { return window.zeusPillarCardsHTML(P || {}); }
 
   // ── ① 소개 ──
   function intro() {
