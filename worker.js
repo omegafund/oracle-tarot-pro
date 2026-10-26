@@ -25090,7 +25090,7 @@ async function handleV55Request(request, env, ctx) {
 //   점수 2층: 바탕 운(용신 길흉) + 사건 신호(일간·일지·관성·자녀궁의 합충형, 격 완성)
 //   검증: 사장님 확정 정답지 14건 회귀 테스트 통과 후 배포
 // ════════════════════════════════════════════════════════════════════════════════
-const NY27_VERSION = 'ny27-1.2';
+const NY27_VERSION = 'ny27-1.3';
 const NY_ELS = ['목', '화', '토', '금', '수'];
 const NY_GEN = { 목: '화', 화: '토', 토: '금', 금: '수', 수: '목' };      // A가 B를 생
 const NY_CTL = { 목: '토', 토: '수', 수: '화', 화: '금', 금: '목' };      // A가 B를 극
@@ -25469,8 +25469,16 @@ function nyNatalFeatures(p, dm, gender, ys) {
   const sets = { 왕지: ['자', '오', '묘', '유'], 생지: ['인', '신', '사', '해'], 고지: ['진', '술', '축', '미'] };
   const full = Object.entries(sets).filter(([, g]) => g.every(x => branches.includes(x))).map(([k]) => k);
   // 관살혼잡
+  // 관살혼잡: 천간 + 지지 본기 기준 (지장간 여기·중기까지 넣으면 거의 모든 명식이 해당되어 구분력 없음 — 데이터 검증)
   const gwanTypes = new Set();
   for (const k of pos) { if (k !== 'day') { const t = nyTenGod(dm, p[k].stem); if (t === '정관' || t === '편관') gwanTypes.add(t); } const tb = nyTenGodBranch(dm, p[k].branch); if (tb === '정관' || tb === '편관') gwanTypes.add(tb); }
+  // 배우자성 개수: 천간 투간 수 + 지장간 속 개수
+  const spouseHidden = pos.reduce((a, k) => a + V31_BRANCH_INFO[p[k].branch].hidden.filter(h => nyGroup(dmEl, nyStemEl(h.stem)) === spouseGroup).length, 0);
+  const spouseMultiple = spouseStems.length >= 2;   // 천간 2개 이상 투간 (분포 검증 후 확정)
+  // 도화살(삼합 기준): 년지·일지의 삼합 → 申子辰=酉, 寅午戌=卯, 巳酉丑=午, 亥卯未=子
+  const DOHWA = { 신: '유', 자: '유', 진: '유', 인: '묘', 오: '묘', 술: '묘', 사: '오', 유: '오', 축: '오', 해: '자', 묘: '자', 미: '자' };
+  const dohwaTargets = [DOHWA[p.year.branch], DOHWA[p.day.branch]];
+  const dohwa = pos.filter(k => dohwaTargets.includes(p[k].branch)).map(k => NY_POS_KO[k]);
   return {
     branchRelations: rels.map(r => `${NY_POS_KO[r.a]}-${NY_POS_KO[r.b]} ${r.type}${r.el ? '→' + r.el : ''}`),
     spousePalace: { branch: p.day.branch, tenGod: dayBranchGod, attacks: dayAttack.map(r => r.type), attackCount: dayAttack.length },
@@ -25478,6 +25486,8 @@ function nyNatalFeatures(p, dm, gender, ys) {
       timing: spouseStems.length ? (spouseStems.includes('hour') && !spouseStems.some(k => k === 'year' || k === 'month') ? '시주 — 만혼·연하 경향' : spouseStems.some(k => k === 'year') ? '년주 — 연상·이른 인연 경향' : '월주 — 사회에서 만나는 인연') : '천간에 드러나지 않음 — 인연이 늦게 드러남',
       combinesDay: spouseStems.some(k => nyStemPairRel(dm, p[k].stem).some(r => r.type === '천간합')) },
     gwanMixed: gwanTypes.size === 2,
+    spouseCount: { stems: spouseStems.length, hidden: spouseHidden, multiple: spouseMultiple },
+    dohwa,
     fullSet: full,
     dayBranchIsSiksang: ['식신', '상관'].includes(dayBranchGod),
   };
@@ -25508,6 +25518,9 @@ function buildNewYear2027(input) {
   const main = months.filter(m => !m.preYear);
   const ranked = [...main].sort((a, b) => b.score - a.score);
   const natal = nyNatalFeatures(p, dm, norm.gender, ys);
+  const spouseGrp = norm.gender === 'female' ? '관성' : '재성';
+  natal.earlySpouseLuck = dw.list.filter(d => d.age < 30 && (nyGroup(nyStemEl(dm), nyStemEl(d.stem)) === spouseGrp || nyGroup(nyStemEl(dm), nyBranchEl(d.branch)) === spouseGrp))
+    .map(d => `${d.ko}(${Math.floor(d.age)}세~)`);
   // 결혼·배우자 근거 강도: 강한 배우자 신호(일지 충형·합, 배우자성 합, 배우자성 국 완성)만 집계
   //   월지는 12개월 중 절반 가까이 일지와 만나므로 월 신호로는 강도를 정하지 않음.
   //   강도 = 그해(세운)가 배우자 자리·배우자성을 직접 움직이는가 / 월은 강도가 있을 때 시기 표시용 상위 2개만
@@ -25575,6 +25588,10 @@ function nyContextText(r, opts) {
   lines.push(`■ 배우자 자리(일지): ${f.spousePalace.branch} (${f.spousePalace.tenGod})${f.spousePalace.attackCount ? ' — 원국에서 ' + f.spousePalace.attacks.join('·') + ' 받음' : ''}`);
   lines.push(`■ 배우자성(${f.spouseStar.group}): ${f.spouseStar.stems.map(s => s.pos + '간 ' + s.stem).join(', ') || '천간에 없음'} — ${f.spouseStar.timing}${f.spouseStar.combinesDay ? ', 일간과 합(인연 성사력)' : ''}`);
   if (f.gwanMixed) lines.push('■ 관살혼잡: 정관·편관이 함께 있음');
+  if (f.spouseCount && f.spouseCount.multiple) lines.push(`■ 배우자성이 여러 자리에 있음(천간 ${f.spouseCount.stems}개, 지장간 ${f.spouseCount.hidden}개) — 인연이 일찍·여러 번 들어오기 쉬운 구조. 과거 이성관계를 단정하거나 언급하지 말고 "관계를 고를 때 신중함이 힘이 된다" 같은 경향으로만 쓸 것`);
+  if (f.dohwa && f.dohwa.length) lines.push(`■ 도화(삼합 기준) 있음: ${f.dohwa.join('·')}주 — 사람을 끄는 매력. 이성 문제로 단정하지 말 것`);
+  // 30세 전 배우자성 대운은 단독으로는 67%가 해당(구분력 없음) → 배우자성 다수일 때만 함께 전달
+  if (f.spouseCount && f.spouseCount.multiple && n.features.earlySpouseLuck && n.features.earlySpouseLuck.length) lines.push(`■ 30세 이전 배우자성 대운: ${n.features.earlySpouseLuck.join(', ')} — 이른 인연 경향(배경 정보, 과거 단정 금지)`);
   if (f.fullSet.length) lines.push(`■ 지지 ${f.fullSet.join('·')} 전비 — 원국 변동성 큼`);
   if (f.dayBranchIsSiksang) lines.push('■ 배우자 자리에 식상 — 본인이 생활을 주도하는 구조');
   if (f.branchRelations.length) lines.push(`■ 원국 지지·천간 관계: ${f.branchRelations.join(', ')}`);
