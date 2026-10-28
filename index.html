@@ -25758,7 +25758,7 @@ function reshuffleDeck() {
   .ny-banner .nyb-cta{background:linear-gradient(135deg,#FFD700,#E8A317);color:#2a0a0e;font-weight:900;font-size:0.84rem;padding:8px 14px;border-radius:999px;}
   .ny-banner .nyb-again{font-size:0.76rem;color:#FFE9B0;text-decoration:underline;margin-top:8px;display:inline-block;}
 
-  #nyApp{position:fixed;inset:0;z-index:2147483000;background:linear-gradient(160deg,#0d0614 0%,#1c0a24 55%,#2a0d14 100%);color:#F3EAD6;overflow-y:auto;-webkit-overflow-scrolling:touch;
+  #nyApp{position:fixed;inset:0;z-index:9999990;background:linear-gradient(160deg,#0d0614 0%,#1c0a24 55%,#2a0d14 100%);color:#F3EAD6;overflow-y:auto;-webkit-overflow-scrolling:touch;
     font-family:-apple-system,BlinkMacSystemFont,'Apple SD Gothic Neo','Malgun Gothic',sans-serif;}
   #nyApp[hidden]{display:none !important;}
   #nyApp *{box-sizing:border-box;}
@@ -26009,6 +26009,8 @@ function reshuffleDeck() {
         var base = (typeof V55_STATIC_BASE !== 'undefined') ? V55_STATIC_BASE : 'https://oracle-tarot-v1.omegafund01.workers.dev';
         var q = '?readingId=' + encodeURIComponent(rid) + '&rid=' + encodeURIComponent(rid) + '&token=' + encodeURIComponent(tok) +
                 '&plan=saju_premium&n=n' + Date.now() + '&ctx=saju&ny=1';
+        // [v1.2.3] PC 토스 결제창이 신년 화면 뒤에 가려지던 문제 — 결제창을 열기 전에 신년 화면을 내림
+        try { $('nyApp').hidden = true; document.body.classList.remove('ny-open'); document.documentElement.style.overflow = ''; } catch (_) {}
         return toss.requestPayment(method, {
           amount: PRICE, orderId: 'ORD-' + rid, orderName: '나의 2027 운세', customerName: '고객',
           successUrl: base + '/v55/success-v55.html' + q, failUrl: base + '/v55/fail-v55.html' + q
@@ -26016,6 +26018,7 @@ function reshuffleDeck() {
       })
       .catch(function (e) {
         paying = false;
+        try { show(); if (!$('nyErr')) confirmView(); } catch (_) {}
         var b = $('nyErr');
         if (e && e.code === 'USER_CANCEL') { if (b) b.textContent = '결제를 취소했습니다.'; return; }
         if (b) b.textContent = '결제를 시작하지 못했습니다: ' + ((e && e.message) || e);
