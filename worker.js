@@ -26586,23 +26586,15 @@ export default {
     if (url.pathname === "/verify-payment" && request.method === "POST") {
       try {
         const { paymentKey } = await request.json();
-        // [V24.1 P0-2 BUGFIX] 환경변수 기반 검증으로 변경
-        const _MASTER_KEY = env.MASTER_KEY || _DEFAULT_MASTER_KEY;
-        const _TEST_MODE  = (env.ENABLE_TEST_MODE === "true");
-        const isValid = (paymentKey === _MASTER_KEY) ||
-                        (_TEST_MODE && paymentKey?.startsWith("TEST-PAY")) ||
-                        // [V24.1] 정상 발급된 HMAC 토큰도 통과 (페이지 재방문 시 토큰 검증용)
-                        (await verifyToken(paymentKey, env.TOKEN_SECRET));
+        // [보안 S3 #11] 확인만 한다 — 새 이용권을 만들어 주지 않는다 (예전에는 확인할 때마다 24시간짜리를 새로 발급)
+        //   만능키·시험 모드 통과도 함께 없앰. 이용권이 필요하면 관리자 발급(/admin/grant)을 쓴다.
+        const isValid = (typeof paymentKey === "string") && (await verifyToken(paymentKey, env.TOKEN_SECRET));
         if (!isValid) {
           return new Response(JSON.stringify({ ok: false, error: "결제 미확인" }), {
             headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" }
           });
         }
-        const expiry = Date.now() + 1000 * 60 * 60 * 24;
-        const userId = request.headers.get("cf-connecting-ip") || "test-user";
-        const payload = `paid|${userId}|${expiry}`;
-        const token = await signHmac(payload, env.TOKEN_SECRET);
-        const fullToken = `${payload}|${token}`;
+        const fullToken = paymentKey;   // 받은 이용권을 그대로 돌려줌 (기한 연장 없음)
         return new Response(JSON.stringify({ ok: true, token: fullToken }), {
           headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" }
         });
@@ -26621,194 +26613,12 @@ export default {
     //   4. Toss API로 결제 승인 호출 (시크릿 키는 env 변수로)
     //   5. 성공 시 HMAC 토큰 발급 (day=24h / month=30d)
     // ══════════════════════════════════════════════════════════════
+    // [보안 S3 #11] 옛 결제 통로 닫음 — 현재 결제는 /v55/* 통로만 사용
     if (url.pathname === "/verify-toss" && request.method === "POST") {
-      try {
-        const body = await request.json();
-        const { paymentKey, orderId, amount } = body;
-
-        if (!paymentKey || !orderId || !amount) {
-          return new Response(JSON.stringify({ success: false, error: "missing params" }), {
-            headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" }
-          });
-        }
-
-        // ════════════════════════════════════════════════════════════════════
-        // [V199.1 IDEMPOTENCY] paymentKey 캐싱 — 중복 confirm 호출 차단
-        //   동일 paymentKey로 두 번째 호출 시 캐시된 결과 반환 (Toss API 재호출 X)
-        //   - 같은 결제건 새로고침 시 안전
-        //   - 사기 시도 (paymentKey 재사용)도 자동 차단
-        // ════════════════════════════════════════════════════════════════════
-        const KV = env.ZEUS_TAROT_KV;
-        if (KV) {
-          try {
-            const cached = await KV.get(`pk:${paymentKey}`);
-            if (cached) {
-              console.log('[V199.1] paymentKey 재사용 — 캐시 반환:', paymentKey.slice(0, 12) + '...');
-              return new Response(cached, {
-                headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" }
-              });
-            }
-          } catch(kvErr) {
-            console.warn('[V199.1] KV idempotency check failed:', kvErr.message);
-          }
-        }
-
-        // 1. orderId 파싱 → plan 추출 및 검증
-        // [V24.1 P0-1 BUGFIX] 정규식 수정 — monthly/yearly/lifetime 추가
-        //   기존: /^zeus_(trial|day|month)_\d+_.+$/ → monthly/yearly/lifetime 차단
-        //   영향: 9,900 + 79,000 + 199,000 = 287,900원 매출 자동 거부 버그
-        //
-        // [V199.1 SAJU MIGRATION] saju_basic|saju_premium 추가
-        //   기존: orderId 'zeus_saju_basic_xxx' → regex 매칭 실패 → "invalid orderId format"
-        //   결과: V31 #190~#198 사주 결제 흐름 ★ 사실상 작동 안 함 ★ (V198 도돌이 근본 원인)
-        //   해결: regex에 saju_basic|saju_premium 추가 → 정상 매칭
-        const m = String(orderId).match(/^zeus_(trial|day|month|monthly|yearly|lifetime|saju_basic|saju_premium)_(\d+)_(.+)$/);
-        if (!m) {
-          return new Response(JSON.stringify({ success: false, error: "invalid orderId format" }), {
-            headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" }
-          });
-        }
-        const plan = m[1]; // 'trial' | 'day' | 'month' | 'monthly' | 'yearly' | 'lifetime'
-
-        // 2. 금액 검증 — 허용 금액 리스트 (클라이언트 조작 방지)
-        // [V20.0] 990원 체험권 추가
-        // [V23 P0-2] 월/연 구독 + 평생 이용권 추가 (글로벌 톱앱 표준)
-        const PLAN_PRICES = {
-          trial:    990,
-          day:      3900,
-          month:    9900,
-          monthly:  9900,    // 월 자동결제 구독 (단일 month와 동일 가격)
-          yearly:   79000,   // 연 구독 (월 6,583원 — 33% 할인)
-          lifetime: 199000,  // 평생 이용권
-          // [V199.1 SAJU MIGRATION] 사주 Freemium 신규 플랜
-          saju_basic:   990,    // 990원 24시간 (V31 #187 사장님 플랜)
-          saju_premium: 4900    // 4,900원 24시간 (V31 #190 신규)
-        };
-        const expectedAmount = PLAN_PRICES[plan];
-        const paidAmount = Number(amount);
-        if (paidAmount !== expectedAmount) {
-          return new Response(JSON.stringify({
-            success: false,
-            error: `amount mismatch: expected ${expectedAmount}, got ${paidAmount}`
-          }), {
-            headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" }
-          });
-        }
-
-        // 3. Toss 결제 승인 요청
-        //    TOSS_SECRET_KEY는 Cloudflare 환경변수로 설정 필수
-        const secretKey = env.TOSS_SECRET_KEY;
-        if (!secretKey) {
-          return new Response(JSON.stringify({ success: false, error: "TOSS_SECRET_KEY not configured" }), {
-            headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" }
-          });
-        }
-
-        const tossRes = await fetch("https://api.tosspayments.com/v1/payments/confirm", {
-          method: "POST",
-          headers: {
-            "Authorization": "Basic " + btoa(secretKey + ":"),
-            "Content-Type": "application/json"
-          },
-          body: JSON.stringify({ paymentKey, orderId, amount: paidAmount })
-        });
-
-        const tossData = await tossRes.json();
-        if (!tossRes.ok) {
-          console.error('[verify-toss] 결제 확인 실패', JSON.stringify(tossData).slice(0, 500));
-          return new Response(JSON.stringify({
-            success: false,
-            error: "toss verification failed",
-            code: tossData && tossData.code,
-            message: tossData && tossData.message
-          }), {
-            status: 400,
-            headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" }
-          });
-        }
-
-        // 4. 성공 → HMAC 토큰 발급
-        // [V20.0] trial: 1시간 / day: 24시간 / month: 30일
-        const PLAN_DURATION_MS = {
-          trial:    60 * 60 * 1000,                  // 1시간
-          day:      24 * 60 * 60 * 1000,             // 1일
-          month:    30 * 24 * 60 * 60 * 1000,        // 30일 (단일)
-          monthly:  30 * 24 * 60 * 60 * 1000,        // 30일 (월 구독)
-          yearly:   365 * 24 * 60 * 60 * 1000,       // 365일 (연 구독)
-          lifetime: 100 * 365 * 24 * 60 * 60 * 1000, // 100년 (평생)
-          // [V31 #190] 사장님 V31 #187 Freemium 신규 플랜 (24시간)
-          saju_basic:   24 * 60 * 60 * 1000,         // 990원 24시간
-          saju_premium: 24 * 60 * 60 * 1000          // 4,900원 24시간
-        };
-        const durationMs = PLAN_DURATION_MS[plan] || (60 * 60 * 1000)
-        const expiry = Date.now() + durationMs;
-        const userId = request.headers.get("cf-connecting-ip") || "toss-user";
-        const payload = `paid|${userId}|${expiry}`;
-        const token = await signHmac(payload, env.TOKEN_SECRET);
-        const fullToken = `${payload}|${token}`;
-
-        // ════════════════════════════════════════════════════════════════════
-        // [V199.1 NONCE] 일회용 verifiedToken 발급 + KV 저장 (5분 TTL)
-        //   목적: success.html → index.html redirect 시 모바일 격리 안전
-        //   - sessionStorage 격리 시 hash fragment의 verifiedToken으로 복구
-        //   - /consume-token이 일회용으로 검증 (재사용 차단)
-        //   - 사주 입력 데이터까지 함께 반환 (auth hole 차단)
-        // ════════════════════════════════════════════════════════════════════
-        let verifiedToken = null;
-        const isSajuPlan = (plan === 'saju_basic' || plan === 'saju_premium');
-        if (KV) {
-          try {
-            // crypto.randomUUID()는 Cloudflare Workers에서 사용 가능 (Web Crypto API)
-            verifiedToken = crypto.randomUUID() + '_' + Date.now();
-            await KV.put(
-              `verified:${verifiedToken}`,
-              JSON.stringify({
-                orderId,
-                plan,
-                amount: paidAmount,
-                hmacToken: fullToken,
-                expiry,
-                used: false,
-                createdAt: Date.now()
-              }),
-              { expirationTtl: 600 }  // 10분 (모바일 카카오페이 redirect 안전 마진)
-            );
-            console.log('[V199.1] verifiedToken 발급:', verifiedToken.slice(0, 16) + '...', 'plan=' + plan);
-          } catch(kvErr) {
-            console.warn('[V199.1] verifiedToken KV save failed:', kvErr.message);
-            // KV 실패해도 결제는 성공 처리 (sessionStorage fallback)
-          }
-        }
-
-        const responseBody = JSON.stringify({
-          success: true,
-          token: fullToken,
-          plan,
-          expiresAt: expiry,
-          // [V199.1] 신규 필드 — sajuFlow에서만 사용 (기존 호환성 100%)
-          verifiedToken: verifiedToken,
-          isSajuPlan: isSajuPlan
-        });
-
-        // [V199.1 IDEMPOTENCY] paymentKey → 응답 캐싱 (10분, verifiedToken과 동일 윈도우)
-        if (KV) {
-          try {
-            await KV.put(`pk:${paymentKey}`, responseBody, { expirationTtl: 600 });
-          } catch(kvErr) {
-            console.warn('[V199.1] paymentKey cache save failed:', kvErr.message);
-          }
-        }
-
-        return new Response(responseBody, {
-          headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" }
-        });
-
-      } catch(e) {
-        return new Response(JSON.stringify({ success: false, error: secLogErr('verify-toss', e) }), {
-          status: 500,
-          headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" }
-        });
-      }
+      console.warn("[verify-toss] 닫힌 옛 결제 통로 호출", request.headers.get("cf-connecting-ip") || "");
+      return new Response(JSON.stringify({ success: false, error: "이 결제 경로는 종료되었습니다. zeustarot.com 에서 다시 시도해 주세요." }), {
+        status: 410, headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" }
+      });
     }
 
     // ════════════════════════════════════════════════════════════════════════
