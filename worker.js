@@ -22336,12 +22336,14 @@ async function handleUltimateZeusShield(request, env, userId, planKey, question)
 
     // [3] CONCURRENCY LOCK
     const concurrentKey = `active:${keyBase}`;
+    // [2026-11-10 fix] Cloudflare KV는 expirationTtl 최소 60초. 10초·3초 TTL은 예외를 던져 무료 점사가 전부 실패했음.
+    //   → 값에 시각을 저장하고 TTL은 60초로, 실제 판정은 시각 비교로 한다.
     const active = await KV.get(concurrentKey);
-    if (active === "true") {
+    if (active && (active === "true" ? false : (Date.now() - Number(active)) < 10000)) {
         return new Response(JSON.stringify({ error: "CONCURRENT_REQUEST", message: "이전 점사가 아직 진행 중입니다. 잠시만 기다려 주세요." }),
             { status: 429, headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" } });
     }
-    await KV.put(concurrentKey, "true", { expirationTtl: 10 }); // [V202.64] 10초로 단축
+    await KV.put(concurrentKey, String(Date.now()), { expirationTtl: 60 }); // 판정은 10초 (위 시각 비교)
 
     try {
         // [4] ADAPTIVE COOLDOWN
@@ -22354,7 +22356,7 @@ async function handleUltimateZeusShield(request, env, userId, planKey, question)
 
         const coolKey = `cool:${keyBase}`;
         const cool = await KV.get(coolKey);
-        if (cool === "true") {
+        if (cool && cool !== "true" && Date.now() < Number(cool)) {
             await KV.delete(concurrentKey); // [V202.64] lock 해제
             return new Response(JSON.stringify({ error: "COOLDOWN", message: `카드의 흐름이 정리되지 않았습니다. ${cooldown}초 후 다시 시도해 주세요.` }),
                 { status: 429, headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" } });
@@ -22400,7 +22402,7 @@ async function handleUltimateZeusShield(request, env, userId, planKey, question)
         }
 
         // [8] COOLDOWN 잠금 설정
-        await KV.put(coolKey, "true", { expirationTtl: cooldown });
+        await KV.put(coolKey, String(Date.now() + cooldown * 1000), { expirationTtl: 60 });
 
         return { success: true, isResponse: false, keyBase, usageKey, pendingKey, ttl, globalKey, concurrentKey, ipUsageKey: _secIsFree ? _secIpUsageKey : null };
 
@@ -26073,6 +26075,8 @@ async function handleNewYearRoutes(request, env, url) {
 // ══════════════════════════════════════════════════════════════════════════
 export default {
   async fetch(request, env, ctx) {
+    // [2026-11-10] 횟수 제한 저장소: 바인딩 이름 ZEUS_TAROT_KV가 없으면 같은 저장소인 READINGS_KV를 쓴다
+    if (env && !env.ZEUS_TAROT_KV && env.READINGS_KV) { try { env = Object.assign({}, env, { ZEUS_TAROT_KV: env.READINGS_KV }); } catch (_) {} }
 
     if (request.method === "OPTIONS") {
       return new Response(null, { headers: corsHeaders() });

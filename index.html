@@ -16783,9 +16783,8 @@ function showSajuPlanGate(sajuInput) {
         // 일간 추정 (절기 보정 X — 미리보기용)
         let dayLabel = '';
         if (year && month && day) {
-            const inputDate = new Date(year, month - 1, day);
-            const baseDate = new Date(1900, 0, 31);  // 1900-01-31 ~ 갑자일 기준
-            const daysDiff = Math.floor((inputDate - baseDate) / 86400000);
+            // [2026-11-10] 현지 시간대(1900년 한국 표준시 +8:28)를 쓰면 하루가 밀려 일간이 틀렸음 → UTC 날짜로 계산
+            const daysDiff = Math.round((Date.UTC(year, month - 1, day) - Date.UTC(1900, 0, 31)) / 86400000);
             const ganzhiIdx = ((daysDiff % 60) + 60) % 60;
             const stems = ['갑','을','병','정','무','기','경','신','임','계'];
             const elements = {갑:'목',을:'목',병:'화',정:'화',무:'토',기:'토',경:'금',신:'금',임:'수',계:'수'};
