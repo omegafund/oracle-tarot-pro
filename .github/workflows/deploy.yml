@@ -15,11 +15,6 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
 
-      - name: Replace API Key
-        run: |
-          # index.html 파일에서 API_KEY 변수 뒤의 따옴표 안의 내용을 Secret 키로 강제 교체합니다.
-          sed -i 's/REPLACE_ME_WITH_API_KEY/${{ secrets.GEMINI_API_KEY }}/g' index.html
-
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v3
         with:

@@ -22177,6 +22177,79 @@ function detectIntimacyBlockKR(prompt) {
 }
 const INTIMACY_RESPONSE_KR = "이런 질문은 점사로 답하기 어렵습니다. 두 분의 관계 흐름이나 호감도, 타이밍이 궁금하시면 연애운으로 다시 물어봐 주세요.";
 
+// ══════════════════════════════════════════════════════════════
+// [보안 S3 2026-11-10] 공통 도우미 — 한도·관리자 잠금·에러 문구
+// ══════════════════════════════════════════════════════════════
+const SEC_FREE_DAILY_PER_DEVICE = 20;     // 무료: 같은 기기 하루 한도
+const SEC_FREE_DAILY_PER_IP     = 60;     // 무료: 같은 접속 주소 하루 한도 (브라우저 정보를 바꿔도 여기서 걸림)
+const SEC_GLOBAL_DAILY_AI       = 10000;  // 전체 하루 상한 (넘으면 무료만 멈춤)
+const SEC_ADMIN_MAX_FAILS       = 5;      // 관리자 비밀번호 허용 오류 횟수
+const SEC_ADMIN_LOCK_SEC        = 900;    // 잠금 시간 15분
+const SEC_GENERIC_ERROR = "일시적인 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.";
+function secDayKST() { return new Date(Date.now() + 9 * 3600 * 1000).toISOString().slice(0, 10); }
+function secIpKey(ip) {
+    ip = String(ip || "unknown");
+    return ip.includes(":") ? ip.split(":").slice(0, 4).join(":") : ip;   // IPv6는 앞 절반(회선 단위)만 사용
+}
+// 내부 오류는 기록에만 남기고, 손님에게는 안내 문장만 돌려준다
+function secLogErr(tag, e) {
+    try { console.error(`[ERR ${tag}]`, (e && e.message) || e, e && e.stack ? String(e.stack).slice(0, 300) : ""); } catch (_) {}
+    return SEC_GENERIC_ERROR;
+}
+function secSafeEqual(a, b) {
+    a = String(a); b = String(b);
+    let diff = a.length ^ b.length;
+    for (let i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i % (b.length || 1));
+    return diff === 0;
+}
+const _secAdminMem = new Map();
+// 관리자 확인 — 통과하면 null, 아니면 거절 응답. 같은 곳에서 5번 틀리면 15분 잠금.
+async function secAdminGate(request, env) {
+    const H = { ...corsHeaders(), "Content-Type": "application/json" };
+    const deny = (error, status) => new Response(JSON.stringify({ success: false, ok: false, error }), { status, headers: H });
+    if (!env.ADMIN_PASSWORD) return deny("ADMIN_PASSWORD not configured", 500);
+    const ip = secIpKey(request.headers.get("cf-connecting-ip"));
+    const KV = env.ZEUS_TAROT_KV || env.KV || env.READINGS_KV || null;
+    const lockKey = `adminlock:${ip}`, failKey = `adminfail:${ip}`;
+    const now = Date.now();
+    const mem = _secAdminMem.get(ip) || { fails: 0, firstAt: now, lockedUntil: 0 };
+    if (now - mem.firstAt > SEC_ADMIN_LOCK_SEC * 1000) { mem.fails = 0; mem.firstAt = now; }
+    let lockedUntil = mem.lockedUntil || 0;
+    if (KV) { try { lockedUntil = Math.max(lockedUntil, parseInt((await KV.get(lockKey)) || "0") || 0); } catch (_) {} }
+    if (lockedUntil > now) {
+        return deny(`비밀번호를 여러 번 틀려 잠겼습니다. ${Math.ceil((lockedUntil - now) / 60000)}분 후 다시 시도하세요.`, 429);
+    }
+    const given = request.headers.get("x-admin-pass") || "";
+    if (!given) return deny("unauthorized", 401);
+    if (secSafeEqual(given, env.ADMIN_PASSWORD)) {
+        _secAdminMem.delete(ip);
+        if (KV) { try { await KV.delete(failKey); } catch (_) {} }
+        return null;
+    }
+    let fails = mem.fails + 1;
+    if (KV) {
+        try {
+            fails = Math.max(fails, (parseInt((await KV.get(failKey)) || "0") || 0) + 1);
+            await KV.put(failKey, String(fails), { expirationTtl: SEC_ADMIN_LOCK_SEC });
+        } catch (_) {}
+    }
+    mem.fails = fails;
+    console.warn(`[ADMIN] 비밀번호 오류 ${fails}회 (${ip}) ${new URL(request.url).pathname}`);
+    if (fails >= SEC_ADMIN_MAX_FAILS) {
+        mem.lockedUntil = now + SEC_ADMIN_LOCK_SEC * 1000; mem.fails = 0;
+        _secAdminMem.set(ip, mem);
+        if (KV) {
+            try {
+                await KV.put(lockKey, String(mem.lockedUntil), { expirationTtl: SEC_ADMIN_LOCK_SEC });
+                await KV.delete(failKey);
+            } catch (_) {}
+        }
+        return deny("비밀번호를 5번 틀려 15분 동안 잠겼습니다.", 429);
+    }
+    _secAdminMem.set(ip, mem);
+    return deny("unauthorized", 401);
+}
+
 async function handleUltimateZeusShield(request, env, userId, planKey, question) {
     // [V203.60] CRITICAL FIX — KV 없으면 fail-open(전체 안전장치 무력화)되던 치명적 결함 발견
     //   기존 순서: KV체크 → (KV없으면 즉시 일반객체 반환, 위기감지 도달 못함) → 위기감지
@@ -22214,7 +22287,16 @@ async function handleUltimateZeusShield(request, env, userId, planKey, question)
 
     // [0] GLOBAL EMERGENCY KILL SWITCH
     const KV = env.ZEUS_TAROT_KV;
-    if (!KV) return { success: true, isResponse: false, noKV: true };
+    const _secIsFree = !planKey || planKey === "free";
+    if (!KV) {
+        // [보안 S3 #18] 횟수 저장소가 없으면 무료 요청은 받지 않는다 (유료 손님은 통과)
+        if (_secIsFree) {
+            console.error("[SHIELD] ZEUS_TAROT_KV 연결 없음 — 무료 AI 호출 거절");
+            return new Response(JSON.stringify({ error: "SERVICE_BUSY", message: "지금은 점사를 준비할 수 없습니다. 잠시 후 다시 시도해 주세요." }),
+                { status: 503, headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" } });
+        }
+        return { success: true, isResponse: false, noKV: true };
+    }
 
     const systemLock = await KV.get("SYSTEM_LOCK");
     if (systemLock === "true") {
@@ -22243,6 +22325,8 @@ async function handleUltimateZeusShield(request, env, userId, planKey, question)
 
     // [2] DEVICE FINGERPRINT
     const ip = request.headers.get("cf-connecting-ip") || "unknown";
+    const _secDay = secDayKST();
+    const _secIpUsageKey = `usageip:${_secDay}:${secIpKey(ip)}`;   // [보안 S3 #17] 접속 주소만으로 세는 무료 한도
     const ua = request.headers.get("user-agent") || "";
     const lang = request.headers.get("accept-language") || "";
     const fpRaw = new TextEncoder().encode(`${ua}:${lang}`);
@@ -22261,7 +22345,8 @@ async function handleUltimateZeusShield(request, env, userId, planKey, question)
 
     try {
         // [4] ADAPTIVE COOLDOWN
-        const usageKey = `usage:${keyBase}`;
+        // [보안 S3 #17] 무료는 날짜별로 따로 센다 (자정에 새로 시작)
+        const usageKey = _secIsFree ? `usage:${_secDay}:${keyBase}` : `usage:${keyBase}`;
         let currentUsage = parseInt((await KV.get(usageKey)) || "0");
         let cooldown = 3;
         if (currentUsage > 20) cooldown = 5;
@@ -22282,10 +22367,21 @@ async function handleUltimateZeusShield(request, env, userId, planKey, question)
             limit = 30;
             ttl = 3600;
         }
+        if (_secIsFree) limit = SEC_FREE_DAILY_PER_DEVICE;
         if (currentUsage >= limit) {
             await KV.delete(concurrentKey); // [V202.64] lock 해제
-            return new Response(JSON.stringify({ error: "LIMIT_EXCEEDED", message: `본 상품의 점사 가능 횟수(${limit}회)를 모두 사용하셨습니다.` }),
+            return new Response(JSON.stringify({ error: "LIMIT_EXCEEDED", message: _secIsFree
+                    ? "오늘의 무료 점사 횟수를 모두 사용하셨습니다. 내일 다시 이용해 주세요."
+                    : `본 상품의 점사 가능 횟수(${limit}회)를 모두 사용하셨습니다.` }),
                 { status: 429, headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" } });
+        }
+        if (_secIsFree) {
+            const ipUsage = parseInt((await KV.get(_secIpUsageKey)) || "0");
+            if (ipUsage >= SEC_FREE_DAILY_PER_IP) {
+                await KV.delete(concurrentKey);
+                return new Response(JSON.stringify({ error: "LIMIT_EXCEEDED", message: "오늘의 무료 점사 횟수를 모두 사용하셨습니다. 내일 다시 이용해 주세요." }),
+                    { status: 429, headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" } });
+            }
         }
 
         // [6] PENDING
@@ -22294,10 +22390,10 @@ async function handleUltimateZeusShield(request, env, userId, planKey, question)
         await KV.put(pendingKey, String(pending + 1), { expirationTtl: 60 });
 
         // [7] DAILY BUDGET SHIELD
-        const globalKey = "GLOBAL_DAILY_AI_USAGE";
+        // [보안 S3 #17] 전체 상한은 날짜별로 세고, 넘으면 무료만 멈춘다 (유료 손님은 통과, 전체 잠금 없음)
+        const globalKey = `GLOBAL_DAILY_AI_USAGE:${_secDay}`;
         let globalUsage = parseInt((await KV.get(globalKey)) || "0");
-        if (globalUsage > 10000) {
-            await KV.put("SYSTEM_LOCK", "true", { expirationTtl: 600 });
+        if (globalUsage > SEC_GLOBAL_DAILY_AI && _secIsFree) {
             await KV.delete(concurrentKey); // [V202.64] lock 해제
             return new Response(JSON.stringify({ error: "GLOBAL_LIMIT", message: "시스템 보호가 작동 중입니다. 잠시 후 이용 바랍니다." }),
                 { status: 503, headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" } });
@@ -22306,7 +22402,7 @@ async function handleUltimateZeusShield(request, env, userId, planKey, question)
         // [8] COOLDOWN 잠금 설정
         await KV.put(coolKey, "true", { expirationTtl: cooldown });
 
-        return { success: true, isResponse: false, keyBase, usageKey, pendingKey, ttl, globalKey, concurrentKey };
+        return { success: true, isResponse: false, keyBase, usageKey, pendingKey, ttl, globalKey, concurrentKey, ipUsageKey: _secIsFree ? _secIpUsageKey : null };
 
     } catch (err) {
         await KV.delete(concurrentKey);
@@ -22323,7 +22419,11 @@ async function commitZeusUsage(env, shieldData) {
         let pending = parseInt((await KV.get(shieldData.pendingKey)) || "0");
         await KV.put(shieldData.pendingKey, String(Math.max(0, pending - 1)), { expirationTtl: 60 });
         let globalUsage = parseInt((await KV.get(shieldData.globalKey)) || "0");
-        await KV.put(shieldData.globalKey, String(globalUsage + 1), { expirationTtl: 86400 });
+        await KV.put(shieldData.globalKey, String(globalUsage + 1), { expirationTtl: 172800 });
+        if (shieldData.ipUsageKey) {
+            let ipUsage = parseInt((await KV.get(shieldData.ipUsageKey)) || "0");
+            await KV.put(shieldData.ipUsageKey, String(ipUsage + 1), { expirationTtl: 172800 });
+        }
     } catch (_) {}
 }
 
@@ -23598,6 +23698,11 @@ function validateCreateReadingInput(input) {
         }
     }
     
+    // [보안 S3 #7] 「나의 2027 운세」는 4,900원(premium) 등급으로만 주문 가능
+    if (input.category === 'saju' && input.subtype === 'newyear2027' && input.feature !== 'premium') {
+        errors.push('신년운세는 premium 등급만 주문할 수 있습니다');
+    }
+
     // subtype 검증 (카테고리별)
     if (input.category && VALID_CATEGORIES.includes(input.category)) {
         const validSubs = VALID_SUBTYPES[input.category] || [''];
@@ -23850,6 +23955,11 @@ async function handleV55Request(request, env, ctx) {
     }
     
     try {
+        // [보안 S3 #22] 점검용 주소는 관리자 비밀번호가 있어야 열린다
+        if (path.startsWith('/v55/healthcheck')) {
+            const _hcGate = await secAdminGate(request, env);
+            if (_hcGate) return _hcGate;
+        }
         // /v55/version — 버전 정보
         if (path === '/v55/version' && method === 'GET') {
             return jsonResponse({ 
@@ -24806,7 +24916,7 @@ async function handleV55Request(request, env, ctx) {
                     valid: false,
                     readingId,
                     status: STATUS.FAILED,
-                    error: reading.error || 'Unknown failure',
+                    error: 'GENERATION_FAILED',   // [보안 S3 #21] 내부 오류 문장은 기록에만
                     message: '결과 생성 실패 — 다시 결제 또는 문의'
                 }, 400);
             }
@@ -25046,7 +25156,7 @@ async function handleV55Request(request, env, ctx) {
                     valid: false,
                     readingId: reading.readingId,
                     status: STATUS.FAILED,
-                    error: reading.error || 'Unknown failure',
+                    error: 'GENERATION_FAILED',   // [보안 S3 #21] 내부 오류 문장은 기록에만
                     failedAt: reading.failedAt || null,
                     clientState: (reading.paymentVerified === true) ? (reading.clientState || null) : null,  // [v1.0.4]
                     message: '결과 생성 실패 — 재시도 또는 문의'
@@ -25123,7 +25233,7 @@ async function handleV55Request(request, env, ctx) {
         
     } catch (error) {
         console.error('[V55 worker error]', error.message, error.stack);
-        return errorResponse(error.message, 500, 'INTERNAL_ERROR');
+        return errorResponse(SEC_GENERIC_ERROR, 500, 'INTERNAL_ERROR');
     }
 }
 
@@ -25875,6 +25985,8 @@ async function nyLoadPaidReading(env, rid, token) {
   if (!ok) return { error: 'INVALID_TOKEN', status: 401 };
   if (reading.category !== 'saju' || reading.subtype !== 'newyear2027') return { error: 'NOT_NEWYEAR_PRODUCT', status: 400 };
   if (reading.paymentVerified !== true) return { error: 'NOT_PAID', status: 402 };
+  // [보안 S3 #7] 결제 금액 확인 — 4,900원 등급으로 결제한 주문만 보고서를 만든다
+  if (reading.feature !== 'premium' || Number(reading.amount) !== AMOUNT_TABLE.saju.premium) return { error: 'WRONG_PRODUCT_PRICE', status: 402 };
   return { reading };
 }
 async function handleNewYearRoutes(request, env, url) {
@@ -25921,7 +26033,7 @@ async function handleNewYearRoutes(request, env, url) {
       } catch (e) {
         await updateReading(env, reading.readingId, { nyGenStartedAt: 0, nyLastError: String(e && e.message || e), nyErrorAt: Date.now(),
           nyParts: e && e.parts ? JSON.stringify(e.parts) : (reading.nyParts || null), nyFailCount: (reading.nyFailCount || 0) + 1 });
-        return nyJson({ ok: false, status: 'error', error: '보고서 생성이 지연되고 있습니다. 잠시 후 다시 시도해 주세요.', detail: String(e && e.message || e) }, 503);
+        return nyJson({ ok: false, status: 'error', error: '보고서 생성이 지연되고 있습니다. 잠시 후 다시 시도해 주세요.' }, 503);
       }
     }
     // 3) 공개 샘플 (가상 명식 3개, 30일 캐시 — 반복 호출해도 AI 비용 1회)
@@ -25952,7 +26064,7 @@ async function handleNewYearRoutes(request, env, url) {
     }
     return nyJson({ ok: false, error: 'NOT_FOUND' }, 404);
   } catch (e) {
-    return nyJson({ ok: false, error: 'NEWYEAR_ERROR', message: String(e && e.message || e) }, 500);
+    return nyJson({ ok: false, error: 'NEWYEAR_ERROR', message: secLogErr('newyear', e) }, 500);
   }
 }
 
@@ -25997,7 +26109,7 @@ export default {
         });
       } catch (err) {
         return new Response(JSON.stringify({ 
-          success: false, error: 'invalid_request', message: String(err) 
+          success: false, error: 'invalid_request', message: secLogErr('saju-preview', err) 
         }), {
           status: 400,
           headers: { 'Content-Type': 'application/json', ...corsHeaders() }
@@ -26109,7 +26221,7 @@ export default {
           }
         } catch (e) { 
           // 실패 시 기존 응답 그대로 (안전) + 디버그 정보
-          v184_5Data = { _error: String(e.message || e), _phase: 'try-catch' };
+          secLogErr('saju-v184_5', e); v184_5Data = { _error: 'error', _phase: 'try-catch' };
         }
 
         // ══════════════════════════════════════════════════════════════
@@ -26244,8 +26356,7 @@ export default {
                 hookKeywords: ['2026년 갈림길', '인생 전환 시점', '직업 적합도', '인간관계 충돌점'],
                 wealthGrade: null,
                 careerGrade: null,
-                _v: 'V200.8.0_fallback',
-                _err: String(_e && _e.message || _e)
+                _v: 'V200.8.0_fallback'
               };
             }
           })(),
@@ -26253,7 +26364,6 @@ export default {
           soulBlueprint: _soulBlueprintOut,   // ★ [SOUL BLUEPRINT] 영혼구조 (null이면 미표시)
           aptitudeMatrix: _aptitudeMatrixOut, // ★ [APTITUDE MATRIX] 10개 직업군 적성 점수표 (항상 존재, null 없음)
           realityFortune: _realityFortuneOut, // ★ [REALITY FORTUNE] 재물복/배우자복/자식복 (null이면 미표시)
-          _narrativeDebug: _narrativeDebug,         // ★ [V202.60] 진단용 (배포 후 제거)
           message: "[V202.56 + V31 Chunk 5 + V31 #184.5 FINAL+ + V200.8.0] TEXT + NARRATIVE + PRO + AUDIT + Tier 1 + Preview 통합 완료"
         }), {
           headers: { ...corsHeaders(), "Content-Type": "application/json" }
@@ -26276,7 +26386,7 @@ export default {
         }
         return new Response(JSON.stringify({
           ok: false,
-          error: `V31 Chunk 5 처리 오류: ${e.message}`
+          error: secLogErr('saju-chunk5', e)
         }), {
           status: 500,
           headers: { ...corsHeaders(), "Content-Type": "application/json" }
@@ -26318,7 +26428,7 @@ export default {
       } catch (e) {
         return new Response(JSON.stringify({
           ok: false,
-          error: `V31 Chunk 3 처리 오류: ${e.message}`
+          error: secLogErr('saju-chunk3', e)
         }), {
           status: 500,
           headers: { ...corsHeaders(), "Content-Type": "application/json" }
@@ -26362,7 +26472,7 @@ export default {
       } catch (e) {
         return new Response(JSON.stringify({
           ok: false,
-          error: `V31 Chunk 2 처리 오류: ${e.message}`
+          error: secLogErr('saju-chunk2', e)
         }), {
           status: 500,
           headers: { ...corsHeaders(), "Content-Type": "application/json" }
@@ -26400,7 +26510,7 @@ export default {
           } catch (e) {
             return new Response(JSON.stringify({
               ok: false,
-              error: `음력 변환 실패: ${e.message}`,
+              error: (secLogErr('lunar', e), '음력 날짜를 다시 확인해 주세요.'),
               stage: "lunar_to_solar"
             }), {
               status: 400,
@@ -26443,7 +26553,7 @@ export default {
       } catch (e) {
         return new Response(JSON.stringify({
           ok: false,
-          error: `V31 Chunk 1 처리 오류: ${e.message}`
+          error: secLogErr('saju-chunk1', e)
         }), {
           status: 500,
           headers: { ...corsHeaders(), "Content-Type": "application/json" }
@@ -26466,7 +26576,7 @@ export default {
           headers: { ...corsHeaders(), "Content-Type": "application/json" }
         });
       } catch (e) {
-        return new Response(JSON.stringify({ error: e.message }), {
+        return new Response(JSON.stringify({ error: secLogErr('quote', e) }), {
           status: 500, headers: corsHeaders()
         });
       }
@@ -26482,7 +26592,7 @@ export default {
         const isValid = (paymentKey === _MASTER_KEY) ||
                         (_TEST_MODE && paymentKey?.startsWith("TEST-PAY")) ||
                         // [V24.1] 정상 발급된 HMAC 토큰도 통과 (페이지 재방문 시 토큰 검증용)
-                        (await verifyToken(paymentKey, env.TOKEN_SECRET || "default_secret"));
+                        (await verifyToken(paymentKey, env.TOKEN_SECRET));
         if (!isValid) {
           return new Response(JSON.stringify({ ok: false, error: "결제 미확인" }), {
             headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" }
@@ -26491,13 +26601,13 @@ export default {
         const expiry = Date.now() + 1000 * 60 * 60 * 24;
         const userId = request.headers.get("cf-connecting-ip") || "test-user";
         const payload = `paid|${userId}|${expiry}`;
-        const token = await signHmac(payload, env.TOKEN_SECRET || "default_secret");
+        const token = await signHmac(payload, env.TOKEN_SECRET);
         const fullToken = `${payload}|${token}`;
         return new Response(JSON.stringify({ ok: true, token: fullToken }), {
           headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" }
         });
       } catch(e) {
-        return new Response(JSON.stringify({ ok: false, error: e.message }), {
+        return new Response(JSON.stringify({ ok: false, error: secLogErr('verify-payment', e) }), {
           headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" }
         });
       }
@@ -26605,10 +26715,12 @@ export default {
 
         const tossData = await tossRes.json();
         if (!tossRes.ok) {
+          console.error('[verify-toss] 결제 확인 실패', JSON.stringify(tossData).slice(0, 500));
           return new Response(JSON.stringify({
             success: false,
             error: "toss verification failed",
-            detail: tossData
+            code: tossData && tossData.code,
+            message: tossData && tossData.message
           }), {
             status: 400,
             headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" }
@@ -26632,7 +26744,7 @@ export default {
         const expiry = Date.now() + durationMs;
         const userId = request.headers.get("cf-connecting-ip") || "toss-user";
         const payload = `paid|${userId}|${expiry}`;
-        const token = await signHmac(payload, env.TOKEN_SECRET || "default_secret");
+        const token = await signHmac(payload, env.TOKEN_SECRET);
         const fullToken = `${payload}|${token}`;
 
         // ════════════════════════════════════════════════════════════════════
@@ -26692,7 +26804,7 @@ export default {
         });
 
       } catch(e) {
-        return new Response(JSON.stringify({ success: false, error: e.message }), {
+        return new Response(JSON.stringify({ success: false, error: secLogErr('verify-toss', e) }), {
           status: 500,
           headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" }
         });
@@ -26766,7 +26878,7 @@ export default {
 
       } catch(e) {
         console.error('[V199.1] save-saju-input error:', e.message);
-        return new Response(JSON.stringify({ ok: false, error: e.message }), {
+        return new Response(JSON.stringify({ ok: false, error: secLogErr('save-saju-input', e) }), {
           status: 500,
           headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" }
         });
@@ -26856,7 +26968,7 @@ export default {
 
       } catch(e) {
         console.error('[V199.1] consume-token error:', e.message);
-        return new Response(JSON.stringify({ valid: false, error: e.message }), {
+        return new Response(JSON.stringify({ valid: false, error: secLogErr('consume-token', e) }), {
           status: 500,
           headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" }
         });
@@ -26874,13 +26986,8 @@ export default {
     // ════════════════════════════════════════════════════════════════════════
     if (url.pathname === "/admin/kv-check" && request.method === "GET") {
       try {
-        const adminPass = request.headers.get("x-admin-pass") || "";
-        if (!env.ADMIN_PASSWORD || adminPass !== env.ADMIN_PASSWORD) {
-          return new Response(JSON.stringify({ ok: false, error: "unauthorized" }), {
-            status: 401,
-            headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" }
-          });
-        }
+        const _adminGate = await secAdminGate(request, env);   // [보안 S3 #16] 5번 틀리면 15분 잠금
+        if (_adminGate) return _adminGate;
 
         const KV = env.ZEUS_TAROT_KV;
         if (!KV) {
@@ -26928,13 +27035,8 @@ export default {
     // ════════════════════════════════════════════════════════════════════════
     if (url.pathname === "/admin/kv-list" && request.method === "GET") {
       try {
-        const adminPass = request.headers.get("x-admin-pass") || "";
-        if (!env.ADMIN_PASSWORD || adminPass !== env.ADMIN_PASSWORD) {
-          return new Response(JSON.stringify({ ok: false, error: "unauthorized" }), {
-            status: 401,
-            headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" }
-          });
-        }
+        const _adminGate = await secAdminGate(request, env);   // [보안 S3 #16] 5번 틀리면 15분 잠금
+        if (_adminGate) return _adminGate;
 
         const KV = env.ZEUS_TAROT_KV;
         if (!KV) {
@@ -26981,15 +27083,8 @@ export default {
     if (url.pathname === "/admin/grant" && request.method === "POST") {
       try {
         // 1. 관리자 비밀번호 검증
-        const adminPass = request.headers.get("x-admin-pass") || "";
-        const expectedPass = env.ADMIN_PASSWORD;
-        if (!expectedPass) return new Response(JSON.stringify({ success: false, error: "ADMIN_PASSWORD not configured" }), { status: 500, headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" } });
-        if (adminPass !== expectedPass) {
-          return new Response(JSON.stringify({ success: false, error: "unauthorized" }), {
-            status: 401,
-            headers: { ...corsHeaders(), "Content-Type": "application/json" }
-          });
-        }
+        const _adminGate = await secAdminGate(request, env);   // [보안 S3 #16] 5번 틀리면 15분 잠금
+        if (_adminGate) return _adminGate;
 
         // 2. 요청 파싱
         const body = await request.json();
@@ -27020,7 +27115,7 @@ export default {
         // 4. 토큰 발급
         const finalUserId = userId || `admin-grant-${Date.now()}`;
         const payload = `paid|${finalUserId}|${expiry}`;
-        const token = await signHmac(payload, env.TOKEN_SECRET || "default_secret");
+        const token = await signHmac(payload, env.TOKEN_SECRET);
         const fullToken = `${payload}|${token}`;
 
         return new Response(JSON.stringify({
@@ -27177,7 +27272,7 @@ export default {
         const expiry = Date.now() + durationMs;
         const finalUserId = `claim-${senderName}-${Date.now()}`;
         const payload = `paid|${finalUserId}|${expiry}`;
-        const token = await signHmac(payload, env.TOKEN_SECRET || "default_secret");
+        const token = await signHmac(payload, env.TOKEN_SECRET);
         const fullToken = `${payload}|${token}`;
 
         // 8. 발급 기록 저장 (사장님 사후 확인용)
@@ -27223,7 +27318,7 @@ export default {
         }), { headers: { ...corsHeaders(), "Content-Type": "application/json" } });
 
       } catch (e) {
-        return new Response(JSON.stringify({ ok: false, error: e.message }), {
+        return new Response(JSON.stringify({ ok: false, error: secLogErr('claim-payment', e) }), {
           status: 500, headers: { ...corsHeaders(), "Content-Type": "application/json" }
         });
       }
@@ -27234,14 +27329,8 @@ export default {
     // ══════════════════════════════════════════════════════════════
     if (url.pathname === "/admin/list" && request.method === "GET") {
       try {
-        const adminPass = request.headers.get("x-admin-pass") || "";
-        const expectedPass = env.ADMIN_PASSWORD;
-        if (!expectedPass) return new Response(JSON.stringify({ success: false, error: "ADMIN_PASSWORD not configured" }), { status: 500, headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" } });
-        if (adminPass !== expectedPass) {
-          return new Response(JSON.stringify({ success: false, error: "unauthorized" }), {
-            status: 401, headers: { ...corsHeaders(), "Content-Type": "application/json" }
-          });
-        }
+        const _adminGate = await secAdminGate(request, env);   // [보안 S3 #16] 5번 틀리면 15분 잠금
+        if (_adminGate) return _adminGate;
 
         if (!env.KV) {
           return new Response(JSON.stringify({
@@ -27281,14 +27370,8 @@ export default {
     // ══════════════════════════════════════════════════════════════
     if (url.pathname === "/admin/block" && request.method === "POST") {
       try {
-        const adminPass = request.headers.get("x-admin-pass") || "";
-        const expectedPass = env.ADMIN_PASSWORD;
-        if (!expectedPass) return new Response(JSON.stringify({ success: false, error: "ADMIN_PASSWORD not configured" }), { status: 500, headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" } });
-        if (adminPass !== expectedPass) {
-          return new Response(JSON.stringify({ success: false, error: "unauthorized" }), {
-            status: 401, headers: { ...corsHeaders(), "Content-Type": "application/json" }
-          });
-        }
+        const _adminGate = await secAdminGate(request, env);   // [보안 S3 #16] 5번 틀리면 15분 잠금
+        if (_adminGate) return _adminGate;
 
         const body = await request.json();
         const { senderName, action } = body;  // action: 'block' or 'unblock' or 'verify'
@@ -29484,7 +29567,7 @@ ${metrics.cryptoSubtype === 'crypto_buy' ? `
           try { await env.ZEUS_TAROT_KV.delete(_shieldResult.concurrentKey); } catch(_) {}
         }
         return new Response(
-          JSON.stringify({ error: e.message }),
+          JSON.stringify({ error: secLogErr('tarot-main', e) }),
           { headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" } }
         );
       }
@@ -29499,7 +29582,9 @@ ${metrics.cryptoSubtype === 'crypto_buy' ? `
 // ══════════════════════════════════════════
 async function signHmac(data, secret) {
   const enc     = new TextEncoder();
-  const keyData = enc.encode(secret || "default-secret-change-me");
+  // [보안 S3 #12] 비밀값이 없으면 서명하지 않는다 (공개된 기본값으로 동작 금지)
+  if (!secret || typeof secret !== "string") throw new Error("TOKEN_SECRET_NOT_SET");
+  const keyData = enc.encode(secret);
   const key     = await crypto.subtle.importKey(
     "raw", keyData, { name: "HMAC", hash: "SHA-256" }, false, ["sign"]
   );
