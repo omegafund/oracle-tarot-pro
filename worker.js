@@ -22279,7 +22279,7 @@ async function zeusGeminiFetch(url, init) {
         } catch (_) {}
         try {
             const r = await fetch(url.replace(OLD, `/models/${target}:`), Object.assign({}, init, { body }));
-            if (r.ok) { _zeusLastGemini = { model: target, ms: Date.now() - t0, fallback: false }; return r; }
+            if (r.ok) { _zeusLastGemini = { model: target, ms: (_zeusLastGemini.ms || 0) + (Date.now() - t0), fallback: false, n: (_zeusLastGemini.n || 0) + 1 }; return r; }
             if (r.status === 404) _zeusGeminiNextDown = true;
             console.warn('[GEMINI] next model failed', target, r.status, '→ fallback 2.5-flash');
         } catch (e) {
@@ -22287,11 +22287,11 @@ async function zeusGeminiFetch(url, init) {
             console.warn('[GEMINI] next model error', e && e.message, '→ fallback 2.5-flash');
         }
         const r2 = await fetch(url, init);
-        _zeusLastGemini = { model: 'gemini-2.5-flash', ms: Date.now() - t0, fallback: true };
+        _zeusLastGemini = { model: 'gemini-2.5-flash', ms: (_zeusLastGemini.ms || 0) + (Date.now() - t0), fallback: true, n: (_zeusLastGemini.n || 0) + 1 };
         return r2;
     }
     const r = await fetch(url, init);
-    _zeusLastGemini = { model: 'gemini-2.5-flash', ms: Date.now() - t0, fallback: false };
+    _zeusLastGemini = { model: 'gemini-2.5-flash', ms: (_zeusLastGemini.ms || 0) + (Date.now() - t0), fallback: false, n: (_zeusLastGemini.n || 0) + 1 };
     return r;
 }
 
@@ -22431,17 +22431,21 @@ async function __zeusShieldInner(request, env, userId, planKey, question) {
 async function commitZeusUsage(env, shieldData) {
     if (!env.ZEUS_TAROT_KV || shieldData.noKV) return;
     const KV = env.ZEUS_TAROT_KV;
+    // [2026-11-10 속도] 예전: 읽기·쓰기 8번을 차례로 기다림(풀이 끝난 뒤 1~2초 추가). 지금: 읽기 한 번에, 쓰기 한 번에.
+    const n = v => parseInt(v || "0") || 0;
+    const safe = p => Promise.resolve(p).catch(() => null);
     try {
-        let usage = parseInt((await KV.get(shieldData.usageKey)) || "0");
-        await KV.put(shieldData.usageKey, String(usage + 1), { expirationTtl: shieldData.ttl });
-        let pending = parseInt((await KV.get(shieldData.pendingKey)) || "0");
-        await KV.put(shieldData.pendingKey, String(Math.max(0, pending - 1)), { expirationTtl: 60 });
-        let globalUsage = parseInt((await KV.get(shieldData.globalKey)) || "0");
-        await KV.put(shieldData.globalKey, String(globalUsage + 1), { expirationTtl: 172800 });
-        if (shieldData.ipUsageKey) {
-            let ipUsage = parseInt((await KV.get(shieldData.ipUsageKey)) || "0");
-            await KV.put(shieldData.ipUsageKey, String(ipUsage + 1), { expirationTtl: 172800 });
-        }
+        const [usage, pending, globalUsage, ipUsage] = await Promise.all([
+            safe(KV.get(shieldData.usageKey)), safe(KV.get(shieldData.pendingKey)), safe(KV.get(shieldData.globalKey)),
+            shieldData.ipUsageKey ? safe(KV.get(shieldData.ipUsageKey)) : null
+        ]);
+        const writes = [
+            KV.put(shieldData.usageKey, String(n(usage) + 1), { expirationTtl: shieldData.ttl }),
+            KV.put(shieldData.pendingKey, String(Math.max(0, n(pending) - 1)), { expirationTtl: 60 }),
+            KV.put(shieldData.globalKey, String(n(globalUsage) + 1), { expirationTtl: 172800 })
+        ];
+        if (shieldData.ipUsageKey) writes.push(KV.put(shieldData.ipUsageKey, String(n(ipUsage) + 1), { expirationTtl: 172800 }));
+        await Promise.all(writes.map(safe));
     } catch (_) {}
 }
 
@@ -29418,7 +29422,7 @@ export default {
     _zeusLastShieldMs = 0;
     const res = await __zeusApp.fetch(request, env, ctx);
     try {
-      const timing = { total: Date.now() - t0, shield: _zeusLastShieldMs, ai: _zeusLastGemini.ms, model: _zeusLastGemini.model, fallback: _zeusLastGemini.fallback };
+      const timing = { total: Date.now() - t0, shield: _zeusLastShieldMs, ai: _zeusLastGemini.ms, aiCalls: _zeusLastGemini.n || 0, model: _zeusLastGemini.model, fallback: _zeusLastGemini.fallback };
       const h = new Headers(res.headers);
       h.set('X-Zeus-Timing', JSON.stringify(timing));
       h.set('Server-Timing', 'total;dur=' + timing.total + ', shield;dur=' + timing.shield + ', ai;dur=' + timing.ai);
