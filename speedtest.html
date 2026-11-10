@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>속도 측정</title>
+<style>
+  :root{--bg:#0f1220;--card:#1a1f33;--ink:#f2f2f5;--sub:#a3a8c2;--gold:#e8c766;--ok:#5ad19a;--bad:#ff7a7a}
+  *{box-sizing:border-box} body{margin:0;background:var(--bg);color:var(--ink);font-family:"Apple SD Gothic Neo","Malgun Gothic",sans-serif;line-height:1.6}
+  .wrap{max-width:640px;margin:0 auto;padding:20px 16px}
+  h1{font-size:1.3rem;color:var(--gold);margin:0 0 4px} p.s{color:var(--sub);margin:0 0 16px;font-size:.9rem}
+  button{width:100%;padding:14px;border:0;border-radius:10px;background:var(--gold);color:#1a1a1a;font-weight:800;font-size:1rem;margin:6px 0;cursor:pointer}
+  button:disabled{opacity:.5}
+  table{width:100%;border-collapse:collapse;margin-top:14px;font-size:.88rem}
+  th,td{padding:8px 6px;border-bottom:1px solid #2a3150;text-align:left} th{color:var(--sub);font-weight:600}
+  .ok{color:var(--ok)} .bad{color:var(--bad)} .n{font-variant-numeric:tabular-nums;white-space:nowrap}
+  .note{background:var(--card);border-radius:10px;padding:12px;margin-top:16px;font-size:.85rem;color:var(--sub)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>⏱ 제우스 속도 측정</h1>
+  <p class="s">버튼을 누르면 실제 서버에 무료 요청을 보내고 걸린 시간을 잽니다. (무료 이용 횟수에 1회씩 포함됩니다)</p>
+  <button id="b1" onclick="run('saju')">① 사주 무료 명식 (생년월일 → 명식)</button>
+  <button id="b2" onclick="run('tarot')">② 일반 운세 무료 타로</button>
+  <button id="b3" onclick="runAll()">③ 둘 다 2번씩 (4초 간격)</button>
+  <table><thead><tr><th>시각</th><th>항목</th><th>전체(초)</th><th>AI(초)</th><th>제한장치</th><th>모델</th></tr></thead><tbody id="tb"></tbody></table>
+  <div class="note">
+    <b>읽는 법</b><br>
+    · <b>전체</b>: 버튼을 누른 순간부터 응답이 끝까지 올 때까지 (손님이 기다리는 시간)<br>
+    · <b>AI</b>: 그중 Gemini가 글을 쓰는 데 걸린 시간<br>
+    · <b>제한장치</b>: 무료 횟수 확인에 걸린 시간 (0.3초 이하면 정상)<br>
+    · <b>모델</b>: 실제로 쓰인 AI 모델. "→2.5"가 붙으면 새 모델이 실패해 예전 모델로 대신한 것<br>
+    이 표를 캡처해서 보내 주시면 됩니다.
+  </div>
+</div>
+<script>
+const API='https://tarot-api.omegafund01.workers.dev';
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+function row(name,ms,t,status){
+  const tr=document.createElement('tr');
+  const sec=x=>(x/1000).toFixed(1);
+  const ok=status>=200&&status<300;
+  let ai='-',sh='-',mdl='-';
+  if(t){ai=sec(t.ai||0);sh=((t.shield||0)/1000).toFixed(2);mdl=(t.model||'-').replace('gemini-','')+(t.fallback?' →2.5':'');}
+  tr.innerHTML=`<td class="n">${new Date().toLocaleTimeString('ko-KR',{hour12:false})}</td><td>${name}${ok?'':' <span class="bad">('+status+')</span>'}</td><td class="n ${ms>8000?'bad':'ok'}">${sec(ms)}</td><td class="n">${ai}</td><td class="n">${sh}</td><td>${mdl}</td>`;
+  document.getElementById('tb').prepend(tr);
+}
+async function run(kind){
+  const btns=[...document.querySelectorAll('button')];btns.forEach(b=>b.disabled=true);
+  const t0=performance.now();let status=0,timing=null;
+  try{
+    let res;
+    if(kind==='saju'){
+      res=await fetch(API+'/saju/oracle',{method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({input:{year:1988,month:7,day:15,hour:10,calendar:'solar',gender:'female'},category:'fortune',timePhase:'medium',tier:'free'})});
+    }else{
+      res=await fetch(API,{method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({prompt:'오늘 나의 전반적인 운세는 어떤가요?',cardNames:'The Star, Six of Cups, The Sun',
+          cardPositions:'과거: The Star, 현재: Six of Cups, 미래: The Sun',isReversed:'false,false,false',fortuneSubType:'today',explicitDomain:'fortune'})});
+    }
+    status=res.status;
+    try{timing=JSON.parse(res.headers.get('X-Zeus-Timing')||'null');}catch(_){}
+    await res.text();
+  }catch(e){status='오류'}
+  row(kind==='saju'?'사주 명식':'무료 타로',performance.now()-t0,timing,status);
+  btns.forEach(b=>b.disabled=false);
+}
+async function runAll(){for(const k of ['saju','tarot','saju','tarot']){await run(k);await sleep(4000);}}
+</script>
+</body>
+</html>
