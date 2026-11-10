@@ -25,12 +25,14 @@
   <button id="b1" onclick="run('saju')">① 사주 무료 명식 (생년월일 → 명식)</button>
   <button id="b2" onclick="run('tarot')">② 일반 운세 무료 타로</button>
   <button id="b3" onclick="runAll()">③ 둘 다 2번씩 (4초 간격)</button>
-  <table><thead><tr><th>시각</th><th>항목</th><th>전체(초)</th><th>AI(초)</th><th>제한장치</th><th>모델</th></tr></thead><tbody id="tb"></tbody></table>
+  <table><thead><tr><th>시각</th><th>항목</th><th>전체(초)</th><th>AI(초)</th><th>제한장치</th><th>서버 기타</th><th>통신</th><th>모델</th></tr></thead><tbody id="tb"></tbody></table>
   <div class="note">
     <b>읽는 법</b><br>
     · <b>전체</b>: 버튼을 누른 순간부터 응답이 끝까지 올 때까지 (손님이 기다리는 시간)<br>
     · <b>AI</b>: 그중 Gemini가 글을 쓰는 데 걸린 시간<br>
     · <b>제한장치</b>: 무료 횟수 확인에 걸린 시간 (0.3초 이하면 정상)<br>
+    · <b>서버 기타</b>: 서버에서 AI·제한장치 말고 걸린 시간 (명식 계산, 기록 저장 등)<br>
+    · <b>통신</b>: 사장님 기기와 서버 사이를 오가는 시간 (휴대폰 데이터면 길어짐)<br>
     · <b>모델</b>: 실제로 쓰인 AI 모델. "→2.5"가 붙으면 새 모델이 실패해 예전 모델로 대신한 것<br>
     이 표를 캡처해서 보내 주시면 됩니다.
   </div>
@@ -42,9 +44,10 @@ function row(name,ms,t,status){
   const tr=document.createElement('tr');
   const sec=x=>(x/1000).toFixed(1);
   const ok=status>=200&&status<300;
-  let ai='-',sh='-',mdl='-';
-  if(t){ai=sec(t.ai||0);sh=((t.shield||0)/1000).toFixed(2);mdl=(t.model||'-').replace('gemini-','')+(t.fallback?' →2.5':'');}
-  tr.innerHTML=`<td class="n">${new Date().toLocaleTimeString('ko-KR',{hour12:false})}</td><td>${name}${ok?'':' <span class="bad">('+status+')</span>'}</td><td class="n ${ms>8000?'bad':'ok'}">${sec(ms)}</td><td class="n">${ai}</td><td class="n">${sh}</td><td>${mdl}</td>`;
+  let ai='-',sh='-',mdl='-',etc='-',net='-';
+  if(t){ai=sec(t.ai||0)+(t.aiCalls>1?' ('+t.aiCalls+'회)':'');sh=((t.shield||0)/1000).toFixed(2);mdl=(t.model||'-').replace('gemini-','')+(t.fallback?' →2.5':'');
+    if(t.total!=null){etc=sec(Math.max(0,t.total-(t.ai||0)-(t.shield||0)));net=sec(Math.max(0,ms-t.total));}}
+  tr.innerHTML=`<td class="n">${new Date().toLocaleTimeString('ko-KR',{hour12:false})}</td><td>${name}${ok?'':' <span class="bad">('+status+')</span>'}</td><td class="n ${ms>8000?'bad':'ok'}">${sec(ms)}</td><td class="n">${ai}</td><td class="n">${sh}</td><td class="n">${etc}</td><td class="n">${net}</td><td>${mdl}</td>`;
   document.getElementById('tb').prepend(tr);
 }
 async function run(kind){
