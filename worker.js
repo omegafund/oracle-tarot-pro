@@ -3218,7 +3218,7 @@ async function classifyByLLM(prompt, apiKey) {
     // [V2.5] gemini-2.5-flash 유지 — Tier 1 키 사용 시 충분한 한도
     // [v1.0.5] 2.0-flash 종료(404) → 2.5-flash (생각 단계 끔: 단어 하나 응답, 20토큰 한도 유지)
     const classifierUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
-    const res = await fetch(classifierUrl, {
+    const res = await zeusGeminiFetch(classifierUrl, {
       method: 'POST',
       signal: _llmController.signal,
       headers: { 'Content-Type': 'application/json' },
@@ -10126,7 +10126,7 @@ async function callGeminiForSajuNarrative(ctx, geminiApiKey) {
     const _extractText = (d) => ((d && d.candidates && d.candidates[0] && d.candidates[0].content && d.candidates[0].content.parts) || [])
       .filter(p => p && !p.thought && typeof p.text === 'string')
       .map(p => p.text).join('');
-    const _call = () => fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: _reqBody });
+    const _call = () => zeusGeminiFetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: _reqBody });
 
     let res = await _call();
     // 429(한도)·503(과부하) → 1초 후 1회 재시도  [v1.0.5: 기존 재시도 결과가 버려지던 결함 수정]
@@ -22250,7 +22250,57 @@ async function secAdminGate(request, env) {
     return deny("unauthorized", 401);
 }
 
+
+// ════════════════════════════════════════════════════════════════════════
+// [2026-11-10] Gemini 모델 전환 (12/1 gemini-2.5-flash 종료 대비, 속도 개선)
+//   모든 Gemini 호출은 이 함수를 거친다. 기본은 gemini-3.5-flash-lite.
+//   새 모델이 404/400/5xx 이거나 연결 실패면 같은 요청을 기존 gemini-2.5-flash 로 자동 재시도.
+//   대시보드 변수 GEMINI_MODEL 로 강제 지정 가능 (예: "gemini-2.5-flash" 로 넣으면 전환 전 상태).
+// ════════════════════════════════════════════════════════════════════════
+let ZEUS_GEMINI_MODEL = 'gemini-3.5-flash-lite';
+let _zeusGeminiNextDown = false;      // 이 인스턴스에서 새 모델이 404면 이후엔 바로 기존 모델
+let _zeusLastGemini = { model: '', ms: 0, fallback: false };
+let _zeusLastShieldMs = 0;
+async function zeusGeminiFetch(url, init) {
+    const t0 = Date.now();
+    const OLD = '/models/gemini-2.5-flash:';
+    const target = ZEUS_GEMINI_MODEL;
+    if (typeof url === 'string' && url.includes(OLD) && target && target !== 'gemini-2.5-flash' && !_zeusGeminiNextDown) {
+        let body = init && init.body;
+        try {
+            const b = JSON.parse(body);
+            if (b && b.generationConfig) {
+                delete b.generationConfig.thinkingConfig;   // 3.5는 thinkingBudget 대신 thinkingLevel(기본 minimal)
+                delete b.generationConfig.temperature;      // 3.5에서 무시됨
+                delete b.generationConfig.topP;
+                delete b.generationConfig.topK;
+            }
+            body = JSON.stringify(b);
+        } catch (_) {}
+        try {
+            const r = await fetch(url.replace(OLD, `/models/${target}:`), Object.assign({}, init, { body }));
+            if (r.ok) { _zeusLastGemini = { model: target, ms: Date.now() - t0, fallback: false }; return r; }
+            if (r.status === 404) _zeusGeminiNextDown = true;
+            console.warn('[GEMINI] next model failed', target, r.status, '→ fallback 2.5-flash');
+        } catch (e) {
+            if (init && init.signal && init.signal.aborted) throw e;   // 호출 쪽 시간초과는 그대로 전달
+            console.warn('[GEMINI] next model error', e && e.message, '→ fallback 2.5-flash');
+        }
+        const r2 = await fetch(url, init);
+        _zeusLastGemini = { model: 'gemini-2.5-flash', ms: Date.now() - t0, fallback: true };
+        return r2;
+    }
+    const r = await fetch(url, init);
+    _zeusLastGemini = { model: 'gemini-2.5-flash', ms: Date.now() - t0, fallback: false };
+    return r;
+}
+
 async function handleUltimateZeusShield(request, env, userId, planKey, question) {
+    const __ts = Date.now();
+    try { return await __zeusShieldInner(request, env, userId, planKey, question); }
+    finally { _zeusLastShieldMs = Date.now() - __ts; }
+}
+async function __zeusShieldInner(request, env, userId, planKey, question) {
     // [V203.60] CRITICAL FIX — KV 없으면 fail-open(전체 안전장치 무력화)되던 치명적 결함 발견
     //   기존 순서: KV체크 → (KV없으면 즉시 일반객체 반환, 위기감지 도달 못함) → 위기감지
     //   문제: 호출부가 `instanceof Response`만 체크 → 일반객체면 무시하고 통과 → 점사 진행됨
@@ -22298,29 +22348,14 @@ async function handleUltimateZeusShield(request, env, userId, planKey, question)
         return { success: true, isResponse: false, noKV: true };
     }
 
-    const systemLock = await KV.get("SYSTEM_LOCK");
-    if (systemLock === "true") {
-        return new Response(JSON.stringify({
-            error: "SYSTEM_LOCK",
-            message: "현재 카드의 흐름이 과도하게 집중되고 있습니다. 잠시 후 다시 시도해 주세요."
-        }), { status: 503, headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" } });
-    }
+    const _J = (obj, status) => new Response(JSON.stringify(obj), { status, headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" } });
 
-    // [1] QUESTION VALIDATION
-    if (!question || question.trim().length < 2) {
-        return new Response(JSON.stringify({ error: "QUESTION_EMPTY", message: "질문이 너무 짧습니다." }),
-            { status: 400, headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" } });
-    }
-    if (question.length > 500) {
-        return new Response(JSON.stringify({ error: "QUESTION_TOO_LONG", message: "질문은 500자 이하로 작성해 주세요." }),
-            { status: 400, headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" } });
-    }
+    // [1] QUESTION VALIDATION (저장소 접근 없음)
+    if (!question || question.trim().length < 2) return _J({ error: "QUESTION_EMPTY", message: "질문이 너무 짧습니다." }, 400);
+    if (question.length > 500) return _J({ error: "QUESTION_TOO_LONG", message: "질문은 500자 이하로 작성해 주세요." }, 400);
     const blockedPatterns = [/https?:\/\//i, /<script/i, /100 examples/i, /all cards/i, /repeat 100/i];
     for (const pattern of blockedPatterns) {
-        if (pattern.test(question)) {
-            return new Response(JSON.stringify({ error: "PROMPT_BLOCKED", message: "바른 문장으로 다시 질문해 주세요." }),
-                { status: 400, headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" } });
-        }
+        if (pattern.test(question)) return _J({ error: "PROMPT_BLOCKED", message: "바른 문장으로 다시 질문해 주세요." }, 400);
     }
 
     // [2] DEVICE FINGERPRINT
@@ -22333,83 +22368,64 @@ async function handleUltimateZeusShield(request, env, userId, planKey, question)
     const fpHash = await crypto.subtle.digest("SHA-256", fpRaw);
     const fingerprint = Array.from(new Uint8Array(fpHash)).map(b => b.toString(16).padStart(2, "0")).join("");
     const keyBase = `${userId || 'guest'}:${fingerprint}:${ip}`;
-
-    // [3] CONCURRENCY LOCK
     const concurrentKey = `active:${keyBase}`;
-    // [2026-11-10 fix] Cloudflare KV는 expirationTtl 최소 60초. 10초·3초 TTL은 예외를 던져 무료 점사가 전부 실패했음.
-    //   → 값에 시각을 저장하고 TTL은 60초로, 실제 판정은 시각 비교로 한다.
-    const active = await KV.get(concurrentKey);
-    if (active && (active === "true" ? false : (Date.now() - Number(active)) < 10000)) {
-        return new Response(JSON.stringify({ error: "CONCURRENT_REQUEST", message: "이전 점사가 아직 진행 중입니다. 잠시만 기다려 주세요." }),
-            { status: 429, headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" } });
+    const usageKey = _secIsFree ? `usage:${_secDay}:${keyBase}` : `usage:${keyBase}`;
+    const coolKey = `cool:${keyBase}`;
+    const pendingKey = `pending:${keyBase}`;
+    const globalKey = `GLOBAL_DAILY_AI_USAGE:${_secDay}`;
+
+    // [2026-11-10 속도] 예전에는 저장소를 7번 차례로 읽었다(각 수십~수백ms). 한 번에 동시에 읽는다.
+    const [systemLock, active, usageRaw, cool, ipUsageRaw, pendingRaw, globalRaw] = await Promise.all([
+        KV.get("SYSTEM_LOCK"), KV.get(concurrentKey), KV.get(usageKey), KV.get(coolKey),
+        _secIsFree ? KV.get(_secIpUsageKey) : Promise.resolve(null), KV.get(pendingKey), KV.get(globalKey)
+    ].map(p => Promise.resolve(p).catch(() => null)));
+    const now = Date.now();
+
+    // [0] GLOBAL EMERGENCY KILL SWITCH
+    if (systemLock === "true") return _J({ error: "SYSTEM_LOCK", message: "현재 카드의 흐름이 과도하게 집중되고 있습니다. 잠시 후 다시 시도해 주세요." }, 503);
+
+    // [3] CONCURRENCY LOCK — Cloudflare KV는 보관시간 최소 60초. 값에 시각을 넣고 10초 이내만 잠금으로 본다.
+    if (active && active !== "true" && (now - Number(active)) < 10000) {
+        return _J({ error: "CONCURRENT_REQUEST", message: "이전 점사가 아직 진행 중입니다. 잠시만 기다려 주세요." }, 429);
     }
-    await KV.put(concurrentKey, String(Date.now()), { expirationTtl: 60 }); // 판정은 10초 (위 시각 비교)
 
-    try {
-        // [4] ADAPTIVE COOLDOWN
-        // [보안 S3 #17] 무료는 날짜별로 따로 센다 (자정에 새로 시작)
-        const usageKey = _secIsFree ? `usage:${_secDay}:${keyBase}` : `usage:${keyBase}`;
-        let currentUsage = parseInt((await KV.get(usageKey)) || "0");
-        let cooldown = 3;
-        if (currentUsage > 20) cooldown = 5;
-        if (currentUsage > 50) cooldown = 8;
-
-        const coolKey = `cool:${keyBase}`;
-        const cool = await KV.get(coolKey);
-        if (cool && cool !== "true" && Date.now() < Number(cool)) {
-            await KV.delete(concurrentKey); // [V202.64] lock 해제
-            return new Response(JSON.stringify({ error: "COOLDOWN", message: `카드의 흐름이 정리되지 않았습니다. ${cooldown}초 후 다시 시도해 주세요.` }),
-                { status: 429, headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" } });
-        }
-
-        // [5] PLAN LIMIT
-        let limit = 80;
-        let ttl = 86400;
-        if (planKey === "trial" || planKey === "entry" || planKey === "saju_basic") {
-            limit = 30;
-            ttl = 3600;
-        }
-        if (_secIsFree) limit = SEC_FREE_DAILY_PER_DEVICE;
-        if (currentUsage >= limit) {
-            await KV.delete(concurrentKey); // [V202.64] lock 해제
-            return new Response(JSON.stringify({ error: "LIMIT_EXCEEDED", message: _secIsFree
-                    ? "오늘의 무료 점사 횟수를 모두 사용하셨습니다. 내일 다시 이용해 주세요."
-                    : `본 상품의 점사 가능 횟수(${limit}회)를 모두 사용하셨습니다.` }),
-                { status: 429, headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" } });
-        }
-        if (_secIsFree) {
-            const ipUsage = parseInt((await KV.get(_secIpUsageKey)) || "0");
-            if (ipUsage >= SEC_FREE_DAILY_PER_IP) {
-                await KV.delete(concurrentKey);
-                return new Response(JSON.stringify({ error: "LIMIT_EXCEEDED", message: "오늘의 무료 점사 횟수를 모두 사용하셨습니다. 내일 다시 이용해 주세요." }),
-                    { status: 429, headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" } });
-            }
-        }
-
-        // [6] PENDING
-        const pendingKey = `pending:${keyBase}`;
-        let pending = parseInt((await KV.get(pendingKey)) || "0");
-        await KV.put(pendingKey, String(pending + 1), { expirationTtl: 60 });
-
-        // [7] DAILY BUDGET SHIELD
-        // [보안 S3 #17] 전체 상한은 날짜별로 세고, 넘으면 무료만 멈춘다 (유료 손님은 통과, 전체 잠금 없음)
-        const globalKey = `GLOBAL_DAILY_AI_USAGE:${_secDay}`;
-        let globalUsage = parseInt((await KV.get(globalKey)) || "0");
-        if (globalUsage > SEC_GLOBAL_DAILY_AI && _secIsFree) {
-            await KV.delete(concurrentKey); // [V202.64] lock 해제
-            return new Response(JSON.stringify({ error: "GLOBAL_LIMIT", message: "시스템 보호가 작동 중입니다. 잠시 후 이용 바랍니다." }),
-                { status: 503, headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" } });
-        }
-
-        // [8] COOLDOWN 잠금 설정
-        await KV.put(coolKey, String(Date.now() + cooldown * 1000), { expirationTtl: 60 });
-
-        return { success: true, isResponse: false, keyBase, usageKey, pendingKey, ttl, globalKey, concurrentKey, ipUsageKey: _secIsFree ? _secIpUsageKey : null };
-
-    } catch (err) {
-        await KV.delete(concurrentKey);
-        throw err;
+    // [4] ADAPTIVE COOLDOWN
+    const currentUsage = parseInt(usageRaw || "0") || 0;
+    let cooldown = 3;
+    if (currentUsage > 20) cooldown = 5;
+    if (currentUsage > 50) cooldown = 8;
+    if (cool && cool !== "true" && now < Number(cool)) {
+        return _J({ error: "COOLDOWN", message: `카드의 흐름이 정리되지 않았습니다. ${cooldown}초 후 다시 시도해 주세요.` }, 429);
     }
+
+    // [5] PLAN LIMIT
+    let limit = 80;
+    let ttl = 86400;
+    if (planKey === "trial" || planKey === "entry" || planKey === "saju_basic") { limit = 30; ttl = 3600; }
+    if (_secIsFree) limit = SEC_FREE_DAILY_PER_DEVICE;
+    if (currentUsage >= limit) {
+        return _J({ error: "LIMIT_EXCEEDED", message: _secIsFree
+                ? "오늘의 무료 점사 횟수를 모두 사용하셨습니다. 내일 다시 이용해 주세요."
+                : `본 상품의 점사 가능 횟수(${limit}회)를 모두 사용하셨습니다.` }, 429);
+    }
+    if (_secIsFree && (parseInt(ipUsageRaw || "0") || 0) >= SEC_FREE_DAILY_PER_IP) {
+        return _J({ error: "LIMIT_EXCEEDED", message: "오늘의 무료 점사 횟수를 모두 사용하셨습니다. 내일 다시 이용해 주세요." }, 429);
+    }
+
+    // [7] DAILY BUDGET SHIELD — 전체 상한은 날짜별, 넘으면 무료만 멈춘다
+    if ((parseInt(globalRaw || "0") || 0) > SEC_GLOBAL_DAILY_AI && _secIsFree) {
+        return _J({ error: "GLOBAL_LIMIT", message: "시스템 보호가 작동 중입니다. 잠시 후 이용 바랍니다." }, 503);
+    }
+
+    // [3][6][8] 잠금·대기열·쿨다운 기록 — 동시에 쓴다
+    const pending = parseInt(pendingRaw || "0") || 0;
+    await Promise.all([
+        KV.put(concurrentKey, String(now), { expirationTtl: 60 }),
+        KV.put(pendingKey, String(pending + 1), { expirationTtl: 60 }),
+        KV.put(coolKey, String(now + cooldown * 1000), { expirationTtl: 60 })
+    ].map(p => p.catch(e => console.warn('[SHIELD] KV put', e && e.message))));
+
+    return { success: true, isResponse: false, keyBase, usageKey, pendingKey, ttl, globalKey, concurrentKey, ipUsageKey: _secIsFree ? _secIpUsageKey : null };
 }
 
 async function commitZeusUsage(env, shieldData) {
@@ -22927,7 +22943,7 @@ async function callGeminiAPI(prompt, env, maxRetries = 2) {
         
         try {
             // ★ Day 4d: AbortController로 fetch 강제 중단 가능 ★
-            const response = await fetch(geminiUrl, {
+            const response = await zeusGeminiFetch(geminiUrl, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -25847,7 +25863,7 @@ async function nyGeminiJSON(apiKey, system, user, maxTokens) {
   for (let attempt = 0; attempt < 2; attempt++) {
     try {
       const ac = new AbortController(); const t = setTimeout(() => ac.abort(), 55000);
-      const res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body, signal: ac.signal });
+      const res = await zeusGeminiFetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body, signal: ac.signal });
       clearTimeout(t);
       if (!res.ok) { lastErr = 'HTTP ' + res.status; if (res.status === 429 || res.status >= 500) { await new Promise(r => setTimeout(r, 1200)); continue; } break; }
       const d = await res.json();
@@ -26073,9 +26089,10 @@ async function handleNewYearRoutes(request, env, url) {
 
 // 🚪 메인 엔트리
 // ══════════════════════════════════════════════════════════════════════════
-export default {
+const __zeusApp = {
   async fetch(request, env, ctx) {
     // [2026-11-10] 횟수 제한 저장소: 바인딩 이름 ZEUS_TAROT_KV가 없으면 같은 저장소인 READINGS_KV를 쓴다
+    if (env && env.GEMINI_MODEL) ZEUS_GEMINI_MODEL = String(env.GEMINI_MODEL).trim();
     if (env && !env.ZEUS_TAROT_KV && env.READINGS_KV) { try { env = Object.assign({}, env, { ZEUS_TAROT_KV: env.READINGS_KV }); } catch (_) {} }
 
     if (request.method === "OPTIONS") {
@@ -29116,7 +29133,7 @@ ${metrics.cryptoSubtype === 'crypto_buy' ? `
           let lastError = null;
           for (let attempt = 0; attempt <= maxRetries; attempt++) {
             try {
-              const r = await fetch(geminiUrl, {
+              const r = await zeusGeminiFetch(geminiUrl, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
@@ -29227,7 +29244,7 @@ ${metrics.cryptoSubtype === 'crypto_buy' ? `
 
             // 빈 응답 시 재시도 1회
             if (!geminiText || geminiText.trim().length < 10) {
-              const _retryR = await fetch(geminiUrl, {
+              const _retryR = await zeusGeminiFetch(geminiUrl, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
@@ -29388,6 +29405,27 @@ ${metrics.cryptoSubtype === 'crypto_buy' ? `
     }
 
     return new Response("Not found", { status: 404 });
+  }
+};
+
+// [2026-11-10] 속도 측정: 모든 응답에 걸린 시간을 붙인다 (전체 / 횟수제한 / AI / 사용 모델)
+//   브라우저에서 보이도록 X-Zeus-Timing 헤더 + Access-Control-Expose-Headers
+export default {
+  ...__zeusApp,
+  async fetch(request, env, ctx) {
+    const t0 = Date.now();
+    _zeusLastGemini = { model: '', ms: 0, fallback: false };
+    _zeusLastShieldMs = 0;
+    const res = await __zeusApp.fetch(request, env, ctx);
+    try {
+      const timing = { total: Date.now() - t0, shield: _zeusLastShieldMs, ai: _zeusLastGemini.ms, model: _zeusLastGemini.model, fallback: _zeusLastGemini.fallback };
+      const h = new Headers(res.headers);
+      h.set('X-Zeus-Timing', JSON.stringify(timing));
+      h.set('Server-Timing', 'total;dur=' + timing.total + ', shield;dur=' + timing.shield + ', ai;dur=' + timing.ai);
+      const exp = h.get('Access-Control-Expose-Headers');
+      h.set('Access-Control-Expose-Headers', (exp ? exp + ', ' : '') + 'X-Zeus-Timing, Server-Timing');
+      return new Response(res.body, { status: res.status, statusText: res.statusText, headers: h });
+    } catch (_) { return res; }
   }
 };
 
