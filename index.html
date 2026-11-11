@@ -25925,7 +25925,7 @@ function reshuffleDeck() {
   var RELS = ['미혼', '연애 중', '기혼', '이혼·사별', '기타'];
   var HOURS = [['', '시간 모름'], ['0', '자시 (00:00~00:59)'], ['1', '축시 (01:00~02:59)'], ['3', '인시 (03:00~04:59)'], ['5', '묘시 (05:00~06:59)'], ['7', '진시 (07:00~08:59)'], ['9', '사시 (09:00~10:59)'], ['11', '오시 (11:00~12:59)'], ['13', '미시 (13:00~14:59)'], ['15', '신시 (15:00~16:59)'], ['17', '유시 (17:00~18:59)'], ['19', '술시 (19:00~20:59)'], ['21', '해시 (21:00~22:59)'], ['23', '자시 (23:00~23:59)']];
   var EL_NAME = { 목: '나무(木)', 화: '불(火)', 토: '흙(土)', 금: '쇠(金)', 수: '물(水)' };
-  var st = { gender: 'female', calendar: 'solar', leap: false, form: null, preview: null, report: null };
+  var st = { gender: 'female', calendar: null, leap: false, form: null, preview: null, report: null };   // [2026-11-11] 양력/음력은 손님이 직접 고르게 (기본값 없음)
 
   function $(id) { return document.getElementById(id); }
   function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
@@ -26011,6 +26011,7 @@ function reshuffleDeck() {
   function check() {
     var f = readForm();
     if (!f) { $('nyFErr').textContent = '생년월일을 모두 선택해 주세요.'; return; }
+    if (f.calendar !== 'solar' && f.calendar !== 'lunar') { $('nyFErr').textContent = '생일이 양력인지 음력인지 먼저 골라 주세요.'; return; }
     st.form = f; $('nyGo').disabled = true; $('nyFErr').textContent = '';
     fetch(API + '/saju/newyear/preview', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ input: { year: f.year, month: f.month, day: f.day, hour: f.hour, calendar: f.calendar, isLeapMonth: f.isLeapMonth, gender: f.gender } }) })
       .then(function (r) { return r.json(); })
@@ -26022,14 +26023,17 @@ function reshuffleDeck() {
   }
   function dateLine(p) {
     var s = p.solarDate, l = p.lunarDate;
-    return '양력 ' + s.year + '.' + s.month + '.' + s.day + (l ? ' (음력 ' + l.year + '.' + l.month + '.' + l.day + (l.isLeapMonth ? ' 윤달' : '') + ')' : '') + ' · ' + (p.gender === 'female' ? '여성' : '남성');
+    return '양력 ' + s.year + '.' + s.month + '.' + s.day + (l ? ' · 음력 ' + l.year + '.' + l.month + '.' + l.day + (l.isLeapMonth ? ' 윤달' : '') : '') + ' · ' + (p.gender === 'female' ? '여성' : '남성');
   }
   function confirmView() {
     var p = st.preview;
     body(
       '<h1 style="font-size:1.2rem">계산된 나의 명식</h1><div class="ny-lead">' + esc(dateLine(p)) + '</div>' +
       pillarsHTML(p.pillars) +
-      '<div class="ny-note" style="text-align:center">날짜가 다르게 보이면 <b>양력·음력 선택</b>을 확인해 주세요. ' + (p.hasHour ? '' : '태어난 시를 모르면 시주 없이 계산한 명식을 보여드립니다.') + '</div>' +
+      '<div class="ny-note" style="text-align:center;border:1.5px solid rgba(255,215,0,0.6);border-radius:10px;padding:10px 12px;background:rgba(255,215,0,0.07);color:#FFE9B0">' +
+        '입력하신 생일은 <b>' + ((st.form && st.form.calendar === 'lunar') ? '음력' : '양력') + ' ' + (st.form ? st.form.year + '년 ' + st.form.month + '월 ' + st.form.day + '일' : '') + '</b>입니다.<br>' +
+        '본인이 아는 생일과 <b>양력·음력이 맞는지</b> 꼭 확인해 주세요. 다르면 아래 <b>「다시 입력」</b>을 눌러 고쳐 주세요.' +
+        (p.hasHour ? '' : '<br>태어난 시를 모르면 시주 없이 계산한 명식을 보여드립니다.') + '</div>' +
       '<div class="ny-card"><div class="ny-one">' + esc(p.oneLine) + '</div>' +
       '<p style="text-align:center;margin:0">' + esc(p.teaser) + '</p>' + (p.daewoonChange ? '<p style="text-align:center;margin:8px 0 0;color:#FFE9B0">⚡ ' + esc(p.daewoonChange) + '</p>' : '') + '</div>' +
       '<div class="ny-card"><div style="text-align:center;font-weight:900;color:#FFD970;font-size:1.05rem;word-break:keep-all">2027년, 나의 운세를<br>자세히 알아보세요</div>' +
@@ -26116,7 +26120,9 @@ function reshuffleDeck() {
       });
   }
   function delay(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
-  function labelFrom(rep) { try { var i = rep.calc.input, s = i.solarDate; return '양력 ' + s.year + '.' + s.month + '.' + s.day + ' · ' + (i.gender === 'female' ? '여성' : '남성'); } catch (e) { return '나의 2027 운세'; } }
+  function labelFrom(rep) { try { var i = rep.calc.input, s = i.solarDate;
+    var l = i.lunarDate || (i.calendar === 'lunar' ? { year: i.year, month: i.month, day: i.day, isLeapMonth: i.isLeapMonth } : null);
+    return '양력 ' + s.year + '.' + s.month + '.' + s.day + (l ? ' · 음력 ' + l.year + '.' + l.month + '.' + l.day + (l.isLeapMonth ? ' 윤달' : '') : '') + ' · ' + (i.gender === 'female' ? '여성' : '남성'); } catch (e) { return '나의 2027 운세'; } }
   function failView(rid, token, label, msg) {
     try { sessionStorage.removeItem('nyReturn'); if (/[?&]ny=report/.test(location.search)) history.replaceState(null, '', '/'); } catch (e) {}
     saveMine({ rid: rid, token: token, label: label || '나의 2027 운세', savedAt: Date.now() });
