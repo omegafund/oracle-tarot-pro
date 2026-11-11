@@ -25772,7 +25772,7 @@ function buildNewYear2027(input) {
   const dmEl = nyStemEl(dm);
   return {
     success: true, version: NY27_VERSION, targetYear: 2027,
-    input: { ...norm, solarDate: saju.meta.solarDate },
+    input: { ...norm, solarDate: saju.meta.solarDate, lunarDate: (() => { try { const sd = saju.meta.solarDate; const l = v31SolarToLunar(sd.year, sd.month, sd.day); return l ? { year: l.year, month: l.month, day: l.day, isLeapMonth: !!l.isLeapMonth } : null; } catch (e) { return null; } })() },
     natal: {
       pillars: ['year', 'month', 'day', 'hour'].reduce((o, k) => { if (p[k]) o[k] = { ...nyGz(p[k].stem, p[k].branch), tenGodStem: k === 'day' ? '일간' : nyTenGod(dm, p[k].stem), tenGodBranch: nyTenGodBranch(dm, p[k].branch), stage: nyStage(dm, p[k].branch) }; return o; }, {}),
       hasHour: !!p.hour, dayMaster: dm, dayMasterElement: dmEl,
