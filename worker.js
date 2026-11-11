@@ -22182,7 +22182,7 @@ const INTIMACY_RESPONSE_KR = "이런 질문은 점사로 답하기 어렵습니�
 // ══════════════════════════════════════════════════════════════
 const SEC_FREE_DAILY_PER_DEVICE = 20;     // 무료: 같은 기기 하루 한도
 const SEC_FREE_DAILY_PER_IP     = 60;     // 무료: 같은 접속 주소 하루 한도 (브라우저 정보를 바꿔도 여기서 걸림)
-const SEC_GLOBAL_DAILY_AI       = 10000;  // 전체 하루 상한 (넘으면 무료만 멈춤)
+const SEC_GLOBAL_DAILY_AI       = 600;    // 전체 하루 무료 상한 (채우면 무료만 멈춤 — 저장소 하루 기록 한도 1,000회 중 결제용 여유를 남김)
 const SEC_ADMIN_MAX_FAILS       = 5;      // 관리자 비밀번호 허용 오류 횟수
 const SEC_ADMIN_LOCK_SEC        = 900;    // 잠금 시간 15분
 const SEC_GENERIC_ERROR = "일시적인 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.";
@@ -22422,7 +22422,7 @@ async function __zeusShieldInner(request, env, userId, planKey, question) {
 
     // [7] DAILY BUDGET SHIELD — 전체 상한은 날짜별, 넘으면 무료만 멈춘다 (아직 저장 안 한 몫도 더해서 본다)
     const _globalNow = (parseInt(globalRaw || "0") || 0) + (_zeusGlobalMem.day === _secDay ? _zeusGlobalMem.n : 0);
-    if (_globalNow > SEC_GLOBAL_DAILY_AI && _secIsFree) {
+    if (_globalNow >= SEC_GLOBAL_DAILY_AI && _secIsFree) {
         return _J({ error: "GLOBAL_LIMIT", message: "시스템 보호가 작동 중입니다. 잠시 후 이용 바랍니다." }, 503);
     }
 
@@ -22455,6 +22455,21 @@ function zeusFreeMerge(a, b) {   // 둘 중 큰 쪽을 따른다 (횟수는 줄�
     const out = { t: Math.max((a && a.t) || 0, (b && b.t) || 0), d: { ...((a && a.d) || {}) } };
     if (b && b.d) for (const k in b.d) out.d[k] = Math.max(out.d[k] || 0, b.d[k] || 0);
     return out;
+}
+
+// 결제 확인: 주문 기록을 읽기만 한다 (기록은 바꾸지 않음). 사주 상품, 결제 완료, 결제 후 24시간 이내일 때만 참.
+async function zeusVerifyPaidProof(env, proof) {
+    try {
+        if (!proof || typeof proof.rid !== "string" || typeof proof.token !== "string" || !env.READINGS_KV || !env.SERVER_SECRET) return false;
+        if (proof.rid.length > 100 || proof.token.length > 600) return false;
+        const reading = await getReading(env, proof.rid);
+        if (!reading || reading.paymentVerified !== true || reading.category !== "saju") return false;
+        if (!reading.paidAt || (Date.now() - Number(reading.paidAt)) > 24 * 3600 * 1000) return false;
+        return (await verifySignedAccessToken(proof.token, {
+            readingId: reading.readingId, orderId: reading.orderId, amount: reading.amount, category: reading.category,
+            feature: reading.feature, nonce: reading.nonce, createdAt: reading.createdAt
+        }, env.SERVER_SECRET)) === true;
+    } catch (_) { return false; }
 }
 
 async function commitZeusUsage(env, shieldData) {
@@ -26210,14 +26225,16 @@ const __zeusApp = {
     if (url.pathname === "/saju/oracle" && request.method === "POST") {
       try {
         const body = await request.json();
-        const { input, category = 'fortune', timePhase = 'medium', tier = 'free' } = body;
+        const { input, category = 'fortune', timePhase = 'medium', tier = 'free', paidProof } = body;
 
         // ══════════════════════════════════════════════════════════════
         // [V60-ZEUS-SHIELD] 사주 오라클 DDoS 차단 + 사용량 게이트
         // ══════════════════════════════════════════════════════════════
         const _sajuRawToken = request.headers.get("x-session-token") || "";
         const _sajuIsPaid   = await verifyToken(_sajuRawToken, env.TOKEN_SECRET);
-        const _sajuPlanKey  = _sajuIsPaid ? (tier === 'free' ? 'trial' : 'day') : 'free';
+        // [2026-11-11] 결제 손님 확인 — 화면이 보낸 주문번호·확인값으로 실제 결제(24시간 이내)를 확인하면 무료 한도·전체 상한에서 제외
+        const _sajuPaidV55  = await zeusVerifyPaidProof(env, paidProof);
+        const _sajuPlanKey  = _sajuPaidV55 ? 'day' : (_sajuIsPaid ? (tier === 'free' ? 'trial' : 'day') : 'free');
         const _sajuUserId   = request.headers.get("cf-connecting-ip") || "unknown";
         const _sajuQuestion = JSON.stringify(input || {}).slice(0, 200);
         const _sajuShield   = await handleUltimateZeusShield(
