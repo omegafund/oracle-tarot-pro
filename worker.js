@@ -22279,9 +22279,21 @@ async function zeusGeminiFetch(url, init) {
         } catch (_) {}
         try {
             const r = await fetch(url.replace(OLD, `/models/${target}:`), Object.assign({}, init, { body }));
-            if (r.ok) { _zeusLastGemini = { model: target, ms: (_zeusLastGemini.ms || 0) + (Date.now() - t0), fallback: false, n: (_zeusLastGemini.n || 0) + 1 }; return r; }
+            if (r.ok) {
+                // [2026-11-11] 새 모델이 가끔 엉뚱한 문자(아랍·키릴·태국·힌디 등)로 답하는 경우 → 같은 요청을 2.5-flash로 다시
+                let bad = false;
+                try {
+                    const raw = await r.clone().text();
+                    let txt = raw; try { const jj = JSON.parse(raw); txt = (jj.candidates || []).map(c => ((c.content && c.content.parts) || []).map(pp => pp.text || '').join('')).join('') || raw; } catch (_) {}
+                    const foreign = (txt.match(/[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\u0400-\u04FF\u0E00-\u0E7F\u0900-\u097F\u0590-\u05FF]/g) || []).length;
+                    if (foreign >= 8) { bad = true; console.warn('[GEMINI] foreign-script output', foreign, '→ retry 2.5-flash'); }
+                } catch (_) {}
+                if (!bad) { _zeusLastGemini = { model: target, ms: (_zeusLastGemini.ms || 0) + (Date.now() - t0), fallback: false, n: (_zeusLastGemini.n || 0) + 1 }; return r; }
+            }
+            else {
             if (r.status === 404) _zeusGeminiNextDown = true;
             console.warn('[GEMINI] next model failed', target, r.status, '→ fallback 2.5-flash');
+            }
         } catch (e) {
             if (init && init.signal && init.signal.aborted) throw e;   // 호출 쪽 시간초과는 그대로 전달
             console.warn('[GEMINI] next model error', e && e.message, '→ fallback 2.5-flash');
