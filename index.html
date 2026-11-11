@@ -5165,6 +5165,10 @@
             </div>
             <span class="nyb-again" id="nyBannerAgain" style="display:none" onclick="event.stopPropagation(); NY.open();">📂 내 운세 다시보기</span>
         </div>
+        <script>/* [2026-11-11] 배너를 페이지 끝 스크립트가 아니라 그려지는 즉시 보이게 → 아래 칸들이 나중에 밀려 내려가던 현상 제거 */
+        (function(){try{var on=window.ZEUS_NEWYEAR_ENABLED===true||/[?&]ny=test/.test(location.search)||sessionStorage.getItem('nyTest')==='1';
+          var b=document.getElementById('nyBanner');if(b&&on)b.hidden=false;
+          var r=JSON.parse(localStorage.getItem('nyReports')||'[]');var a=document.getElementById('nyBannerAgain');if(a&&r&&r.length)a.style.display='inline-block';}catch(e){}})();</script>
 
         <!-- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ -->
         <!-- 📦 3 GRID — V202.0 (V202.54.0-E 20대 친화 정리)     -->
