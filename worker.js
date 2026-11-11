@@ -22361,40 +22361,48 @@ async function __zeusShieldInner(request, env, userId, planKey, question) {
     // [2] DEVICE FINGERPRINT
     const ip = request.headers.get("cf-connecting-ip") || "unknown";
     const _secDay = secDayKST();
-    const _secIpUsageKey = `usageip:${_secDay}:${secIpKey(ip)}`;   // [보안 S3 #17] 접속 주소만으로 세는 무료 한도
     const ua = request.headers.get("user-agent") || "";
     const lang = request.headers.get("accept-language") || "";
     const fpRaw = new TextEncoder().encode(`${ua}:${lang}`);
     const fpHash = await crypto.subtle.digest("SHA-256", fpRaw);
     const fingerprint = Array.from(new Uint8Array(fpHash)).map(b => b.toString(16).padStart(2, "0")).join("");
     const keyBase = `${userId || 'guest'}:${fingerprint}:${ip}`;
-    const concurrentKey = `active:${keyBase}`;
-    const usageKey = _secIsFree ? `usage:${_secDay}:${keyBase}` : `usage:${keyBase}`;
-    const coolKey = `cool:${keyBase}`;
-    const pendingKey = `pending:${keyBase}`;
     const globalKey = `GLOBAL_DAILY_AI_USAGE:${_secDay}`;
+    // [2026-11-11 저장소 기록 줄이기]
+    //   무료: 접속 주소별 하루 기록 하나(freeKey)에 "주소 합계 + 기기별 횟수"를 함께 담는다 → 풀이 1회당 기록 1번
+    //   유료: 예전처럼 기기별 사용량 기록 하나(usageKey)
+    //   10초 잠금·쿨다운은 저장소 대신 메모리, 대기열 숫자는 쓰이지 않아 없앰
+    const freeKey = _secIsFree ? `fu:${_secDay}:${secIpKey(ip)}` : null;
+    const usageKey = _secIsFree ? null : `usage:${keyBase}`;
+    const dev = zeusDevId(userId, fingerprint);
 
-    // [2026-11-10 속도] 예전에는 저장소를 7번 차례로 읽었다(각 수십~수백ms). 한 번에 동시에 읽는다.
-    const [systemLock, active, usageRaw, cool, ipUsageRaw, pendingRaw, globalRaw] = await Promise.all([
-        KV.get("SYSTEM_LOCK"), KV.get(concurrentKey), KV.get(usageKey), KV.get(coolKey),
-        _secIsFree ? KV.get(_secIpUsageKey) : Promise.resolve(null), KV.get(pendingKey), KV.get(globalKey)
+    const [systemLock, usageRaw, globalRaw] = await Promise.all([
+        KV.get("SYSTEM_LOCK"), KV.get(freeKey || usageKey), KV.get(globalKey)
     ].map(p => Promise.resolve(p).catch(() => null)));
     const now = Date.now();
 
     // [0] GLOBAL EMERGENCY KILL SWITCH
     if (systemLock === "true") return _J({ error: "SYSTEM_LOCK", message: "현재 카드의 흐름이 과도하게 집중되고 있습니다. 잠시 후 다시 시도해 주세요." }, 503);
 
-    // [3] CONCURRENCY LOCK — Cloudflare KV는 보관시간 최소 60초. 값에 시각을 넣고 10초 이내만 잠금으로 본다.
-    if (active && active !== "true" && (now - Number(active)) < 10000) {
+    // [3] CONCURRENCY LOCK — 시작 후 10초 이내이고 아직 안 끝난 요청이 있으면 거절 (메모리)
+    const _lockAt = _zeusMemLock.get(keyBase);
+    if (_lockAt && (now - _lockAt) < 10000) {
         return _J({ error: "CONCURRENT_REQUEST", message: "이전 점사가 아직 진행 중입니다. 잠시만 기다려 주세요." }, 429);
     }
 
-    // [4] ADAPTIVE COOLDOWN
-    const currentUsage = parseInt(usageRaw || "0") || 0;
+    // [4] ADAPTIVE COOLDOWN (메모리)
+    let freeRec = null, currentUsage;
+    if (_secIsFree) {
+        freeRec = zeusFreeMerge(zeusFreeParse(usageRaw), _zeusFreeCache.get(freeKey));
+        currentUsage = freeRec.d[dev] || 0;
+    } else {
+        currentUsage = parseInt(usageRaw || "0") || 0;
+    }
     let cooldown = 3;
     if (currentUsage > 20) cooldown = 5;
     if (currentUsage > 50) cooldown = 8;
-    if (cool && cool !== "true" && now < Number(cool)) {
+    const _coolUntil = _zeusMemCool.get(keyBase);
+    if (_coolUntil && now < _coolUntil) {
         return _J({ error: "COOLDOWN", message: `카드의 흐름이 정리되지 않았습니다. ${cooldown}초 후 다시 시도해 주세요.` }, 429);
     }
 
@@ -22408,54 +22416,81 @@ async function __zeusShieldInner(request, env, userId, planKey, question) {
                 ? "오늘의 무료 점사 횟수를 모두 사용하셨습니다. 내일 다시 이용해 주세요."
                 : `본 상품의 점사 가능 횟수(${limit}회)를 모두 사용하셨습니다.` }, 429);
     }
-    if (_secIsFree && (parseInt(ipUsageRaw || "0") || 0) >= SEC_FREE_DAILY_PER_IP) {
+    if (_secIsFree && freeRec.t >= SEC_FREE_DAILY_PER_IP) {
         return _J({ error: "LIMIT_EXCEEDED", message: "오늘의 무료 점사 횟수를 모두 사용하셨습니다. 내일 다시 이용해 주세요." }, 429);
     }
 
-    // [7] DAILY BUDGET SHIELD — 전체 상한은 날짜별, 넘으면 무료만 멈춘다
-    if ((parseInt(globalRaw || "0") || 0) > SEC_GLOBAL_DAILY_AI && _secIsFree) {
+    // [7] DAILY BUDGET SHIELD — 전체 상한은 날짜별, 넘으면 무료만 멈춘다 (아직 저장 안 한 몫도 더해서 본다)
+    const _globalNow = (parseInt(globalRaw || "0") || 0) + (_zeusGlobalMem.day === _secDay ? _zeusGlobalMem.n : 0);
+    if (_globalNow > SEC_GLOBAL_DAILY_AI && _secIsFree) {
         return _J({ error: "GLOBAL_LIMIT", message: "시스템 보호가 작동 중입니다. 잠시 후 이용 바랍니다." }, 503);
     }
 
-    // [3][6][8] 잠금·대기열·쿨다운 기록 — 동시에 쓴다
-    const pending = parseInt(pendingRaw || "0") || 0;
-    await Promise.all([
-        KV.put(concurrentKey, String(now), { expirationTtl: 60 }),
-        KV.put(pendingKey, String(pending + 1), { expirationTtl: 60 }),
-        KV.put(coolKey, String(now + cooldown * 1000), { expirationTtl: 60 })
-    ].map(p => p.catch(e => console.warn('[SHIELD] KV put', e && e.message))));
+    // [3][4] 잠금·쿨다운 기록 — 메모리 (저장소 기록 0번)
+    zeusMemTrim(_zeusMemLock); zeusMemTrim(_zeusMemCool);
+    _zeusMemLock.set(keyBase, now);
+    _zeusMemCool.set(keyBase, now + cooldown * 1000);
 
-    return { success: true, isResponse: false, keyBase, usageKey, pendingKey, ttl, globalKey, concurrentKey, ipUsageKey: _secIsFree ? _secIpUsageKey : null };
+    // concurrentKey 는 비워 둔다 → 호출부의 저장소 삭제(풀이 1회당 1번)가 일어나지 않는다. 잠금은 commit/rollback 에서 푼다.
+    return { success: true, isResponse: false, keyBase, usageKey, freeKey, dev, day: _secDay, ttl, globalKey, concurrentKey: null };
+}
+
+// ── [2026-11-11] 저장소 기록 줄이기용 메모리 (같은 서버 인스턴스 안에서만 유지되는 보조 장치) ──
+const SEC_GLOBAL_FLUSH_EVERY = 10;          // 전체 사용량은 10회마다 한 번만 저장
+const _zeusMemLock = new Map();             // 기기 → 시작 시각
+const _zeusMemCool = new Map();             // 기기 → 쿨다운 끝나는 시각
+const _zeusFreeCache = new Map();           // 무료 기록 사본 (저장소 반영이 늦을 때 대비)
+const _zeusGlobalMem = { day: "", n: 0 };   // 아직 저장하지 않은 전체 사용량
+function zeusMemTrim(m) { if (m.size > 5000) m.clear(); }
+function zeusDevId(userId, fingerprint) {
+    let h = 5381; const u = String(userId || "guest");
+    for (let i = 0; i < u.length; i++) h = ((h << 5) + h + u.charCodeAt(i)) >>> 0;
+    return fingerprint.slice(0, 12) + h.toString(36);
+}
+function zeusFreeParse(raw) {
+    try { const o = JSON.parse(raw || "{}"); if (o && typeof o === "object" && o.d && typeof o.d === "object") return { t: parseInt(o.t) || 0, d: o.d }; } catch (_) {}
+    return { t: 0, d: {} };
+}
+function zeusFreeMerge(a, b) {   // 둘 중 큰 쪽을 따른다 (횟수는 줄어들지 않는다)
+    const out = { t: Math.max((a && a.t) || 0, (b && b.t) || 0), d: { ...((a && a.d) || {}) } };
+    if (b && b.d) for (const k in b.d) out.d[k] = Math.max(out.d[k] || 0, b.d[k] || 0);
+    return out;
 }
 
 async function commitZeusUsage(env, shieldData) {
     if (!env.ZEUS_TAROT_KV || shieldData.noKV) return;
     const KV = env.ZEUS_TAROT_KV;
-    // [2026-11-10 속도] 예전: 읽기·쓰기 8번을 차례로 기다림(풀이 끝난 뒤 1~2초 추가). 지금: 읽기 한 번에, 쓰기 한 번에.
     const n = v => parseInt(v || "0") || 0;
-    const safe = p => Promise.resolve(p).catch(() => null);
+    const warn = tag => e => console.error(`[SHIELD] 저장소 기록 실패(${tag})`, e && e.message);
+    _zeusMemLock.delete(shieldData.keyBase);
     try {
-        const [usage, pending, globalUsage, ipUsage] = await Promise.all([
-            safe(KV.get(shieldData.usageKey)), safe(KV.get(shieldData.pendingKey)), safe(KV.get(shieldData.globalKey)),
-            shieldData.ipUsageKey ? safe(KV.get(shieldData.ipUsageKey)) : null
-        ]);
-        const writes = [
-            KV.put(shieldData.usageKey, String(n(usage) + 1), { expirationTtl: shieldData.ttl }),
-            KV.put(shieldData.pendingKey, String(Math.max(0, n(pending) - 1)), { expirationTtl: 60 }),
-            KV.put(shieldData.globalKey, String(n(globalUsage) + 1), { expirationTtl: 172800 })
-        ];
-        if (shieldData.ipUsageKey) writes.push(KV.put(shieldData.ipUsageKey, String(n(ipUsage) + 1), { expirationTtl: 172800 }));
-        await Promise.all(writes.map(safe));
+        if (shieldData.freeKey) {
+            // 무료: 주소 합계 + 기기별 횟수를 기록 하나에 (쓰기 1번)
+            const raw = await KV.get(shieldData.freeKey).catch(() => null);
+            const rec = zeusFreeMerge(zeusFreeParse(raw), _zeusFreeCache.get(shieldData.freeKey));
+            rec.t += 1;
+            rec.d[shieldData.dev] = (rec.d[shieldData.dev] || 0) + 1;
+            zeusMemTrim(_zeusFreeCache);
+            _zeusFreeCache.set(shieldData.freeKey, rec);
+            await KV.put(shieldData.freeKey, JSON.stringify(rec), { expirationTtl: 172800 }).catch(warn("무료 사용량"));
+        } else if (shieldData.usageKey) {
+            const usage = await KV.get(shieldData.usageKey).catch(() => null);
+            await KV.put(shieldData.usageKey, String(n(usage) + 1), { expirationTtl: shieldData.ttl }).catch(warn("유료 사용량"));
+        }
+        // 전체 사용량: 메모리에 모았다가 10회마다 한 번 저장
+        if (_zeusGlobalMem.day !== shieldData.day) { _zeusGlobalMem.day = shieldData.day; _zeusGlobalMem.n = 0; }
+        _zeusGlobalMem.n += 1;
+        if (_zeusGlobalMem.n >= SEC_GLOBAL_FLUSH_EVERY) {
+            const add = _zeusGlobalMem.n; _zeusGlobalMem.n = 0;
+            const g = await KV.get(shieldData.globalKey).catch(() => null);
+            await KV.put(shieldData.globalKey, String(n(g) + add), { expirationTtl: 172800 }).catch(warn("전체 사용량"));
+        }
     } catch (_) {}
 }
 
 async function rollbackZeusUsage(env, shieldData) {
-    if (!env.ZEUS_TAROT_KV || shieldData.noKV) return;
-    const KV = env.ZEUS_TAROT_KV;
-    try {
-        let pending = parseInt((await KV.get(shieldData.pendingKey)) || "0");
-        await KV.put(shieldData.pendingKey, String(Math.max(0, pending - 1)), { expirationTtl: 60 });
-    } catch (_) {}
+    // 실패한 풀이는 횟수에 넣지 않는다. 잠금만 푼다 (저장소 기록 없음)
+    if (shieldData && shieldData.keyBase) _zeusMemLock.delete(shieldData.keyBase);
 }
 
 // ══════════════════════════════════════════════════════════════════════════
