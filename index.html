@@ -35,6 +35,25 @@
          · 실제 대기화면(#paidEarlyOverlay)이 그려지면 스스로 제거, 없으면 DOMContentLoaded에 제거
          · 표시 전용: 결제·점사 로직과 저장소를 일절 건드리지 않음 -->
     <script>
+    /* [2026-11-11] 결제 손님 표시 — 결제 복귀 때 받은 주문번호·확인값을 24시간 보관해 사주 풀이 요청에 함께 보낸다.
+       서버가 실제 결제를 확인하면 무료 횟수 한도·전체 상한에 걸리지 않는다. 값이 없거나 틀리면 지금처럼 무료 손님으로 처리된다. */
+    (function(){
+      try {
+        var p = new URLSearchParams(location.search);
+        if (p.get('paid') === 'ok' && p.get('rid') && p.get('token')) {
+          localStorage.setItem('zeusPaidProof', JSON.stringify({ rid: p.get('rid'), token: p.get('token'), at: Date.now() }));
+        }
+      } catch (_) {}
+      window.zeusPaidProof = function(){
+        try {
+          var o = JSON.parse(localStorage.getItem('zeusPaidProof') || 'null');
+          if (o && o.rid && o.token && (Date.now() - o.at) < 86400000) return { rid: o.rid, token: o.token };
+        } catch (_) {}
+        return null;
+      };
+    })();
+    </script>
+    <script>
     /* [v1.2.0 NY27] 신년사주 결제 복귀 인터셉터 — 다른 모든 스크립트보다 먼저 실행
        결제 번호가 신년사주 대기 번호와 같거나 ny=1이면, 일반 사주·타로 복원 장치가 반응하지 않도록
        주소를 ?ny=report&paid=ny 로 바꾸고 신년사주 화면이 보고서를 불러오게 함 */
@@ -6010,6 +6029,7 @@ window.addEventListener('load', () => {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
         body: JSON.stringify({
+            paidProof: (window.zeusPaidProof ? window.zeusPaidProof() : null),   // [2026-11-11] 결제 손님 표시 (서버가 확인)
           input: sajuData.input,
           category: sajuData.category || 'fortune',
           timePhase: sajuData.timePhase || 'medium',
@@ -7776,6 +7796,7 @@ console.log('══════════════════════�
                 headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
                 signal: _v88Controller.signal,
                 body: JSON.stringify({
+                    paidProof: (window.zeusPaidProof ? window.zeusPaidProof() : null),   // [2026-11-11] 결제 손님 표시 (서버가 확인)
                     input: sajuData.input,
                     category: sajuData.category || 'fortune',
                     timePhase: sajuData.timePhase || 'medium',
@@ -17340,6 +17361,7 @@ async function runSajuOracle() {
                 'Accept': 'application/json'  // [V31 #125] JSON 명시 요구
             },
             body: JSON.stringify({
+                paidProof: (window.zeusPaidProof ? window.zeusPaidProof() : null),   // [2026-11-11] 결제 손님 표시 (서버가 확인)
                 input: { year, month, day, hour: hour ? parseInt(hour) : null, calendar, gender },
                 category,
                 timePhase: 'medium',
@@ -23186,6 +23208,7 @@ async function zeusClaimSubmit(plan) {
                                 'Accept': 'application/json'
                             },
                             body: JSON.stringify({
+                                paidProof: (window.zeusPaidProof ? window.zeusPaidProof() : null),   // [2026-11-11] 결제 손님 표시 (서버가 확인)
                                 input: sajuData.input,
                                 category: sajuData.category,
                                 timePhase: sajuData.timePhase || 'medium',
@@ -25167,6 +25190,7 @@ async function confirmPayment() {
                             'Accept': 'application/json'
                         },
                         body: JSON.stringify({
+                            paidProof: (window.zeusPaidProof ? window.zeusPaidProof() : null),   // [2026-11-11] 결제 손님 표시 (서버가 확인)
                             input: sajuData.input,
                             category: sajuData.category,
                             timePhase: sajuData.timePhase || 'medium',
