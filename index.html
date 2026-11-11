@@ -25973,7 +25973,7 @@ function reshuffleDeck() {
   function opt(list, sel) { return list.map(function (x) { var v = Array.isArray(x) ? x[0] : x, t = Array.isArray(x) ? x[1] : x; return '<option value="' + esc(v) + '"' + (String(sel) === String(v) ? ' selected' : '') + '>' + esc(t) + '</option>'; }).join(''); }
   function form() {
     var f = st.form || {};
-    var years = []; for (var y = 2015; y >= 1930; y--) years.push([String(y), y + '년']);
+    var years = []; for (var y = 2026; y >= 1930; y--) years.push([String(y), y + '년']);   // [2026-11-11] 자녀(2016~2026년생)도 선택 가능
     var months = []; for (var m = 1; m <= 12; m++) months.push([String(m), m + '월']);
     var days = []; for (var d = 1; d <= 31; d++) days.push([String(d), d + '일']);
     sheet(
@@ -25983,6 +25983,8 @@ function reshuffleDeck() {
       '<label class="ny-chk" id="nyLeapWrap" style="display:none"><input type="checkbox" id="nyLeap"> 윤달</label>' +
       '<label class="ny-l">생년월일</label><div class="ny-row"><select id="nyY"><option value="">년</option>' + opt(years, f.year || '') + '</select>' +
       '<select id="nyM"><option value="">월</option>' + opt(months, f.month || '') + '</select><select id="nyD"><option value="">일</option>' + opt(days, f.day || '') + '</select></div>' +
+      '<div class="ny-note" style="margin:6px 0 2px;font-size:0.8rem">👶 <b>2027년에 태어날 아기</b>의 평생 사주는 '
+        + '<a href="javascript:void(0)" onclick="NY.toSaju()" style="color:#FFD970;font-weight:800;text-decoration:underline">「나의 사주 분석」에서 보기 →</a> (출생 예정일·시간을 넣으면 됩니다)</div>' +
       '<label class="ny-l">태어난 시</label><select id="nyH">' + opt(HOURS, f.hour == null ? '' : f.hour) + '</select>' +
       '<label class="ny-l">현재 상황 (선택 — 입력하면 해석이 더 정확해집니다)</label><div class="ny-row"><select id="nyJob"><option value="">직업 선택 안 함</option>' + opt(JOBS, f.job || '') + '</select>' +
       '<select id="nyRel"><option value="">관계 선택 안 함</option>' + opt(RELS, f.relation || '') + '</select></div>' +
@@ -26220,6 +26222,7 @@ function reshuffleDeck() {
   }
 
   window.NY = {
+    toSaju: function () { try { close(); } catch (e) {} try { var c = document.querySelector('.saju-aux-card'); if (typeof selectCategory === 'function') selectCategory('saju', c); } catch (e) {} },
     open: function () { show(); intro(); }, close: close, closeSheet: closeSheet, intro: intro, form: form, check: check, pay: pay, reopen: reopen, print: print, copyLink: copyLink, sample: sample,
     _report: function (rep) { show(); st.report = rep; report(); }
   };
