@@ -4873,6 +4873,27 @@
         }
     })();
     </script>
+<style>/* [2026-11-11] 홈 배너·카드 폭 규칙을 머리로 복사: 페이지 끝 스타일이 늦게 적용되며 양 그림만 먼저 크게 보이던 현상 제거 (원본은 아래에 그대로 둠) */
+  .ny-banner{position:relative;margin:14px auto 12px;max-width:448px;box-sizing:border-box;padding:16px 16px 14px;border-radius:16px;cursor:pointer;
+    background:linear-gradient(135deg,#3a0d12 0%,#6b1a1f 45%,#2a0a2e 100%);border:1.5px solid rgba(255,215,0,0.75);
+    box-shadow:0 0 22px rgba(255,190,60,0.28),inset 0 0 18px rgba(255,215,0,0.08);color:#FFF4D6;font-family:-apple-system,BlinkMacSystemFont,'Apple SD Gothic Neo','Malgun Gothic',sans-serif;}
+  .ny-banner[hidden]{display:none !important;}
+  .ny-banner .nyb-badge{position:absolute;top:-9px;right:14px;background:#FFD700;color:#3a0d12;font-size:0.68rem;font-weight:900;padding:3px 9px;border-radius:999px;letter-spacing:0.05em;}
+  .ny-banner .nyb-title{font-size:1.22rem;font-weight:900;color:#FFE08A;letter-spacing:0.01em;}
+  .ny-banner .nyb-sub{font-size:0.8rem;opacity:0.85;margin-top:4px;line-height:1.45;word-break:keep-all;}
+  .ny-banner .nyb-flex{display:flex;align-items:center;gap:12px;}
+  .ny-banner .nyb-emblem{flex:0 0 auto;filter:drop-shadow(0 0 6px rgba(255,215,0,0.35));}
+  .ny-banner .nyb-main{flex:1;min-width:0;text-align:left;}
+  .ny-banner .nyb-row{justify-content:space-between;}
+  /* [v1.2.0] 홈 정돈: 모든 홈 카드를 같은 폭(최대 448px)으로 통일 */
+  .home-col, #nyBanner.ny-banner, #home-view .saju-aux-card, .saju-aux-card, #category-grid.category-grid{
+    width:auto !important; max-width:448px !important; margin-left:auto !important; margin-right:auto !important; box-sizing:border-box !important;}
+  #category-grid.category-grid{padding-left:0 !important;padding-right:0 !important;}
+  .ny-banner .nyb-row{display:flex;justify-content:space-between;align-items:center;margin-top:10px;gap:8px;flex-wrap:wrap;}
+  .ny-banner .nyb-price{font-size:0.82rem;color:#FFD970;font-weight:800;}
+  .ny-banner .nyb-cta{background:linear-gradient(135deg,#FFD700,#E8A317);color:#2a0a0e;font-weight:900;font-size:0.84rem;padding:8px 14px;border-radius:999px;}
+  .ny-banner .nyb-again{font-size:0.76rem;color:#FFE9B0;text-decoration:underline;margin-top:8px;display:inline-block;}
+</style>
 </head>
 <body>
 <!-- ════════════════════════════════════════════════════════════════════════
