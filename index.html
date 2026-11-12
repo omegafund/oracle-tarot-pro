@@ -4894,6 +4894,8 @@
   .ny-banner .nyb-cta{background:linear-gradient(135deg,#FFD700,#E8A317);color:#2a0a0e;font-weight:900;font-size:0.84rem;padding:8px 14px;border-radius:999px;}
   .ny-banner .nyb-again{font-size:0.76rem;color:#FFE9B0;text-decoration:underline;margin-top:8px;display:inline-block;}
 </style>
+<script>window.zeusLife=function(){try{var e=document.getElementById("sajuLife");if(e)return e.value||"";return localStorage.getItem("zeusLife")||"";}catch(_){return "";}};
+(function(){try{var mo=new MutationObserver(function(){var e=document.getElementById("sajuLife");if(e&&!e.dataset.zr){e.dataset.zr="1";try{var v=localStorage.getItem("zeusLife");if(v)e.value=v;}catch(_){}}});document.addEventListener("DOMContentLoaded",function(){mo.observe(document.body,{childList:true,subtree:true});});}catch(_){}})();</script>
 </head>
 <body>
 <!-- ════════════════════════════════════════════════════════════════════════
@@ -6053,7 +6055,7 @@ window.addEventListener('load', () => {
       fetch(`${SAJU_API_AUTO}/saju/oracle`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-        body: JSON.stringify({
+        body: JSON.stringify({ life: (window.zeusLife ? window.zeusLife() : ''),
             paidProof: (window.zeusPaidProof ? window.zeusPaidProof() : null),   // [2026-11-11] 결제 손님 표시 (서버가 확인)
           input: sajuData.input,
           category: sajuData.category || 'fortune',
@@ -7820,7 +7822,7 @@ console.log('══════════════════════�
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
                 signal: _v88Controller.signal,
-                body: JSON.stringify({
+                body: JSON.stringify({ life: (window.zeusLife ? window.zeusLife() : ''),
                     paidProof: (window.zeusPaidProof ? window.zeusPaidProof() : null),   // [2026-11-11] 결제 손님 표시 (서버가 확인)
                     input: sajuData.input,
                     category: sajuData.category || 'fortune',
@@ -16717,6 +16719,20 @@ function showSajuInputModal() {
                     </label>
                 </div>
             </div>
+            <!-- [2026-11-12] 현재 삶 (선택) — 출가·비혼이면 배우자·자식 풀이를 그 삶에 맞게 바꿈 -->
+            <div style="margin-bottom:14px;">
+                <label style="display:block; color:#FFE08A; font-size:0.82rem; font-weight:700; margin-bottom:6px;">
+                    🌿 현재 삶 <span style="font-weight:400; color:rgba(255,255,255,0.5);">(선택 — 고르면 배우자·자식 풀이가 더 정확해집니다)</span>
+                </label>
+                <select id="sajuLife" onchange="try{localStorage.setItem('zeusLife', this.value)}catch(e){}" style="width:100%; padding:10px; background:rgba(212,175,55,0.06); border:1px solid rgba(212,175,55,0.25); border-radius:6px; color:#fff; font-size:0.88rem;">
+                    <option value="">선택 안 함</option>
+                    <option value="single">미혼</option>
+                    <option value="married">기혼</option>
+                    <option value="divorced">이혼·사별</option>
+                    <option value="nonmarried">비혼 (결혼 계획 없음)</option>
+                    <option value="monastic">출가·수행자 (스님·수도자 등)</option>
+                </select>
+            </div>
 
             <!-- [V31 #162] 사주 영역 = "사주 본질 전체 보기" 단일 고정 -->
             <!--   사장님 결정: "사주는 사주본질 전체 보기 외에는 삭제, 간결한 것이 명품" -->
@@ -17385,7 +17401,7 @@ async function runSajuOracle() {
                 'Content-Type': 'application/json',
                 'Accept': 'application/json'  // [V31 #125] JSON 명시 요구
             },
-            body: JSON.stringify({
+            body: JSON.stringify({ life: (window.zeusLife ? window.zeusLife() : ''),
                 paidProof: (window.zeusPaidProof ? window.zeusPaidProof() : null),   // [2026-11-11] 결제 손님 표시 (서버가 확인)
                 input: { year, month, day, hour: hour ? parseInt(hour) : null, calendar, gender },
                 category,
@@ -20519,12 +20535,12 @@ function renderSajuResult(data) {
                         ${_bar('버는 힘', _rf.wealth.earn)}
                         ${_bar('지키는 힘', _rf.wealth.keep)}
                         ${_ins(_rf.wealth.insight)}
-                        <div style="color:#FFE08A;font-size:0.84rem;font-weight:700;margin:8px 0 2px 0;text-align:center;">💍 ${_rf.spouse.label}</div>
+                        <div style="color:#FFE08A;font-size:0.84rem;font-weight:700;margin:8px 0 2px 0;text-align:center;">${_rf.lifeStatus === 'monastic' ? '🪷' : (_rf.lifeStatus === 'nonmarried' ? '🤝' : '💍')} ${_rf.spouse.label}</div>
                         <div style="font-size:0.72rem;opacity:0.7;font-weight:400;text-align:center;margin:0 0 4px 0;color:#FFE08A;">· ${_rf.spouse.palace}</div>
                         ${_bar('인연·안정', _rf.spouse.score)}
                         ${_ins(_rf.spouse.insight)}
-                        <div style="color:#FFE08A;font-size:0.84rem;font-weight:700;margin:8px 0 4px 0;text-align:center;">👶 ${_rf.child.label}</div>
-                        ${_bar('자식 인연', _rf.child.score)}
+                        <div style="color:#FFE08A;font-size:0.84rem;font-weight:700;margin:8px 0 4px 0;text-align:center;">${_rf.lifeStatus === 'monastic' ? '📿' : (_rf.lifeStatus === 'nonmarried' ? '🌱' : '👶')} ${_rf.child.label}</div>
+                        ${_bar(_rf.lifeStatus === 'monastic' ? '제자·가르침' : (_rf.lifeStatus === 'nonmarried' ? '결실·이어짐' : '자식 인연'), _rf.child.score)}
                         ${_ins(_rf.child.insight)}
                     </div>
                     <div style="font-size:0.72rem;color:rgba(255,255,255,0.5);margin-top:4px;line-height:1.6;white-space:normal;">※ 명식 구조로 본 경향이며, 정해진 운명이 아닙니다.</div>
@@ -23232,7 +23248,7 @@ async function zeusClaimSubmit(plan) {
                                 'Content-Type': 'application/json',
                                 'Accept': 'application/json'
                             },
-                            body: JSON.stringify({
+                            body: JSON.stringify({ life: (window.zeusLife ? window.zeusLife() : ''),
                                 paidProof: (window.zeusPaidProof ? window.zeusPaidProof() : null),   // [2026-11-11] 결제 손님 표시 (서버가 확인)
                                 input: sajuData.input,
                                 category: sajuData.category,
@@ -25214,7 +25230,7 @@ async function confirmPayment() {
                             'Content-Type': 'application/json',
                             'Accept': 'application/json'
                         },
-                        body: JSON.stringify({
+                        body: JSON.stringify({ life: (window.zeusLife ? window.zeusLife() : ''),
                             paidProof: (window.zeusPaidProof ? window.zeusPaidProof() : null),   // [2026-11-11] 결제 손님 표시 (서버가 확인)
                             input: sajuData.input,
                             category: sajuData.category,
