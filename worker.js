@@ -9754,6 +9754,67 @@ function inferAptitudeMatrix(sajuData, v31CalcTenStars) {
 //   inferAptitudeMatrix와 동일 패턴: 순수 함수, try/catch, null 가드, 기존 계산값 재사용.
 //   점수는 내부 계산 → 표시는 "유형 라벨 + 1줄 통찰" (운명 단정 회피).
 // ════════════════════════════════════════════════════════════════════════════════
+
+// ════════════════════════════════════════════════════════════════════════
+// [2026-11-12 사장님 승인] 배우자복·자식복 보정 — 관다/재다 신약, 식상 무근, 편인(인성)이 식상을 극함
+//   원칙: 지장간까지 본다 / 같은 원인 중복 감점 금지 / 격 이름만으로 감점 금지 / 통근·인성 지원 함께 판단 / 0~100
+// ════════════════════════════════════════════════════════════════════════
+function zeusRelAdjust(p, gender) {
+    const out = { spouse: 0, child: 0, notes: [] };
+    try {
+        if (!p || !p.day || typeof nyDistribution !== 'function') return out;
+        const dist = nyDistribution(p), st = nyStrength(p, dist), G = st.groups;
+        const dmEl = nyStemEl(p.day.stem);
+        const keys = ['year', 'month', 'day', 'hour'].filter(k => p[k] && p[k].branch);
+        const hiddenEls = keys.flatMap(k => (V31_BRANCH_INFO[p[k].branch] ? V31_BRANCH_INFO[p[k].branch].hidden : []).map(h => nyStemEl(h.stem)));
+        const dayRooted = hiddenEls.some(e => e === dmEl);
+        const foodEl = NY_ELS.find(e => nyGroup(dmEl, e) === '식상');
+        const foodRooted = hiddenEls.some(e => e === foodEl);
+        const weak = st.selfShare < 40;           // 신약 (중화 약약 이하)
+
+        // ① 배우자복: 배우자성(여 관성 / 남 재성) 비율 35% 이상 + 신약
+        const starG = gender === '여' ? '관성' : '재성';
+        if (G[starG] >= 35 && weak) {
+            let pen = 10; if (!dayRooted) pen += 5;
+            let mit = 0;
+            if (starG === '관성' && G.인성 >= 10) mit += 4;      // 관인상생으로 소통
+            if (starG === '재성' && G.비겁 >= 15) mit += 4;      // 비겁이 재를 감당
+            if (dayRooted) mit += 3;
+            mit = Math.min(mit, Math.floor(pen / 2));
+            out.spouse -= (pen - mit);
+            out.notes.push(`배우자성 과다(${G[starG]}%)+신약 −${pen - mit}`);
+        }
+        // ② 자식복
+        if (G.식상 > 0) {
+            if (!foodRooted) { out.child -= 10; out.notes.push('식상 무근 −10'); }
+            if (G.인성 > G.식상 && G.인성 >= 15) {               // 인성이 식상보다 강해 실제로 극함
+                if (G.재성 < G.인성 * 0.5) { out.child -= 10; out.notes.push('인성이 식상을 극함 −10'); }
+                else if (G.재성 < G.인성) { out.child -= 5; out.notes.push('인성이 식상을 극함(재성 일부 구제) −5'); }
+            }
+            const hourFood = p.hour && p.hour.stem && (nyGroup(dmEl, nyStemEl(p.hour.stem)) === '식상' || nyGroup(dmEl, nyBranchEl(p.hour.branch)) === '식상');
+            if (hourFood && foodRooted) { out.child += 5; out.notes.push('시주 식상 유력 +5'); }
+        }
+    } catch (e) { /* 보정 실패 시 기존 점수 그대로 */ }
+    return out;
+}
+
+
+// [2026-11-12] 현재 삶에 맞게 배우자복·자식복의 이름과 풀이를 바꾼다 (점수 구조는 그대로)
+function zeusApplyLifeStatus(rf, life) {
+    try {
+        if (!rf || !life) return rf;
+        rf.lifeStatus = life;
+        if (life === 'monastic') {
+            if (rf.spouse) { rf.spouse.label = '인연·소속복'; rf.spouse.insight = '수행의 길에서 이 기운은 배우자보다 스승·계율·종단과의 인연으로 나타납니다. ' + (rf.spouse.score >= 60 ? '소속과 스승의 인연이 든든한 구조입니다.' : '홀로 서서 수행의 중심을 지키는 구조입니다.'); }
+            if (rf.child)  { rf.child.label = '제자·가르침복'; rf.child.insight = '수행자에게 자식의 별은 제자·신도·법문(가르침)의 결실로 나타납니다. ' + (rf.child.score >= 70 ? '가르침이 사람에게 닿고 따르는 이가 생기는 구조입니다.' : '가르침은 깊으나 드러내기보다 안으로 익는 구조입니다.'); }
+        } else if (life === 'nonmarried') {
+            if (rf.spouse) { rf.spouse.label = '동반자복'; rf.spouse.insight = '이 기운은 결혼보다 가까운 동반자·협력자 관계로 나타납니다. ' + (rf.spouse.score >= 60 ? '믿고 기댈 사람을 곁에 두기 좋은 구조입니다.' : '혼자서도 단단히 서는 구조입니다.'); }
+            if (rf.child)  { rf.child.label = '결실·후배복'; rf.child.insight = '이 기운은 내가 키우는 일·작품·후배로 나타납니다. ' + (rf.child.score >= 70 ? '만든 것이 오래 남고 이어지는 구조입니다.' : '작게 시작해 꾸준히 쌓아 가는 구조입니다.'); }
+        }
+    } catch (e) {}
+    return rf;
+}
+
 function inferRealityFortune(sajuData, v31CalcTenStars) {
   try {
     if (!sajuData || !sajuData.pillars || !sajuData.meta) return null;
@@ -9825,13 +9886,16 @@ function inferRealityFortune(sajuData, v31CalcTenStars) {
     spouseRaw -= dayClashCount * 30;
     spouseRaw += (spouseStar > 4) ? -12 : 0;
     if (peachCount >= 2) spouseRaw -= 10;
+    const _relAdj = zeusRelAdjust(p, gender);
+    spouseRaw += _relAdj.spouse;
     const spouseScore = clip(spouseRaw);
     let palaceState;
     if (dayClashCount > 0) palaceState = '변동형 (배우자궁에 충 — 관계에 변화·자극)';
     else if (dayCombineCount > 0) palaceState = '안정형 (배우자궁에 합 — 인연이 머무는 구조)';
     else palaceState = '중립형';
     let spouseInsight;
-    if (dayClashCount > 0) spouseInsight = '배우자궁이 움직이는 구조입니다. 안정보다 변화·성장의 인연일 수 있습니다.';
+    if (_relAdj.spouse <= -7) spouseInsight = (gender === '여' ? '관성(배우자성)이 넘쳐 신약한 나를 누르는 구조입니다. 인연이 복잡하거나, 배우자보다 일·조직·소속으로 그 기운이 나타나기 쉽습니다.' : '재성(배우자성)이 넘쳐 신약한 나에게 부담이 되는 구조입니다. 인연을 감당할 힘을 기르는 것이 먼저입니다.');
+    else if (dayClashCount > 0) spouseInsight = '배우자궁이 움직이는 구조입니다. 안정보다 변화·성장의 인연일 수 있습니다.';
     else if (dayCombineCount > 0 && spouseStar > 0) spouseInsight = '배우자궁이 안정적이고 인연의 별도 분명합니다.';
     else if (spouseStar === 0) spouseInsight = '배우자성이 드러나지 않는 구조입니다. 인연은 시기와 환경으로 보완됩니다.';
     else spouseInsight = '무난한 배우자궁입니다. 관계는 노력으로 단단해집니다.';
@@ -9840,7 +9904,8 @@ function inferRealityFortune(sajuData, v31CalcTenStars) {
     let childRaw = 40;
     childRaw += (food > 0) ? 25 : -5;
     childRaw += clip(food * 6);
-    childRaw += (food > 0 && seal > 0) ? 10 : 0;
+    childRaw += (food > 0 && wealth > 0) ? 10 : 0;   // [2026-11-12] 식상생재 (예전: 식상+인성 +10은 인성이 식상을 극하는 이론과 반대라 교체)
+    childRaw += _relAdj.child;
     if (officer > 3 && food > 0 && food < officer) childRaw -= 18;
     if (hasHour && hourBranch && branches.filter(b => b!==hourBranch && isClash(hourBranch,b)).length>0) childRaw -= 12;
     if (!hasHour) childRaw = Math.min(childRaw, 70) - 10;
@@ -9848,6 +9913,7 @@ function inferRealityFortune(sajuData, v31CalcTenStars) {
     let childInsight;
     if (!hasHour) childInsight = '출생 시간이 없어 자녀궁(시주)은 참고만 하세요. 식상 흐름으로 본 경향입니다.';
     else if (food === 0) childInsight = '식상이 약한 구조입니다. 자식 인연은 시주와 대운 흐름으로 함께 봐야 합니다.';
+    else if (_relAdj.child <= -10) childInsight = '자식의 별(식상)이 뿌리가 약하거나 인성에 눌리는 구조입니다. 자식 인연은 늦거나 적을 수 있고, 제자·후배·작품으로 나타나기도 합니다.';
     else if (officer > 3 && food < officer) childInsight = '자식의 별이 눌리는 구조입니다. 관계의 거리 조절이 도움이 됩니다.';
     else childInsight = '자식의 별이 살아 있는 구조입니다. 인연이 자연스럽게 이어집니다.';
 
@@ -10066,6 +10132,11 @@ async function callGeminiForSajuNarrative(ctx, geminiApiKey) {
 
   const { raw, interpreted, currentFlow, soulBlueprint } = ctx;
 
+  const _lifeRule = (ctx && ctx.lifeStatus === 'monastic') ? '\n\n[손님의 현재 삶: 출가·수행자] 배우자·결혼·연애·자녀 이야기를 쓰지 마세요. 그 기운은 스승·계율·종단과의 인연, 제자·신도·가르침의 결실, 수행의 깊이로 바꿔 쓰세요.'
+    : (ctx && ctx.lifeStatus === 'nonmarried') ? '\n\n[손님의 현재 삶: 비혼] 결혼·배우자·자녀를 전제로 쓰지 마세요. 동반자·협력자 관계, 내가 키우는 일·작품·후배로 바꿔 쓰세요.'
+    : (ctx && ctx.lifeStatus === 'married') ? '\n\n[손님의 현재 삶: 기혼] 새 인연을 찾는다는 식으로 쓰지 말고, 지금의 배우자·가정 관계를 중심으로 쓰세요.'
+    : (ctx && ctx.lifeStatus === 'divorced') ? '\n\n[손님의 현재 삶: 이혼·사별] 지난 관계를 탓하지 말고, 혼자 서는 힘과 앞으로의 인연을 조심스럽게 쓰세요.'
+    : '';
   const systemPrompt = `당신은 20년 경력의 역술가입니다.
 아래 사주 해석 정보를 바탕으로 5개 섹션을 작성하세요.
 
@@ -10091,7 +10162,7 @@ async function callGeminiForSajuNarrative(ctx, geminiApiKey) {
 [신탁]
 (3~5문장)
 [현재흐름]
-(3~5문장)`;
+(3~5문장)` + _lifeRule;
 
   const _soulCtx = soulBlueprint ? `
 
@@ -26238,6 +26309,7 @@ const __zeusApp = {
       try {
         const body = await request.json();
         const { input, category = 'fortune', timePhase = 'medium', tier = 'free', paidProof } = body;
+        const _lifeStatus = ['single','married','divorced','nonmarried','monastic'].includes(body && body.life) ? body.life : '';   // [2026-11-12] 현재 삶 (선택)
 
         // ══════════════════════════════════════════════════════════════
         // [V60-ZEUS-SHIELD] 사주 오라클 DDoS 차단 + 사용량 게이트
@@ -26350,6 +26422,8 @@ const __zeusApp = {
               _soulBlueprintOut = (_geminiCtx && _geminiCtx.soulBlueprint) || null;
               _aptitudeMatrixOut = inferAptitudeMatrix(_sajuForCtx, v31CalcTenStars);
               _realityFortuneOut = inferRealityFortune(_sajuForCtx, v31CalcTenStars);
+              _realityFortuneOut = zeusApplyLifeStatus(_realityFortuneOut, _lifeStatus);
+              if (_geminiCtx) _geminiCtx.lifeStatus = _lifeStatus;
               _narrativeDebug = { step: 'calling_gemini', hasKey: !!env.GEMINI_API_KEY };
               _narrativeBlocks = await callGeminiForSajuNarrative(_geminiCtx, env.GEMINI_API_KEY);
               _narrativeDebug = {
