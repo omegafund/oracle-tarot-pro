@@ -9759,6 +9759,43 @@ function inferAptitudeMatrix(sajuData, v31CalcTenStars) {
 // [2026-11-12 사장님 승인] 배우자복·자식복 보정 — 관다/재다 신약, 식상 무근, 편인(인성)이 식상을 극함
 //   원칙: 지장간까지 본다 / 같은 원인 중복 감점 금지 / 격 이름만으로 감점 금지 / 통근·인성 지원 함께 판단 / 0~100
 // ════════════════════════════════════════════════════════════════════════
+// [2026-11-15] 시지(자녀궁) 본기가 편인인가 — 일간과 오행이 '나를 생하는' 관계이고 음양이 같음
+function zeusMainStem(branch) {
+    const bi = V31_BRANCH_INFO[branch]; if (!bi || !bi.hidden || !bi.hidden.length) return null;
+    return bi.hidden.reduce((a, b) => (b.weight > a.weight ? b : a)).stem;
+}
+function zeusHourPyeonin(p) {
+    try {
+        if (!p || !p.hour || !p.hour.branch) return false;
+        const ms = zeusMainStem(p.hour.branch); if (!ms) return false;
+        const dmEl = nyStemEl(p.day.stem);
+        return nyGroup(dmEl, nyStemEl(ms)) === '인성' && V31_STEM_INFO[ms] && V31_STEM_INFO[p.day.stem] && V31_STEM_INFO[ms].yinyang === V31_STEM_INFO[p.day.stem].yinyang;
+    } catch (e) { return false; }
+}
+// [2026-11-15 사장님 승인] 수행 성향 지표 — 점수 아님, 풀이 문장용. 5개 중 3개 이상이면 표시
+//   두 출가자 명식(병화·경인시)의 공통 '구조'에서 도출: 자녀궁 편인 / 시지 역마 / 배우자궁 불안정 / 식상 약함 / 인성 편중
+function zeusAsceticTrait(p, gender) {
+    const f = [];
+    try {
+        if (!p || !p.day) return { count: 0, factors: f, on: false };
+        const dist = nyDistribution(p), st = nyStrength(p, dist), G = st.groups;
+        if (zeusHourPyeonin(p)) f.push('자녀궁 편인');
+        const yeok = { '신': '인', '자': '인', '진': '인', '인': '신', '오': '신', '술': '신', '사': '해', '유': '해', '축': '해', '해': '사', '묘': '사', '미': '사' };
+        if (p.hour && p.hour.branch && yeok[p.day.branch] === p.hour.branch) f.push('시지 역마');
+        const CH = { '자': '오', '오': '자', '축': '미', '미': '축', '인': '신', '신': '인', '묘': '유', '유': '묘', '진': '술', '술': '진', '사': '해', '해': '사' };
+        const others = ['year', 'month', 'hour'].filter(k => p[k] && p[k].branch).map(k => p[k].branch);
+        const dayClash = others.includes(CH[p.day.branch]);
+        const starG = gender === '여' ? '관성' : '재성';
+        const overload = G[starG] >= 35 && st.selfShare < 40;
+        const peach = ['자', '오', '묘', '유'];
+        const peachCnt = ['year', 'month', 'day', 'hour'].filter(k => p[k] && peach.includes(p[k].branch)).length;
+        if (dayClash || overload || peachCnt >= 3) f.push('배우자궁 불안정');
+        if (G.식상 < 15) f.push('식상 약함');
+        if (G.인성 >= 30) f.push('인성 편중');
+    } catch (e) {}
+    return { count: f.length, factors: f, on: f.length >= 3 };
+}
+
 function zeusRelAdjust(p, gender) {
     const out = { spouse: 0, child: 0, notes: [] };
     try {
@@ -9791,6 +9828,8 @@ function zeusRelAdjust(p, gender) {
                 if (G.재성 < G.인성 * 0.5) { out.child -= 10; out.notes.push('인성이 식상을 극함 −10'); }
                 else if (G.재성 < G.인성) { out.child -= 5; out.notes.push('인성이 식상을 극함(재성 일부 구제) −5'); }
             }
+            // [2026-11-15] 자녀궁(시지) 본기가 편인이고 식상이 약하면 −10 (위 '인성이 식상을 극함'과 중복 감점 안 함)
+            if (zeusHourPyeonin(p) && G.식상 < 20 && !out.notes.some(n => n.startsWith('인성이 식상을 극함'))) { out.child -= 10; out.notes.push('자녀궁 편인 −10'); }
             const hourFood = p.hour && p.hour.stem && (nyGroup(dmEl, nyStemEl(p.hour.stem)) === '식상' || nyGroup(dmEl, nyBranchEl(p.hour.branch)) === '식상');
             if (hourFood && foodRooted) { out.child += 5; out.notes.push('시주 식상 유력 +5'); }
         }
@@ -9887,6 +9926,7 @@ function inferRealityFortune(sajuData, v31CalcTenStars) {
     spouseRaw += (spouseStar > 4) ? -12 : 0;
     if (peachCount >= 2) spouseRaw -= 10;
     const _relAdj = zeusRelAdjust(p, gender);
+    const _ascetic = zeusAsceticTrait(p, gender);   // [2026-11-15] 수행 성향 지표 (풀이용)
     spouseRaw += _relAdj.spouse;
     const spouseScore = clip(spouseRaw);
     let palaceState;
@@ -9917,7 +9957,11 @@ function inferRealityFortune(sajuData, v31CalcTenStars) {
     else if (officer > 3 && food < officer) childInsight = '자식의 별이 눌리는 구조입니다. 관계의 거리 조절이 도움이 됩니다.';
     else childInsight = '자식의 별이 살아 있는 구조입니다. 인연이 자연스럽게 이어집니다.';
 
+    // [2026-11-15] 수행 성향: 3개면 가볍게, 4개 이상이면 분명하게 (단정하지 않고 '기질'로)
+    if (_ascetic.count >= 4) spouseInsight += ' 또한 종교·수행·학문에 깊이 끌리고 홀로 정진하는 기질이 뚜렷한 사주입니다.';
+    else if (_ascetic.count === 3) spouseInsight += ' 혼자만의 시간과 내면 탐구를 중히 여기는 기질도 보입니다.';
     return {
+        ascetic: _ascetic,
       wealth: { label:'재물복', earn:earnScore, keep:keepScore, pattern:wealthPattern, insight:wealthInsight },
       spouse: { label:'배우자복', score:spouseScore, starName:spouseStarName, hasStar:spouseStar>0, palace:palaceState, insight:spouseInsight },
       child:  { label:'자식복', score:childScore, hasHour:hasHour, insight:childInsight },
@@ -10137,6 +10181,8 @@ async function callGeminiForSajuNarrative(ctx, geminiApiKey) {
     : (ctx && ctx.lifeStatus === 'married') ? '\n\n[손님의 현재 삶: 기혼] 새 인연을 찾는다는 식으로 쓰지 말고, 지금의 배우자·가정 관계를 중심으로 쓰세요.'
     : (ctx && ctx.lifeStatus === 'divorced') ? '\n\n[손님의 현재 삶: 이혼·사별] 지난 관계를 탓하지 말고, 혼자 서는 힘과 앞으로의 인연을 조심스럽게 쓰세요.'
     : '';
+  const _asc = ctx && ctx.asceticCount ? ctx.asceticCount : 0;
+  const _ascRule = (ctx && ctx.lifeStatus === 'monastic') ? '' : (_asc >= 4 ? '\n\n[기질] 이 사주는 종교·수행·학문에 깊이 끌리고 홀로 정진하는 기질이 뚜렷합니다. 단정하지 말고 기질로 한두 문장 자연스럽게 언급하세요.' : (_asc === 3 ? '\n\n[기질] 혼자만의 시간과 내면 탐구를 중히 여기는 기질이 있습니다. 필요하면 한 문장 정도만 언급하세요.' : ''));
   const systemPrompt = `당신은 20년 경력의 역술가입니다.
 아래 사주 해석 정보를 바탕으로 5개 섹션을 작성하세요.
 
@@ -10162,7 +10208,7 @@ async function callGeminiForSajuNarrative(ctx, geminiApiKey) {
 [신탁]
 (3~5문장)
 [현재흐름]
-(3~5문장)` + _lifeRule;
+(3~5문장)` + _lifeRule + _ascRule;
 
   const _soulCtx = soulBlueprint ? `
 
@@ -26424,6 +26470,7 @@ const __zeusApp = {
               _realityFortuneOut = inferRealityFortune(_sajuForCtx, v31CalcTenStars);
               _realityFortuneOut = zeusApplyLifeStatus(_realityFortuneOut, _lifeStatus);
               if (_geminiCtx) _geminiCtx.lifeStatus = _lifeStatus;
+              if (_geminiCtx && _realityFortuneOut && _realityFortuneOut.ascetic) _geminiCtx.asceticCount = _realityFortuneOut.ascetic.count;
               _narrativeDebug = { step: 'calling_gemini', hasKey: !!env.GEMINI_API_KEY };
               _narrativeBlocks = await callGeminiForSajuNarrative(_geminiCtx, env.GEMINI_API_KEY);
               _narrativeDebug = {
