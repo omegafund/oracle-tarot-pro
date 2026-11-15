@@ -11022,6 +11022,8 @@ function v31RunSajuOracle(input, category = 'fortune', timePhase = 'medium', tie
 
   // 5. PRO 영역 (Chunk 4)
   const proContent = v31GeneratePro(sajuData, judgeResult, tier);
+  // [서버 잠금 1단계] 봉인 봉투용 — 최상위 등급 정밀 항목 (응답에는 넣지 않고 봉투에만 담는다)
+  try { _zeusLastProFull = (tier === 'saju_premium') ? proContent : v31GeneratePro(sajuData, judgeResult, 'saju_premium'); } catch (_) { _zeusLastProFull = null; }
 
   // ★★★ [V202.13 사장님 명령] 양력/음력 둘 다 응답에 포함 ★★★
   //   사장님 명령: 사주 결과 첫머리에 "양력 1995.10.25 (음: 1995.09.08)" 표시
@@ -22586,6 +22588,129 @@ function zeusFreeMerge(a, b) {   // 둘 중 큰 쪽을 따른다 (횟수는 줄�
     return out;
 }
 
+// ══════════════════════════════════════════════════════════════
+// [서버 잠금 1단계 2026-11-15] 봉인 봉투
+//   유료 풀이를 서버만 아는 열쇠로 잠가 손님 기기에 맡겨 두고, 결제가 확인된 주문에 한해 서버가 열어 준다.
+//   저장소 기록을 늘리지 않는다 (봉투는 기기와 기존 주문 기록에 실려 다님).
+// ══════════════════════════════════════════════════════════════
+const ZEUS_SEAL_PREFIX = "zs1.";
+const ZEUS_SEAL_MAX = 150000;                         // 봉투 최대 글자 수
+const ZEUS_TAROT_LIMIT = { entry: 1, premium: 3 };    // 타로: 990원 1회, 4,900원 3회
+const ZEUS_TAROT_WINDOW_MS = 24 * 3600 * 1000;        // 4,900원 3회는 결제 후 24시간 안에
+let _zeusLastProFull = null;
+let _zeusSealKeyCache = { secret: null, key: null };
+async function zeusSealKey(env) {
+    const secret = env && env.SERVER_SECRET;
+    if (!secret || typeof secret !== "string") return null;
+    if (_zeusSealKeyCache.secret === secret && _zeusSealKeyCache.key) return _zeusSealKeyCache.key;
+    const raw = await crypto.subtle.digest("SHA-256", new TextEncoder().encode("zeus-seal-v1|" + secret));
+    const key = await crypto.subtle.importKey("raw", raw, { name: "AES-GCM" }, false, ["encrypt", "decrypt"]);
+    _zeusSealKeyCache = { secret, key };
+    return key;
+}
+function zeusB64(bytes) {
+    let s = "";
+    for (let i = 0; i < bytes.length; i += 0x8000) s += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000));
+    return btoa(s);
+}
+function zeusUnB64(str) {
+    const bin = atob(str); const out = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+    return out;
+}
+function zeusSealedOk(s) {
+    return typeof s === "string" && s.length > 40 && s.length <= ZEUS_SEAL_MAX && s.startsWith(ZEUS_SEAL_PREFIX) && /^[A-Za-z0-9+/=]+$/.test(s.slice(ZEUS_SEAL_PREFIX.length));
+}
+// 잠그기: kind = 'saju' | 'tarot'. 실패하면 null (풀이 응답에는 영향 없음)
+async function zeusSeal(env, kind, data) {
+    try {
+        const key = await zeusSealKey(env);
+        if (!key) return null;
+        const iv = crypto.getRandomValues(new Uint8Array(12));
+        const plain = new TextEncoder().encode(JSON.stringify({ v: 1, k: kind, at: Date.now(), data }));
+        const ct = new Uint8Array(await crypto.subtle.encrypt({ name: "AES-GCM", iv }, key, plain));
+        const buf = new Uint8Array(12 + ct.length); buf.set(iv, 0); buf.set(ct, 12);
+        const out = ZEUS_SEAL_PREFIX + zeusB64(buf);
+        return out.length <= ZEUS_SEAL_MAX ? out : null;
+    } catch (e) { console.error("[SEAL] 봉투 만들기 실패", e && e.message); return null; }
+}
+// 열기: 우리 서버가 잠근 것이 아니거나 손상됐으면 null
+async function zeusUnseal(env, sealed) {
+    try {
+        if (!zeusSealedOk(sealed)) return null;
+        const key = await zeusSealKey(env);
+        if (!key) return null;
+        const buf = zeusUnB64(sealed.slice(ZEUS_SEAL_PREFIX.length));
+        const plain = await crypto.subtle.decrypt({ name: "AES-GCM", iv: buf.subarray(0, 12) }, key, buf.subarray(12));
+        const o = JSON.parse(new TextDecoder().decode(plain));
+        return (o && o.v === 1 && (o.k === "saju" || o.k === "tarot") && o.data) ? o : null;
+    } catch (_) { return null; }
+}
+async function zeusSealId(sealed) {
+    const h = new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(sealed)));
+    return Array.from(h.subarray(0, 10)).map(b => b.toString(16).padStart(2, "0")).join("");
+}
+// 사주 등급별 분량 — 가격 선택 창 문구가 기준
+//   990원(entry)  : 명식·오행, 본질 흐름·종합 신탁, 에너지 가이드·행동 계획 (6블록)
+//   4,900원(premium): 990원 전체 + 6대 분야 + 시계열 + 대운 8단계 + 5대 잠재력·특수 패턴 + 정밀 4종
+const ZEUS_SAJU_PREMIUM_ONLY_V = ["sixDomain", "timeSeries", "daewoon", "potentialPatterns"];
+const ZEUS_SAJU_PREMIUM_ONLY_PRO = ["luckPhase12", "shinSal", "hiddenRisk", "timingPrecision"];
+function zeusSajuViewForTier(full, feature) {
+    if (!full || typeof full !== "object" || feature !== "entry") return full;   // premium 이상은 전체
+    const out = { ...full };
+    if (out.v184_5 && typeof out.v184_5 === "object") {
+        const v = { ...out.v184_5 };
+        for (const k of ZEUS_SAJU_PREMIUM_ONLY_V) delete v[k];
+        out.v184_5 = v;
+    }
+    if (out.pro && typeof out.pro === "object") {
+        const pr = { ...out.pro, tier: "saju_basic" };
+        for (const k of ZEUS_SAJU_PREMIUM_ONLY_PRO) delete pr[k];
+        out.pro = pr;
+    }
+    return out;
+}
+function zeusBirthKey(inp) {
+    if (!inp || typeof inp !== "object") return "";
+    const n = v => (v === null || v === undefined || v === "") ? "x" : String(parseInt(v, 10));
+    return [n(inp.year), n(inp.month), n(inp.day), n(inp.hour)].join("-");
+}
+function zeusOrderKind(reading) {
+    if (!reading) return null;
+    if (reading.category === "saju") return reading.subtype === "newyear2027" ? null : "saju";   // 신년운세는 대상 아님
+    return "tarot";
+}
+// 결제 1건으로 열 수 있는 횟수 (주문에 실린 첫 봉투 = 1회로 센다)
+function zeusAllowance(reading) {
+    const kind = zeusOrderKind(reading);
+    const limit = kind === "tarot" ? (ZEUS_TAROT_LIMIT[reading.feature] || 1) : 1;
+    const used = 1 + (Array.isArray(reading.sealedExtra) ? reading.sealedExtra.length : 0);
+    const until = (limit > 1 && reading.paidAt) ? Number(reading.paidAt) + ZEUS_TAROT_WINDOW_MS : null;
+    const open = !!until && Date.now() <= until;
+    return { kind, limit, used: Math.min(used, limit), remaining: open ? Math.max(0, limit - used) : 0, until };
+}
+// 봉투 하나를 주문 등급에 맞게 열어 화면용 모양으로
+async function zeusOpenView(env, reading, sealed) {
+    const kind = zeusOrderKind(reading);
+    if (!kind || !sealed) return null;
+    const o = await zeusUnseal(env, sealed);
+    if (!o || o.k !== kind) return null;
+    if (kind === "saju") {
+        if (!o.data.full) return null;
+        // 주문에 적힌 생년월일과 봉투의 생년월일이 다르면 열지 않는다 (다른 사람 풀이가 섞이는 일 방지)
+        if (reading.sajuInput && o.data.input && zeusBirthKey(reading.sajuInput) !== o.data.input) return null;
+        return { kind, tier: reading.feature, sealedAt: o.at, input: o.data.input || null, data: zeusSajuViewForTier(o.data.full, reading.feature) };
+    }
+    return { kind, tier: reading.feature, sealedAt: o.at, metrics: o.data.metrics || null, why: o.data.why || null, text: o.data.text || "" };
+}
+// fetch-reading 용: 결제 확인된 주문이면 주문에 실린 봉투를 열어 준다 (읽기만 함)
+async function zeusOpenedForReading(env, reading) {
+    try {
+        if (!reading || reading.paymentVerified !== true || !zeusOrderKind(reading)) return {};
+        return { opened: reading.sealed ? await zeusOpenView(env, reading, reading.sealed) : null, allowance: zeusAllowance(reading) };
+    } catch (e) { console.error("[SEAL] 열기 실패", e && e.message); return {}; }
+}
+
 // 결제 확인: 주문 기록을 읽기만 한다 (기록은 바꾸지 않음). 사주 상품, 결제 완료, 결제 후 24시간 이내일 때만 참.
 async function zeusVerifyPaidProof(env, proof) {
     try {
@@ -24999,6 +25124,7 @@ async function handleV55Request(request, env, ctx) {
                 // [v1.0.4] 타로 결제 전 클라이언트 상태 (앱 전환 결제 후 복원용 — 결제 확인된 조회에서만 반환)
                 clientState: (typeof input.clientState === 'string' && input.clientState.length <= 200000)
                     ? input.clientState : null,
+                sealed: zeusSealedOk(input.sealed) ? input.sealed : null,   // [서버 잠금 1단계] 봉인 봉투 (주문 만들 때 한 번만 들어감)
                 
                 // 결제
                 amount,
@@ -25285,6 +25411,43 @@ async function handleV55Request(request, env, ctx) {
         //     • 후속 polling: 폴링 횟수에 따라 점증
         //     • 모바일 배터리 + Gemini 비용 보호
         // ─────────────────────────────────────────────────────────
+        // [서버 잠금 1단계] POST /v55/open-sealed  { rid, token, sealed }
+        //   주문에 실린 봉투, 이미 연 봉투 → 읽기만 하고 열어 줌
+        //   새 봉투 → 타로 4,900원 주문이고 24시간 안, 남은 횟수가 있을 때만 열고 주문 기록에 1회 적음
+        if (path === '/v55/open-sealed' && method === 'POST') {
+            let body;
+            try { body = await request.json(); } catch (e) { return errorResponse('JSON 파싱 실패', 400, 'INVALID_JSON'); }
+            const rid = body && body.rid, token = body && body.token, sealed = body && body.sealed;
+            if (typeof rid !== 'string' || typeof token !== 'string' || rid.length > 100 || token.length > 600) return errorResponse('필수 값 누락', 400, 'MISSING_PARAMS');
+            if (!zeusSealedOk(sealed)) return errorResponse('봉투 형식 오류', 400, 'BAD_SEALED');
+            const reading = await getReading(env, rid);
+            if (!reading) return errorResponse('주문 없음', 404, 'READING_NOT_FOUND');
+            const tokenValid = await verifySignedAccessToken(token, {
+                readingId: reading.readingId, orderId: reading.orderId, amount: reading.amount, category: reading.category,
+                feature: reading.feature, nonce: reading.nonce, createdAt: reading.createdAt
+            }, env.SERVER_SECRET);
+            if (!tokenValid) return errorResponse('확인값 검증 실패', 401, 'INVALID_TOKEN');
+            if (reading.paymentVerified !== true) return errorResponse('결제가 확인되지 않은 주문입니다', 402, 'NOT_PAID');
+            const kind = zeusOrderKind(reading);
+            if (!kind) return errorResponse('이 주문은 대상이 아닙니다', 400, 'NOT_APPLICABLE');
+            const sid = await zeusSealId(sealed);
+            const extras = Array.isArray(reading.sealedExtra) ? reading.sealedExtra : [];
+            const ownSid = reading.sealed ? await zeusSealId(reading.sealed) : null;
+            let how = (ownSid && sid === ownSid) ? 'own' : (extras.some(x => x && x.sid === sid) ? 'reopen' : null);
+            const view = await zeusOpenView(env, reading, sealed);
+            if (!view) return errorResponse('이 주문으로 열 수 없는 봉투입니다', 400, 'BAD_SEALED');
+            let current = reading;
+            if (!how) {
+                const al = zeusAllowance(reading);
+                if (kind !== 'tarot' || al.remaining <= 0) {
+                    return jsonResponse({ valid: false, error: 'NO_ALLOWANCE', message: '이 결제로 열 수 있는 횟수를 모두 사용했습니다.', allowance: al }, 403);
+                }
+                current = await updateReading(env, rid, { sealedExtra: extras.concat([{ sid, sealed, at: Date.now() }]) });
+                how = 'new';
+            }
+            return jsonResponse({ valid: true, how, opened: view, allowance: zeusAllowance(current) });
+        }
+
         if (path === '/v55/fetch-reading' && method === 'GET') {
             // 1. URL 파라미터 추출
             const readingId = url.searchParams.get('rid');
@@ -25325,6 +25488,7 @@ async function handleV55Request(request, env, ctx) {
             
             // 4. 상태별 응답
             const status = reading.status;
+            const _zx = await zeusOpenedForReading(env, reading);   // [서버 잠금 1단계] { opened, allowance } 또는 {}
             
             // ★ READY ★ — 결과 반환 (★ 최종 응답 ★)
             if (status === STATUS.READY) {
@@ -25343,6 +25507,7 @@ async function handleV55Request(request, env, ctx) {
                     sajuInput: reading.sajuInput || null,
                     selectedCards: reading.selectedCards || null,
                     clientState: (reading.paymentVerified === true) ? (reading.clientState || null) : null,  // [v1.0.4]
+                    opened: _zx.opened || null, allowance: _zx.allowance || null,   // [서버 잠금 1단계]
                     paidAt: reading.paidAt,
                     contentAt: reading.contentAt
                 }, 200, {
@@ -25360,6 +25525,7 @@ async function handleV55Request(request, env, ctx) {
                     error: 'GENERATION_FAILED',   // [보안 S3 #21] 내부 오류 문장은 기록에만
                     failedAt: reading.failedAt || null,
                     clientState: (reading.paymentVerified === true) ? (reading.clientState || null) : null,  // [v1.0.4]
+                    opened: _zx.opened || null, allowance: _zx.allowance || null,   // [서버 잠금 1단계]
                     message: '결과 생성 실패 — 재시도 또는 문의'
                 }, 200);  // 200 응답 (클라이언트가 화면 표시 가능하도록)
             }
@@ -25391,6 +25557,7 @@ async function handleV55Request(request, env, ctx) {
                     contentReady: false,
                     message: 'Gemini fetch 진행 중',
                     clientState: (reading.paymentVerified === true) ? (reading.clientState || null) : null,  // [v1.0.4]
+                    opened: _zx.opened || null, allowance: _zx.allowance || null,   // [서버 잠금 1단계]
                     pollCount: pollCount + 1,
                     retryAfterSec,
                     elapsedMs
@@ -26374,7 +26541,9 @@ const __zeusApp = {
         // ══════════════════════════════════════════════════════════════
 
         // Chunk 5 통합: 풀 플로우 + 감사 + 자동 fallback (★ 기존 100% 보존 ★)
+        _zeusLastProFull = null;
         const result = v31RunSajuOracleWithAudit(input, category, timePhase, tier);
+        const _sajuProFull = _zeusLastProFull;   // [서버 잠금 1단계] 봉투에 담을 최상위 등급 정밀 항목
 
         if (!result.ok) {
           return new Response(JSON.stringify(result), {
@@ -26492,7 +26661,7 @@ const __zeusApp = {
           console.log('[V202.63 CATCH_DETAIL]', JSON.stringify(_narrativeDebug));
         }
 
-        const _sajuFinalResponse = new Response(JSON.stringify({
+        const _sajuBody = {
           ...result,
           domain: 'saju',           // ★ [V31 #135 사장님 4번] 클라이언트가 사주 응답인지 명시 인식
           category: category,       // ★ 입력받은 카테고리 그대로 반환
@@ -26575,7 +26744,13 @@ const __zeusApp = {
           aptitudeMatrix: _aptitudeMatrixOut, // ★ [APTITUDE MATRIX] 10개 직업군 적성 점수표 (항상 존재, null 없음)
           realityFortune: _realityFortuneOut, // ★ [REALITY FORTUNE] 재물복/배우자복/자식복 (null이면 미표시)
           message: "[V202.56 + V31 Chunk 5 + V31 #184.5 FINAL+ + V200.8.0] TEXT + NARRATIVE + PRO + AUDIT + Tier 1 + Preview 통합 완료"
-        }), {
+        };
+        // [서버 잠금 1단계] 봉인 봉투 — 응답은 지금 그대로 두고, 전체 풀이(최상위 등급 기준)를 잠가서 함께 보낸다
+        try {
+          const _sealedSaju = await zeusSeal(env, 'saju', { full: { ..._sajuBody, pro: (_sajuProFull || _sajuBody.pro) }, input: zeusBirthKey(input) });
+          if (_sealedSaju) _sajuBody.sealed = _sealedSaju;
+        } catch (_) {}
+        const _sajuFinalResponse = new Response(JSON.stringify(_sajuBody), {
           headers: { ...corsHeaders(), "Content-Type": "application/json" }
         });
 
@@ -29423,6 +29598,7 @@ ${metrics.cryptoSubtype === 'crypto_buy' ? `
         //   클라이언트: parsed?._type === 'text' 분기로 수신 (index.html 동기 수정)
         (async () => {
           let _streamOk = false;
+          let _zeusWhySealed = null;
           try {
             // [V203.14] generateContent JSON 방식 — 안정성 우선
             const geminiJson = await geminiResponse.json();
@@ -29532,6 +29708,7 @@ ${metrics.cryptoSubtype === 'crypto_buy' ? `
                     .replace(/\s*👉\s*핵심\s*:/g, '\n👉 핵심:')
                     .replace(/\n{2,}/g, '\n')
                     .trim();
+                  _zeusWhySealed = _whyText;
                   const _whyPayload = JSON.stringify({ _type: 'why', text: _whyText });
                   await writer.write(encoder.encode(`data: ${_whyPayload}\n\n`));
                 }
@@ -29546,6 +29723,11 @@ ${metrics.cryptoSubtype === 'crypto_buy' ? `
 
             const textPayload = JSON.stringify({ _type: 'text', text: geminiText });
             await writer.write(encoder.encode(`data: ${textPayload}\n\n`));
+            // [서버 잠금 1단계] 봉인 봉투 — 옛 화면은 모르는 종류라 그냥 지나친다
+            try {
+              const _sealedTarot = await zeusSeal(env, 'tarot', { metrics, why: _zeusWhySealed, text: geminiText });
+              if (_sealedTarot) await writer.write(encoder.encode(`data: ${JSON.stringify({ _type: 'sealed', sealed: _sealedTarot })}\n\n`));
+            } catch (_) {}
             await writer.write(encoder.encode(`data: [DONE]\n\n`));
             _streamOk = true;
             await commitZeusUsage(env, _shieldResult);

@@ -54,6 +54,166 @@
     })();
     </script>
     <script>
+    /* [2026-11-15 서버 잠금 2단계] 봉인 봉투
+       서버가 풀이와 함께 주는 "잠긴 전체 풀이"를 보관했다가 주문에 맡기고, 결제가 확인되면 서버가 열어 준 것으로 표시한다.
+       봉투가 없거나 열리지 않으면 아무 일도 하지 않는다 → 지금 방식 그대로 동작. */
+    (function(){
+      var API = 'https://tarot-api.omegafund01.workers.dev';
+      var Z = window.zeusSeal = { saju: null, tarot: null, promise: null, fetched: null, hadLocalPending: false };
+      function ls(k){ try { return JSON.parse(localStorage.getItem(k) || 'null'); } catch (_) { return null; } }
+      function log(k, v){ try { var o = ls('zeusSealLog') || {}; o[k] = Object.assign({ at: Date.now() }, v || {}); localStorage.setItem('zeusSealLog', JSON.stringify(o)); } catch (_) {} }
+      function num(v){ return (v === null || v === undefined || v === '') ? 'x' : String(parseInt(v, 10)); }
+      function birthKey(i){ return i ? [num(i.year), num(i.month), num(i.day), num(i.hour)].join('-') : ''; }
+      Z.log = log;
+      try { Z.hadLocalPending = !!localStorage.getItem('pendingOracle'); } catch (_) {}
+
+      // 받은 봉투 보관 (사주는 새로고침 뒤에도 쓰도록 6시간 보관, 타로는 풀이 상태와 함께 저장됨)
+      Z.keep = function(kind, sealed){
+        if (typeof sealed !== 'string' || sealed.indexOf('zs1.') !== 0) return;
+        Z[kind] = sealed;
+        if (kind === 'saju') { try { localStorage.setItem('zeusSealedSaju', JSON.stringify({ sealed: sealed, at: Date.now() })); } catch (_) {} }
+        log('recv_' + kind, { size: sealed.length });
+      };
+      // 주문에 함께 맡길 봉투
+      Z.forOrder = function(category){
+        try {
+          if (category === 'saju') {
+            if (Z.saju) return Z.saju;
+            var o = ls('zeusSealedSaju');
+            return (o && o.sealed && (Date.now() - o.at) < 6 * 3600 * 1000) ? o.sealed : null;
+          }
+          var po = ls('pendingOracle');
+          return (po && typeof po.sealed === 'string') ? po.sealed : null;
+        } catch (_) { return null; }
+      };
+      Z.saveAllowance = function(rid, token, al){
+        try {
+          if (!al || al.kind !== 'tarot' || !(al.limit > 1)) return;
+          var last = ls('zeusLastPaid') || {};
+          localStorage.setItem('zeusTarotPass', JSON.stringify({ rid: rid, token: token, limit: al.limit, used: al.used, remaining: al.remaining, until: al.until, query: (last.rid === rid ? last.query : '') }));
+        } catch (_) {}
+      };
+      // 결제 복귀: 주문에 맡겨 둔 봉투를 서버가 열어 준 것을 미리 받아 둔다 (화면 준비와 동시에 진행 → 기다림 없음)
+      Z.start = function(rid, token){
+        Z.rid = rid; Z.token = token;
+        Z.promise = fetch(API + '/v55/fetch-reading?rid=' + encodeURIComponent(rid) + '&token=' + encodeURIComponent(token), { cache: 'no-store' })
+          .then(function(r){ return r.json(); })
+          .then(function(d){
+            Z.fetched = d || null;
+            if (d && d.allowance) Z.saveAllowance(rid, token, d.allowance);
+            if (d && d.opened) log('opened', { kind: d.opened.kind, tier: d.opened.tier, via: 'order' });
+            else log('opened_none', { status: (d && d.status) || '' });
+            return d;
+          })
+          .catch(function(e){ log('opened_err', { msg: String((e && e.message) || e).slice(0, 80) }); return null; });
+        return Z.promise;
+      };
+      Z.wait = function(ms){
+        if (!Z.promise) return Promise.resolve(null);
+        return Promise.race([Z.promise, new Promise(function(r){ setTimeout(function(){ r(null); }, ms); })]);
+      };
+      function applyOpened(pending, opened, via){
+        if (pending.cachedFullText && !pending.zeusLocked && opened.text !== pending.cachedFullText) return false;   // 다른 풀이의 봉투면 쓰지 않는다
+        pending.cachedFullText = opened.text;
+        if (opened.metrics) {
+          pending.serverMetrics = opened.metrics;
+          if (opened.why && pending.serverMetrics.layers) pending.serverMetrics.layers.criticalInterpretation = opened.why;
+        }
+        pending.savedAt = Date.now();   // 서버가 결제를 확인했으므로 다시보기 시간 제한을 적용하지 않는다
+        log('tarot_applied', { tier: opened.tier, via: via });
+        return true;
+      }
+      // 타로 결제 복귀: 서버가 연 풀이로 바꿔 끼운다. 못 하면 false (지금 방식 그대로 진행)
+      Z.applyTarot = async function(pending){
+        if (!Z.promise || !pending) return false;
+        var isPass = false;
+        try { isPass = new URLSearchParams(location.search).get('zpass') === '1' || sessionStorage.getItem('zeusPassPending') === '1'; } catch (_) {}
+        try { sessionStorage.removeItem('zeusPassPending'); } catch (_) {}
+        var f = await Z.wait(Z.hadLocalPending ? 800 : 4000);
+        if (f && f.opened && f.opened.kind === 'tarot' && applyOpened(pending, f.opened, 'order')) return true;
+        // 주문에 실린 봉투가 이 풀이가 아니면 (4,900원 2·3번째 풀이) 기기에 있는 봉투를 이 주문으로 연다
+        if (pending.sealed && Z.rid && Z.token) {
+          try {
+            var r = await fetch(API + '/v55/open-sealed', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ rid: Z.rid, token: Z.token, sealed: pending.sealed }) });
+            var d = await r.json();
+            if (d && d.allowance) Z.saveAllowance(Z.rid, Z.token, d.allowance);
+            if (d && d.valid && d.opened && applyOpened(pending, d.opened, d.how)) return true;
+            log('open_denied', { code: (d && d.error) || r.status });
+            if (isPass && d && d.error === 'NO_ALLOWANCE') {
+              try { localStorage.removeItem('zeusTarotPass'); } catch (_) {}
+              alert('이용권으로 볼 수 있는 횟수를 모두 사용했습니다.');
+              location.replace('/');
+              return false;
+            }
+          } catch (e) { log('open_err', { msg: String((e && e.message) || e).slice(0, 80) }); }
+        }
+        log('tarot_fallback', {});
+        return false;
+      };
+      // 사주 풀이 요청: 결제 복귀 화면이고 서버가 연 풀이가 있으면 그것을 바로 쓴다 (AI를 다시 부르지 않음). 없으면 지금 방식.
+      Z.sajuFetch = async function(url, opts){
+        try {
+          var body = JSON.parse((opts && opts.body) || '{}');
+          if (Z.promise && body && body.tier && body.tier !== 'free') {
+            var f = await Z.wait(2500);
+            var op = f && f.opened;
+            if (op && op.kind === 'saju' && op.data && op.data.ok !== false && (!op.input || op.input === birthKey(body.input))) {
+              log('saju_applied', { tier: op.tier });
+              return new Response(JSON.stringify(op.data), { status: 200, headers: { 'Content-Type': 'application/json' } });
+            }
+            log('saju_fallback', { why: !f ? 'no-reply' : (!op ? 'no-envelope' : 'other-birth') });
+          }
+        } catch (_) {}
+        var res = await fetch(url, opts);
+        try { res.clone().json().then(function(d){ if (d && d.sealed) Z.keep('saju', d.sealed); }).catch(function(){}); } catch (_) {}
+        return res;
+      };
+      // 타로 4,900원 이용권(24시간 3회)에 남은 횟수가 있으면 결제창 대신 사용 여부를 묻는다
+      Z.pass = function(){ var o = ls('zeusTarotPass'); return (o && o.remaining > 0 && o.until && Date.now() < o.until && o.query) ? o : null; };
+      Z.tryPass = function(){
+        var o = Z.pass();
+        if (!o || !Z.tarot || typeof window.zeusSavePendingOracle !== 'function') return false;
+        var hrs = Math.max(1, Math.ceil((o.until - Date.now()) / 3600000));
+        if (!confirm('4,900원 이용권이 남아 있습니다.\n남은 횟수 ' + o.remaining + '회 · 약 ' + hrs + '시간 안에 사용\n\n이번 풀이에 1회를 사용할까요?')) return false;
+        if (!window.zeusSavePendingOracle()) return false;
+        try { sessionStorage.setItem('zeusPassPending', '1'); } catch (_) {}
+        location.href = '/' + o.query;
+        return true;
+      };
+      // 다시보기 링크 (다른 기기에서도 열 수 있음)
+      Z.reviewLink = function(){ var o = ls('zeusLastPaid'); return (o && o.query) ? (location.origin + '/' + o.query) : ''; };
+      function showLinkPill(){
+        try {
+          if (document.getElementById('zeusReviewPill') || !Z.reviewLink()) return;
+          var b = document.createElement('div');
+          b.id = 'zeusReviewPill';
+          b.style.cssText = 'position:fixed;left:10px;bottom:10px;z-index:99990;display:flex;align-items:center;gap:6px;padding:7px 10px;border-radius:18px;background:rgba(10,14,12,0.92);border:1px solid rgba(201,162,39,0.6);color:#E8C766;font-size:12px;font-weight:700;max-width:calc(100vw - 20px);box-sizing:border-box;';
+          b.innerHTML = '<span id="zeusReviewCopy" style="cursor:pointer;">🔗 다시보기 링크 복사</span><span id="zeusReviewClose" style="cursor:pointer;padding:0 4px;color:rgba(255,255,255,0.55);">✕</span>';
+          document.body.appendChild(b);
+          document.getElementById('zeusReviewClose').onclick = function(){ b.remove(); };
+          document.getElementById('zeusReviewCopy').onclick = function(){
+            var link = Z.reviewLink(), el = this;
+            var done = function(){ el.textContent = '✓ 복사했습니다 — 보관해 두면 다른 기기에서도 열립니다'; setTimeout(function(){ b.remove(); }, 4000); };
+            if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(link).then(done, function(){ prompt('아래 주소를 복사해 보관하세요', link); });
+            else prompt('아래 주소를 복사해 보관하세요', link);
+          };
+        } catch (_) {}
+      }
+      try {
+        var p = new URLSearchParams(location.search);
+        if (p.get('paid') === 'ok' && p.get('rid') && p.get('token') && p.get('ny') !== '1') {
+          p.delete('zpass');
+          try { localStorage.setItem('zeusLastPaid', JSON.stringify({ rid: p.get('rid'), token: p.get('token'), query: '?' + p.toString(), at: Date.now() })); } catch (_) {}
+          Z.start(p.get('rid'), p.get('token')).then(function(d){
+            if (d && d.opened) window.addEventListener('load', function(){ setTimeout(showLinkPill, 6000); });
+            if (d && d.opened && document.readyState === 'complete') setTimeout(showLinkPill, 6000);
+          });
+        }
+      } catch (_) {}
+    })();
+    </script>
+    <script>
     /* [v1.2.0 NY27] 신년사주 결제 복귀 인터셉터 — 다른 모든 스크립트보다 먼저 실행
        결제 번호가 신년사주 대기 번호와 같거나 ny=1이면, 일반 사주·타로 복원 장치가 반응하지 않도록
        주소를 ?ny=report&paid=ny 로 바꾸고 신년사주 화면이 보고서를 불러오게 함 */
@@ -5568,7 +5728,7 @@ const PAYMENT_PLANS = {
         amount: 4900,
         label:  '1일 PREMIUM 이용권',
         emoji:  '☯',
-        desc:   '사주 프리미엄 1회 / 타로 3회 (24시간)',
+        desc:   '사주 프리미엄 1회 (사주 주문) / 타로 3회·24시간 (타로 주문)',
         hours:  24,
         sajuOnly: false // 타로/사주 공용으로 쓰기 위해 false 또는 제거
     }
@@ -5623,6 +5783,30 @@ function _v55GetCategoryHint() {
 
 // V55 readingId 발급 — POST /v55/create-reading
 //   AbortController + 15s timeout = V55PaymentContext.js 동일 패턴 (BFCache 방어)
+// [서버 잠금 2단계] 4,900원 타로 이용권(24시간 3회)으로 지금 풀이를 열 때 — 결제 전에 하던 것과 같은 내용으로 풀이 상태를 저장
+window.zeusSavePendingOracle = function() {
+    try {
+        const po = {
+            savedAt:        Date.now(),
+            question:       document.getElementById('seed-input')?.value || '',
+            cachedFullText: (typeof cachedFullText !== 'undefined') ? cachedFullText : '',
+            selectedCards:  (typeof selectedCards !== 'undefined') ? selectedCards : [],
+            serverMetrics:  window._serverMetrics || null,
+            reversedFlags:  window._reversedFlags || [],
+            queryMode:      (typeof CURRENT_MODE !== 'undefined') ? CURRENT_MODE : 'life',
+            loveSubType:    (typeof LOVE_SUBTYPE !== 'undefined') ? LOVE_SUBTYPE : '',
+            stockSubType:   (typeof STOCK_SUBTYPE !== 'undefined') ? STOCK_SUBTYPE : '',
+            reSubType:      (typeof RE_SUBTYPE !== 'undefined') ? RE_SUBTYPE : '',
+            fortuneSubType: (typeof FORTUNE_SUBTYPE !== 'undefined') ? FORTUNE_SUBTYPE : '',
+            activeDomainBar: resolveActiveDomain(),
+            sealed:         (window.zeusSeal && window.zeusSeal.tarot) || null
+        };
+        if (!po.cachedFullText || !po.sealed || !po.selectedCards || po.selectedCards.length !== 3) return false;
+        localStorage.setItem('pendingOracle', JSON.stringify(po));
+        try { sessionStorage.setItem('pendingOracle', JSON.stringify(po)); } catch (_) {}
+        return true;
+    } catch (_) { return false; }
+};
 async function _v55CreateReading(planKey, categoryHint, extraPayload) {
     const v55Plan = V54_TO_V55_PLAN_ALIAS[planKey] || planKey;
     // ★ Patch 2.4-feature-fix ★
@@ -5640,6 +5824,7 @@ async function _v55CreateReading(planKey, categoryHint, extraPayload) {
         categoryHint:   categoryHint,   // 별칭 (워커가 둘 중 어느 이름으로 받든 OK)
         idempotencyKey: `${planKey}_${Date.now()}_${Math.random().toString(36).slice(2,10)}`,
         clientVersion:  (typeof APP_VERSION !== 'undefined') ? APP_VERSION : 'unknown',
+        sealed:         (window.zeusSeal ? window.zeusSeal.forOrder(categoryHint) : null) || undefined,   // [서버 잠금 2단계] 봉인 봉투 (없으면 생략)
         ...(extraPayload || {})
     };
     
@@ -6069,7 +6254,7 @@ window.addEventListener('load', () => {
       
       // PRO 사주 점사 재호출
       const SAJU_API_AUTO = 'https://tarot-api.omegafund01.workers.dev';
-      fetch(`${SAJU_API_AUTO}/saju/oracle`, {
+      (window.zeusSeal ? window.zeusSeal.sajuFetch : window.fetch.bind(window))(`${SAJU_API_AUTO}/saju/oracle`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
         body: JSON.stringify({ life: (window.zeusLife ? window.zeusLife() : ''),
@@ -7832,7 +8017,7 @@ console.log('══════════════════════�
                 console.warn(`⏱ [V202.7] saju/oracle fetch timeout (${_v207Timeout/1000}초) — 강제 abort`);
             }, _v207Timeout);
             
-            const response = await fetch(`${SAJU_API_RESTORE}/saju/oracle`, {
+            const response = await (window.zeusSeal ? window.zeusSeal.sajuFetch : window.fetch.bind(window))(`${SAJU_API_RESTORE}/saju/oracle`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
                 signal: _v88Controller.signal,
@@ -8399,6 +8584,7 @@ console.log('══════════════════════�
         }
         const pending = JSON.parse(raw);
         if (!pending || !pending.savedAt) return;
+        try { if (window.zeusSeal) await window.zeusSeal.applyTarot(pending); } catch (_) {}   // [서버 잠금 2단계]
 
         // 30분 만료 체크
         const ageMs = Date.now() - pending.savedAt;
@@ -9119,6 +9305,7 @@ async function renderStream(fetchPromise, cards) {
                     //    이걸 전역에 저장해두면 buildInvestmentData가 서버 값을 우선 사용
                     if (parsed && parsed._type === 'metrics' && parsed.data) {
                         window._serverMetrics = parsed.data;
+                        try { if (window.zeusSeal) window.zeusSeal.tarot = null; } catch (_) {}   // [서버 잠금 2단계] 새 풀이 시작 → 이전 봉투 비움
                         // [V23.4] 콘솔 디버그 (개발 모드)
                         if (window.location.hostname === 'localhost' || window.location.search.includes('debug=1')) {
                             debugMetrics(parsed.data);
@@ -9169,6 +9356,10 @@ async function renderStream(fetchPromise, cards) {
                     }
 
                     // [V203.8] generateContent 일반 호출 전환 — {_type:"text"} 이벤트 수신
+                    if (parsed && parsed._type === 'sealed') {   // [서버 잠금 2단계] 봉인 봉투 보관 (글에는 넣지 않음)
+                        try { if (window.zeusSeal) window.zeusSeal.keep('tarot', parsed.sealed); } catch (_) {}
+                        continue;
+                    }
                     const chunk = (parsed?._type === 'text' && parsed?.text)
                         ? parsed.text
                         : (parsed?.candidates?.[0]?.content?.parts?.[0]?.text || ''); // 하위 호환
@@ -17409,7 +17600,7 @@ async function runSajuOracle() {
             console.warn('사주 입력 저장 실패 (localStorage 미지원?):', e);
         }
 
-        const response = await fetch(`${SAJU_API}/saju/oracle`, {
+        const response = await (window.zeusSeal ? window.zeusSeal.sajuFetch : window.fetch.bind(window))(`${SAJU_API}/saju/oracle`, {
             method: 'POST',
             headers: { 
                 'Content-Type': 'application/json',
@@ -18829,15 +19020,15 @@ function renderSajuKakaoChatV185(data) {
                         <ul style="list-style:none; padding:0; margin:0 0 12px 0;">
                             <li style="position:relative; padding:3px 0 3px 22px; color:rgba(255,255,255,0.82); font-size:0.85rem; line-height:1.45;">
                                 <span style="position:absolute; left:0; top:3px; color:rgba(255,255,255,0.55); font-weight:700;">✔</span>
-                                현재 상태 분석
+                                사주 명식 + 오행 분포
                             </li>
                             <li style="position:relative; padding:3px 0 3px 22px; color:rgba(255,255,255,0.82); font-size:0.85rem; line-height:1.45;">
                                 <span style="position:absolute; left:0; top:3px; color:rgba(255,255,255,0.55); font-weight:700;">✔</span>
-                                사주 명식
+                                본질 흐름 + 종합 신탁
                             </li>
                             <li style="position:relative; padding:3px 0 3px 22px; color:rgba(255,255,255,0.82); font-size:0.85rem; line-height:1.45;">
                                 <span style="position:absolute; left:0; top:3px; color:rgba(255,255,255,0.55); font-weight:700;">✔</span>
-                                오늘 / 월 / 2026 흐름
+                                에너지 가이드 + 행동 계획
                             </li>
                         </ul>
                         <div style="text-align:center; padding:11px; 
@@ -19205,9 +19396,9 @@ window.renderSajuPaywallBlockHTML = function(previewData) {
             <span class="saju-paywall-card-name">990원 — 기본 분석</span>
         </div>
         <ul class="saju-paywall-card-bullets">
-            <li>현재 상태 분석</li>
-            <li>사주 명식</li>
-            <li>오늘 / 월 / 2026 흐름</li>
+            <li>사주 명식 + 오행 분포</li>
+            <li>본질 흐름 + 종합 신탁</li>
+            <li>에너지 가이드 + 행동 계획</li>
         </ul>
         <button type="button" 
                 class="saju-paywall-cta saju-paywall-cta-990"
@@ -22277,6 +22468,7 @@ window.zeusBankSelectPlan = function(btn, plan, amount) {
 // 결제 모달 & 유료 전환
 // ════════════════════════════════════
 function showPayModal() {
+    try { if (window.zeusSeal && window.zeusSeal.tryPass()) return; } catch (_) {}   // [서버 잠금 2단계] 4,900원 타로 이용권에 남은 횟수가 있으면 먼저 묻는다
     const cfg = PAYMENT_CONFIG;
 
     // [V20.10] 계좌이체 행동 추적 시작 (체류 시간 측정용)
@@ -23256,7 +23448,7 @@ async function zeusClaimSubmit(plan) {
                         `;
                         document.body.appendChild(loadingDiv);
                         
-                        const response = await fetch(`${SAJU_API}/saju/oracle`, {
+                        const response = await (window.zeusSeal ? window.zeusSeal.sajuFetch : window.fetch.bind(window))(`${SAJU_API}/saju/oracle`, {
                             method: 'POST',
                             headers: {
                                 'Content-Type': 'application/json',
@@ -24880,7 +25072,8 @@ async function startTossPayment(planKey, method) {
             stockSubType:   (typeof STOCK_SUBTYPE !== 'undefined') ? STOCK_SUBTYPE : '',
             reSubType:      (typeof RE_SUBTYPE !== 'undefined') ? RE_SUBTYPE : '',
             fortuneSubType: (typeof FORTUNE_SUBTYPE !== 'undefined') ? FORTUNE_SUBTYPE : '',
-            activeDomainBar: resolveActiveDomain()  // [V203.2] 의도 fallback (결제복귀 빈값 방지)
+            activeDomainBar: resolveActiveDomain(),  // [V203.2] 의도 fallback (결제복귀 빈값 방지)
+            sealed:         (window.zeusSeal && window.zeusSeal.tarot) || null   // [서버 잠금 2단계] 이 풀이의 봉인 봉투
         };
         localStorage.setItem('pendingOracle', JSON.stringify(pendingOracle));
         // [MOBILE-FIX] 모바일 Toss 결제창 왕복 시 localStorage 소실 방지
@@ -25238,7 +25431,7 @@ async function confirmPayment() {
                     `;
                     document.body.appendChild(loadingDiv);
                     
-                    const response = await fetch(`${SAJU_API}/saju/oracle`, {
+                    const response = await (window.zeusSeal ? window.zeusSeal.sajuFetch : window.fetch.bind(window))(`${SAJU_API}/saju/oracle`, {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',

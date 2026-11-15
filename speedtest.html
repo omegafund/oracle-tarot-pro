@@ -25,7 +25,7 @@
   <button id="b1" onclick="run('saju')">① 사주 무료 명식 (생년월일 → 명식)</button>
   <button id="b2" onclick="run('tarot')">② 일반 운세 무료 타로</button>
   <button id="b3" onclick="runAll()">③ 둘 다 2번씩 (4초 간격)</button>
-  <table><thead><tr><th>시각</th><th>항목</th><th>전체(초)</th><th>AI(초)</th><th>제한장치</th><th>서버 기타</th><th>통신</th><th>모델</th></tr></thead><tbody id="tb"></tbody></table>
+  <table><thead><tr><th>시각</th><th>항목</th><th>전체(초)</th><th>AI(초)</th><th>제한장치</th><th>서버 기타</th><th>통신</th><th>모델</th><th>봉투</th></tr></thead><tbody id="tb"></tbody></table>
   <div class="note">
     <b>읽는 법</b><br>
     · <b>전체</b>: 버튼을 누른 순간부터 응답이 끝까지 올 때까지 (손님이 기다리는 시간)<br>
@@ -34,25 +34,29 @@
     · <b>서버 기타</b>: 서버에서 AI·제한장치 말고 걸린 시간 (명식 계산, 기록 저장 등)<br>
     · <b>통신</b>: 사장님 기기와 서버 사이를 오가는 시간 (휴대폰 데이터면 길어짐)<br>
     · <b>모델</b>: 실제로 쓰인 AI 모델. "→2.5"가 붙으면 새 모델이 실패해 예전 모델로 대신한 것<br>
+    · <b>봉투</b>: 서버가 잠가서 함께 보낸 "유료 풀이 봉투"의 크기. "없음"이면 봉투가 오지 않은 것 (속도와 함께 확인)<br>
     이 표를 캡처해서 보내 주시면 됩니다.
   </div>
+  <h1 style="margin-top:22px">봉투 기록 (이 기기)</h1>
+  <p class="s">이 브라우저에서 마지막으로 있었던 일입니다. 실결제 시험 뒤에 이 화면을 열어 캡처해 주세요.</p>
+  <table><thead><tr><th>항목</th><th>시각</th><th>내용</th></tr></thead><tbody id="lg"></tbody></table>
 </div>
 <script>
 const API='https://tarot-api.omegafund01.workers.dev';
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
-function row(name,ms,t,status){
+function row(name,ms,t,status,seal){
   const tr=document.createElement('tr');
   const sec=x=>(x/1000).toFixed(1);
   const ok=status>=200&&status<300;
   let ai='-',sh='-',mdl='-',etc='-',net='-';
   if(t){ai=sec(t.ai||0)+(t.aiCalls>1?' ('+t.aiCalls+'회)':'');sh=((t.shield||0)/1000).toFixed(2);mdl=(t.model||'-').replace('gemini-','')+(t.fallback?' →2.5':'');
     if(t.total!=null){etc=sec(Math.max(0,t.total-(t.ai||0)-(t.shield||0)));net=sec(Math.max(0,ms-t.total));}}
-  tr.innerHTML=`<td class="n">${new Date().toLocaleTimeString('ko-KR',{hour12:false})}</td><td>${name}${ok?'':' <span class="bad">('+status+')</span>'}</td><td class="n ${ms>8000?'bad':'ok'}">${sec(ms)}</td><td class="n">${ai}</td><td class="n">${sh}</td><td class="n">${etc}</td><td class="n">${net}</td><td>${mdl}</td>`;
+  tr.innerHTML=`<td class="n">${new Date().toLocaleTimeString('ko-KR',{hour12:false})}</td><td>${name}${ok?'':' <span class="bad">('+status+')</span>'}</td><td class="n ${ms>8000?'bad':'ok'}">${sec(ms)}</td><td class="n">${ai}</td><td class="n">${sh}</td><td class="n">${etc}</td><td class="n">${net}</td><td>${mdl}</td><td class="n ${seal?'ok':'bad'}">${seal?Math.round(seal/1024)+'KB':'없음'}</td>`;
   document.getElementById('tb').prepend(tr);
 }
 async function run(kind){
   const btns=[...document.querySelectorAll('button')];btns.forEach(b=>b.disabled=true);
-  const t0=performance.now();let status=0,timing=null;
+  const t0=performance.now();let status=0,timing=null,seal=0;
   try{
     let res;
     if(kind==='saju'){
@@ -65,11 +69,28 @@ async function run(kind){
     }
     status=res.status;
     try{timing=JSON.parse(res.headers.get('X-Zeus-Timing')||'null');}catch(_){}
-    await res.text();
+    const body=await res.text();
+    try{
+      if(kind==='saju'){const j=JSON.parse(body);seal=(j&&typeof j.sealed==='string')?j.sealed.length:0;}
+      else{const m=body.match(/"_type":"sealed","sealed":"([^"]+)"/);seal=m?m[1].length:0;}
+    }catch(_){}
   }catch(e){status='오류'}
-  row(kind==='saju'?'사주 명식':'무료 타로',performance.now()-t0,timing,status);
+  row(kind==='saju'?'사주 명식':'무료 타로',performance.now()-t0,timing,status,seal);
   btns.forEach(b=>b.disabled=false);
 }
+function showLog(){
+  const names={recv_saju:'사주 봉투 받음',recv_tarot:'타로 봉투 받음',opened:'결제 후 서버가 봉투를 열어 줌',opened_none:'결제 복귀 — 열린 풀이 없음(옛 방식으로 표시)',opened_err:'결제 복귀 — 서버 응답 오류',
+    tarot_applied:'타로: 열린 풀이로 표시함',tarot_fallback:'타로: 지금 방식으로 표시함',saju_applied:'사주: 열린 풀이로 표시함 (AI 재호출 없음)',saju_fallback:'사주: 지금 방식으로 표시함',open_denied:'이용권으로 열기 거절',open_err:'이용권 열기 오류'};
+  let o={};try{o=JSON.parse(localStorage.getItem('zeusSealLog')||'{}')}catch(_){}
+  const tb=document.getElementById('lg');tb.innerHTML='';
+  const keys=Object.keys(o).sort((a,b)=>(o[b].at||0)-(o[a].at||0));
+  if(!keys.length){tb.innerHTML='<tr><td colspan="3">기록 없음</td></tr>';return;}
+  for(const k of keys){const v=o[k];const d=Object.keys(v).filter(x=>x!=='at').map(x=>x+': '+v[x]).join(', ');
+    const tr=document.createElement('tr');tr.innerHTML=`<td>${names[k]||k}</td><td class="n">${new Date(v.at).toLocaleString('ko-KR',{hour12:false})}</td><td>${d.replace(/</g,'&lt;')}</td>`;tb.appendChild(tr);}
+  let pass=null;try{pass=JSON.parse(localStorage.getItem('zeusTarotPass')||'null')}catch(_){}
+  if(pass){const tr=document.createElement('tr');tr.innerHTML=`<td>타로 4,900원 이용권</td><td class="n">${new Date(pass.until).toLocaleString('ko-KR',{hour12:false})} 까지</td><td>3회 중 남은 횟수 ${pass.remaining}회</td>`;tb.appendChild(tr);}
+}
+showLog();
 async function runAll(){for(const k of ['saju','tarot','saju','tarot']){await run(k);await sleep(4000);}}
 </script>
 </body>
