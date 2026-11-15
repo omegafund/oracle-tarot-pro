@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>결제 복귀 진단</title>
+<style>
+  body{margin:0;background:#0f1220;color:#f2f2f5;font-family:"Apple SD Gothic Neo","Malgun Gothic",sans-serif;line-height:1.6}
+  .w{max-width:640px;margin:0 auto;padding:18px 16px}
+  h1{font-size:1.2rem;color:#e8c766;margin:0 0 6px}
+  .s{color:#a3a8c2;font-size:.88rem;margin:0 0 14px}
+  .box{background:#1a1f33;border-radius:10px;padding:12px;margin:10px 0;font-size:.86rem;word-break:break-all}
+  .k{color:#e8c766;font-weight:800}
+  .ok{color:#5ad19a;font-weight:800}.bad{color:#ff7a7a;font-weight:800}
+  button{width:100%;padding:14px;border:0;border-radius:10px;background:#e8c766;color:#1a1a1a;font-weight:800;font-size:1rem;margin:6px 0}
+  pre{white-space:pre-wrap;font-size:.75rem;color:#cfd3e6;margin:6px 0 0}
+</style>
+</head>
+<body>
+<div class="w">
+  <h1>🩺 결제 복귀 진단</h1>
+  <p class="s">결제한 그 휴대폰·그 브라우저에서 열어 주세요. 이 화면 전체를 캡처해서 보내 주시면 됩니다.</p>
+  <div id="out"></div>
+  <button id="reopen" style="display:none">💳 결제한 풀이 다시 열기</button>
+</div>
+<script>
+const API='https://tarot-api.omegafund01.workers.dev';
+const ls=k=>{try{return localStorage.getItem(k)}catch(e){return null}};
+const j=k=>{try{return JSON.parse(ls(k)||'null')}catch(e){return null}};
+const ago=t=>t?Math.round((Date.now()-t)/60000)+'분 전':'-';
+const out=document.getElementById('out');
+function box(title,html){const d=document.createElement('div');d.className='box';d.innerHTML='<div class="k">'+title+'</div>'+html;out.appendChild(d);}
+const last=j('zeusLastPaid'), log=j('zeusSealLog'), pend=j('sajuPendingResult'), sealed=j('zeusSealedSaju');
+box('① 마지막 결제 복귀 기록', last ? ('있음 ('+ago(last.at)+')<pre>'+String(last.query||'').replace(/token=[^&]+/,'token=…')+'</pre>') : '<span class="bad">없음</span> — 결제 후 이 브라우저로 돌아오지 않았을 수 있음');
+box('② 사주 입력 기록', pend ? ('있음 ('+ago(pend.savedAt)+') '+(pend.input?pend.input.year+'.'+pend.input.month+'.'+pend.input.day:'')) : '<span class="bad">없음</span>');
+box('③ 사주 봉투(결제 전 받은 잠긴 풀이)', sealed ? ('있음 ('+ago(sealed.at)+', '+Math.round((sealed.sealed||'').length/1024)+'KB)') : '<span class="bad">없음</span>');
+box('④ 결제 상태 표시', '등급: '+(ls('sajuPaidPlan')||'-')+' / 만료: '+(ls('sajuPaidExpiresAt')?new Date(+ls('sajuPaidExpiresAt')).toLocaleString('ko-KR'):'-'));
+box('⑤ 복귀 과정 기록', log ? '<pre>'+Object.entries(log).map(([k,v])=>k+': '+JSON.stringify(Object.assign({},v,{at:ago(v.at)}))).join('\n')+'</pre>' : '없음');
+if(last && last.rid && last.token){
+  box('⑥ 서버의 주문 상태', '<span id="srv">확인 중…</span>');
+  fetch(API+'/v55/fetch-reading?rid='+encodeURIComponent(last.rid)+'&token='+encodeURIComponent(last.token),{cache:'no-store'})
+   .then(r=>r.json().then(d=>({s:r.status,d}))).then(({s,d})=>{
+     const el=document.getElementById('srv');
+     el.innerHTML='응답 '+s+' · 결제확인: '+(d.paymentVerified===true||d.paid===true||d.status==='paid'||d.status==='ready'?'<span class="ok">예</span>':'<b>'+(d.status||d.error||'?')+'</b>')+
+       ' · 종류: '+(d.category||'-')+' · 금액: '+(d.amount||'-')+' · 열린 풀이: '+(d.opened?('<span class="ok">'+d.opened.kind+'/'+d.opened.tier+'</span>'):'<span class="bad">없음</span>')+
+       '<pre>'+JSON.stringify(Object.fromEntries(Object.entries(d).filter(([k])=>!['opened','content','clientState','sealed'].includes(k)))).slice(0,600)+'</pre>';
+     const b=document.getElementById('reopen');b.style.display='block';
+     b.onclick=()=>{location.href='/'+(last.query||('?paid=ok&rid='+encodeURIComponent(last.rid)+'&token='+encodeURIComponent(last.token)));};
+   }).catch(e=>{document.getElementById('srv').innerHTML='<span class="bad">조회 실패: '+e.message+'</span>';});
+}
+</script>
+</body>
+</html>
