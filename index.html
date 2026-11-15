@@ -17943,16 +17943,16 @@ function buildSajuChatSequenceV185(data) {
     //   사장님 매핑 (10종): 갑/을/병/정/무/기/경/신/임/계
     //   ★ josa 필드 ★ — 받침 유무에 따른 조사 (이/가) 정확 분기
     const _v36_dayMasterMap = {
-        '갑': { icon: '🌳', title: '큰 나무 본성',  essence: '큰 나무',       traits: '추진력과 성장성',         josa: '이', pattern: '곧게 밀어붙이는 패턴' },
-        '을': { icon: '🌸', title: '꽃·덩굴 본성',  essence: '꽃과 덩굴',     traits: '유연성과 적응력',         josa: '이', pattern: '부드럽게 휘감으며 자라는 패턴' },
-        '병': { icon: '☀️', title: '태양 본성',     essence: '태양',          traits: '존재감과 확산력',         josa: '이', pattern: '주변을 환하게 비추며 나아가는 패턴' },
-        '정': { icon: '🕯️', title: '촛불 본성',     essence: '촛불',          traits: '감성과 섬세함',           josa: '이', pattern: '깊이 있게 사람을 비추는 패턴' },
-        '무': { icon: '⛰️', title: '큰 산 본성',    essence: '큰 산',         traits: '중심과 안정감',           josa: '이', pattern: '흔들림 없이 자리를 지키는 패턴' },
-        '기': { icon: '🌾', title: '논밭 본성',     essence: '비옥한 논밭',   traits: '현실 감각과 조율 능력',   josa: '이', pattern: '주변을 품어 균형을 맞추는 패턴' },
-        '경': { icon: '⚔️', title: '강철 본성',     essence: '단단한 강철',   traits: '결단력과 직선성',         josa: '이', pattern: '명확하게 잘라내며 나아가는 패턴' },
-        '신': { icon: '💎', title: '보석 본성',     essence: '정교한 보석',   traits: '섬세한 감각과 정교함',    josa: '이', pattern: '본질만 골라내는 패턴' },
-        '임': { icon: '🌊', title: '바다 본성',     essence: '깊은 바다',     traits: '유연한 흐름과 넓은 사고', josa: '가', pattern: '상황을 흡수하며 움직이는 패턴' },
-        '계': { icon: '🌧️', title: '비·안개 본성',  essence: '비와 안개',     traits: '지혜와 통찰력',           josa: '이', pattern: '조용히 스며들어 변화시키는 패턴' }
+        '갑': { icon: '🌳', title: '큰 나무 본성',  essence: '큰 나무',       traits: '추진력과 성장성',         josa: '이', pattern: '곧게 뻗어 나아가는' },
+        '을': { icon: '🌸', title: '꽃·덩굴 본성',  essence: '꽃과 덩굴',     traits: '유연성과 적응력',         josa: '이', pattern: '부드럽게 휘감으며 자라나는' },
+        '병': { icon: '☀️', title: '태양 본성',     essence: '태양',          traits: '존재감과 확산력',         josa: '이', pattern: '주변을 환하게 비추며 나아가는' },
+        '정': { icon: '🕯️', title: '촛불 본성',     essence: '촛불',          traits: '감성과 섬세함',           josa: '이', pattern: '사람을 깊이 비추며 따뜻하게 이끄는' },
+        '무': { icon: '⛰️', title: '큰 산 본성',    essence: '큰 산',         traits: '중심과 안정감',           josa: '이', pattern: '흔들림 없이 자리를 지켜 내는' },
+        '기': { icon: '🌾', title: '논밭 본성',     essence: '비옥한 논밭',   traits: '현실 감각과 조율 능력',   josa: '이', pattern: '주변을 품어 균형을 맞추는' },
+        '경': { icon: '⚔️', title: '강철 본성',     essence: '단단한 강철',   traits: '결단력과 직선성',         josa: '이', pattern: '명확하게 결단하며 나아가는' },
+        '신': { icon: '💎', title: '보석 본성',     essence: '정교한 보석',   traits: '섬세한 감각과 정교함',    josa: '이', pattern: '본질을 골라내어 다듬는' },
+        '임': { icon: '🌊', title: '바다 본성',     essence: '깊은 바다',     traits: '유연한 흐름과 넓은 사고', josa: '가', pattern: '상황을 품어 안으며 흘러가는' },
+        '계': { icon: '🌧️', title: '비·안개 본성',  essence: '비와 안개',     traits: '지혜와 통찰력',           josa: '이', pattern: '조용히 스며들어 변화를 만드는' }
     };
     const _v36_dmEntry = _v36_dayMasterMap[dayMaster] || null;
     
@@ -17963,9 +17963,9 @@ function buildSajuChatSequenceV185(data) {
     
     // ★ V202.36 3줄 친절 구조 (사장님 명세) ★ — josa로 조사 정확 분기
     const physiogText = _v36_dmEntry
-        ? `${_v36_dmEntry.essence}의 기운이 중심이 되는 구조입니다.<br>`
-          + `타고난 ${_v36_dmEntry.traits}${_v36_dmEntry.josa} 강하게 작동하며,<br>`
-          + `삶의 흐름에서 ${_v36_dmEntry.pattern}이 반복되기 쉽습니다.`
+        ? `${dayMaster}${({갑:'목',을:'목',병:'화',정:'화',무:'토',기:'토',경:'금',신:'금',임:'수',계:'수'})[dayMaster] || ''} 일간, ${_v36_dmEntry.essence}의 기운을 타고났습니다.<br>`
+          + `${_v36_dmEntry.traits}${_v36_dmEntry.josa} 바탕에 깔려 있어,<br>`
+          + `${_v36_dmEntry.pattern} 운의 흐름입니다.`
         : (({목:'곧고 밀어붙이는 구조',화:'뜨겁게 추진하는 구조',토:'안정과 신뢰의 구조',금:'결단과 정의의 구조',수:'깊이와 통찰의 구조'})[dayElement] || '사주 정밀 분석 결과 표시 중');
     
     messages.push({
