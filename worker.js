@@ -26172,6 +26172,7 @@ const NY_SYSTEM_PROMPT = `당신은 『명리다이제스트』 저자 춘추 �
 
 [절대 규칙]
 1. 아래 [계산 근거]에 있는 사실만 근거로 씁니다. 근거에 없는 사건·숫자·인물을 지어내지 않습니다.
+1-1. 달(월운)의 간지는 반드시 '○○월'로 씁니다(예: 12월 임자월). '○○년'은 2027 정미년과 원국 년주에만 씁니다.
 2. 점수(바탕·종합 수치)는 내부 지표입니다. 숫자를 그대로 쓰지 말고 "흐름이 받쳐준다/조정이 필요하다"처럼 말로 바꿉니다.
 3. 확정 예언 금지. "~하게 됩니다" 대신 "~하기 쉬운 흐름입니다", "~에 유리합니다"처럼 경향으로 씁니다.
 4. 질병명·사고·사망·이혼을 단정하지 않습니다. 건강은 생활 관리 참고로만, 의학적 판단을 대신하지 않습니다.
@@ -26261,6 +26262,19 @@ const NY_TG_NAMES = ['비견', '겁재', '식신', '상관', '편재', '정재',
 const NY_HJ2KO = {}; Object.keys(NY_HANJA).forEach(k => { NY_HJ2KO[NY_HANJA[k]] = { ko: k, kind: 'stem' }; }); Object.keys(NY_HANJA_B).forEach(k => { NY_HJ2KO[NY_HANJA_B[k]] = { ko: k, kind: 'branch' }; });
 const NY_BODY_RE = /비뇨|신장|방광|심장|심혈관|위장|소화기|간 기능|간장|간 건강|폐 |폐가|폐의|호흡기|혈압|당뇨|갑상선|자궁|관절|척추|허리 통증|신경계|암 |종양|질환|질병/;
 function nyTextOf(obj) { const out = []; (function walk(v) { if (typeof v === 'string') out.push(v); else if (Array.isArray(v)) v.forEach(walk); else if (v && typeof v === 'object') Object.values(v).forEach(walk); })(obj); return out.join('\n'); }
+// [2026-11-16] AI가 월운 간지를 '○○년'으로 잘못 쓰는 경우 바로잡기 (예: "12월 임자년" → "12월 임자월")
+//   "N월" 바로 뒤에 붙은 간지(한글 2자 또는 한자 2자) + "년" 만 고친다. 세운(정미년)·원국 년주 표현은 건드리지 않음.
+function nyFixMonthYearWords(obj) {
+  const re = /(\d{1,2}월\s*(?:\([^)]*\)\s*)?)([갑을병정무기경신임계][자축인묘진사오미신유술해]|[甲乙丙丁戊己庚辛壬癸][子丑寅卯辰巳午未申酉戌亥])년/g;
+  const fix = v => {
+    if (typeof v === 'string') return v.replace(re, '$1$2월');
+    if (Array.isArray(v)) return v.map(fix);
+    if (v && typeof v === 'object') { const o = {}; for (const k of Object.keys(v)) o[k] = fix(v[k]); return o; }
+    return v;
+  };
+  try { return fix(obj); } catch (e) { return obj; }
+}
+
 function nyCheckPart(obj, r) {
   const t = nyTextOf(obj); const issues = [];
   const dm = r.natal.dayMaster;
@@ -26309,6 +26323,7 @@ async function nyGenerateReport(apiKey, input, rawOpts, prevParts) {
     const err = new Error('보고서 일부 생성 실패 — ' + errs.join(' / '));
     err.parts = parts; throw err;
   }
+  ['A', 'B', 'C'].forEach(k => { parts[k] = nyFixMonthYearWords(parts[k]); });   // [2026-11-16] '12월 임자년' → '12월 임자월'
   const A = parts.A, B = parts.B, C = parts.C;
   // 월 순서·라벨을 계산값에 고정 (AI가 순서를 바꿔도 안전)
   const monthsText = r.months.map((m, i) => {
@@ -26393,7 +26408,7 @@ async function handleNewYearRoutes(request, env, url) {
       let reading = got.reading;
       if (reading.contentReady === true && reading.content) {
         let report = null; try { report = JSON.parse(reading.content); } catch (e) {}
-        if (report && report.product === 'newyear2027') return nyJson({ ok: true, status: 'ready', report });
+        if (report && report.product === 'newyear2027') return nyJson({ ok: true, status: 'ready', report: nyFixMonthYearWords(report) });   // 이미 만든 보고서도 다시 볼 때 바로잡음
       }
       if (reading.nyGenStartedAt && Date.now() - reading.nyGenStartedAt < 90000) {
         return nyJson({ ok: true, status: 'processing', retryAfter: 4 }, 202);
