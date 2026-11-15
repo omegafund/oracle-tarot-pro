@@ -22618,6 +22618,19 @@ function zeusUnB64(str) {
     for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
     return out;
 }
+async function zeusGzip(bytes) {
+    if (typeof CompressionStream === "undefined") return null;
+    const cs = new CompressionStream("gzip");
+    const w = cs.writable.getWriter();
+    w.write(bytes); w.close();
+    return new Uint8Array(await new Response(cs.readable).arrayBuffer());
+}
+async function zeusGunzip(bytes) {
+    const ds = new DecompressionStream("gzip");
+    const w = ds.writable.getWriter();
+    w.write(bytes); w.close();
+    return new Uint8Array(await new Response(ds.readable).arrayBuffer());
+}
 function zeusSealedOk(s) {
     return typeof s === "string" && s.length > 40 && s.length <= ZEUS_SEAL_MAX && s.startsWith(ZEUS_SEAL_PREFIX) && /^[A-Za-z0-9+/=]+$/.test(s.slice(ZEUS_SEAL_PREFIX.length));
 }
@@ -22627,7 +22640,10 @@ async function zeusSeal(env, kind, data) {
         const key = await zeusSealKey(env);
         if (!key) return null;
         const iv = crypto.getRandomValues(new Uint8Array(12));
-        const plain = new TextEncoder().encode(JSON.stringify({ v: 1, k: kind, at: Date.now(), data }));
+        const json = new TextEncoder().encode(JSON.stringify({ v: 1, k: kind, at: Date.now(), data }));
+        // [2026-11-16] 잠그기 전에 gzip 압축 (봉투 크기를 줄여 통신 시간 단축). 압축이 안 되면 그대로 잠근다.
+        let plain = json;
+        try { const z = await zeusGzip(json); if (z && z.length < json.length) plain = z; } catch (_) {}
         const ct = new Uint8Array(await crypto.subtle.encrypt({ name: "AES-GCM", iv }, key, plain));
         const buf = new Uint8Array(12 + ct.length); buf.set(iv, 0); buf.set(ct, 12);
         const out = ZEUS_SEAL_PREFIX + zeusB64(buf);
@@ -22641,7 +22657,8 @@ async function zeusUnseal(env, sealed) {
         const key = await zeusSealKey(env);
         if (!key) return null;
         const buf = zeusUnB64(sealed.slice(ZEUS_SEAL_PREFIX.length));
-        const plain = await crypto.subtle.decrypt({ name: "AES-GCM", iv: buf.subarray(0, 12) }, key, buf.subarray(12));
+        let plain = new Uint8Array(await crypto.subtle.decrypt({ name: "AES-GCM", iv: buf.subarray(0, 12) }, key, buf.subarray(12)));
+        if (plain.length > 2 && plain[0] === 0x1f && plain[1] === 0x8b) plain = await zeusGunzip(plain);   // 압축된 봉투 (옛 봉투는 압축 없이 바로 읽음)
         const o = JSON.parse(new TextDecoder().decode(plain));
         return (o && o.v === 1 && (o.k === "saju" || o.k === "tarot") && o.data) ? o : null;
     } catch (_) { return null; }
