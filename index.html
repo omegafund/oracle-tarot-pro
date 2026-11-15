@@ -4811,6 +4811,14 @@
                         localStorage.setItem('sajuPendingResult', JSON.stringify(sajuPendingResult));
                         sessionStorage.setItem('sajuPendingResult', JSON.stringify(sajuPendingResult));
                         console.log('✅ [V55-TUNNEL] sajuPendingResult 복원 완료');
+                        // [2026-11-16] 이 정보는 화면이 이미 다음 단계로 넘어간 뒤에 도착한다 → 홈으로 떨어지던 원인.
+                        //   정보가 막 생겼으므로 같은 결제 주소로 한 번만 다시 연다 (두 번째에는 정상 표시됨)
+                        try {
+                            if (sessionStorage.getItem('zeusSajuReturnRetry') !== urlRid) {
+                                sessionStorage.setItem('zeusSajuReturnRetry', urlRid);
+                                location.replace(location.pathname + '?' + p.toString());
+                            }
+                        } catch (_) {}
                     })
                     .catch(function (err) {
                         console.warn('[V55-TUNNEL] sajuInput fetch 결함 (무시):', err.message);
