@@ -5271,6 +5271,14 @@ var c=document.querySelector('input[name="sajuCalendar"][value="'+(inp.calendar=
         <!-- [V25.4+V25.8] 상단: 오늘의 카드 — 중앙 정렬 슬림 레이아웃
              V25.8 사장님 진단: "좌측으로 몰려있다 — 중앙배치 해야"
              해결: 가로 3단 → 세로 중앙 정렬 (라벨 위 + 카드명 + 메시지 중앙 정렬) -->
+        <!-- [2026-11-16] 결제 후 홈으로 떨어진 손님이 스스로 풀이를 되찾는 버튼 (최근 48시간 결제 기록이 있을 때만) -->
+        <div id="zeusPaidRecover" class="home-col" style="display:none; margin:6px auto 10px; text-align:center;">
+            <button type="button" onclick="zeusRecoverPaid()" style="width:100%; padding:13px 12px; border-radius:12px; border:1.5px solid #5DD68A; background:rgba(93,214,138,0.12); color:#C9F5DA; font-weight:900; font-size:0.95rem; cursor:pointer;">💳 최근 결제한 풀이 다시 보기</button>
+            <a href="/diag.html" style="display:inline-block; margin-top:6px; font-size:0.72rem; color:rgba(255,255,255,0.45); text-decoration:underline;">결제했는데 풀이가 안 보이면 (진단)</a>
+        </div>
+        <script>(function(){try{var o=JSON.parse(localStorage.getItem('zeusLastPaid')||'null');var q=new URLSearchParams(location.search);
+          if(o&&o.rid&&o.token&&o.at&&(Date.now()-o.at)<48*3600*1000&&q.get('paid')!=='ok'){document.getElementById('zeusPaidRecover').style.display='block';}}catch(e){}})();
+        window.zeusRecoverPaid=function(){try{var o=JSON.parse(localStorage.getItem('zeusLastPaid')||'null');if(!o)return;location.href='/'+(o.query||('?paid=ok&rid='+encodeURIComponent(o.rid)+'&token='+encodeURIComponent(o.token)));}catch(e){}};</script>
         <div id="daily-card-slim" class="home-col" style="display:none; margin:6px auto 14px;">
             <!-- [v1.2.0] 홈 정돈: 카드 그림 왼쪽 · 글 오른쪽 가로형 -->
             <!-- [2026-11-12] 손님이 가장 먼저 누르는 곳 → 누르면 무료 오늘 운세로 바로 -->
