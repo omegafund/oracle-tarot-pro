@@ -4904,6 +4904,10 @@
 </style>
 <script>window.zeusOpenTodayFree=function(){try{var g=document.querySelector('.cat-card[data-cat="general"]');if(typeof selectCategory==='function')selectCategory('general',g);
 setTimeout(function(){try{var b=document.querySelector('[onclick*="selectSubtype(\'general\',\'today\'"]');if(b)b.click();var t=document.getElementById('category-grid');(b||t||document.body).scrollIntoView({behavior:'smooth',block:'center'});}catch(e){}},120);}catch(e){}};</script>
+<script>window.zeusPrefillSajuForm=function(inp){if(!inp)return;var set=function(id,v){var e=document.getElementById(id);if(e&&v!==undefined&&v!==null&&v!==''){e.value=String(v);e.dispatchEvent(new Event('input',{bubbles:true}));e.dispatchEvent(new Event('change',{bubbles:true}));}};
+set('sajuYear',inp.year);set('sajuMonth',inp.month);set('sajuDay',inp.day);if(inp.hour!==null&&inp.hour!==undefined&&inp.hour!=='')set('sajuHour',inp.hour);
+var g=(inp.gender==='female'||inp.gender==='여'||inp.gender==='F')?'female':'male';var r=document.querySelector('input[name="sajuGender"][value="'+g+'"]');if(r&&!r.checked)r.click();
+var c=document.querySelector('input[name="sajuCalendar"][value="'+(inp.calendar==='lunar'?'lunar':'solar')+'"]');if(c&&!c.checked)c.click();};</script>
 </head>
 <body>
 <!-- ════════════════════════════════════════════════════════════════════════
@@ -6665,14 +6669,11 @@ function selectCategory(catKey, btnEl) {
                     console.log('  - 입력:', _obj.input);
                     console.log('  - 저장 후:', Math.round(_age / 60000), '분 전');
                     
-                    if (typeof showSajuPlanGate === 'function') {
-                        showSajuPlanGate({
-                            input: _obj.input,
-                            category: _obj.category || 'fortune',
-                            timePhase: _obj.timePhase || 'medium'
-                        });
-                        return;  // ★ 입력 모달 건너뛰기 ★
-                    }
+                    // [2026-11-15] 손님 혼란("누르면 바로 990/4,900원") → 결제창으로 건너뛰지 않고
+                    //   입력 화면을 띄우되 직전 생년월일을 미리 채워 둔다 (확인 후 다시 무료 명식부터 보게)
+                    window.__zeusSajuPrefill = _obj.input;
+                    setTimeout(function () { try { zeusPrefillSajuForm(window.__zeusSajuPrefill); } catch (e) {} }, 60);
+                    setTimeout(function () { try { zeusPrefillSajuForm(window.__zeusSajuPrefill); } catch (e) {} }, 400);
                 }
             }
         } catch (e) {
