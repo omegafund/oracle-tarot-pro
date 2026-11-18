@@ -22672,6 +22672,36 @@ async function zeusSealId(sealed) {
 //   4,900원(premium): 990원 전체 + 6대 분야 + 시계열 + 대운 8단계 + 5대 잠재력·특수 패턴 + 정밀 4종
 const ZEUS_SAJU_PREMIUM_ONLY_V = ["sixDomain", "timeSeries", "daewoon", "potentialPatterns"];
 const ZEUS_SAJU_PREMIUM_ONLY_PRO = ["luckPhase12", "shinSal", "hiddenRisk", "timingPrecision"];
+// [서버 잠금 4단계] 스위치 — 대시보드 변수 PAID_LOCK : 없음/off = 꺼짐, "saju" = 사주만, "all" = 사주+타로
+//   켜지면 결제 확인이 없는 응답에서 유료 풀이를 빼고 봉인 봉투만 보낸다. 되돌리려면 변수를 지우면 된다.
+function zeusPaidLockOn(env, kind) {
+    const v = String((env && env.PAID_LOCK) || "").toLowerCase().trim();
+    if (!v || v === "off" || v === "0" || v === "false") return false;
+    if (v === "all" || v === "on" || v === "1" || v === "true") return true;
+    return v.split(/[\s,|]+/).includes(kind);
+}
+// 무료 화면(명식·오행·본성·현재/재물 흐름 미리보기·정밀 데이터)에 필요한 것만 남긴다
+const ZEUS_SAJU_FREE_TEXT_KEYS = ["title", "subtitle", "meta", "balanceLabel", "strengthLabel", "balanceLabelV54", "strengthLabelV54"];
+function zeusSajuFreeView(body) {
+    const out = { ...body };
+    const t = (body && body.text && typeof body.text === "object") ? body.text : {};
+    const ft = {};
+    for (const k of ZEUS_SAJU_FREE_TEXT_KEYS) if (t[k] !== undefined) ft[k] = t[k];
+    out.text = ft;
+    out.narrativeBlocks = null;
+    out.soulBlueprint = null;
+    out.aptitudeMatrix = [];
+    out.realityFortune = null;
+    if (out.pro && typeof out.pro === "object") out.pro = { tier: "free" };
+    if (out.v184_5 && typeof out.v184_5 === "object") {
+        const v = { ...out.v184_5 };
+        for (const k of ZEUS_SAJU_PREMIUM_ONLY_V) delete v[k];
+        delete v.interpretation;
+        out.v184_5 = v;
+    }
+    out.locked = true;
+    return out;
+}
 function zeusSajuViewForTier(full, feature) {
     if (!full || typeof full !== "object" || feature !== "entry") return full;   // premium 이상은 전체
     const out = { ...full };
@@ -26782,7 +26812,12 @@ const __zeusApp = {
           const _sealedSaju = await zeusSeal(env, 'saju', { full: { ..._sajuBody, pro: (_sajuProFull || _sajuBody.pro) }, input: zeusBirthKey(input) });
           if (_sealedSaju) _sajuBody.sealed = _sealedSaju;
         } catch (_) {}
-        const _sajuFinalResponse = new Response(JSON.stringify(_sajuBody), {
+        // [서버 잠금 4단계] 결제 확인이 없는 요청 + 스위치 켜짐 + 봉투가 만들어진 경우에만 유료 풀이를 뺀다 (봉투가 없으면 지금처럼 전체를 보낸다)
+        let _sajuOut = _sajuBody;
+        if (_sajuPlanKey === 'free' && _sajuBody.sealed && zeusPaidLockOn(env, 'saju')) {
+          try { _sajuOut = zeusSajuFreeView(_sajuBody); } catch (_) { _sajuOut = _sajuBody; }
+        }
+        const _sajuFinalResponse = new Response(JSON.stringify(_sajuOut), {
           headers: { ...corsHeaders(), "Content-Type": "application/json" }
         });
 
