@@ -9013,6 +9013,36 @@ async function getTradingSignal(fullText) {
 // ════════════════════════════════════
 //  결과창 렌더링
 // ════════════════════════════════════
+// [2026-11-18] 결제 전에는 맨 위 카드 3장 중 미래 카드를 금색 덮개로 가린다 (이름·역방향 표시도 숨김). 유료 풀이가 그려지면 자동으로 걷힌다.
+window.zeusFutureVeil = function(on) {
+    try {
+        const box = document.getElementById('result-cards-container');
+        const items = box ? box.querySelectorAll('.result-card-item') : null;
+        if (!items || items.length !== 3) return;
+        const wrap = items[2].parentElement, img = items[2].querySelector('img'), label = items[2].querySelector('.result-card-label');
+        let veil = items[2].querySelector('.zeus-future-veil');
+        const badge = wrap.querySelector('.zeus-rev-badge');
+        if (on) {
+            // 흐림 효과(filter)는 휴대폰 발열 대책 CSS가 꺼 버리므로 쓰지 않는다 → 그림을 숨기고 금색 덮개를 씌운다
+            if (img && img.dataset.zAlt === undefined) { img.dataset.zAlt = img.alt || ''; img.alt = ''; img.style.visibility = 'hidden'; }
+            if (label) label.style.visibility = 'hidden';
+            if (badge) badge.style.visibility = 'hidden';
+            if (!veil) {
+                veil = document.createElement('div');
+                veil.className = 'zeus-future-veil';
+                veil.style.cssText = 'position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;color:#FFD970;font-weight:900;font-size:0.72rem;text-align:center;pointer-events:none;background:radial-gradient(circle at 50% 40%, #3a2a08 0%, #17110a 55%, #0a0a0f 100%);';
+                veil.innerHTML = '<span style="font-size:1.5rem;">🔒</span><span>결제 후 공개</span>';
+                if (getComputedStyle(items[2]).position === 'static') items[2].style.position = 'relative';
+                items[2].appendChild(veil);
+            }
+        } else {
+            if (img && img.dataset.zAlt !== undefined) { img.alt = img.dataset.zAlt; img.style.visibility = ''; delete img.dataset.zAlt; }
+            if (label) label.style.visibility = '';
+            if (badge) badge.style.visibility = '';
+            if (veil) veil.remove();
+        }
+    } catch (_) {}
+};
 function showResultView(question, streamPromise) {
     document.getElementById('home-view').style.display = 'none';
     if (window._v201PushResultGuard) window._v201PushResultGuard();
@@ -9027,9 +9057,10 @@ function showResultView(question, streamPromise) {
                      onerror="this.onerror=null;this.src='${BASE_URL}back.jpg'">
                 <div class="result-card-label">${card.name}</div>
             </div>
-            ${revFlags[i] ? '<div style="margin-top:3px;text-align:center;"><span style="background:rgba(192,57,43,0.9);color:#fff;font-size:0.6rem;font-weight:900;padding:2px 8px;border-radius:8px;letter-spacing:0.1em;">REVERSED</span></div>' : ''}
+            ${revFlags[i] ? '<div class="zeus-rev-badge" style="margin-top:3px;text-align:center;"><span style="background:rgba(192,57,43,0.9);color:#fff;font-size:0.6rem;font-weight:900;padding:2px 8px;border-radius:8px;letter-spacing:0.1em;">REVERSED</span></div>' : ''}
             <div class="result-position-label">${positions[i]}</div>
         </div>`).join('');
+        if (typeof isPaidUser === 'undefined' || isPaidUser !== true) window.zeusFutureVeil(true);   // 결제 전: 미래 카드 가림
     const rv = document.getElementById('result-view');
     rv.style.display = 'flex';
     requestAnimationFrame(() => requestAnimationFrame(() => { rv.style.opacity = '1'; }));
@@ -12043,6 +12074,7 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
 
     // 4. 결제 상태에 따른 분기
     if (isPaid) {
+        try { if (window.zeusFutureVeil) setTimeout(function(){ window.zeusFutureVeil(false); }, 0); } catch (_) {}   // 유료 풀이 → 미래 카드 가림 해제
         // ── 미래 카드 블록 (let으로 선언해야 레버리지 경고 추가 가능)
         let futureCardHTML = `
             <div class="card-block" style="margin: 0 0 10px 0; padding-bottom: 10px; border-bottom: 1px solid rgba(212,175,55,0.15);">
