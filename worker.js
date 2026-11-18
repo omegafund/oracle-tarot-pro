@@ -22702,6 +22702,43 @@ function zeusSajuFreeView(body) {
     out.locked = true;
     return out;
 }
+// [서버 잠금 4단계 · 타로] 무료 화면은 과거·현재 두 단락만 보여 준다 (index.html renderText와 같은 규칙으로 단락을 고른다)
+//   돌려주는 글 = 과거 단락 + 현재 단락 + 잠금 안내 한 단락. 단락이 3개 미만이면 null (그대로 보냄)
+const ZEUS_TAROT_LOCK_NOTE = "🔒 미래 카드와 종합 신탁은 결제 확인 후 열립니다.";
+function zeusTarotFreeText(text) {
+    if (typeof text !== "string" || !text) return null;
+    const CORE = /핵심\s*흐름\s*해석\s*\n[\s\S]+?(?=\n\n[━─\-]{3,}|\n\n[가-힣A-Z][^\n]*[\n:]|\n\n\[|$)/;
+    let t = text.replace(CORE, "\n");
+    let c = t
+        .replace(/안녕하세요.*유저님\.?/g, "")
+        .replace(/\[합산 과정:[^\]]*\]/g, "")
+        .replace(/제우스의?\s*(운명|최종)신탁/g, "")
+        .replace(/ZEUS\s*(DESTINY|FINAL)\s*ORACLE/g, "")
+        .replace(/^[ \t]*(과거|현재|미래)[ \t]*[:：]?[ \t]*$/gm, "")
+        .replace(/추세:\s*[^\n]+\n행동:\s*[^\n]+\n타이밍:\s*[^\n]+\n리스크:\s*[^\n]+/g, "")
+        .replace(/(추세|행동|타이밍|리스크):\s*(강한\s*(상승|하락)|상승|하락|중립|분할\s*매수|즉시\s*회피|비중\s*축소|관망|보통|높음|낮음)[^\n]*/g, "")
+        .replace(/1[0-9]{3}년대?[^.。\n]*[.。]/g, "")
+        .replace(/(?:전쟁|공황|혁명|분단|쿠데타)[^.。\n]*[.。]/g, "")
+        .replace(/(20[0-1][0-9]|19[0-9]{2})년\s*(당시|초|중반|말|에는|의)[^.。\n]*[.。]/g, "")
+        .replace(/\n{3,}/g, "\n\n")
+        .trim();
+    const pats = [/📈\s*(주식|코인|부동산|진입 추천 구간)/, /🧭\s*최종\s*결론/, /⚡\s*실전\s*(매매|거래)\s*전략/, /⏱\s*매매\s*타이밍/, /🧠\s*흐름\s*해석/, /🛡\s*제우스/, /🛡️\s*리스크\s*경고/, /⚠️\s*중요\s*고지/, /⚠️\s*리스크\s*분석/];
+    let cut = -1;
+    for (const pat of pats) { const m = c.match(pat); if (m && m.index !== undefined && m.index >= 30 && (cut === -1 || m.index < cut)) cut = m.index; }
+    if (cut !== -1) c = c.substring(0, cut).trim();
+    const paras = c.split(/\n\s*\n/).map(x => x.trim()).filter(x => x.length > 5);
+    const intro = (a, b) => {
+        if (!a) return false;
+        const x = a.trim();
+        const noTime = !/(과거|지난|예전|그동안|현재|지금|이번|미래|앞으로|다가올|향후)/.test(x);
+        const short = x.length <= 250;
+        const nextCard = b && /^(과거|지난|예전|그동안|유저님은|유저님께서|유저님의)/.test(b.trim());
+        return (noTime && short) || (short && nextCard);
+    };
+    if (paras.length >= 4 && intro(paras[0], paras[1])) paras.shift();
+    if (paras.length < 3) return null;
+    return paras[0] + "\n\n" + paras[1] + "\n\n" + ZEUS_TAROT_LOCK_NOTE;
+}
 function zeusSajuViewForTier(full, feature) {
     if (!full || typeof full !== "object" || feature !== "entry") return full;   // premium 이상은 전체
     const out = { ...full };
@@ -29666,6 +29703,7 @@ ${metrics.cryptoSubtype === 'crypto_buy' ? `
         (async () => {
           let _streamOk = false;
           let _zeusWhySealed = null;
+          const _zeusTarotLock = !isPaid && zeusPaidLockOn(env, "tarot");   // [서버 잠금 4단계] PAID_LOCK=all 일 때 결제 안 한 요청
           try {
             // [V203.14] generateContent JSON 방식 — 안정성 우선
             const geminiJson = await geminiResponse.json();
@@ -29776,8 +29814,10 @@ ${metrics.cryptoSubtype === 'crypto_buy' ? `
                     .replace(/\n{2,}/g, '\n')
                     .trim();
                   _zeusWhySealed = _whyText;
-                  const _whyPayload = JSON.stringify({ _type: 'why', text: _whyText });
-                  await writer.write(encoder.encode(`data: ${_whyPayload}\n\n`));
+                  if (!_zeusTarotLock) {   // [서버 잠금 4단계] 잠금 중에는 봉투 안에만 둔다
+                    const _whyPayload = JSON.stringify({ _type: 'why', text: _whyText });
+                    await writer.write(encoder.encode(`data: ${_whyPayload}\n\n`));
+                  }
                 }
                 geminiText = geminiText
                   .replace(/\[WHY_START\][\s\S]*?\[WHY_END\]/g, '')
@@ -29788,13 +29828,21 @@ ${metrics.cryptoSubtype === 'crypto_buy' ? `
               //   → POOL 기반 criticalInterpretation이 이미 metrics에 있으므로 폴백 불필요
             }
 
-            const textPayload = JSON.stringify({ _type: 'text', text: geminiText });
+            // [서버 잠금 1단계] 봉인 봉투를 먼저 만든다 — 잠금(4단계)은 봉투가 만들어졌을 때만 적용
+            let _sealedTarot = null;
+            try { _sealedTarot = await zeusSeal(env, 'tarot', { metrics, why: _zeusWhySealed, text: geminiText }); } catch (_) {}
+            let _sendText = geminiText;
+            if (_zeusTarotLock && _sealedTarot) {
+              const _ft = zeusTarotFreeText(geminiText);
+              if (_ft) _sendText = _ft;
+            }
+            if (_zeusTarotLock && _sendText === geminiText && _zeusWhySealed) {   // 잠그지 못했으면 WHY도 지금처럼 보낸다
+              await writer.write(encoder.encode(`data: ${JSON.stringify({ _type: 'why', text: _zeusWhySealed })}\n\n`));
+            }
+            const textPayload = JSON.stringify({ _type: 'text', text: _sendText });
             await writer.write(encoder.encode(`data: ${textPayload}\n\n`));
-            // [서버 잠금 1단계] 봉인 봉투 — 옛 화면은 모르는 종류라 그냥 지나친다
-            try {
-              const _sealedTarot = await zeusSeal(env, 'tarot', { metrics, why: _zeusWhySealed, text: geminiText });
-              if (_sealedTarot) await writer.write(encoder.encode(`data: ${JSON.stringify({ _type: 'sealed', sealed: _sealedTarot })}\n\n`));
-            } catch (_) {}
+            if (_sendText !== geminiText) await writer.write(encoder.encode(`data: ${JSON.stringify({ _type: 'locked' })}\n\n`));
+            if (_sealedTarot) await writer.write(encoder.encode(`data: ${JSON.stringify({ _type: 'sealed', sealed: _sealedTarot })}\n\n`));
             await writer.write(encoder.encode(`data: [DONE]\n\n`));
             _streamOk = true;
             await commitZeusUsage(env, _shieldResult);
