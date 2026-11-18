@@ -5814,7 +5814,8 @@ window.zeusSavePendingOracle = function() {
             reSubType:      (typeof RE_SUBTYPE !== 'undefined') ? RE_SUBTYPE : '',
             fortuneSubType: (typeof FORTUNE_SUBTYPE !== 'undefined') ? FORTUNE_SUBTYPE : '',
             activeDomainBar: resolveActiveDomain(),
-            sealed:         (window.zeusSeal && window.zeusSeal.tarot) || null
+            sealed:         (window.zeusSeal && window.zeusSeal.tarot) || null,
+            zeusLocked:     !!(window.zeusSeal && window.zeusSeal.tarotLocked)
         };
         if (!po.cachedFullText || !po.sealed || !po.selectedCards || po.selectedCards.length !== 3) return false;
         localStorage.setItem('pendingOracle', JSON.stringify(po));
@@ -9320,7 +9321,7 @@ async function renderStream(fetchPromise, cards) {
                     //    이걸 전역에 저장해두면 buildInvestmentData가 서버 값을 우선 사용
                     if (parsed && parsed._type === 'metrics' && parsed.data) {
                         window._serverMetrics = parsed.data;
-                        try { if (window.zeusSeal) window.zeusSeal.tarot = null; } catch (_) {}   // [서버 잠금 2단계] 새 풀이 시작 → 이전 봉투 비움
+                        try { if (window.zeusSeal) { window.zeusSeal.tarot = null; window.zeusSeal.tarotLocked = false; } } catch (_) {}   // [서버 잠금 2단계] 새 풀이 시작 → 이전 봉투 비움
                         // [V23.4] 콘솔 디버그 (개발 모드)
                         if (window.location.hostname === 'localhost' || window.location.search.includes('debug=1')) {
                             debugMetrics(parsed.data);
@@ -9371,6 +9372,10 @@ async function renderStream(fetchPromise, cards) {
                     }
 
                     // [V203.8] generateContent 일반 호출 전환 — {_type:"text"} 이벤트 수신
+                    if (parsed && parsed._type === 'locked') {   // [서버 잠금 4단계] 서버가 무료 부분만 보냄 → 결제 후 봉투 내용으로 바꿔 끼운다
+                        try { if (window.zeusSeal) window.zeusSeal.tarotLocked = true; } catch (_) {}
+                        continue;
+                    }
                     if (parsed && parsed._type === 'sealed') {   // [서버 잠금 2단계] 봉인 봉투 보관 (글에는 넣지 않음)
                         try { if (window.zeusSeal) window.zeusSeal.keep('tarot', parsed.sealed); } catch (_) {}
                         continue;
@@ -25088,7 +25093,8 @@ async function startTossPayment(planKey, method) {
             reSubType:      (typeof RE_SUBTYPE !== 'undefined') ? RE_SUBTYPE : '',
             fortuneSubType: (typeof FORTUNE_SUBTYPE !== 'undefined') ? FORTUNE_SUBTYPE : '',
             activeDomainBar: resolveActiveDomain(),  // [V203.2] 의도 fallback (결제복귀 빈값 방지)
-            sealed:         (window.zeusSeal && window.zeusSeal.tarot) || null   // [서버 잠금 2단계] 이 풀이의 봉인 봉투
+            sealed:         (window.zeusSeal && window.zeusSeal.tarot) || null,   // [서버 잠금 2단계] 이 풀이의 봉인 봉투
+            zeusLocked:     !!(window.zeusSeal && window.zeusSeal.tarotLocked)    // [서버 잠금 4단계] 무료 부분만 받은 풀이
         };
         localStorage.setItem('pendingOracle', JSON.stringify(pendingOracle));
         // [MOBILE-FIX] 모바일 Toss 결제창 왕복 시 localStorage 소실 방지
