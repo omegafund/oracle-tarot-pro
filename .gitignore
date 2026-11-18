@@ -1,1 +1,5 @@
 .env
+
+# 서버 원본은 비공개 저장소 omegafund/zeus-worker 에만 둔다
+worker.js
+worker*.js
