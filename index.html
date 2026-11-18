@@ -113,7 +113,10 @@
         return Promise.race([Z.promise, new Promise(function(r){ setTimeout(function(){ r(null); }, ms); })]);
       };
       function applyOpened(pending, opened, via){
-        if (pending.cachedFullText && !pending.zeusLocked && opened.text !== pending.cachedFullText) return false;   // 다른 풀이의 봉투면 쓰지 않는다
+        // [서버 잠금 4단계] 무료 부분만 받은 풀이 = 표시가 있거나, 글에 잠금 안내가 들어 있음 (표시 없이 저장된 예전 화면 대비)
+        var wasLocked = !!pending.zeusLocked || (typeof pending.cachedFullText === 'string' && pending.cachedFullText.indexOf('결제 확인 후 열립니다') >= 0);
+        if (pending.cachedFullText && !wasLocked && opened.text !== pending.cachedFullText) return false;   // 다른 풀이의 봉투면 쓰지 않는다
+        pending.zeusLocked = false;
         pending.cachedFullText = opened.text;
         if (opened.metrics) {
           pending.serverMetrics = opened.metrics;
@@ -12051,7 +12054,7 @@ function renderText(text, cards, investData, isPaid = false, isFinanceQuery = fa
                 <img src="${BASE_URL}${cards[2].file}" class="mini-card-float" onclick="expandCard(this)" onerror="this.style.display='none'">
                 <div class="card-text-wrap">
                     <span style="display:block; margin-bottom:4px; font-weight:bold;">${cards[2].name}</span>
-                    <div style="color: rgba(255,255,255,0.88); line-height: 1.6; font-size: 0.92rem;">${formatChunk(cardTexts[2])}</div>
+                    <div style="color: rgba(255,255,255,0.88); line-height: 1.6; font-size: 0.92rem;">${formatChunk(/결제 확인 후 열립니다/.test(cardTexts[2] || '') ? '미래 카드 풀이를 불러오는 중 연결이 늦어졌습니다. 화면을 새로고침하거나 아래 「최근 결제한 풀이 다시 보기」를 눌러 주세요.' : cardTexts[2])}</div>
                 </div>
             </div>`;
 
